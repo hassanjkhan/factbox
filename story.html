@@ -2606,9 +2606,10 @@ const STORIES = {
       { scene:'s-fleet', h:'Then Rome reaches Alexandria.',
         b:'In 30 BCE Octavian enters the city. Antony, told Cleopatra is already dead, stabs himself.',
         src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
-      { scene:'s-scroll', h:'She will not be paraded.',
-        b:"Taken alive, she is marched through Rome as a trophy in Octavian's triumph. She refuses to end as somebody else's victory.",
-        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008'] },
+      { scene:'s-triumph', h:'She will not be paraded.',
+        b:"Alive, she would be marched through Rome as a trophy in Octavian's triumph. She refuses to end as somebody else's victory.",
+        note:"She never was. Octavian held the triumph in 29 BCE and carried an effigy of her in it instead \u2014 a figure of the queen with the snakes on her, borne through Rome by the side that beat her.",
+        src:['Plutarch, <i>Life of Antony</i> \u2014 chs. 84\u201386. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> \u2014 51.21.8, on the effigy carried in the triumph', 'Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> \u2014 Profile Books, 2008'] },
       { scene:'s-afternoon', h:'Her last day.',
         b:'She bathes. She dresses in royal robes. She eats a final meal.',
         src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
@@ -3014,32 +3015,76 @@ addEventListener("keydown", e => {
      Keyed by the scene class, not by beat index — which is what makes the
      "hold, don't restart" requirement fall out for free. Beats 2 and 3 are both
      s-fleet, so moving between them resolves to the same bed and the code below
-     does nothing at all: the sea keeps rolling across the cut. Same for beats
-     5/6 (s-afternoon), 7/8 (s-coil), 10/11 (s-basket). Beats 4 and 9 are both
-     s-scroll and share a bed too; they are far apart, so that one does restart.
+     does nothing at all: the sea keeps rolling across the cut. Same for any
+     other pair of adjacent beats that share a scene.
+
+     There are more scene classes here than the current thirteen beats use.
+     That is deliberate and it is the cheap direction to be wrong in: a mapped
+     scene that no beat carries costs nothing at all (its bed is never
+     requested, because beds are fetched by what is on screen), whereas an
+     unmapped scene silently holds the previous bed. s-afternoon and s-scroll
+     are kept for exactly that reason — s-bath, s-letter and s-search took over
+     what s-afternoon and s-scroll used to cover twice each, and if a beat is
+     ever moved back, it still sounds.
 
      `gain` is the bed's level relative to the master. It exists because these
      are field recordings with different natural loudnesses, and mastering them
      to a common level by ear is not something the code can do for you.
+
+     Two of them are not levelling and should not be "corrected" to match the
+     others. s-search is 0.50 because the aftermath of a search is supposed to
+     be the quietest thing in the story — it is normalised to −26 LUFS like
+     every other bed, because a bed encoded quiet is a bed encoded noisy at
+     48 kbps, and it is made quiet here instead. s-triumph is 1.00 and
+     s-harbour was pulled back to 0.86 underneath it so that the triumph is
+     the loudest moment in the read — but most of what makes it feel like the
+     loudest moment is that it has ~7 dB more energy above 500 Hz than
+     anything either side of it, which is the part a phone speaker actually
+     reproduces. It should land as "the room got busier", not "the volume
+     went up".
      ------------------------------------------------------------------------ */
   var BASE = "audio/";
   var BEDS = {
-    /* 1      title, a shut door in near-dark   */ "s-door":      { file: "door.mp3",    gain: 0.90 },
-    /* 2,3    Actium; Rome reaches Alexandria   */ "s-fleet":     { file: "sea.mp3",     gain: 1.00 },
-    /* 4,9    the refusal; Plutarch writing     */ "s-scroll":    { file: "scroll.mp3",  gain: 0.80 },
-    /* 5,6    her last day; the guards          */ "s-afternoon": { file: "palace.mp3",  gain: 0.85 },
-    /* 7,8    the question; the verdict         */ "s-coil":      { file: "coil.mp3",    gain: 0.85 },
-    /* 10,11  the asp under the figs; poison    */ "s-basket":    { file: "basket.mp3",  gain: 0.85 },
-    /* 12     painters put it in anyway         */ "s-painting":  { file: "gallery.mp3", gain: 0.75 },
-    /* 13     Alexandria at dusk                */ "s-pharos":    { file: "harbour.mp3", gain: 1.00 }
+    /* title, a shut door in near-dark      */ "s-door":      { file: "door.mp3",            gain: 0.90 },
+    /* Actium, and the year after it        */ "s-fleet":     { file: "sea.mp3",             gain: 1.00 },
+    /* the fleet enters the Great Harbour   */ "s-harbour":   { file: "harbour-arrival.mp3", gain: 0.86 },
+    /* she will not be paraded through Rome */ "s-triumph":   { file: "triumph.mp3",         gain: 1.00 },
+    /* the bathing room, her last day       */ "s-bath":      { file: "bath.mp3",            gain: 0.80 },
+    /* the letter to Octavian               */ "s-letter":    { file: "letter.mp3",          gain: 0.75 },
+    /* the question, and the verdict        */ "s-coil":      { file: "coil.mp3",            gain: 0.85 },
+    /* the room after the guards searched   */ "s-search":    { file: "search.mp3",          gain: 0.50 },
+    /* the scriptorium that copied Plutarch */ "s-copies":    { file: "copies.mp3",          gain: 0.80 },
+    /* the asp under the basket of figs     */ "s-basket":    { file: "basket.mp3",          gain: 0.85 },
+    /* the physician's table                */ "s-vials":     { file: "vials.mp3",           gain: 0.70 },
+    /* weavers put the snake in anyway      */ "s-painting":  { file: "gallery.mp3",         gain: 0.75 },
+    /* Alexandria at dusk                   */ "s-pharos":    { file: "harbour.mp3",         gain: 1.00 },
+
+    /* Kept from the eight-scene cut. As the new scenes land these stop being
+       carried by any beat; until then they still are, and either way it
+       sounds. See above. */
+    /* a still small interior               */ "s-scroll":    { file: "scroll.mp3",          gain: 0.80 },
+    /* a fountain in the court, cicadas     */ "s-afternoon": { file: "palace.mp3",          gain: 0.85 }
   };
   /* The closing beat has no scene class, and an unmapped beat holds whatever is
      already playing rather than cutting to silence — so the harbour carries
      through the ending, which is what it should do anyway. */
 
   /* ---- tuning ----------------------------------------------------------- */
-  var LEVEL      = 0.50;   /* master, sound on                                */
-  var LEVEL_CALM = 0.32;   /* master under prefers-reduced-motion             */
+  /* The master was 0.50 / 0.32 and the beds were heard as "a little loud,
+     make it a bit quieter so it's not the main focus". Halved. The target is
+     that a reader is not aware of the sound until they think about it, which
+     is a different thing from being able to hear it — every bed is still well
+     above its own noise floor at 0.26, and the relative balance between them
+     is untouched, because halving the master moves all fifteen by the same
+     5.7 dB and cannot change how they sit against each other.
+
+     One bed did not survive that uniformly: `search` is a near-silence by
+     design, and 5.7 dB below a near-silence is a bed that reads as a failed
+     download. Its own gain was raised to compensate — see BEDS above. That is
+     the rule to follow if this number is ever lowered again: move the bed that
+     falls off the bottom, not the master. */
+  var LEVEL      = 0.26;   /* master, sound on                                */
+  var LEVEL_CALM = 0.17;   /* master under prefers-reduced-motion             */
   var TAU        = 0.55;   /* crossfade time constant, seconds — see ramp()   */
   var STOP_AFTER = 2800;   /* ms after a fade-out before the voice is freed   */
   var CACHE_MAX  = 3;      /* decoded beds held at once                       */
