@@ -7010,17 +7010,6 @@ deck.addEventListener("click", e => {
   }
 });
 
-document.getElementById("wl").addEventListener("submit", e => {
-  e.preventDefault();
-  const em = document.getElementById("em");
-  const v = em.value.trim();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { em.focus(); return; }
-  track("waitlist", { email: v });
-  em.blur();
-  e.target.style.display = "none";
-  document.getElementById("th").classList.add("on");
-});
-
 /* --------------------------------------------------------------------------
    `.live` — the class the whole build turns on. The scenes run their
    animation only while their page carries it, so at most one scene is moving.
