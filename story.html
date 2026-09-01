@@ -83,13 +83,13 @@ body{
 
 /* --------------------------------------------------------------------------
    The stack.
-   `--page-h` is pinned by shell.js on first paint and only re-pinned on a
-   real orientation change. In-app webviews grow and shrink the viewport as
-   their chrome hides on scroll; if page height tracked that live, every page
-   would reflow mid-swipe and mandatory snap would yank the reader onto a
-   different beat. 100dvh is the fallback for a no-JS first frame.
+   Height is `100dvh`, with a plain `100vh` fallback first for anything that
+   does not support the unit. Nothing pins a pixel height any more: doing so
+   left the deck shorter than the screen in an in-app webview, with the page
+   background showing through underneath it.
    -------------------------------------------------------------------------- */
 .deck{
+  height:100vh;
   height:100dvh;
   overflow-y:auto;
   scroll-snap-type:y mandatory;
@@ -102,6 +102,7 @@ body{
 
 .page{
   position:relative;
+  height:100vh;
   height:100dvh;
   scroll-snap-align:start;
   scroll-snap-stop:always;
@@ -2753,16 +2754,17 @@ deck.addEventListener("scroll", () => {
    -------------------------------------------------------------------------- */
 let repin;
 window.addEventListener("resize", () => {
-  const rotated = window.innerWidth !== pinnedW;
-  const huge = Math.abs(window.innerHeight - pinnedH) > 140;
-  if (!rotated && !huge) return;
+  /* Only a rotation matters. A webview hiding its chrome resizes the
+     viewport constantly; dvh already absorbs that, and reacting to it is
+     what threw the reader off their beat. */
+  if (window.innerWidth === pinnedW) return;
   clearTimeout(repin);
   repin = setTimeout(() => {
     const i = current;
     pinHeight();
     /* Snap can land anywhere after a reflow — put them back where they were. */
     deck.style.scrollBehavior = "auto";
-    deck.scrollTop = i * pinnedH;
+    deck.scrollTop = i * deck.clientHeight;
     requestAnimationFrame(() => { deck.style.scrollBehavior = ""; });
   }, 160);
 });
