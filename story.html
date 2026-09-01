@@ -16,6 +16,8 @@
    ========================================================================== */
 
 :root{
+  /* any sliver a browser leaves is scene-coloured, never a black bar */
+
   color-scheme:dark;
 
   /* Theme.swift palette */
@@ -48,7 +50,7 @@
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%}
+html,body{background:#141018;margin:0;height:100%}
 body{
   background:#0E0B12;
   color:#fff;
@@ -68,7 +70,7 @@ body{
    different beat. 100dvh is the fallback for a no-JS first frame.
    -------------------------------------------------------------------------- */
 .deck{
-  height:var(--page-h, 100dvh);
+  height:100dvh;
   overflow-y:auto;
   scroll-snap-type:y mandatory;
   scroll-behavior:smooth;
@@ -80,7 +82,7 @@ body{
 
 .page{
   position:relative;
-  height:var(--page-h, 100dvh);
+  height:100dvh;
   scroll-snap-align:start;
   scroll-snap-stop:always;
   overflow:hidden;
@@ -157,8 +159,9 @@ body{
 .capwrap{
   position:absolute;inset:0;z-index:2;
   display:flex;align-items:center;justify-content:center;
-  padding:calc(var(--top-safe) + 56px) 0 calc(var(--bottom-safe) + 24px);
-  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;
+  padding:calc(var(--top-safe) + 40px) 0 calc(var(--top-safe) + 40px);
+  overflow-y:auto;overscroll-behavior-y:auto;scrollbar-width:none;
+  touch-action:pan-y;
 }
 .capwrap::-webkit-scrollbar{display:none}
 
@@ -2391,10 +2394,12 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
    a real orientation change — then restore the beat they were on.
    -------------------------------------------------------------------------- */
 var pinnedH = 0, pinnedW = 0;
+/* Measure only to detect a real orientation change. The height itself comes
+   from `100dvh` in CSS — pinning a px value here is what produced a deck
+   shorter than the screen, with the body showing through beneath it. */
 function pinHeight() {
   pinnedH = window.innerHeight;
   pinnedW = window.innerWidth;
-  document.documentElement.style.setProperty("--page-h", pinnedH + "px");
 }
 pinHeight();
 
@@ -2743,5 +2748,42 @@ window.addEventListener("resize", () => {
 });
 
 track("open");
+
+/* --------------------------------------------------------------------------
+   Keyboard, and a guaranteed way forward.
+
+   Scroll-snap plus a caption that can scroll means a drag does not always
+   reach the deck — and on a desktop with a mouse there is no swipe at all.
+   Arrow keys, page keys, space and Home/End all move a whole beat, which is
+   also the accessible way through: the deck is focusable so a keyboard user
+   can reach it at all.
+   -------------------------------------------------------------------------- */
+function beatIndex() {
+  const h = deck.clientHeight || 1;
+  return Math.round(deck.scrollTop / h);
+}
+function goToBeat(i) {
+  const n = deck.children.length - 1;
+  const t = Math.max(0, Math.min(n, i));
+  deck.scrollTo({ top: t * deck.clientHeight, behavior: "smooth" });
+}
+
+deck.tabIndex = 0;
+addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea") return;   // never steal the email field
+
+  const k = e.key;
+  let d = 0;
+  if (k === "ArrowDown" || k === "PageDown" || k === " " || k === "Spacebar") d = 1;
+  else if (k === "ArrowUp" || k === "PageUp") d = -1;
+  else if (k === "Home") { e.preventDefault(); goToBeat(0); return; }
+  else if (k === "End")  { e.preventDefault(); goToBeat(1e4); return; }
+  else return;
+
+  e.preventDefault();
+  goToBeat(beatIndex() + d);
+});
 
 </script>
