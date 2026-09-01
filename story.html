@@ -499,6 +499,27 @@ html.no-motion *,
 html.no-motion *::before,
 html.no-motion *::after{animation:none !important}
 
+
+/* --------------------------------------------------------------------------
+   The verdict beat.
+
+   Answering used to mark a tick in place, which read as nothing happening.
+   The reader now arrives somewhere: the deck moves them to this beat and the
+   word at the top is written by their answer. Right and wrong differ only in
+   colour and in that word — a wrong answer is not an error state, it is the
+   next thing to read, so nothing here goes red or shakes.
+   -------------------------------------------------------------------------- */
+.verdict{
+  font-size:14px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  margin:0 0 10px;color:var(--mint);
+}
+.page.was-wrong .verdict{color:var(--butter)}
+.page.was-right .verdict::before,
+.page.was-wrong .verdict::before{
+  content:"";display:inline-block;width:9px;height:9px;border-radius:999px;
+  margin-right:9px;vertical-align:1px;background:currentColor;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    SCENES A — door · painting · fleet · afternoon
    Composed for 390×844 portrait first; desktop checked second. The
@@ -2433,69 +2454,58 @@ pinHeight();
    -------------------------------------------------------------------------- */
 const STORIES = {
   "cleopatra-death": {
-    title: "Nobody watched Cleopatra die.",
+    title: "How did Cleopatra die?",
     cards: [
-      { scene:"s-door", h:"Nobody watched Cleopatra die.",
-        b:"The doors were shut. Everyone in the room died with her. Every account we have was written by people who were not there.",
-        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86. Written c. 110 AD, about 140 years after the events",
-             "Strabo, <i>Geography</i> — 17.1.8–10. A Greek geographer who was in Egypt within a few years of 30 BC",
-             "Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010"] },
+      { scene:"s-door", h:"How did Cleopatra die?",
+        b:"The snake is in every painting of her, and nobody has ever found it.",
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Strabo, <i>Geography</i> — 17.1.8–10. A Greek geographer in Egypt within a few years of 30 BC', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
 
-      { scene:"s-painting", h:"This is the picture in your head.",
-        b:"A painter's version, made more than a thousand years afterwards. Nobody who ever painted this scene was in the room.",
-        note:"The snake is in every painting of her. Nobody has ever found it.",
-        credit:"Detail of an old-master painting of the death of Cleopatra. We have not been able to verify the artist, the date or the holding collection, so we are not going to name one.",
-        src:["Walker & Higgs (eds), <i>Cleopatra of Egypt: From History to Myth</i> — British Museum Press, 2001",
-             "Mary Hamer, <i>Signs of Cleopatra</i> — Routledge, 1993"] },
+      { scene:"s-painting", h:"The paintings came much later.",
+        b:"Artists have been staging her death for centuries. This one is from the 1600s, more than sixteen hundred years after it happened.",
+        note:"Detail of an old-master painting of the death of Cleopatra. We have not been able to verify the artist, the date or the holding collection, so we are not going to name one.",
+        src:['Walker &amp; Higgs (eds), <i>Cleopatra of Egypt: From History to Myth</i> — British Museum Press, 2001', 'Mary Hamer, <i>Signs of Cleopatra</i> — Routledge, 1993'] },
 
-      { scene:"s-fleet", h:"Rome arrives, and Antony dies first.",
-        b:"Octavian reaches Alexandria on the first of August. Within a day the city has changed hands and Cleopatra is a prisoner in her own tomb.",
-        tl:[["1 Aug 30 BC","Octavian enters Alexandria. Antony, told Cleopatra is dead, stabs himself."],
-            ["The days after","She is taken alive and held under guard in her own mausoleum."]],
-        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
-             "Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD",
-             "Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010"] },
+      { scene:"s-fleet", h:"Egypt is falling.",
+        b:"In 30 BCE, Octavian invades Alexandria. Cleopatra and Marc Antony barricade themselves inside the royal palace.",
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
 
-      { scene:"s-afternoon", h:"Then she takes an afternoon.",
-        b:"Her last hours are the best-recorded part of the story, and the one nobody watched.",
-        tl:[["c. 10 Aug","She bathes, eats a last meal, dresses as queen, and writes to Octavian."],
-            ["Within the hour","The guards break in. She is dead, at thirty-nine."]],
+      { scene:"s-scroll", h:"She will not be paraded.",
+        b:"If Octavian takes her alive, he marches her through Rome as a trophy. She refuses to end as somebody else's victory.",
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008'] },
+
+      { scene:"s-afternoon", h:"Her last day.",
+        b:"She bathes. She dresses in royal robes. She eats a final meal.",
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
+
+      { scene:"s-afternoon", h:"Then she writes to Octavian.",
+        b:"One request: to be buried beside Antony. Within the hour the guards break in and she is dead, at thirty-nine.",
         note:"The exact day is a reconstruction. 10 and 12 August 30 BC are both proposed, and the ancient sources do not agree.",
-        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
-             "Cassius Dio, <i>Roman History</i> — Books 50–51",
-             "Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010"] },
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
 
-      { scene:"s-scroll", h:"Our earliest witness says he doesn't know.",
-        b:"Strabo was in Egypt within a few years of her death. He records two versions and refuses to choose between them.",
-        relic:{ obj:"Strabo, Geography, Book 17.1.10",
-                prov:"Written by a Greek geographer who travelled in Egypt around 25 BC",
-                proves:"The earliest surviving account already offers a choice — the bite of an asp, or a poisonous ointment — and states that nothing is clearly known." },
-        note:"Strabo gives asp or ointment and stops. Plutarch, roughly 140 years later, adds the basket of figs and then admits nobody knew. There is no source that settles it.",
-        src:["Strabo, <i>Geography</i> — 17.1.8–10",
-             "Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
-             "Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010"] },
+      { scene:"s-coil", h:"So how did she die?",
+        q:{ options:["A snake was smuggled in to her","Nobody has ever established it"], correct:1 },
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Strabo, <i>Geography</i> — 17.1.8–10. A Greek geographer in Egypt within a few years of 30 BC', 'Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008'] },
 
-      { scene:"s-coil", h:"Why do historians doubt the snake?",
-        q:{ options:["No snake was ever found","Egypt had no venomous snakes"], correct:0,
-            reveal:"The guards searched and found nothing. Plutarch tells the fig-basket story, then says plainly that the truth was unknown. Two faint marks on her arm are all anyone claimed to see." },
-        note:"Historians are split. Some read the asp as Octavian's tidier story, others as the likeliest one. Egyptian cobra venom kills slowly and messily, and her two attendants died as well.",
-        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
-             "Cassius Dio, <i>Roman History</i> — Books 50–51",
-             "Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008"] },
+      { scene:"s-coil", result:true, h:"Nobody has ever established it.",
+        b:"The guards searched the room and found no snake. Two faint marks on her arm are all anyone claimed to see.",
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Strabo, <i>Geography</i> — 17.1.8–10. A Greek geographer in Egypt within a few years of 30 BC', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD'] },
 
-      { scene:"s-basket", h:"The basket, and the other theory.",
-        b:"Poison is at least as likely. A court with physicians had quieter options than a snake nobody could produce.",
-        note:"A basket of figs, and something coiled among them.",
-        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
-             "Christoph Schäfer, <i>Kleopatra</i> — WBG, 2006 — argues for a drug mixture rather than a snake",
-             "Horace, <i>Odes</i> I.37 — written within a year or two of her death; the earliest surviving mention of the serpents",
-             "Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008"] },
+      { scene:"s-scroll", h:"The snake comes from Plutarch.",
+        b:"A Greek biographer writing more than a century afterwards. He was not there, and he never says who told him.",
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
 
-      { scene:"s-pharos", h:"The honest answer is: we don't know.",
-        b:"She died at thirty-nine, and about 275 years of Ptolemaic rule ended with her. How she did it is the one part of the story that nobody was left alive to report.",
-        src:["Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010",
-             "Cassius Dio, <i>Roman History</i> — Books 50–51",
-             "Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008"] },
+      { scene:"s-basket", h:"An asp, under a basket of figs.",
+        b:"That is the story he records. Then he writes that the truth was unknown.",
+        note:"Strabo, writing far earlier, gives two versions — an asp or a poisonous ointment — and says nothing is clearly known. No surviving source settles it.",
+        src:['Plutarch, <i>Life of Antony</i> — chs. 84–86. Written c. 110 AD, roughly 140 years later', 'Strabo, <i>Geography</i> — 17.1.8–10. A Greek geographer in Egypt within a few years of 30 BC', 'Horace, <i>Odes</i> I.37 — written within a year or two of her death; the earliest mention of the serpents'] },
+
+      { scene:"s-basket", h:"Some historians think poison.",
+        b:"A palace with physicians on hand had quieter options than a snake nobody could produce.",
+        src:['Christoph Schäfer, <i>Kleopatra</i> — WBG, 2006 — argues for a drug mixture rather than a snake', 'Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008', 'Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010'] },
+
+      { scene:"s-pharos", h:"She died at thirty-nine.",
+        b:"Egypt became a Roman province, and about 275 years of Ptolemaic rule ended with her.",
+        src:['Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010', 'Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD', 'Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008'] },
     ]
   }
 };
@@ -2535,9 +2545,11 @@ const bank = document.getElementById("scene-bank");
 function takeScene(name) {
   const found = bank && bank.querySelector("." + name);
   if (found) {
-    found.classList.add("scene");           /* belt and braces, per contract */
-    found.setAttribute("aria-hidden", "true");
-    return found;
+    /* Clone rather than move: two beats may hold the same shot. */
+    const node = found.cloneNode(true);
+    node.classList.add("scene");            /* belt and braces, per contract */
+    node.setAttribute("aria-hidden", "true");
+    return node;
   }
   const ph = document.createElement("div");
   ph.className = "scene scene-missing " + name;
@@ -2573,7 +2585,11 @@ function buildPage(c, i) {
   const cap = document.createElement("div");
   cap.className = "cap";
 
-  let inner = `<h2 class="hl">${esc(c.h)}</h2>`;
+  if (c.result) page.dataset.result = "1";
+
+  let inner = c.result
+    ? `<div class="verdict"></div><h2 class="hl">${esc(c.h)}</h2>`
+    : `<h2 class="hl">${esc(c.h)}</h2>`;
   if (c.b) inner += `<p class="sub">${esc(c.b)}</p>`;
 
   if (c.tl) inner += '<div class="tl">' + c.tl.map(([w, x]) =>
@@ -2688,8 +2704,19 @@ deck.addEventListener("click", e => {
       b.classList.add(n === correct ? "right" : "wrong");
       b.querySelector(".mark").textContent = n === correct ? "✓" : (b === o ? "×" : "");
     });
-    page.querySelector(".reveal").classList.add("on");
-    track("answered", { correct: Number(o.dataset.n) === correct });
+    const got = Number(o.dataset.n) === correct;
+    track("answered", { correct: got });
+
+    /* Carry the verdict to the next beat and go there. The pause is long
+       enough to see which option was yours and no longer. */
+    const i = [...deck.children].indexOf(page);
+    const res = deck.children[i + 1];
+    if (res && res.dataset.result === "1") {
+      res.querySelector(".verdict").textContent = got ? "Correct." : "Not quite.";
+      res.classList.toggle("was-right", got);
+      res.classList.toggle("was-wrong", !got);
+    }
+    setTimeout(() => goToBeat(i + 1), 620);
   }
 });
 
