@@ -1,0 +1,22 @@
+tapestry.jpg
+────────────
+Object    The Death of Cleopatra, from a set of The Story of Antony and Cleopatra
+Makers    Designed by Justus van Egmont; woven by Geraert van der Strecken
+Made      Flemish, Brussels. Designed c. 1650, woven 1650–77
+Medium    Tapestry (wool and silk)
+Holder    The Metropolitan Museum of Art, New York
+
+Licence   CC0 1.0 Universal (Public Domain Dedication).
+          Not a public-domain-by-age argument: the Met affirmatively released
+          this image under CC0 as part of its Open Access programme and donated
+          it to Wikimedia Commons.
+
+Retrieved 1 September 2026 from
+  https://commons.wikimedia.org/wiki/File:The_Death_of_Cleopatra_from_a_set_of_The_Story_of_Antony_and_Cleopatra_MET_501.jpg
+File      https://upload.wikimedia.org/wikipedia/commons/6/67/The_Death_of_Cleopatra_from_a_set_of_The_Story_of_Antony_and_Cleopatra_MET_501.jpg
+Original  3107 x 4000 JPEG, 4.4 MB. Shipped resized to 1300px long edge.
+
+Woven inscription in the upper cartouche:
+  CLEOPATRA NE IN TRIVMPHVM DVCATVR / ASPIDIS MORSV SIBI MORTEM INFERT
+  "Cleopatra, lest she be led in triumph, brings death upon herself
+   by the bite of an asp."
