@@ -587,7 +587,7 @@ html.no-motion *::after{animation:none !important}
 @media (prefers-reduced-motion:reduce){.tapcue{transition:none}}
 
 /* --------------------------------------------------------------------------
-   The ending: thirteen more stories, and the offer.
+   The ending: the rest of the season, and the offer.
 
    A shelf rather than a list — the covers are the argument. It scrolls
    sideways inside the caption so the ending stays one screen like every
@@ -600,7 +600,9 @@ html.no-motion *::after{animation:none !important}
   scrollbar-width:none;padding-bottom:2px;
 }
 .shelf::-webkit-scrollbar{display:none}
-.shelfcard{flex:none;width:88px;scroll-snap-align:start}
+.shelfcard{flex:none;width:88px;scroll-snap-align:start;
+  text-decoration:none;color:inherit;-webkit-tap-highlight-color:transparent}
+.shelfcard:active{transform:scale(.97)}
 .shelfcard img{
   width:88px;height:128px;object-fit:cover;display:block;
   border-radius:9px;background:rgba(255,255,255,.06);
@@ -613,6 +615,14 @@ html.no-motion *::after{animation:none !important}
 }
 .go.pay{width:100%;font-size:16.5px}
 .go.pay:disabled{opacity:.6;cursor:default}
+
+/* The quiet second door. Some readers want to see the range before they pay,
+   and sending them to a wall of covers converts better than sending them away. */
+.ghostlink{
+  display:block;margin-top:12px;text-align:center;
+  font-size:13.5px;font-weight:650;padding:10px;min-height:44px;
+  color:rgba(244,238,230,.62);text-decoration:none;
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    SCENES A — door · painting · fleet · afternoon
@@ -6927,11 +6937,13 @@ end.innerHTML =
   '<div class="capwrap"><div class="cap">' +
     '<div class="wordmark">Factbox</div>' +
     '<h2 class="hl">Come read more stories.</h2>' +
-    '<p class="sub">Thirteen more, sourced the same way. Rome, Cleopatra, ' +
-      'the Bible, and the people we have flattened into statues.</p>' +
-    '<div class="shelf"><span class=\'shelfcard\'><img src=\'img/rome-d1.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The shape of a Roman day</em></span><span class=\'shelfcard\'><img src=\'img/rome-d2.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Where Rome slept</em></span><span class=\'shelfcard\'><img src=\'img/rome-d3.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>What Rome ate</em></span><span class=\'shelfcard\'><img src=\'img/rome-d4.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The water</em></span><span class=\'shelfcard\'><img src=\'img/rome-d5.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The noise</em></span><span class=\'shelfcard\'><img src=\'img/rome-d6.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Who did the work</em></span><span class=\'shelfcard\'><img src=\'img/rome-d7.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>How we know any of this</em></span><span class=\'shelfcard\'><img src=\'img/cleo-d2.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The woman Rome had to invent</em></span><span class=\'shelfcard\'><img src=\'img/cleo-d3.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The tomb nobody has found</em></span><span class=\'shelfcard\'><img src=\'img/bible-d1.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The seven deadly sins</em></span><span class=\'shelfcard\'><img src=\'img/bible-d2.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Ark of the Covenant</em></span><span class=\'shelfcard\'><img src=\'img/bible-d3.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Mary Magdalene</em></span><span class=\'shelfcard\'><img src=\'img/lincoln-d1.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The awkward man</em></span></div>' +
-    '<button class="go pay" id="pay" type="button">Read more stories · $3.99/mo</button>' +
-    '<p class="fine">Cancel any time. Every card cites at least two independent sources.</p>' +
+    '<p class="sub">Fifty more, sourced the same way. Cleopatra, the Bible, ' +
+      'Rome, and the people we have flattened into statues.</p>' +
+    '<div class="shelf"><a class=\'shelfcard\' href=\'read.html?s=02\'><img src=\'img/thumbs/s02.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Cleopatra the seductress</em></a><a class=\'shelfcard\' href=\'read.html?s=05\'><img src=\'img/thumbs/s05.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Ark of the Covenant</em></a><a class=\'shelfcard\' href=\'read.html?s=09\'><img src=\'img/thumbs/s09.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Chernobyl</em></a><a class=\'shelfcard\' href=\'read.html?s=14\'><img src=\'img/thumbs/s14.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Timeline of the Book of Revelation</em></a><a class=\'shelfcard\' href=\'read.html?s=22\'><img src=\'img/thumbs/s22.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Galatians 5: the fruit test</em></a><a class=\'shelfcard\' href=\'read.html?s=26\'><img src=\'img/thumbs/s26.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Gnostics</em></a><a class=\'shelfcard\' href=\'read.html?s=31\'><img src=\'img/thumbs/s31.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Alexander the Great&#39;s missing tomb</em></a><a class=\'shelfcard\' href=\'read.html?s=32\'><img src=\'img/thumbs/s32.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Joan of Arc</em></a><a class=\'shelfcard\' href=\'read.html?s=39\'><img src=\'img/thumbs/s39.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Napoleon wasn&#39;t short</em></a><a class=\'shelfcard\' href=\'read.html?s=43\'><img src=\'img/thumbs/s43.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Rasputin wouldn&#39;t die</em></a><a class=\'shelfcard\' href=\'read.html?s=44\'><img src=\'img/thumbs/s44.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Genghis Khan&#39;s hidden grave</em></a><a class=\'shelfcard\' href=\'read.html?s=50\'><img src=\'img/thumbs/s50.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Ides of March</em></a></div>' +
+    '<button class="go pay" id="pay" type="button">Read all 51 stories &middot; $3.99/mo</button>' +
+    '<p class="fine">Cancel any time. Every card says where it came from, ' +
+      'and says so when nobody actually knows.</p>' +
+    '<a class="ghostlink" href="stories.html">See what is inside first</a>' +
   '</div></div>';
 stage(end.querySelector(".cap"));
 deck.appendChild(end);
@@ -6943,7 +6955,7 @@ document.getElementById("pay").addEventListener("click", () => {
   /* No link configured yet: say so rather than doing nothing, which reads
      as a broken button and is worse than an honest one. */
   const b = document.getElementById("pay");
-  b.textContent = "Opening soon — not taking payments yet";
+  b.textContent = "Not taking payments yet";
   b.disabled = true;
 });
 

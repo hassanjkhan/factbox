@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox</title>
+<meta name="theme-color" content="#0E0B12">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="prog" aria-hidden="true"><i id="bar"></i></div>
+<div class="topbar"><a class="back" href="stories.html">← Stories</a></div>
+
+<main class="deck" id="deck" tabindex="-1"></main>
+
+<script src="js/gate.js"></script>
+<script>
+(function () {
+  var deck = document.getElementById("deck");
+  var bar  = document.getElementById("bar");
+
+  var id = new URLSearchParams(location.search).get("s");
+
+  /* Which cards carry the second artwork. Nearly every card in a stack shares
+     the hero plate, which is why a stack costs one image to read; the
+     supplementary plates are spread across the interior so the middle of a
+     long stack is not the same painting eight times. */
+  function placeSupp(nCards, nSupp) {
+    var at = {};
+    for (var i = 0; i < nSupp; i++) {
+      var pos = Math.round((nCards - 1) * (i + 1) / (nSupp + 1));
+      pos = Math.min(nCards - 2, Math.max(1, pos));   // never the hook, never the last
+      while (at[pos] !== undefined && pos < nCards - 2) pos++;
+      at[pos] = i;
+    }
+    return at;
+  }
+
+  function beat(c, plate, cap, cr) {
+    var cls = "beat is-" + (c.beat || "card").replace(/[^a-z]/gi, "")
+            + (c.long ? " is-long" : "");
+    var eyebrow = "";
+    var body = c.body
+      ? "<p>" + FB.esc(c.body) + "</p>" : "";
+    var cite = c.src
+      ? '<p class="cite">' + FB.esc(c.src) + "</p>" : "";
+    return '' +
+      '<section class="' + cls + '">' +
+        '<div class="art">' +
+          '<img alt="" decoding="async" src="img/stacks/' + FB.esc(plate) + '.webp">' +
+        '</div>' +
+        '<div class="copy">' + eyebrow +
+          '<h2>' + FB.esc(c.head) + '</h2>' + body + cite +
+        '</div>' +
+        '<p class="plate-credit">' + FB.creditLine(cap, cr) + '</p>' +
+      '</section>';
+  }
+
+  function paywall(s) {
+    return '' +
+      '<section class="pane paywall">' +
+        '<div class="plate"><img alt="" src="img/thumbs/' + FB.esc(s.img) + '.webp"></div>' +
+        '<h2>' + FB.esc(s.title) + '</h2>' +
+        '<p>' + FB.esc(s.hook) + '</p>' +
+        '<button class="go" id="pay" type="button">Read all 51 stories · $3.99/mo</button>' +
+        '<p class="fine">Cancel any time. Two stories are free to read first.</p>' +
+        '<a class="ghost" href="stories.html">Back to stories</a>' +
+      '</section>';
+  }
+
+  function endcard(next) {
+    var n = next
+      ? '<a class="nextrow" href="read.html?s=' + encodeURIComponent(next.id) + '" ' +
+        'style="text-decoration:none;color:inherit">' +
+          '<div class="plate"><img alt="" src="img/thumbs/' + FB.esc(next.img) + '.webp"></div>' +
+          '<div class="t"><b>' + FB.esc(next.title) + '</b>' +
+          '<span>' + next.cards.length + ' cards · ' + FB.minutes(next.secs) + '</span></div>' +
+        '</a>'
+      : "";
+    return '' +
+      '<section class="pane">' +
+        '<h2>That is the whole story.</h2>' +
+        (next ? '<p>Next up</p>' + n : "") +
+        '<a class="ghost" href="stories.html">All stories</a>' +
+      '</section>';
+  }
+
+  FB.load().then(function (stacks) {
+    var i = stacks.findIndex(function (s) { return s.id === id; });
+    if (i === -1) { location.replace("stories.html"); return; }
+    var s = stacks[i];
+    document.title = s.title + " · Factbox";
+
+    if (!s.free && !FB.unlocked()) {
+      deck.innerHTML = paywall(s);
+      document.getElementById("pay").addEventListener("click", function () {
+        FB.checkout(this);
+      });
+      FB.track("paywall_view", { stack: s.id });
+      return;
+    }
+
+    var at = placeSupp(s.cards.length, s.supp.length);
+    var html = s.cards.map(function (c, n) {
+      var k = at[n];
+      var sup = (k !== undefined) ? s.supp[k] : null;
+      return sup ? beat(c, sup.img, sup.cap, sup.cr)
+                 : beat(c, s.img, s.cap, s.cr);
+    }).join("");
+
+    /* The next stack the reader can actually open, so the end card never
+       offers something locked. */
+    var next = null;
+    for (var j = 1; j < stacks.length; j++) {
+      var cand = stacks[(i + j) % stacks.length];
+      if (cand.id !== s.id && (cand.free || FB.unlocked())) { next = cand; break; }
+    }
+
+    deck.innerHTML = html + endcard(next);
+    FB.track("stack_open", { stack: s.id });
+
+    /* Progress, and the drop-off card index — the number the CTO README says
+       actually pays. Reported once per stack, at the deepest card reached. */
+    var total = s.cards.length + 1, deepest = 0, reported = false;
+    function onScroll() {
+      var h = deck.clientHeight || 1;
+      var n = Math.round(deck.scrollTop / h);
+      bar.style.width = Math.min(100, (n + 1) / total * 100) + "%";
+      if (n > deepest) deepest = n;
+    }
+    deck.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    function report() {
+      if (reported) return;
+      reported = true;
+      FB.track(deepest >= s.cards.length ? "stack_complete" : "stack_dropoff",
+               { stack: s.id, card: String(deepest + 1) });
+    }
+    addEventListener("pagehide", report);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") report();
+    });
+
+    /* Desktop: arrow keys move a card at a time. Phones swipe; nothing here
+       overrides native scrolling, which is what broke the first build. */
+    addEventListener("keydown", function (e) {
+      var d = e.key === "ArrowDown" || e.key === "PageDown" || e.key === " " ? 1
+            : e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 0;
+      if (!d) return;
+      e.preventDefault();
+      deck.scrollBy({ top: d * deck.clientHeight, behavior: "smooth" });
+    });
+  }).catch(function () {
+    deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +
+      '<p>Check your connection and reload.</p>' +
+      '<a class="ghost" href="stories.html">All stories</a></section>';
+  });
+})();
+</script>
+</body>
+</html>

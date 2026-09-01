@@ -1,0 +1,303 @@
+/* ==========================================================================
+   Factbox — library + reader
+   Phone-first. All traffic arrives from Instagram / TikTok, so every reader is
+   in an in-app webview: a viewport that resizes mid-scroll and a toolbar that
+   eats the bottom 44-60pt. Both facts are designed around, not worked around.
+
+   This is a committed dark design — the artwork is the page, and a light
+   variant would mean a different product — so it paints its own ground and
+   colours explicitly rather than inheriting the host theme.
+   ========================================================================== */
+
+:root{
+  color-scheme:dark;
+
+  /* Theme.swift palette, same values the app and the story page use */
+  --parchment:#FFF7ED; --ink:#3E2F4A; --ink-soft:#8B7B93;
+  --coral:#FF7A5C; --coral-deep:#E85F41; --crimson:#A81F38;
+  --teal:#4FC3B8; --butter:#FFD36E; --lilac:#B79CED;
+  --night:#1B1620;
+
+  --ground:#0E0B12;
+  --raise:#181320;
+  --hair:rgba(255,247,237,.13);
+  --dim:rgba(255,247,237,.62);
+  --dimmer:rgba(255,247,237,.42);
+
+  --ui:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+
+  /* The bottom of an in-app webview is not ours. Nothing tappable and nothing
+     that must be read sits below this line. */
+  --toolbar:60px;
+  --bottom-safe:max(13vh, calc(env(safe-area-inset-bottom,0px) + var(--toolbar) + 4px));
+  --top-safe:calc(env(safe-area-inset-top,0px) + 12px);
+
+  --tap:44px;
+  --pill:999px;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ground);
+  color:var(--parchment);
+  font-family:var(--ui);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+a{color:inherit}
+img{max-width:100%;display:block}
+:focus-visible{outline:2px solid var(--coral);outline-offset:3px;border-radius:6px}
+
+/* ==========================================================================
+   Library
+   ========================================================================== */
+
+.lib{
+  min-height:100vh; min-height:100dvh;
+  padding:var(--top-safe) 18px calc(var(--bottom-safe) + 96px);
+  max-width:900px; margin:0 auto;
+}
+
+.mast{padding:22px 2px 6px}
+.mark{
+  font-size:.82rem; font-weight:900; letter-spacing:.34em;
+  color:var(--coral); margin:0 0 14px;
+}
+.mast h1{
+  font-size:clamp(1.9rem,7vw,2.5rem); font-weight:850; margin:0 0 10px;
+  line-height:1.08; letter-spacing:-.015em; text-wrap:balance;
+}
+.mast p{margin:0; color:var(--dim); font-size:1rem; line-height:1.5; max-width:44ch}
+
+.sechead{
+  display:flex; align-items:baseline; gap:10px;
+  margin:34px 2px 14px; padding-top:18px; border-top:1px solid var(--hair);
+}
+.sechead h2{font-size:1.05rem; font-weight:800; margin:0; letter-spacing:-.01em}
+.sechead span{font-size:.82rem; color:var(--dimmer); font-weight:600}
+
+/* Two up on a phone, more as the window allows. The cover is the pitch, so it
+   gets the room; the title sits under it rather than over it, because a title
+   burned into a painting is unreadable half the time. */
+.grid{
+  display:grid; gap:16px 13px;
+  grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+}
+
+.card{
+  display:flex; flex-direction:column; gap:9px;
+  text-decoration:none; color:inherit;
+  transition:transform .18s ease;
+}
+.card:active{transform:scale(.975)}
+
+.plate{
+  position:relative; aspect-ratio:3/4; overflow:hidden;
+  border-radius:14px; background:var(--raise);
+  box-shadow:0 6px 20px rgba(0,0,0,.45), inset 0 0 0 1px var(--hair);
+}
+.plate img{
+  width:100%; height:100%; object-fit:cover; object-position:center 32%;
+}
+.card h3{
+  font-size:.94rem; font-weight:750; margin:0; line-height:1.26;
+  letter-spacing:-.008em;
+}
+.meta{
+  font-size:.76rem; color:var(--dimmer); font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Locked covers stay legible — the point is to want them. A dimmed cover with
+   a small lock reads as "not yet"; a blurred one reads as broken. */
+.card.locked .plate img{opacity:.52; filter:saturate(.65)}
+.card.locked h3{color:var(--dim)}
+.lock{
+  position:absolute; right:8px; top:8px;
+  width:26px; height:26px; border-radius:var(--pill);
+  background:rgba(14,11,18,.72); backdrop-filter:blur(6px);
+  display:grid; place-items:center; font-size:.72rem;
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.freetag{
+  position:absolute; left:8px; top:8px;
+  padding:3px 8px; border-radius:var(--pill);
+  background:var(--coral); color:#2A1109;
+  font-size:.64rem; font-weight:900; letter-spacing:.09em;
+}
+
+/* The buy bar. Fixed, above the webview toolbar, and it never covers the last
+   row because .lib already reserves its height in padding-bottom. */
+.buybar{
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  padding:12px 16px calc(env(safe-area-inset-bottom,0px) + var(--toolbar) - 12px);
+  background:linear-gradient(to top,var(--ground) 62%,rgba(14,11,18,0));
+  pointer-events:none;
+}
+.buybar > *{pointer-events:auto}
+
+.go{
+  display:block; width:100%; max-width:520px; margin:0 auto;
+  border:0; border-radius:var(--pill); cursor:pointer;
+  background:var(--coral); color:#2A1109;
+  font-family:var(--ui); font-size:1.02rem; font-weight:850;
+  padding:16px 20px; min-height:var(--tap);
+  box-shadow:0 8px 26px rgba(232,95,65,.34);
+  transition:transform .15s ease, filter .15s ease;
+}
+.go:active{transform:translateY(1px) scale(.99)}
+.go[disabled]{background:var(--raise); color:var(--dim); box-shadow:none; cursor:default}
+.fine{
+  margin:9px auto 0; max-width:520px; text-align:center;
+  font-size:.75rem; color:var(--dimmer); line-height:1.45;
+}
+
+/* ==========================================================================
+   Reader
+   ========================================================================== */
+
+.deck{
+  height:100vh; height:100dvh;
+  overflow-y:auto;
+  scroll-snap-type:y mandatory;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  scrollbar-width:none;
+}
+.deck::-webkit-scrollbar{display:none}
+
+.beat{
+  position:relative;
+  height:100vh; height:100dvh;
+  scroll-snap-align:start; scroll-snap-stop:always;
+  content-visibility:auto;
+  contain-intrinsic-size:100vw 100dvh;
+  overflow:hidden;
+  background:var(--night);
+}
+.beat .art{position:absolute; inset:0}
+.beat .art img{
+  width:100%; height:100%; object-fit:cover; object-position:center 34%;
+}
+/* Two scrims, not one: a light wash over the whole plate so white type never
+   sits on a bright sky, and a deep foot so the text block has a real ground. */
+.beat .art::after{
+  content:""; position:absolute; inset:0;
+  background:
+    linear-gradient(to top, rgba(10,8,13,.94) 0%, rgba(10,8,13,.72) 26%,
+                    rgba(10,8,13,.20) 56%, rgba(10,8,13,.34) 100%);
+}
+
+.copy{
+  position:absolute; left:0; right:0; bottom:var(--bottom-safe);
+  padding:0 20px;
+  max-width:620px; margin:0 auto;
+}
+.copy .eyebrow{
+  font-size:.7rem; font-weight:900; letter-spacing:.2em;
+  color:var(--coral); margin:0 0 10px;
+}
+.copy h2{
+  font-size:clamp(1.35rem,5.2vw,1.7rem); font-weight:800; margin:0;
+  line-height:1.2; letter-spacing:-.014em; text-wrap:balance;
+  text-shadow:0 2px 18px rgba(0,0,0,.55);
+}
+.copy p{
+  margin:12px 0 0; font-size:clamp(1rem,3.9vw,1.08rem); line-height:1.52;
+  color:rgba(255,247,237,.88); max-width:42ch;
+  text-shadow:0 2px 14px rgba(0,0,0,.5);
+}
+/* The hook is the whole screen's job, so it gets the size and nothing else
+   competes with it. */
+.beat.is-hook .copy h2{font-size:clamp(1.85rem,7.4vw,2.5rem); line-height:1.1}
+.beat.is-hook .copy p{font-size:clamp(1.05rem,4.2vw,1.15rem)}
+/* The landing wants air under it, not another paragraph crammed to the edge. */
+.beat.is-landing .copy{bottom:calc(var(--bottom-safe) + 4vh)}
+
+.cite{
+  margin:14px 0 0; font-size:.74rem; line-height:1.45;
+  color:rgba(255,247,237,.5);
+}
+.cite a{color:rgba(255,247,237,.66)}
+
+/* Artwork credit. Small, always present, never in the way. Licence terms on
+   the non-public-domain plates require it, and it costs one line. */
+.plate-credit{
+  position:absolute; left:20px; right:20px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
+  font-size:.63rem; line-height:1.4; color:rgba(255,247,237,.34);
+  text-align:left;
+}
+.plate-credit a{color:rgba(255,247,237,.44)}
+
+/* Progress. One hair-thin bar; 12 dots on a phone is confetti. */
+.prog{
+  position:fixed; top:0; left:0; right:0; height:2.5px; z-index:30;
+  background:rgba(255,247,237,.14);
+}
+.prog i{
+  display:block; height:100%; width:0%;
+  background:var(--coral); transition:width .28s ease;
+}
+
+.topbar{
+  position:fixed; top:var(--top-safe); left:12px; z-index:31;
+}
+.back{
+  display:inline-flex; align-items:center; gap:7px;
+  min-height:38px; padding:0 14px 0 11px; border-radius:var(--pill);
+  background:rgba(14,11,18,.6); backdrop-filter:blur(10px);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  font-size:.83rem; font-weight:700; text-decoration:none;
+  color:var(--parchment);
+}
+
+/* End-of-stack card and the paywall share a centred column. */
+.pane{
+  height:100vh; height:100dvh;
+  scroll-snap-align:start;
+  display:flex; flex-direction:column; justify-content:center;
+  gap:16px; padding:var(--top-safe) 22px var(--bottom-safe);
+  max-width:560px; margin:0 auto; text-align:center;
+}
+.pane h2{
+  font-size:clamp(1.6rem,6.4vw,2.1rem); font-weight:850; margin:0;
+  line-height:1.14; letter-spacing:-.015em; text-wrap:balance;
+}
+.pane p{margin:0; color:var(--dim); font-size:1rem; line-height:1.55}
+.pane .go{margin-top:8px}
+
+.nextrow{
+  display:flex; gap:12px; align-items:center; justify-content:center;
+  margin-top:6px;
+}
+.nextrow .plate{width:78px; flex:0 0 78px; border-radius:11px}
+.nextrow .t{text-align:left}
+.nextrow .t b{display:block; font-size:.95rem; font-weight:780; line-height:1.25}
+.nextrow .t span{font-size:.78rem; color:var(--dimmer)}
+
+.ghost{
+  display:inline-block; margin-top:4px;
+  font-size:.9rem; font-weight:700; color:var(--dim);
+  text-decoration:none; padding:10px; min-height:var(--tap);
+}
+
+/* A locked stack still shows its cover — that is the argument for paying. */
+.paywall .plate{width:150px; margin:0 auto; border-radius:16px}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important; transition:none !important}
+  .deck{scroll-behavior:auto}
+}
+
+/* A few cards in the season are a single 150-200 character sentence with no
+   body. The words are the author's, so the type gives rather than the copy:
+   these set at body scale and read as a paragraph, not a shouted headline. */
+.beat.is-long .copy h2{
+  font-size:clamp(1.02rem,4vw,1.14rem);
+  font-weight:700; line-height:1.45; letter-spacing:0;
+  color:rgba(255,247,237,.93);
+}
+.beat.is-hook.is-long .copy h2{font-size:clamp(1.25rem,4.9vw,1.45rem); line-height:1.32}
