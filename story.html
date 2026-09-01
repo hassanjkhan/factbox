@@ -1,0 +1,339 @@
+<title>Nobody Watched Cleopatra Die</title>
+
+<style>
+  :root{
+    color-scheme:light;
+    --parchment:#FFF7ED; --parchment-deep:#F7E9D7; --card:#FFFFFF; --sunk:#FBF1E6;
+    --ink:#3E2F4A; --ink-soft:#8B7B93; --ink-faint:#C5B9CC; --hairline:#EADCCB;
+    --coral:#FF7A5C; --coral-deep:#E85F41; --coral-soft:#FFDCD1;
+    --teal-soft:#D5F2EE; --teal-deep:#1F7A72;
+    --butter:#FFD36E; --butter-soft:#FFF1CE; --butter-deep:#9A6B00;
+    --lilac-soft:#EBE0FC; --lilac-deep:#6B4BB0;
+    --mint:#8FDCA8; --mint-soft:#DCF5E4; --mint-deep:#2E7D4F;
+    --blush-soft:#FFE3E8; --blush-deep:#B03A55;
+    --pip:#8FE3C4; --pip-shade:#5FC9A3; --pip-eye:#24303A;
+    --r-sm:12px; --r-md:18px; --r-lg:26px; --r-xl:34px; --r-pill:999px;
+    --ui:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,sans-serif;
+    --sh:0 10px 44px rgba(62,47,74,.10);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--parchment);color:var(--ink);font-family:var(--ui);
+       -webkit-font-smoothing:antialiased;overflow:hidden}
+
+  /* The reels stack: one card per screen, snapped. Same gesture as the app. */
+  .deck{height:100dvh;overflow-y:auto;scroll-snap-type:y mandatory;
+        scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+  .deck::-webkit-scrollbar{display:none}
+  .page{height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;
+        display:flex;align-items:center;justify-content:center;padding:56px 16px 76px;
+        position:relative}
+
+  .card{width:min(560px,100%);max-height:100%;overflow-y:auto;border-radius:var(--r-xl);
+        padding:26px 24px;box-shadow:var(--sh);position:relative}
+  .card::-webkit-scrollbar{display:none}
+  .card h2{font-size:clamp(28px,6.4vw,38px);font-weight:800;letter-spacing:-.025em;
+        line-height:1.08;margin:0 0 14px;text-wrap:balance}
+  .card p.body{font-size:17px;line-height:1.55;color:rgba(62,47,74,.74);margin:0}
+  .t1{background:var(--coral-soft)} .t2{background:var(--lilac-soft)}
+  .t3{background:var(--mint-soft)}  .t4{background:var(--butter-soft)}
+  .t5{background:var(--teal-soft)}  .t6{background:var(--blush-soft)}
+
+  figure{margin:18px 0 0}
+  figure img{width:100%;border-radius:var(--r-lg);display:block}
+  figcaption{font-size:14px;color:rgba(62,47,74,.72);margin-top:10px;padding-left:12px;
+        border-left:3px solid var(--coral);line-height:1.45}
+  .credit{margin-top:12px;background:rgba(255,255,255,.55);border-radius:var(--r-md);
+        padding:12px 14px;font-size:13px;color:rgba(62,47,74,.7);line-height:1.5}
+
+  .tl{margin:20px 0 0;display:flex;flex-direction:column;gap:16px}
+  .tl .row{display:flex;gap:12px;align-items:flex-start}
+  .tl .when{flex:none;width:104px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.6);
+        border-radius:var(--r-pill);padding:5px 10px;text-align:center;line-height:1.25}
+  .tl .what{font-size:15.5px;line-height:1.45;color:rgba(62,47,74,.82)}
+
+  .relic{margin-top:20px;background:rgba(255,255,255,.6);border-radius:var(--r-lg);padding:16px 18px}
+  .relic .obj{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;font-weight:600}
+  .relic .prov{font-size:13px;color:var(--ink-soft);margin:6px 0 12px;
+        padding-bottom:12px;border-bottom:1px solid rgba(62,47,74,.12)}
+  .relic .proves{font-size:15px;line-height:1.5}
+
+  .note{margin-top:18px;padding-left:12px;border-left:3px solid rgba(62,47,74,.22);
+        font-size:14px;line-height:1.5;color:rgba(62,47,74,.66)}
+
+  .opts{margin-top:22px;display:flex;flex-direction:column;gap:10px}
+  .opt{appearance:none;border:0;font:inherit;text-align:left;cursor:pointer;
+        background:rgba(255,255,255,.72);border-radius:var(--r-lg);padding:16px 18px;
+        font-size:16.5px;font-weight:600;color:var(--ink);display:flex;gap:12px;align-items:center;
+        transition:transform .12s ease,background .2s ease}
+  .opt:active{transform:scale(.97)}
+  .opt .mark{width:24px;height:24px;border-radius:var(--r-pill);border:2.5px solid var(--ink-faint);
+        flex:none;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff}
+  .opt.right{background:var(--mint-soft)} .opt.right .mark{background:var(--mint-deep);border-color:var(--mint-deep)}
+  .opt.wrong .mark{background:var(--ink-faint);border-color:var(--ink-faint)}
+  .opts.done .opt{cursor:default}
+  .reveal{margin-top:18px;font-size:15.5px;line-height:1.55;color:rgba(62,47,74,.8);display:none}
+  .reveal.on{display:block;animation:rise .35s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* Sources: the whole point of the product, so they are on the card. */
+  .srcbtn{margin-top:20px;appearance:none;border:0;font:inherit;cursor:pointer;
+        background:rgba(255,255,255,.6);border-radius:var(--r-pill);padding:9px 16px;
+        font-size:13.5px;font-weight:700;color:var(--ink);display:inline-flex;gap:8px;align-items:center}
+  .srclist{margin-top:12px;display:none;font-size:13px;line-height:1.6;color:rgba(62,47,74,.72)}
+  .srclist.on{display:block}
+  .srclist li{margin-bottom:7px}
+
+  .pip{width:76px;height:76px;border-radius:var(--r-pill);background:var(--pip);
+        border:3px solid var(--pip-shade);margin:0 auto 18px;position:relative}
+  .pip i{position:absolute;top:26px;width:11px;height:14px;border-radius:var(--r-pill);
+        background:var(--pip-eye)}
+  .pip i:first-child{left:19px} .pip i:last-child{right:19px}
+
+  .hint{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);
+        font-size:13.5px;font-weight:600;color:var(--ink-soft);background:var(--card);
+        border-radius:var(--r-pill);padding:8px 16px;box-shadow:0 2px 10px rgba(62,47,74,.10);
+        animation:bob 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
+  @keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-5px)}}
+  @media (prefers-reduced-motion:reduce){.hint{animation:none}.deck{scroll-behavior:auto}}
+
+  .rail{position:fixed;left:10px;top:50%;transform:translateY(-50%);display:flex;
+        flex-direction:column;gap:5px;z-index:5}
+  .rail i{width:4px;height:13px;border-radius:var(--r-pill);background:rgba(62,47,74,.16);
+        transition:background .25s ease,height .25s ease}
+  .rail i.on{background:var(--coral-deep);height:26px}
+
+  /* The end: one ask. */
+  .end{text-align:center}
+  .end h2{font-size:clamp(30px,7vw,42px)}
+  .end p{max-width:30rem;margin:0 auto;font-size:17px;line-height:1.55;color:rgba(62,47,74,.74)}
+  form{margin:24px auto 0;display:flex;gap:8px;max-width:26rem;flex-wrap:wrap}
+  input[type=email]{flex:1;min-width:190px;font:inherit;font-size:16px;padding:14px 16px;
+        border-radius:var(--r-pill);border:2px solid var(--hairline);background:var(--card);
+        color:var(--ink)}
+  input[type=email]:focus{outline:none;border-color:var(--coral)}
+  button.go{appearance:none;border:0;font:inherit;font-size:16px;font-weight:700;cursor:pointer;
+        background:var(--coral);color:#fff;padding:14px 26px;border-radius:var(--r-pill);
+        transition:transform .12s ease}
+  button.go:active{transform:scale(.96)}
+  .thanks{display:none;margin-top:22px;background:var(--mint-soft);color:var(--mint-deep);
+        border-radius:var(--r-lg);padding:16px 20px;font-weight:700;font-size:16px}
+  .thanks.on{display:block;animation:rise .4s ease}
+  .fine{font-size:13px;color:var(--ink-faint);margin-top:16px}
+  .wordmark{font-size:13px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+        color:var(--coral-deep);margin-bottom:14px}
+</style>
+
+<div class="rail" id="rail"></div>
+<div class="deck" id="deck"></div>
+
+<script>
+const IMG = {"painting": "img/painting.jpg", "basket": "img/cleo-d1.jpg"};
+
+/* One story = one array of cards. More stories drop in here, and the
+   picker below hands a visitor a random one — which is the experiment:
+   same link, different story, see which finishes. */
+const STORIES = {
+  "cleopatra-death": {
+    title: "Nobody watched Cleopatra die.",
+    cards: [
+      { tint:"t1", h:"Nobody watched Cleopatra die.",
+        b:"The doors were shut. Everyone in the room died with her. Every account we have was written by people who were not there.",
+        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86. Written c. 110 AD, about 140 years after the events",
+             "Strabo, <i>Geography</i> — 17.1.8–10. A Greek geographer who was in Egypt within a few years of 30 BC",
+             "Duane W. Roller, <i>Cleopatra: A Biography</i> — Oxford University Press, 2010"] },
+
+      { tint:"t2", h:"This is the picture in your head.",
+        b:"A painter's version, made more than a thousand years afterwards. Nobody who ever painted this scene was in the room.",
+        img:IMG.painting,
+        cap:"The snake is in every painting of her. Nobody has ever found it.",
+        credit:"Detail of an old-master painting of the death of Cleopatra. We have not been able to verify the artist, the date or the holding collection, so we are not going to name one.",
+        src:["Walker & Higgs (eds), <i>Cleopatra of Egypt: From History to Myth</i> — British Museum Press, 2001",
+             "Mary Hamer, <i>Signs of Cleopatra</i> — Routledge, 1993"] },
+
+      { tint:"t3", h:"Rome arrives, and Antony dies first.",
+        b:"Octavian reaches Alexandria on the first of August. Within a day the city has changed hands and Cleopatra is a prisoner in her own tomb.",
+        tl:[["1 Aug 30 BC","Octavian enters Alexandria. Antony, told Cleopatra is dead, stabs himself."],
+            ["The days after","She is taken alive and held under guard in her own mausoleum."]],
+        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
+             "Cassius Dio, <i>Roman History</i> — Books 50–51, early 3rd century AD",
+             "Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010"] },
+
+      { tint:"t3", h:"Then she takes an afternoon.",
+        b:"Her last hours are the best-recorded part of the story, and the one nobody watched.",
+        tl:[["c. 10 Aug","She bathes, eats a last meal, dresses as queen, and writes to Octavian."],
+            ["Within the hour","The guards break in. She is dead, at thirty-nine."]],
+        note:"The exact day is a reconstruction. 10 and 12 August 30 BC are both proposed, and the ancient sources do not agree.",
+        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
+             "Cassius Dio, <i>Roman History</i> — Books 50–51",
+             "Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010"] },
+
+      { tint:"t5", h:"Our earliest witness says he doesn't know.",
+        b:"Strabo was in Egypt within a few years of her death. He records two versions and refuses to choose between them.",
+        relic:{ obj:"Strabo, Geography, Book 17.1.10",
+                prov:"Written by a Greek geographer who travelled in Egypt around 25 BC",
+                proves:"The earliest surviving account already offers a choice — the bite of an asp, or a poisonous ointment — and states that nothing is clearly known." },
+        note:"Strabo gives asp or ointment and stops. Plutarch, roughly 140 years later, adds the basket of figs and then admits nobody knew. There is no source that settles it.",
+        src:["Strabo, <i>Geography</i> — 17.1.8–10",
+             "Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
+             "Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010"] },
+
+      { tint:"t1", h:"Why do historians doubt the snake?",
+        q:{ options:["No snake was ever found","Egypt had no venomous snakes"], correct:0,
+            reveal:"The guards searched and found nothing. Plutarch tells the fig-basket story, then says plainly that the truth was unknown. Two faint marks on her arm are all anyone claimed to see." },
+        note:"Historians are split. Some read the asp as Octavian's tidier story, others as the likeliest one. Egyptian cobra venom kills slowly and messily, and her two attendants died as well.",
+        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
+             "Cassius Dio, <i>Roman History</i> — Books 50–51",
+             "Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008"] },
+
+      { tint:"t4", h:"The basket, and the other theory.",
+        b:"Poison is at least as likely. A court with physicians had quieter options than a snake nobody could produce.",
+        img:IMG.basket,
+        cap:"A basket of figs, and something coiled among them.",
+        src:["Plutarch, <i>Life of Antony</i> — chs. 26–27, 84–86",
+             "Christoph Schäfer, <i>Kleopatra</i> — WBG, 2006 — argues for a drug mixture rather than a snake",
+             "Horace, <i>Odes</i> I.37 — written within a year or two of her death; the earliest surviving mention of the serpents",
+             "Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008"] },
+
+      { tint:"t6", h:"The honest answer is: we don't know.",
+        b:"She died at thirty-nine, and about 275 years of Ptolemaic rule ended with her. How she did it is the one part of the story that nobody was left alive to report.",
+        pip:true,
+        src:["Duane W. Roller, <i>Cleopatra: A Biography</i> — OUP, 2010",
+             "Cassius Dio, <i>Roman History</i> — Books 50–51",
+             "Joyce Tyldesley, <i>Cleopatra: Last Queen of Egypt</i> — Profile Books, 2008"] },
+    ]
+  }
+};
+
+/* Same link, random story. Sticky per visitor so a reload doesn't reshuffle
+   and ruin the read. */
+const KEYS = Object.keys(STORIES);
+let slug = new URLSearchParams(location.search).get("s");
+if (!KEYS.includes(slug)) {
+  try { slug = sessionStorage.getItem("fb-story"); } catch (e) { slug = null; }
+  if (!KEYS.includes(slug)) slug = KEYS[Math.floor(Math.random() * KEYS.length)];
+}
+try { sessionStorage.setItem("fb-story", slug); } catch (e) {}
+const STORY = STORIES[slug];
+
+/* Where completion + signups go. Empty until the site is on its own domain
+   and a real endpoint exists — see the note in the handover. */
+const ENDPOINT = "";
+function track(event, extra) {
+  const payload = Object.assign({ event, story: slug, t: Date.now() }, extra || {});
+  if (!ENDPOINT) { console.info("[factbox]", payload); return; }
+  try {
+    navigator.sendBeacon(ENDPOINT, new Blob([JSON.stringify(payload)], {type:"application/json"}));
+  } catch (e) {}
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const deck = document.getElementById("deck");
+const rail = document.getElementById("rail");
+
+STORY.cards.forEach((c, i) => {
+  const page = document.createElement("section");
+  page.className = "page";
+  let inner = "";
+
+  if (c.pip) inner += '<div class="pip"><i></i><i></i></div>';
+  inner += `<h2>${esc(c.h)}</h2>`;
+  if (c.b) inner += `<p class="body">${esc(c.b)}</p>`;
+
+  if (c.img) inner += `<figure><img src="${c.img}" alt="">` +
+    (c.cap ? `<figcaption>${esc(c.cap)}</figcaption>` : "") + "</figure>" +
+    (c.credit ? `<div class="credit">${esc(c.credit)}</div>` : "");
+
+  if (c.tl) inner += '<div class="tl">' + c.tl.map(([w, x]) =>
+      `<div class="row"><span class="when">${esc(w)}</span><span class="what">${esc(x)}</span></div>`).join("") + "</div>";
+
+  if (c.relic) inner += `<div class="relic"><div class="obj">${esc(c.relic.obj)}</div>` +
+      `<div class="prov">${esc(c.relic.prov)}</div><div class="proves">${esc(c.relic.proves)}</div></div>`;
+
+  if (c.q) inner += '<div class="opts">' + c.q.options.map((o, n) =>
+      `<button class="opt" data-n="${n}"><span class="mark"></span>${esc(o)}</button>`).join("") +
+      `</div><div class="reveal">${esc(c.q.reveal)}</div>`;
+
+  if (c.note) inner += `<div class="note">${esc(c.note)}</div>`;
+
+  if (c.src) inner += `<button class="srcbtn">📖 ${c.src.length} sources</button>` +
+      `<ol class="srclist">${c.src.map(s => `<li>${s}</li>`).join("")}</ol>`;
+
+  page.innerHTML = `<article class="card ${c.tint}">${inner}</article>` +
+      (i === 0 ? '<div class="hint">↑ Swipe up to read</div>' : "");
+  deck.appendChild(page);
+
+  const dot = document.createElement("i");
+  rail.appendChild(dot);
+});
+
+/* The ending. One ask, and it is the email — there is nothing to download yet. */
+const end = document.createElement("section");
+end.className = "page";
+end.innerHTML = `<article class="card t1 end">
+  <div class="wordmark">Factbox</div>
+  <h2>One of these, every day.</h2>
+  <p>Three minutes. Every card cites where it came from, and says so when historians disagree.
+     The app isn't out yet — leave your email and you'll be first in.</p>
+  <form id="wl" novalidate>
+    <input type="email" id="em" placeholder="you@example.com" autocomplete="email" required>
+    <button class="go" type="submit">Join the waitlist</button>
+  </form>
+  <div class="thanks" id="th">You're on the list. We'll email you once — when it's out.</div>
+  <p class="fine">No spam, no sharing your address, one email at launch.</p>
+</article>`;
+deck.appendChild(end);
+rail.appendChild(document.createElement("i"));
+
+/* Interactions */
+deck.addEventListener("click", e => {
+  const s = e.target.closest(".srcbtn");
+  if (s) { s.nextElementSibling.classList.toggle("on"); track("sources_open"); return; }
+
+  const o = e.target.closest(".opt");
+  if (o && !o.parentElement.classList.contains("done")) {
+    const wrap = o.parentElement, card = o.closest(".card");
+    const idx = STORY.cards.findIndex(c => c.q && card.textContent.includes(c.h));
+    const correct = STORY.cards[idx].q.correct;
+    wrap.classList.add("done");
+    [...wrap.children].forEach((b, n) => {
+      b.classList.add(n === correct ? "right" : "wrong");
+      b.querySelector(".mark").textContent = n === correct ? "✓" : (b === o ? "×" : "");
+    });
+    card.querySelector(".reveal").classList.add("on");
+    track("answered", { correct: Number(o.dataset.n) === correct });
+  }
+});
+
+document.getElementById("wl").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = document.getElementById("em").value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { document.getElementById("em").focus(); return; }
+  track("waitlist", { email: v });
+  e.target.style.display = "none";
+  document.getElementById("th").classList.add("on");
+});
+
+/* Progress rail, and how far people actually get — the number the whole
+   experiment turns on. */
+const pages = [...deck.children];
+let deepest = 0;
+const io = new IntersectionObserver(es => es.forEach(en => {
+  if (!en.isIntersecting) return;
+  const i = pages.indexOf(en.target);
+  [...rail.children].forEach((d, n) => d.classList.toggle("on", n === i));
+  if (i > deepest) {
+    deepest = i;
+    if (i === 1) track("started");
+    if (i === pages.length - 1) track("reached_end");
+  }
+}), { threshold: 0.6 });
+pages.forEach(p => io.observe(p));
+
+deck.addEventListener("scroll", () => {
+  const h = document.querySelector(".hint");
+  if (h && deck.scrollTop > 40) h.remove();
+}, { passive: true });
+
+track("open");
+</script>

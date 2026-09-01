@@ -1,0 +1,428 @@
+<title>Factbox Privacy Policy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=DM+Mono:wght@400;500&display=swap">
+
+<style>
+  /* ── Tokens ───────────────────────────────────────────────
+     Light is the default. Dark is redefined twice: once behind
+     prefers-color-scheme (guarded so an explicit light choice
+     still wins), once behind the explicit stamp.
+     Palette is lifted from the app's own Theme.swift — warm
+     parchment, soft-plum ink, coral, and a mint used only for
+     the ledger's affirmatives.
+  ─────────────────────────────────────────────────────────── */
+  :root {
+    --ground:        #FFF7ED;
+    --ground-sunk:   #F7ECDD;
+    --card:          #FFFFFF;
+    --ink:           #3E2F4A;
+    --ink-soft:      #7C6C85;
+    --ink-faint:     #A99BB0;
+    --rule:          #E7D9C6;
+    --accent:        #E85F41;
+    --accent-soft:   #FFDCD1;
+    --good:          #2E7D4F;
+    --good-soft:     #DCF5E4;
+    --shadow:        0 1px 2px rgba(62,47,74,.05), 0 8px 24px rgba(62,47,74,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #221B28;
+      --ground-sunk: #1A141F;
+      --card:        #2C2333;
+      --ink:         #F3EAE0;
+      --ink-soft:    #B6A6BE;
+      --ink-faint:   #7E7089;
+      --rule:        #3E3247;
+      --accent:      #FF8E72;
+      --accent-soft: #4A2A24;
+      --good:        #7FD3A2;
+      --good-soft:   #1E3A2A;
+      --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #221B28;
+    --ground-sunk: #1A141F;
+    --card:        #2C2333;
+    --ink:         #F3EAE0;
+    --ink-soft:    #B6A6BE;
+    --ink-faint:   #7E7089;
+    --rule:        #3E3247;
+    --accent:      #FF8E72;
+    --accent-soft: #4A2A24;
+    --good:        #7FD3A2;
+    --good-soft:   #1E3A2A;
+    --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-size: 19px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 24px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 40rem; margin: 0 auto; }
+
+  /* ── Masthead ─────────────────────────────────────────── */
+  header { padding: 72px 0 0; }
+
+  .eyebrow {
+    font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(2.9rem, 8vw, 4.2rem);
+    line-height: .98;
+    letter-spacing: -.015em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 1.2rem;
+    color: var(--ink-soft);
+    margin: 0 0 32px;
+    text-wrap: pretty;
+  }
+
+  .dateline {
+    font-family: "DM Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    padding: 16px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 44px;
+  }
+
+  /* ── Draft notice ─────────────────────────────────────── */
+  .draft {
+    background: var(--accent-soft);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin: 0 0 44px;
+    font-size: .95rem;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .draft strong { font-weight: 600; }
+
+  /* ── The short version ────────────────────────────────── */
+  .summary {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 28px 30px;
+    box-shadow: var(--shadow);
+    margin: 0 0 56px;
+  }
+  .summary h2 {
+    font-family: "DM Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    margin: 0 0 16px;
+  }
+  .summary ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .summary li {
+    display: grid;
+    grid-template-columns: 1.1rem 1fr;
+    gap: 12px;
+    align-items: baseline;
+    font-size: 1.02rem;
+  }
+  .summary li::before {
+    content: "—";
+    color: var(--accent);
+    font-family: "DM Mono", monospace;
+  }
+
+  /* ── Sections ─────────────────────────────────────────── */
+  section { margin: 0 0 52px; scroll-margin-top: 24px; }
+
+  h2.sec {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: 1.9rem;
+    line-height: 1.15;
+    letter-spacing: -.01em;
+    margin: 0 0 6px;
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    gap: 4px;
+    align-items: baseline;
+    text-wrap: balance;
+  }
+  h2.sec .num {
+    font-family: "DM Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    color: var(--ink-faint);
+    letter-spacing: .06em;
+  }
+  h2.sec + p { margin-top: 14px; }
+
+  p { margin: 0 0 16px; }
+  section p, section ul { margin-left: 2.4rem; }
+  @media (max-width: 560px) {
+    h2.sec { grid-template-columns: 1fr; gap: 2px; }
+    section p, section ul { margin-left: 0; }
+  }
+
+  ul.body { padding-left: 1.1rem; display: grid; gap: 8px; margin-bottom: 16px; }
+  ul.body li { padding-left: 4px; }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  code, .mono {
+    font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .87em;
+  }
+
+  /* ── The ledger ───────────────────────────────────────── */
+  .ledger-wrap { margin: 0 0 20px; overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: "DM Mono", ui-monospace, monospace;
+    font-size: 13.5px;
+    min-width: 30rem;
+  }
+  caption {
+    text-align: left;
+    font-family: "DM Mono", monospace;
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding-bottom: 12px;
+  }
+  th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 12px 10px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  td {
+    padding: 11px 12px 11px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    color: var(--ink-soft);
+  }
+  td:first-child { color: var(--ink); }
+  .verdict {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .no  { background: var(--good-soft); color: var(--good); }
+  .yes { background: var(--accent-soft); color: var(--accent); }
+
+  /* ── Contact ──────────────────────────────────────────── */
+  .contact {
+    background: var(--ground-sunk);
+    border-radius: 14px;
+    padding: 30px;
+    margin-top: 64px;
+  }
+  .contact h2 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: 1.6rem;
+    margin: 0 0 10px;
+  }
+  .contact p { margin-left: 0; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-family: "DM Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    line-height: 1.7;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Factbox for iOS</p>
+    <h1>Privacy Policy</h1>
+    <p class="standfirst">Factbox keeps everything on your phone. There is no account, no server of ours, and nothing to log in to — so there is very little for this document to be about.</p>
+    <div class="dateline">
+      <span>Effective 1 September 2026</span>
+      <span>Version 0.1.0</span>
+      <span>Applies to: Factbox for iOS</span>
+    </div>
+  </header>
+
+  <div class="draft">
+    <strong>Draft.</strong> This is written to describe what the app genuinely does today, but it has not been reviewed by a lawyer, and the contact address below is a placeholder. Both need settling before Factbox goes beyond TestFlight.
+  </div>
+
+  <div class="summary">
+    <h2>The short version</h2>
+    <ul>
+      <li>We don't ask you to make an account, and we never ask for your email.</li>
+      <li>Your reading progress, streak and saved cards live in the app's own storage on your device. We can't see them.</li>
+      <li>There is no analytics, no tracking, no advertising identifier, and no third-party code in the app.</li>
+      <li>The app makes no network requests of its own. Nothing is uploaded anywhere.</li>
+      <li>Delete the app and everything it held goes with it.</li>
+      <li>The one exception is feedback you choose to send us — and you see exactly what's attached before it leaves.</li>
+    </ul>
+  </div>
+
+  <section id="who">
+    <h2 class="sec"><span class="num">01</span> Who this is from</h2>
+    <p>Factbox is a history app for iPhone, made by an independent developer. In this policy, “we” means that developer and “the app” means Factbox for iOS. This policy covers the app only. It doesn't cover Apple's services, which have <a href="https://www.apple.com/legal/privacy/">their own privacy policy</a>.</p>
+  </section>
+
+  <section id="ledger">
+    <h2 class="sec"><span class="num">02</span> What we collect</h2>
+    <p>Almost nothing. Rather than describe that in the abstract, here is the whole list, including the categories most apps do collect:</p>
+
+    <div class="ledger-wrap">
+      <table>
+        <caption>Every category, and what happens to it</caption>
+        <thead>
+          <tr><th scope="col">Information</th><th scope="col">Collected?</th><th scope="col">Where it lives</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Name you type in onboarding</td><td><span class="verdict no">No</span></td><td>Your device only, to say good morning</td></tr>
+          <tr><td>Email address</td><td><span class="verdict no">No</span></td><td>Never asked for</td></tr>
+          <tr><td>Reading progress and streak</td><td><span class="verdict no">No</span></td><td>Your device only</td></tr>
+          <tr><td>Saved cards</td><td><span class="verdict no">No</span></td><td>Your device only</td></tr>
+          <tr><td>Reminder time and settings</td><td><span class="verdict no">No</span></td><td>Your device only</td></tr>
+          <tr><td>Location</td><td><span class="verdict no">No</span></td><td>Never requested</td></tr>
+          <tr><td>Contacts, photos, microphone, camera</td><td><span class="verdict no">No</span></td><td>Never requested</td></tr>
+          <tr><td>Advertising identifier (IDFA)</td><td><span class="verdict no">No</span></td><td>Never requested</td></tr>
+          <tr><td>Analytics or usage tracking</td><td><span class="verdict no">No</span></td><td>The app contains none</td></tr>
+          <tr><td>Crash reports</td><td><span class="verdict no">No</span></td><td>Only if you opt in with Apple — see §5</td></tr>
+          <tr><td>Payment details</td><td><span class="verdict no">No</span></td><td>Handled entirely by Apple — see §6</td></tr>
+          <tr><td>Feedback you send us</td><td><span class="verdict yes">Yes</span></td><td>Our email inbox — see §4</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The last row is the only one that reaches us, and only when you decide to send it.</p>
+  </section>
+
+  <section id="device">
+    <h2 class="sec"><span class="num">03</span> What stays on your phone</h2>
+    <p>The app stores a small amount of information locally so it can work at all: the name you gave (if you gave one), which days you've read and how far into each, your streak and reading history, cards you've saved, your chosen reminder time, and whether reminders are on.</p>
+    <p>This sits in the app's own storage on your device, in the ordinary way iOS apps store settings. We have no way to read it — there is no server to send it to, and the app makes no network requests of its own.</p>
+    <p>It also means the data isn't backed up to us. If you delete the app, all of it goes. We can't restore it, because we never had it.</p>
+  </section>
+
+  <section id="feedback">
+    <h2 class="sec"><span class="num">04</span> Feedback you send us</h2>
+    <p>The app has a feedback form under <span class="mono">You → Help &amp; feedback</span>. It doesn't upload anything. It opens your own mail app with a message drafted for you, which you can read, edit, or throw away before sending.</p>
+    <p>Along with what you write, that draft includes some technical detail so we can make sense of a bug report:</p>
+    <ul class="body">
+      <li>The app version and build number</li>
+      <li>Your iOS version and device model — for example “iPhone 16 Pro”</li>
+      <li>Which season and day you're on, and how many days you've finished</li>
+      <li>Whether reminders are switched on</li>
+    </ul>
+    <p>All of it is shown to you in the app under “What gets sent” before you send anything, and it's all visible in the draft email itself. If you'd rather not send some of it, delete it from the message — it's your email.</p>
+    <p>If your device has no mail account set up, the app copies the same text to your clipboard instead so you can paste it wherever you like. Nothing is sent in that case either.</p>
+    <p>When you do email us, we keep the message so we can reply and fix the thing you told us about. Ask us to delete it and we will.</p>
+  </section>
+
+  <section id="testflight">
+    <h2 class="sec"><span class="num">05</span> TestFlight</h2>
+    <p>While Factbox is in beta, it's distributed through Apple's TestFlight. If you send feedback or a screenshot through TestFlight itself, or if the app crashes and you allow Apple to share diagnostics, Apple passes that to us — including your TestFlight email address and basic device information.</p>
+    <p>That's Apple's channel rather than ours, and it's governed by Apple's privacy policy and your TestFlight settings. We only ever see it because you chose to submit something.</p>
+  </section>
+
+  <section id="purchases">
+    <h2 class="sec"><span class="num">06</span> Subscriptions and payments</h2>
+    <p>Any subscription is bought through Apple's In-App Purchase. Apple handles the payment and tells the app only whether a subscription is active. We never see your card, your billing address, or your Apple Account.</p>
+    <p>Managing or cancelling a subscription happens in your iOS Settings, not in the app.</p>
+  </section>
+
+  <section id="notifications">
+    <h2 class="sec"><span class="num">07</span> Notifications</h2>
+    <p>The daily reminder is scheduled by your phone, on your phone. There is no push server, and no notification token is sent anywhere. The app works out which day you haven't read and asks iOS to show a reminder at the time you chose.</p>
+    <p>You can turn reminders off in the app under <span class="mono">You → Notifications</span>, or revoke permission entirely in iOS Settings.</p>
+  </section>
+
+  <section id="third-parties">
+    <h2 class="sec"><span class="num">08</span> Third parties</h2>
+    <p>There are none inside the app. Factbox ships with no analytics SDK, no advertising SDK, no crash reporter of ours, and no third-party libraries at all. Nothing about your reading is shared with anyone, because nothing about your reading leaves your phone.</p>
+    <p>We don't sell or share personal information, and we never have. There is nothing to sell.</p>
+  </section>
+
+  <section id="children">
+    <h2 class="sec"><span class="num">09</span> Children</h2>
+    <p>Factbox isn't aimed at children under 13 and we don't knowingly collect anything from them. Given that the app collects no personal information from anyone, a child using it would leave no data with us either. If you believe a child has sent us something through feedback, email us and we'll delete it.</p>
+  </section>
+
+  <section id="rights">
+    <h2 class="sec"><span class="num">10</span> Your rights</h2>
+    <p>Depending on where you live — the UK and EU under GDPR, California under the CCPA, and elsewhere — you have rights to see, correct, export or delete the personal information a company holds about you.</p>
+    <p>For Factbox those rights are unusually simple to exercise, because we hold nothing by default:</p>
+    <ul class="body">
+      <li><strong>To see or export your data:</strong> it's on your phone, in the app. There's no copy with us.</li>
+      <li><strong>To delete it:</strong> delete the app, or use <span class="mono">You → Reset onboarding</span> to wipe your profile in place.</li>
+      <li><strong>If you've emailed us feedback:</strong> that message is the one thing we hold. Ask and we'll delete it and confirm.</li>
+    </ul>
+    <p>You never need to ask permission to use the app anonymously — that's the only way it works.</p>
+  </section>
+
+  <section id="security">
+    <h2 class="sec"><span class="num">11</span> Security</h2>
+    <p>The strongest thing we can say about security is that we've reduced the surface: there's no account to breach, no database of readers to leak, and no credentials to steal. Data on your device is protected by iOS and your passcode.</p>
+    <p>Email is not encrypted end to end, so please don't put anything sensitive in a feedback message.</p>
+  </section>
+
+  <section id="changes">
+    <h2 class="sec"><span class="num">12</span> Changes to this policy</h2>
+    <p>If the app starts doing something this document doesn't describe — syncing your progress across devices, say, which would need a server — we'll update this page before that ships, and change the effective date at the top. Substantial changes will be called out in the app's release notes rather than quietly edited in.</p>
+  </section>
+
+  <div class="contact">
+    <h2>Contact</h2>
+    <p>Questions about this policy, or a request to delete something you've sent us:</p>
+    <p><a href="mailto:hello@example.com" class="mono">hello@example.com</a> &nbsp;<span style="color:var(--ink-faint)">— placeholder, pending a real address</span></p>
+  </div>
+
+  <footer>
+    Factbox for iOS · Privacy Policy · Effective 1 September 2026<br>
+    Drafted 29 August 2026. Not yet reviewed by a lawyer.
+  </footer>
+
+</div>

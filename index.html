@@ -1,0 +1,306 @@
+<title>Chronicle — A Day of History</title>
+
+<style>
+  /* ─────────────────────────────────────────────────────────────
+     Tokens lifted verbatim from Sources/Chronicle/DesignSystem/Theme.swift.
+     Nothing here is eyeballed: same hexes, same 4pt spacing rhythm, same
+     radius ladder, same shadows, same type scale.
+
+     The app is light-mode only — DESIGN.md pins v1 to it — so this page
+     commits to one look rather than inventing a dark palette the product
+     does not have. Every colour is painted explicitly for that reason.
+     ───────────────────────────────────────────────────────────── */
+  :root{
+    color-scheme:light;
+    /* Grounds */
+    --parchment:#FFF7ED; --parchment-deep:#F7E9D7; --card:#FFFFFF; --card-sunk:#FBF1E6;
+    /* Ink */
+    --ink:#3E2F4A; --ink-soft:#8B7B93; --ink-faint:#C5B9CC;
+    /* Primary */
+    --coral:#FF7A5C; --coral-deep:#E85F41; --coral-soft:#FFDCD1; --crimson:#A81F38;
+    /* Secondary + accents */
+    --teal:#4FC3B8; --teal-soft:#D5F2EE; --teal-deep:#1F7A72;
+    --butter:#FFD36E; --butter-soft:#FFF1CE; --butter-deep:#9A6B00;
+    --lilac:#B79CED; --lilac-soft:#EBE0FC; --lilac-deep:#6B4BB0;
+    --mint:#8FDCA8; --mint-soft:#DCF5E4; --mint-deep:#2E7D4F;
+    --blush:#FFB3C1; --blush-soft:#FFE3E8;
+    --hairline:#EADCCB;
+    /* Pip, from PipSkin.mint — the shipped default */
+    --pip:#8FE3C4; --pip-shade:#5FC9A3; --pip-cheek:#FF9EB5; --pip-eye:#24303A;
+
+    /* Radius ladder */
+    --r-xs:8px; --r-sm:12px; --r-md:18px; --r-lg:26px; --r-xl:34px; --r-pill:999px;
+    /* 4pt spacing rhythm */
+    --s-xxs:4px; --s-xs:8px; --s-sm:12px; --s-md:16px; --s-lg:24px; --s-xl:32px; --s-xxl:48px;
+    --gutter:20px;
+    /* Shadows — SwiftUI blur radii doubled for CSS parity */
+    --sh-subtle:0 4px 20px rgba(0,0,0,.05);
+    --sh-soft:0 6px 28px rgba(0,0,0,.06);
+    --sh-lifted:0 10px 44px rgba(0,0,0,.10);
+
+    /* SF Rounded is the app's face for everything except long-form reading.
+       Apple devices get the real thing; everyone else gets the closest
+       widely-available rounded humanist. */
+    --ui:ui-rounded,"SF Pro Rounded","Nunito",system-ui,sans-serif;
+    --reading:ui-serif,"Source Serif 4",Georgia,serif;
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--parchment);color:var(--ink);margin:0;
+       font-family:var(--ui);font-size:17px;font-weight:400;line-height:1.6;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .wrap{max-width:66rem;margin:0 auto;padding:0 var(--gutter)}
+  /* Theme.Font: title 30 / headline 22 / body 17 / callout 15 / caption 13 */
+  h1,h2,h3,.disp{font-family:var(--ui);letter-spacing:-.02em;line-height:1.06}
+  h1{font-weight:800} h2{font-weight:800} h3{font-weight:700}
+  p{max-width:38rem}
+  .mono{font-family:var(--ui);font-weight:600}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:var(--s-lg) 0 0}
+  .brand{display:flex;align-items:center;gap:var(--s-sm);font-weight:800;font-size:22px}
+  .pip{width:36px;height:36px;border-radius:var(--r-pill);background:var(--pip);flex:none;
+        position:relative;box-shadow:var(--sh-subtle);border:2px solid var(--pip-shade)}
+  .pip::before,.pip::after{content:"";position:absolute;top:11px;width:5px;height:7px;
+        border-radius:var(--r-pill);background:var(--pip-eye)}
+  .pip::before{left:9px} .pip::after{right:9px}
+
+  .hero{display:grid;grid-template-columns:1fr auto;gap:var(--s-xxl);align-items:center;
+        padding:var(--s-xxl) 0 var(--s-lg)}
+  @media (max-width:860px){.hero{grid-template-columns:1fr;gap:var(--s-xl)}}
+  /* Theme.Font.eyebrow — 12, heavy, letterspaced, uppercase */
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--coral-deep);margin:0 0 var(--s-sm)}
+  h1{font-size:clamp(2.6rem,6.4vw,4.2rem);margin:0 0 var(--s-md);text-wrap:balance}
+  .sub{font-size:19px;color:var(--ink-soft);margin:0 0 var(--s-lg);max-width:31rem}
+  .ctas{display:flex;flex-wrap:wrap;gap:var(--s-sm);align-items:center}
+  .badge{display:inline-flex;align-items:center;gap:var(--s-sm);background:var(--ink);
+        color:var(--parchment);text-decoration:none;padding:13px 22px;border-radius:var(--r-md);
+        font-weight:700;box-shadow:var(--sh-soft);transition:transform .14s ease}
+  .badge:hover{transform:scale(1.02)}
+  .badge:active{transform:scale(.96)}   /* Motion.pressScale */
+  .badge .apple{font-size:26px;line-height:1}
+  .badge small{display:block;font-size:11px;font-weight:500;letter-spacing:.06em;
+        text-transform:uppercase;opacity:.78}
+  .badge b{font-size:18px;font-weight:700}
+  .ghost{display:inline-flex;align-items:center;gap:var(--s-xs);border:2px solid var(--hairline);
+        color:var(--ink);text-decoration:none;padding:12px 20px;border-radius:var(--r-md);
+        font-weight:700;transition:transform .14s ease}
+  .ghost:active{transform:scale(.96)}
+  .soon{font-size:15px;color:var(--ink-soft);margin:var(--s-md) 0 0}
+  .soon b{color:var(--coral-deep);font-weight:700}
+
+  .phone{width:302px;height:634px;background:#141019;border-radius:44px;padding:8px;flex:none;
+        box-shadow:var(--sh-lifted);justify-self:center}
+  .screen{width:100%;height:100%;background:var(--parchment);border-radius:36px;overflow:hidden;
+        display:flex;flex-direction:column;padding:var(--s-md) var(--s-sm) var(--s-sm)}
+  .scr-top{display:flex;justify-content:space-between;align-items:center;
+        padding:0 var(--s-xs) var(--s-sm);font-size:12px;font-weight:800;letter-spacing:.14em;
+        color:var(--ink-soft)}
+  /* A card: Radius.xl, era tint, content at Space.lg */
+  .rcard{flex:1;background:var(--coral-soft);border-radius:var(--r-xl);padding:var(--s-lg);
+        display:flex;flex-direction:column}
+  .rcard h3{font-size:30px;font-weight:700;margin:0 0 var(--s-sm);color:var(--ink)}
+  .rcard p{font-size:17px;color:rgba(62,47,74,.72);margin:0;max-width:none}
+  .rcard .src{margin-top:auto;display:flex;align-items:center;gap:var(--s-xs);font-size:13px;
+        font-weight:500;color:var(--ink-soft)}
+  .dot{width:8px;height:8px;border-radius:var(--r-pill);background:var(--coral);flex:none}
+  .swipe{text-align:center;font-size:13px;font-weight:500;color:var(--ink-faint);
+        padding-top:var(--s-sm)}
+
+  section{padding:var(--s-xxl) 0}
+  .band{background:var(--parchment-deep)}
+  .dark{background:var(--ink);color:var(--parchment)}
+  .dark h2,.dark h3{color:var(--parchment)}
+  .dark p{color:#D6CADD}
+  h2{font-size:clamp(1.9rem,4.2vw,2.6rem);margin:0 0 var(--s-sm);text-wrap:balance}
+  .lede{font-size:19px;color:var(--ink-soft);margin:0 0 var(--s-xl);max-width:36rem}
+  .dark .lede{color:#D6CADD}
+
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:var(--s-md)}
+  .step{background:var(--card);border-radius:var(--r-lg);padding:var(--s-lg);
+        box-shadow:var(--sh-subtle)}
+  .step .n{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--coral-deep);display:block;margin-bottom:var(--s-xs)}
+  .step h3{font-size:22px;margin:0 0 var(--s-xs)}
+  .step p{font-size:15px;font-weight:500;color:var(--ink-soft);margin:0}
+
+  .shelfrow{display:flex;gap:var(--s-md);overflow-x:auto;padding:var(--s-xxs) 0 var(--s-md);
+        scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .shelfrow::-webkit-scrollbar{height:8px}
+  .shelfrow::-webkit-scrollbar-thumb{background:var(--hairline);border-radius:var(--r-pill)}
+  .story{flex:none;width:172px;scroll-snap-align:start;text-decoration:none;color:inherit}
+  /* CoverMetric: 140x203pt at a 1.45 ratio, radius md */
+  .story img{width:172px;height:249px;object-fit:cover;border-radius:var(--r-md);display:block;
+        box-shadow:var(--sh-lifted)}
+  .story .t{font-weight:700;font-size:15px;margin:var(--s-sm) 0 2px;line-height:1.3}
+  .story .b{font-size:13px;font-weight:500;color:var(--ink-soft);line-height:1.45}
+  .seasonhead{display:flex;align-items:baseline;gap:var(--s-sm);margin:var(--s-xl) 0 var(--s-xxs)}
+  .seasonhead h3{font-size:22px;margin:0}
+  .seasonhead span{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--ink-faint)}
+  .seasonsub{color:var(--ink-soft);font-size:15px;font-weight:500;margin:0 0 var(--s-sm);
+        max-width:40rem}
+
+  .cite{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+        border-radius:var(--r-lg);padding:var(--s-lg);max-width:36rem;margin-top:var(--s-lg)}
+  .cite p{color:var(--parchment)!important;margin:0 0 var(--s-md);font-size:22px;font-weight:700}
+  .cite ol{margin:0;padding-left:1.15em;font-family:var(--reading);font-size:15px;
+        color:#CFC2D6;line-height:1.7}
+  .cite li{margin-bottom:var(--s-xs)}
+  /* The CONTESTED badge, as it appears on a card */
+  .contested{display:inline-flex;align-items:center;gap:var(--s-xxs);background:var(--card);
+        color:var(--ink);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+        padding:6px 12px;border-radius:var(--r-pill);margin-bottom:var(--s-md)}
+
+  .stats{display:flex;flex-wrap:wrap;gap:var(--s-xl);margin:var(--s-xl) 0 0;padding:0;list-style:none}
+  .stats li{font-size:13px;font-weight:500;color:#D6CADD;letter-spacing:.02em}
+  .stats b{display:block;font-size:40px;font-weight:800;color:var(--butter);line-height:1;
+        letter-spacing:-.02em}
+
+  .final{text-align:center;padding:var(--s-xxl) 0}
+  .final .ctas{justify-content:center}
+  .final p{margin-left:auto;margin-right:auto}
+
+  footer{border-top:1px solid var(--hairline);padding:var(--s-lg) 0 var(--s-xxl);font-size:14px;
+        font-weight:500;color:var(--ink-faint)}
+  footer a{color:var(--ink-soft)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <nav>
+    <span class="brand"><span class="pip"></span>Chronicle</span>
+    <span class="mono" style="color:var(--ink-3);font-size:12px">Three minutes a day</span>
+  </nav>
+
+  <div class="hero">
+    <div>
+      <p class="eyebrow">A day of history, every day</p>
+      <h1>History, in the time it takes to make tea.</h1>
+      <p class="sub">
+        Seven or eight cards. Swipe up, like a reel. Every one of them cites where it came from —
+        and says so when historians disagree.
+      </p>
+      <div class="ctas">
+        <a class="badge" href="https://apps.apple.com/app/id6805968186">
+          <span class="apple">&#63743;</span>
+          <span><small>Download on the</small><b>App Store</b></span>
+        </a>
+        <a class="ghost" href="#stories">See what's inside →</a>
+      </div>
+      <p class="soon"><b>Not out yet.</b> TestFlight is open while we finish it.</p>
+    </div>
+
+    <div class="phone">
+      <div class="screen">
+        <div class="scr-top"><span>DAY 1</span><span>✕</span></div>
+        <div class="rcard">
+          <h3>Nobody watched Cleopatra die.</h3>
+          <p>The doors were shut. Everyone in the room died with her. Every account we have was
+             written by people who were not there.</p>
+          <div class="src"><span class="dot"></span>3 sources</div>
+        </div>
+        <div class="swipe">↑ Swipe up for the next card</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="band">
+  <div class="wrap">
+    <h2>One story a day. That's the whole app.</h2>
+    <p class="lede">No feed, no infinite scroll, no streak nagging you at 9pm. It ends.</p>
+    <div class="steps">
+      <div class="step"><span class="n">Open it</span><h3>A story is waiting</h3>
+        <p>One a day, already chosen. You don't browse to start — you just read.</p></div>
+      <div class="step"><span class="n">Swipe</span><h3>Seven or eight cards</h3>
+        <p>A hook, the evidence, the complication, the bit nobody tells you. Three minutes.</p></div>
+      <div class="step"><span class="n">Then</span><h3>Four questions</h3>
+        <p>Not a test. Get one wrong and you get the explanation, not a red cross. It comes back in a few days.</p></div>
+      <div class="step"><span class="n">Done</span><h3>Come back tomorrow</h3>
+        <p>There is nothing else to do. That's on purpose.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="stories">
+  <div class="wrap">
+    <h2>What's inside right now</h2>
+    <p class="lede">Fourteen stories, ninety-nine cards, four seasons. Every card sourced.</p>
+    <div class="seasonhead"><h3>A Day in Ancient Rome</h3><span>Season 1</span></div><p class="seasonsub">The clock, the bath, the rent — an ordinary day, by the numbers.</p><div class="shelfrow"><div class="story"><img src="img/rome-d1.jpg" alt="The shape of a Roman day" loading="lazy"><div class="t">The shape of a Roman day</div><div class="b">Rome ran on daylight, not clocks — and it made for a very strange kind of hour.</div></div><div class="story"><img src="img/rome-d2.jpg" alt="Where Rome slept" loading="lazy"><div class="t">Where Rome slept</div><div class="b">A million people — and almost none of them in the houses you&#x27;re picturing.</div></div><div class="story"><img src="img/rome-d3.jpg" alt="What Rome ate" loading="lazy"><div class="t">What Rome ate</div><div class="b">Most Romans could not cook at home. So the city cooked for them.</div></div><div class="story"><img src="img/rome-d4.jpg" alt="The water" loading="lazy"><div class="t">The water</div><div class="b">Eleven aqueducts reached the city. Almost nobody had a tap.</div></div><div class="story"><img src="img/rome-d5.jpg" alt="The noise" loading="lazy"><div class="t">The noise</div><div class="b">Rome banned carts by day. So the city was loudest when you were trying to sleep.</div></div><div class="story"><img src="img/rome-d6.jpg" alt="Who did the work" loading="lazy"><div class="t">Who did the work</div><div class="b">The people who built and ran the city left almost nothing in writing.</div></div><div class="story"><img src="img/rome-d7.jpg" alt="How we know any of this" loading="lazy"><div class="t">How we know any of this</div><div class="b">Almost everything in this season came from a very small slice of Rome.</div></div></div><div class="seasonhead"><h3>The Last Pharaoh</h3><span>Season 3</span></div><p class="seasonsub">Three stories about Cleopatra, read against the people who wrote them down.</p><div class="shelfrow"><div class="story"><img src="img/cleo-d1.jpg" alt="How did Cleopatra die?" loading="lazy"><div class="t">How did Cleopatra die?</div><div class="b">The snake is in every painting of her, and nobody has ever found it.</div></div><div class="story"><img src="img/cleo-d2.jpg" alt="The woman Rome had to invent" loading="lazy"><div class="t">The woman Rome had to invent</div><div class="b">Almost everything ever written about Cleopatra was written by the side that beat her.</div></div><div class="story"><img src="img/cleo-d3.jpg" alt="The tomb nobody has found" loading="lazy"><div class="t">The tomb nobody has found</div><div class="b">She asked to be buried beside Antony. Octavian agreed. Then the address went under water.</div></div></div><div class="seasonhead"><h3>The Bible Never Said That</h3><span>Season 4</span></div><p class="seasonsub">A sin list, a lost golden box, and a woman the Church renamed.</p><div class="shelfrow"><div class="story"><img src="img/bible-d1.jpg" alt="The seven deadly sins" loading="lazy"><div class="t">The seven deadly sins</div><div class="b">Not in the Bible. Assembled by monks over two centuries, then edited down by a pope.</div></div><div class="story"><img src="img/bible-d2.jpg" alt="The Ark of the Covenant" loading="lazy"><div class="t">The Ark of the Covenant</div><div class="b">The Bible gives you the build spec, then stops mentioning it — and never says where it went.</div></div><div class="story"><img src="img/bible-d3.jpg" alt="Mary Magdalene" loading="lazy"><div class="t">Mary Magdalene</div><div class="b">The most famous thing about her is something the Bible never says. It has a start date.</div></div></div><div class="seasonhead"><h3>Portraits, Warts and All</h3><span>Season 5</span></div><p class="seasonsub">People we&#x27;ve flattened into statues, put back at life size.</p><div class="shelfrow"><div class="story"><img src="img/lincoln-d1.jpg" alt="The awkward man" loading="lazy"><div class="t">The awkward man</div><div class="b">They called him grotesque. He lost the Senate race, won the country, and freed almost nobody by decree.</div></div></div>
+  </div>
+</section>
+
+<section class="dark">
+  <div class="wrap">
+    <h2>Every card tells you where it came from.</h2>
+    <p class="lede">
+      Not a bibliography at the back. Two independent sources minimum, on the card itself, one tap away.
+    </p>
+    <div class="cite">
+      <p>“The seven deadly sins aren't biblical.”</p>
+      <ol>
+        <li>Evagrius Ponticus, <em>Praktikos</em> — written in the Egyptian desert in the 390s, the eight logismoi</li>
+        <li>Gregory the Great, <em>Moralia in Job</em>, Book XXXI — begun in Constantinople c. 578, finished at Rome c. 595</li>
+        <li>Morton W. Bloomfield, <em>The Seven Deadly Sins</em> — Michigan State University Press, 1952</li>
+      </ol>
+    </div>
+
+    <div style="margin-top:40px">
+      <span class="contested">⚖ Contested</span>
+      <h3 style="font-size:24px;margin:0 0 10px;color:var(--parchment)">And when the historians don't agree, we say so.</h3>
+      <p style="max-width:36rem">
+        A card that's disputed carries the dispute on its face — what's argued about, and by whom.
+        We would rather tell you the date is a reconstruction than pick one and sound confident.
+      </p>
+    </div>
+
+    <ul class="stats">
+      <li><b>99</b>cards, all sourced</li>
+      <li><b>2+</b>sources on every card</li>
+      <li><b>17</b>flagged as contested</li>
+      <li><b>0</b>ads, ever</li>
+    </ul>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap" style="display:flex;gap:40px;align-items:center;flex-wrap:wrap">
+    <div style="width:126px;height:126px;border-radius:50%;background:var(--pip);flex:none;
+                position:relative;box-shadow:var(--sh-lifted);border:3px solid var(--pip-shade)">
+      <span style="position:absolute;top:46px;left:33px;width:17px;height:21px;border-radius:50%;background:var(--pip-eye)"></span>
+      <span style="position:absolute;top:46px;right:33px;width:17px;height:21px;border-radius:50%;background:var(--pip-eye)"></span>
+      <span style="position:absolute;bottom:31px;left:50%;transform:translateX(-50%);width:32px;height:13px;
+                   border-radius:0 0 26px 26px;background:var(--pip-eye)"></span>
+    </div>
+    <div>
+      <h2 style="margin-bottom:10px">This is Pip.</h2>
+      <p style="margin:0">
+        Pip reads everything before you do, and collects a hat from every era you finish. Pip is not
+        a person, which is deliberate — a creature can belong to every century without belonging to
+        any of them.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Three minutes. Then get on with your day.</h2>
+    <p class="lede" style="margin-bottom:28px">Free while we're building it.</p>
+    <div class="ctas">
+      <a class="badge" href="https://apps.apple.com/app/id6805968186">
+        <span class="apple">&#63743;</span>
+        <span><small>Download on the</small><b>App Store</b></span>
+      </a>
+    </div>
+    <p class="soon"><b>Not out yet.</b> TestFlight is open while we finish it.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px">
+    <span>Chronicle — a day of history, every day.</span>
+    <span><a href="mailto:hello@getdonny.com">hello@getdonny.com</a></span>
+  </div>
+</footer>
