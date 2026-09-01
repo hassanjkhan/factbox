@@ -586,6 +586,34 @@ html.no-motion *::after{animation:none !important}
 .lightbox .lbhint{opacity:.7;margin-top:8px;display:block}
 @media (prefers-reduced-motion:reduce){.tapcue{transition:none}}
 
+/* --------------------------------------------------------------------------
+   The ending: thirteen more stories, and the offer.
+
+   A shelf rather than a list — the covers are the argument. It scrolls
+   sideways inside the caption so the ending stays one screen like every
+   other beat, instead of turning into a page you have to scroll past.
+   -------------------------------------------------------------------------- */
+.shelf{
+  display:flex;gap:10px;margin:18px 0 20px;
+  overflow-x:auto;overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;padding-bottom:2px;
+}
+.shelf::-webkit-scrollbar{display:none}
+.shelfcard{flex:none;width:88px;scroll-snap-align:start}
+.shelfcard img{
+  width:88px;height:128px;object-fit:cover;display:block;
+  border-radius:9px;background:rgba(255,255,255,.06);
+  box-shadow:0 4px 14px rgba(12,9,15,.45);
+}
+.shelfcard em{
+  display:block;font-style:normal;font-size:11px;line-height:1.3;
+  margin-top:6px;color:rgba(244,238,230,.78);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.go.pay{width:100%;font-size:16.5px}
+.go.pay:disabled{opacity:.6;cursor:default}
+
 /* ═══════════════════════════════════════════════════════════════════
    SCENES A — door · painting · fleet · afternoon
    Composed for 390×844 portrait first; desktop checked second. The
@@ -6885,7 +6913,12 @@ STORY.cards.forEach((c, i) => {
   rail.appendChild(document.createElement("i"));
 });
 
-/* The ending. One ask, and it is the email — there is nothing to download yet. */
+/* The ending. Thirteen more stories exist; this is where they are offered.
+   The subscribe button goes to a Stripe Payment Link — a hosted checkout URL
+   that needs no server and no API key, which is the whole reason this static
+   site can take money at all. Set PAY below and the button goes live. */
+const PAY = "";        /* Stripe Payment Link URL */
+
 const end = document.createElement("section");
 end.className = "page end";
 end.innerHTML =
@@ -6893,21 +6926,26 @@ end.innerHTML =
   '<div class="scrim" aria-hidden="true"></div>' +
   '<div class="capwrap"><div class="cap">' +
     '<div class="wordmark">Factbox</div>' +
-    '<h2 class="hl">One of these, every day.</h2>' +
-    '<p class="sub">Three minutes. Every card cites where it came from, and says so when ' +
-      'historians disagree. The app isn\'t out yet — leave your email and you\'ll be first in.</p>' +
-    '<form id="wl" novalidate>' +
-      '<input type="email" id="em" placeholder="you@example.com" autocomplete="email" ' +
-        'inputmode="email" autocapitalize="off" autocorrect="off" required>' +
-      '<button class="go" type="submit">Join the waitlist</button>' +
-    '</form>' +
-    '<div class="thanks" id="th">You\'re on the list. We\'ll email you once — when it\'s out.</div>' +
-    '<p class="fine">No spam, no sharing your address, one email at launch.</p>' +
+    '<h2 class="hl">Come read more stories.</h2>' +
+    '<p class="sub">Thirteen more, sourced the same way. Rome, Cleopatra, ' +
+      'the Bible, and the people we have flattened into statues.</p>' +
+    '<div class="shelf"><span class=\'shelfcard\'><img src=\'img/rome-d1.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The shape of a Roman day</em></span><span class=\'shelfcard\'><img src=\'img/rome-d2.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Where Rome slept</em></span><span class=\'shelfcard\'><img src=\'img/rome-d3.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>What Rome ate</em></span><span class=\'shelfcard\'><img src=\'img/rome-d4.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The water</em></span><span class=\'shelfcard\'><img src=\'img/rome-d5.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The noise</em></span><span class=\'shelfcard\'><img src=\'img/rome-d6.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Who did the work</em></span><span class=\'shelfcard\'><img src=\'img/rome-d7.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>How we know any of this</em></span><span class=\'shelfcard\'><img src=\'img/cleo-d2.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The woman Rome had to invent</em></span><span class=\'shelfcard\'><img src=\'img/cleo-d3.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The tomb nobody has found</em></span><span class=\'shelfcard\'><img src=\'img/bible-d1.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The seven deadly sins</em></span><span class=\'shelfcard\'><img src=\'img/bible-d2.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Ark of the Covenant</em></span><span class=\'shelfcard\'><img src=\'img/bible-d3.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Mary Magdalene</em></span><span class=\'shelfcard\'><img src=\'img/lincoln-d1.jpg\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The awkward man</em></span></div>' +
+    '<button class="go pay" id="pay" type="button">Read more stories · $3.99/mo</button>' +
+    '<p class="fine">Cancel any time. Every card cites at least two independent sources.</p>' +
   '</div></div>';
 stage(end.querySelector(".cap"));
-end.querySelector(".thanks").classList.remove("rise");   /* it has its own reveal */
 deck.appendChild(end);
 rail.appendChild(document.createElement("i"));
+
+document.getElementById("pay").addEventListener("click", () => {
+  track("subscribe_click");
+  if (PAY) { location.href = PAY; return; }
+  /* No link configured yet: say so rather than doing nothing, which reads
+     as a broken button and is worse than an honest one. */
+  const b = document.getElementById("pay");
+  b.textContent = "Opening soon — not taking payments yet";
+  b.disabled = true;
+});
 
 /* --------------------------------------------------------------------------
    Interactions
