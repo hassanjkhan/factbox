@@ -2082,9 +2082,13 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
 .s-harbour .hrb-ped { fill: #FCF7EC; }
 .s-harbour .hrb-obe { fill: #DCC79E; }
 
-.s-harbour .hrb-city-a { position: absolute; left: 1%;   bottom: 73.6%; width: min(46%, 40vh); aspect-ratio: 2.42; opacity: .9; }
-.s-harbour .hrb-city-b { position: absolute; left: 41%;  bottom: 73.6%; width: min(30%, 24vh); aspect-ratio: 1.22; opacity: .95; }
-.s-harbour .hrb-city-c { position: absolute; right: -2%; bottom: 73.6%; width: min(46%, 38vh); aspect-ratio: 1.97; }
+/* Height-led, like the Pharos and like everything afloat, so the far
+   shore keeps one scale. They used to be `min(46%, 40vh)` wide, which
+   on a short wide window put the temples nearly level with a
+   lighthouse they should be dwarfed by. */
+.s-harbour .hrb-city-a { position: absolute; left: 1%;   bottom: 73.6%; height:  8.8%; aspect-ratio: 2.42; opacity: .9; }
+.s-harbour .hrb-city-b { position: absolute; left: 41%;  bottom: 73.6%; height: 11.4%; aspect-ratio: 1.22; opacity: .95; }
+.s-harbour .hrb-city-c { position: absolute; right: -2%; bottom: 73.6%; height: 10.8%; aspect-ratio: 1.97; }
 
 /* A wash over the whole far shore. Distance is the point. */
 .s-harbour .hrb-quay {
@@ -2097,17 +2101,15 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
 }
 .s-harbour .hrb-crowd {
   position: absolute; left: -2%; right: -2%; top: 25.6%; height: 2%;
-  display: flex; align-items: flex-end; gap: .7%;
+  background-repeat: repeat-x;
+  background-position: 0 bottom;
+  background-size: auto 84%, auto 74%, auto 98%, auto 62%;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 .265vh, rgba( 58, 46, 72, .22) .265vh .755vh, transparent .755vh 2.04vh),
+    repeating-linear-gradient(90deg, transparent 0 1.31vh, rgba(122, 36, 56, .24) 1.31vh 1.75vh, transparent 1.75vh 3.06vh),
+    repeating-linear-gradient(90deg, transparent 0 3.35vh, rgba( 58, 46, 72, .22) 3.35vh 3.79vh, transparent 3.79vh 5.10vh),
+    repeating-linear-gradient(90deg, transparent 0 .265vh, rgba( 58, 46, 72, .26) .265vh .755vh, transparent .755vh 1.02vh);
 }
-.s-harbour .hrb-crowd i {
-  flex: 0 0 auto; height: 100%; aspect-ratio: .34;
-  background: rgba(58, 46, 72, .40);
-  clip-path: polygon(28% 0%, 72% 0%, 82% 28%, 86% 100%, 14% 100%, 18% 28%);
-}
-.s-harbour .hrb-crowd i:nth-child(3n)   { height: 80%; background: rgba(122, 36, 56, .34); }
-.s-harbour .hrb-crowd i:nth-child(4n+1) { height: 92%; }
-.s-harbour .hrb-crowd i:nth-child(5n)   { height: 68%; opacity: .7; }
-.s-harbour .hrb-crowd i:nth-child(7n)   { height: 74%; }
 
 .s-harbour .hrb-sea {
   position: absolute; left: 0; right: 0; top: 29%; bottom: 0;
@@ -2243,8 +2245,8 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
 
 /* The vexillum on its pole, carried in the rank. Rome, said out loud. */
 .s-harbour .hrb-pole {
-  position: absolute; left: 91%; top: 53.5%; height: 12%;
-  width: .9vmin; margin-left: -.45vmin;
+  position: absolute; left: 91%; top: 53.5%; height: 16.1%;
+  width: .42vh; margin-left: -.21vh;
   border-radius: .6vmin;
   background: linear-gradient(to right, #241B2E, #4A3B5C 60%, #1B1425);
 }
@@ -2262,9 +2264,13 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
   100% { transform: skewY(1.6deg)  scaleX(1); }
 }
 
-/* The rank along the rail. Sized off their own height, so a phone
-   sees eleven of them shoulder to shoulder and a desktop sees twenty —
-   the same men, more of the line. Each is a helmet, a crest and a
+/* The rank along the rail. Each man is sized off his own height and
+   overlaps his neighbour by a height-led amount too (it was -.6vmin,
+   which made the shields overlap twice as far on a landscape window
+   as on a phone), so the rank is the same rank at every size — just
+   more of it. There are a hundred and four of them because a 2.5:1
+   window needs about ninety-six to reach past both edges; the extras
+   are clipped, and cost four static boxes each. Each is a helmet, a crest and a
    scutum, which at this size is the whole of a legionary; the shields
    overlap into one line, which is what a boarding party looks like.
    The red and the gold of the fleet are carried here. */
@@ -2275,7 +2281,7 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
 .s-harbour .hrb-troop i {
   position: relative; flex: 0 0 auto; height: 100%; aspect-ratio: .46;
 }
-.s-harbour .hrb-troop i + i { margin-left: -.6vmin; }
+.s-harbour .hrb-troop i + i { margin-left: -.28vh; }
 /* A pilum standing up behind every fourth man. Painted straight onto
    the flex item, so it costs no element. */
 .s-harbour .hrb-troop i:nth-child(4n+2) {
@@ -2396,8 +2402,8 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
 .s-harbour .hrb-oars { position: absolute; inset: 0; z-index: 9; }
 .s-harbour .hrb-oars i {
   position: absolute;
-  width: 3.6vmin; height: 10.5%;
-  margin-left: -1.5vmin;
+  width: 1.66vh; height: 10.5%;
+  margin-left: -.83vh;
   transform-origin: 50% 0%;
   transform: rotate(19deg);
   clip-path: polygon(40% 0%, 60% 0%, 62% 60%, 96% 74%, 84% 100%, 16% 100%, 38% 74%);
@@ -2451,11 +2457,19 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
    sheet 63–88%. What the caption crosses is her shoulder and a bare
    plane of table — dark, flat, quiet.
 
-   Everything on the table lives inside .ltr-stage, a height-led
-   column capped at 66vh and centred. Without it, a wide window pulls
-   the height-sized objects apart — her hand ends up on the left and
-   the sheet she is writing on ends up on the right. Inside the stage
-   they are all fractions of the same box and stay registered.
+   Everything on the table lives inside .ltr-stage, and the stage is
+   ASPECT-LOCKED: full scene height, width derived from that height at
+   9/20. It used to be `min(100%, 84vh)` wide against a full-height
+   box, which is not a lock at all — the box changed shape with the
+   window while the objects in it stayed height-led, so at 1280×620
+   her stylus floated a hand's width to the left of the sheet and the
+   wax and the lamp had slid off their marks. Now the stage box is the
+   same shape at every size and every object is a fraction of it, so
+   the tip of the stylus lands on the same word of the same line
+   whatever the window does. 9/20 rather than the 390/844 of the
+   reference phone so that the box is still full height on a 360×800
+   or 412×915 handset — anything narrower simply loses a little off
+   both edges instead of squashing the picture.
    ─────────────────────────────────────────────────────────────────── */
 
 .s-letter {
@@ -2479,8 +2493,8 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
 }
 
 .s-letter .ltr-stage {
-  position: absolute; left: 50%; top: 0; bottom: 0;
-  width: min(100%, 84vh);
+  position: absolute; left: 50%; top: 0; height: 100%;
+  aspect-ratio: 9 / 20;
   transform: translateX(-50%);
 }
 
@@ -2645,13 +2659,18 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
 
 /* Everything the scene knows comes from that lamp; this is the light
    it puts on the table, laid over the objects rather than under
-   them. */
+   them. It is the last child of the stage, not a sibling of it, so
+   the pool of light cannot walk away from the lamp that casts it.
+   The box is three stage-widths wide and centred on the stage, and
+   the two gradients are placed at a third of their old coordinates
+   plus a third — which is the same light in the same place on the
+   390×844 frame, with room to die out over a wider table. */
 .s-letter .ltr-warm {
-  position: absolute; inset: 0;
+  position: absolute; left: -100%; right: -100%; top: 0; bottom: 0;
   mix-blend-mode: screen;
   background:
-    radial-gradient(34% 22% at 78% 58%, rgba(var(--butter-s), .40), rgba(var(--butter), 0) 78%),
-    radial-gradient(70% 36% at 62% 74%, rgba(var(--butter), .22), rgba(var(--butter), 0) 82%);
+    radial-gradient(11.33% 22% at 59.33% 58%, rgba(var(--butter-s), .40), rgba(var(--butter), 0) 78%),
+    radial-gradient(23.33% 36% at 54.00% 74%, rgba(var(--butter), .22), rgba(var(--butter), 0) 82%);
   animation: ltrWarm 17s ease-in-out infinite alternate;
   animation-play-state: paused;
 }
@@ -2863,10 +2882,16 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
   position: absolute; left: 0; right: 0; bottom: 36.4%; height: 1.8%;
   background: linear-gradient(to top, rgba(var(--ink), .13), rgba(var(--ink), 0));
 }
-/* What the doorway lays on the flags. */
+/* What the doorway lays on the flags. The door is height-led
+   (.36 × 43% of the scene); this used to be 64% of the scene WIDE, so
+   at 1280×620 the patch of light was four times the width of the
+   opening it came through and started nowhere near it. It is now
+   three door-widths wide — same height-led measure — and pinned to
+   the same right edge as the door, so its top edge runs from jamb to
+   jamb at every size: the opening is the last third of this box. */
 .s-search .srh-spill {
-  position: absolute; left: 40%; top: 61.6%; width: 64%; height: 22%;
-  clip-path: polygon(37% 0%, 89% 0%, 100% 100%, 8% 100%);
+  position: absolute; right: 3%; top: 61.6%; height: 22%; aspect-ratio: 2.1109;
+  clip-path: polygon(66.7% 0%, 100% 0%, 100% 100%, 48% 100%);
   background: linear-gradient(to bottom,
     rgba(255, 253, 250, .58) 0%,
     rgba(255, 253, 250, .26) 50%,
@@ -2874,12 +2899,16 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
   filter: blur(1.4vmin);
 }
 
-/* Everything on the floor is inside one stage — a height-led column
-   capped at 78vh and centred — so the group the guards left behind
-   holds together instead of sliding to the edges of a wide window. */
+/* Everything on the floor is inside one stage, and the stage is
+   ASPECT-LOCKED at 9/20: full scene height, width taken from that
+   height, same frame at every size. It was `min(100%, 78vh)` wide against a
+   full-height box, which let the box change shape — the couch is
+   height-led and the cloth on it is width-led, so on a wide window
+   the cloth crept along the couch and the cushions spread away from
+   the basket. Locked, the group is one picture at every size. */
 .s-search .srh-stage {
-  position: absolute; left: 50%; top: 0; bottom: 0;
-  width: min(100%, 78vh);
+  position: absolute; left: 50%; top: 0; height: 100%;
+  aspect-ratio: 9 / 20;
   transform: translateX(-50%);
 }
 
@@ -2983,7 +3012,7 @@ html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacit
     linear-gradient(to bottom, #F7BDC8 0%, #E39CAA 60%, #BE7486 100%);
 }
 .s-search .srh-c2 {
-  left: 19%; top: 84.2%; height: 4.4%; aspect-ratio: 2;
+  left: 19%; top: 83.2%; height: 4.4%; aspect-ratio: 2;
   transform: rotate(6deg);
   background:
     radial-gradient(circle at 50% 52%, rgba(var(--ink), .16) 0 5%, rgba(62, 47, 74, 0) 6%),
@@ -3155,6 +3184,12 @@ html.no-motion .s-search .srh-motes i  { opacity: .44; transform: translate(-1vm
    drifts off the feet of the objects between a phone and a desktop.
    As a child it is expressed in fractions of the box, and the back
    edge stays welded to the far end of the arrangement everywhere.
+
+   The same rule inside the figures: every person is head over neck over
+   shoulder over limb, each drawn so the one below it is painted *over*
+   its base. Head, neck and body are held together by overlap, never by
+   two shapes stopping at the same coordinate — a butt joint opens into
+   a gap the moment anything moves; an overlap cannot.
    ═══════════════════════════════════════════════════════════════════ */
 
 
@@ -3488,7 +3523,6 @@ html.no-motion .s-copies .cop-lamp { animation: none; opacity: .85 }
 
 /* her */
 .s-mausoleum .vil-gown    { fill: var(--linen); }
-.s-mausoleum .vil-gown-hi { fill: #FFF7ED; opacity: .55; }
 .s-mausoleum .vil-mantle  { fill: var(--purple); opacity: .9; }
 .s-mausoleum .vil-hem     { fill: var(--gold); opacity: .8; }
 .s-mausoleum .vil-collar  { fill: var(--gold); opacity: .9; }
@@ -3607,6 +3641,13 @@ html.no-motion .s-mausoleum .vil-seam     { animation: none; opacity: .9 }
   --water: #3FA79E;
   --water-lo: #1F7A72;
   --stone: #EBD9BB;
+  /* The art box's own width expression, as a token. The cast is welded
+     to a height-led box (`min(96%, 46vh)`) while the window and the
+     shaft it throws were measured against the viewport — so on a short
+     wide window the light landed on bare floor a hundred pixels to the
+     left of the woman it was supposed to be falling on. Everything that
+     has to agree with the basin is now a fraction of this instead. */
+  --aw: min(96%, 46vh);
   background: #C3A183;
 }
 
@@ -3659,7 +3700,13 @@ html.no-motion .s-mausoleum .vil-seam     { animation: none; opacity: .9 }
 }
 
 /* ── the opening ──────────────────────────────────────────────── */
-.s-bath .bth-win { position: absolute; left: 62%; width: 17%; top: 13%; height: 13%; }
+/* Left/width off --aw so the opening rides with the room; top/height
+   stay viewport-relative, because that is a height and heights already
+   agree. At 390×844 this lands within half a percent of the numbers it
+   replaces — it only starts to matter as the window gets wider. */
+.s-bath .bth-win { position: absolute; top: 13%; height: 13%;
+                   left: calc(50% + .12 * var(--aw));
+                   width: calc(.17 * var(--aw)); }
 
 .s-bath .bth-splay {
   position: absolute; inset: -14% -11%;
@@ -3696,7 +3743,13 @@ html.no-motion .s-mausoleum .vil-seam     { animation: none; opacity: .9 }
 .s-bath .bth-land {
   position: absolute; inset: 0;
   pointer-events: none;
-  clip-path: polygon(62% 26%, 79% 26%, 47.2% 92%, 22.9% 92%);
+  /* The same two jambs, and a foot that lands where the basin is: the
+     four corners are all fractions of --aw now, so the beam leaves the
+     window it was thrown from and arrives on her at every window shape. */
+  clip-path: polygon(calc(50% + .12 * var(--aw)) 26%,
+                     calc(50% + .29 * var(--aw)) 26%,
+                     calc(50% - .03 * var(--aw)) 92%,
+                     calc(50% - .283 * var(--aw)) 92%);
   mix-blend-mode: screen;
 }
 .s-bath .bth-shaft {
@@ -3932,6 +3985,12 @@ html.no-motion .s-mausoleum .vil-seam     { animation: none; opacity: .9 }
   --n-veil: #DFCCAA;
   --n-hat:  #9A6B00;
   --n-ink:  #2E2334;
+  /* Same reason: the rank of soldiers holding the route open is one
+     shape in <defs> used forty-odd times over. */
+  --t-pole:    #8A6B45;
+  --t-steel:   #9AA3AE;
+  --t-crimson: #A81F38;
+  --t-skin:    #C08152;
   --stone: #E8D8BE;
   --stone-lo: #C9B091;
   background: #E2CBA9;
@@ -4168,9 +4227,13 @@ html.no-motion .s-mausoleum .vil-seam     { animation: none; opacity: .9 }
   animation: e-tri-back 13s ease-in-out infinite alternate;
   animation-play-state: paused;
 }
+/* Transform only. It used to breathe its opacity as well, which meant
+   repainting a path the width of three viewports on every frame for a
+   change of about six percent on something already at .38 — invisible,
+   and the most expensive thing in the scene. */
 @keyframes e-tri-back {
-  0%   { transform: translateX(-.25%); opacity: .84 }
-  100% { transform: translateX(.25%);  opacity: 1 }
+  0%   { transform: translateX(-.25%) }
+  100% { transform: translateX(.25%) }
 }
 
 /* The half-step of unreality: a warm bleach that comes and goes, so
@@ -5033,12 +5096,10 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
   <!-- PLANE 3 — the quay, and the crowd standing on it -->
   <div class="hrb-quay"></div>
   <div class="hrb-quayline"></div>
-  <div class="hrb-crowd">
-    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-  </div>
+  <!-- the crowd is painted, not built: four repeating ranks on one
+       element, so it reaches both edges of any window and costs one
+       box instead of forty-eight -->
+  <div class="hrb-crowd"></div>
 
   <div class="hrb-sea"></div>
   <div class="hrb-searim"></div>
@@ -5177,18 +5238,19 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
     <div class="hrb-vex"></div>
 
     <div class="hrb-troop">
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
-      <i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+      <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
     </div>
 
     <div class="hrb-hull">
@@ -5399,9 +5461,11 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
         </g>
       </svg>
     </div>
-  </div>
 
-  <div class="ltr-warm"></div>
+    <!-- the lamp's light on the table. Inside the stage, and last, so
+         it lies over the objects and travels with the lamp. -->
+    <div class="ltr-warm"></div>
+  </div>
 
   <!-- the interruption, on her left -->
   <div class="ltr-open">
@@ -5778,7 +5842,7 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
         <path class="cop-quill" d="M169.6,73.4 L172.4,71 L185,47.5 L182.2,46.6 Z"/>
         <path class="cop-plume" d="M182.2,46.6 L185,47.5 C188,42 188.5,37 186,33
                                    C184,37.5 183,42 182.2,46.6 Z"/>
-        <path class="cop-rim" d="M203.4,60.6 C210.6,63.6 216.6,70 220.6,78.4"/>
+        <path class="cop-rim" d="M211,54 C213,59 212.6,65 220.6,78.4"/>
       </g>
     </svg>
   </div>
@@ -5936,19 +6000,24 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
            the guards find her still setting the diadem straight. -->
       <g class="vil-charm">
         <ellipse class="vil-cast" cx="190" cy="101" rx="18" ry="3.4"/>
-        <path class="vil-robe" d="M177,101 C176,88 179,76 185,69
-                                  C189,65 195,63 200,64 C205,65 208,69 208,75
+        <!-- Throat first, then the arm, then the robe over the top of
+             both: head overlaps neck overlaps shoulder overlaps arm, so
+             the chain is held by overlaps and not by three shapes that
+             happen to line up. Nothing here can gap. -->
+        <path class="vil-skin" d="M186.8,52 L193.2,52 L195.6,68 L185,68 Z"/>
+        <path class="vil-thin" d="M185.6,68 C183,57.4 181,45.8 178.4,39"/>
+        <path class="vil-robe" d="M177,101 C176,88 179,74 186,65
+                                  C189.6,60.4 195,59 199.6,61 C205,63.4 208,68 208,75
                                   L208,101 Z"/>
-        <path class="vil-robe-hi" d="M200,64 C205,65 208,69 208,75 L208,101 L200,101 Z"/>
-        <path class="vil-thin" d="M191,62 C187,54 182,45 178.4,39"/>
-        <circle class="vil-skin" cx="190" cy="44" r="6.4"/>
-        <path class="vil-hair" d="M183.4,44 C182.6,36.6 187.4,31.6 193.4,31.6
-                                  C198.4,31.6 202,35.4 202,40.2 C202,45 199.8,48.2 196.6,50
-                                  C198,43 193.6,38.4 187,39.4 C185.4,39.8 184,41.6 183.4,44 Z"/>
-        <path class="vil-skin" d="M184.3,42.6 L182.1,44.2 L184.5,45.6 Z"/>
-        <path class="vil-lid" d="M185.6,41.8 C186.5,41.1 188,41.1 188.9,41.8"/>
-        <ellipse class="vil-eye" cx="187.2" cy="43.2" rx=".85" ry="1.05"/>
-        <path class="vil-mouth" d="M185.7,47.3 L188.2,47.6"/>
+        <path class="vil-robe-hi" d="M199.6,61 C205,63.4 208,68 208,75 L208,101 L199.6,101 Z"/>
+        <circle class="vil-skin" cx="190" cy="49" r="6.4"/>
+        <path class="vil-hair" d="M183.4,49 C182.6,41.6 187.4,36.6 193.4,36.6
+                                  C198.4,36.6 202,40.4 202,45.2 C202,50 199.8,53.2 196.6,55
+                                  C198,48 193.6,43.4 187,44.4 C185.4,44.8 184,46.6 183.4,49 Z"/>
+        <path class="vil-skin" d="M184.3,47.6 L182.1,49.2 L184.5,50.6 Z"/>
+        <path class="vil-lid" d="M185.6,46.8 C186.5,46.1 188,46.1 188.9,46.8"/>
+        <ellipse class="vil-eye" cx="187.2" cy="48.2" rx=".85" ry="1.05"/>
+        <path class="vil-mouth" d="M185.7,52.3 L188.2,52.6"/>
         <ellipse class="vil-skin" cx="176.6" cy="36.6" rx="3.4" ry="2.6"
                  transform="rotate(-30 176.6 36.6)"/>
       </g>
@@ -5973,18 +6042,23 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
            One silhouette read foot to head: shin, knee, hip, chest,
            shoulder, and the head against the raised end of the couch. -->
       <g class="vil-cleo">
+        <!-- Her throat, tipped back the way the head is. Drawn before
+             the gown so the shoulder and the collar close over its base,
+             and behind the head so the jaw closes over its top — the
+             head is held on by overlap at both ends. -->
+        <path class="vil-skin" d="M152,55 L157.5,44.6 L163.5,48.2 L158,58.6 Z"/>
         <path class="vil-gown" d="M62,70.4 C70,65.4 80,62.8 92,61.8
                                   C104,60.8 116,61.8 126,60.6
-                                  C136,59.4 144,56.6 151,51.8
-                                  L160,58.6 C154,65 145,69 133,71.6
+                                  C136,59.4 145,57.2 156.6,52.2
+                                  L164,58.2 C157,64.8 147,68.6 133,71.6
                                   C117,74.8 96,75.2 78,74.6 C70,74.2 65,73 62,70.4 Z"/>
         <path class="vil-mantle" d="M62,70.4 C70,65.4 80,62.8 92,61.8
                                     C102,61 112,61.6 121,61 L123,73.8
                                     C108,75.2 92,75.4 78,74.6 C70,74.2 65,73 62,70.4 Z"/>
         <path class="vil-hem" d="M121,61 C124,60.8 126.6,60.6 129,60.2 L131,73
                                  C128,73.4 125.4,73.6 123,73.8 Z"/>
-        <path class="vil-collar" d="M144.6,61.4 C148,59 150.8,56 152.8,53 L156.4,55.6
-                                    C154.4,58.8 151.4,61.8 148,64 Z"/>
+        <path class="vil-collar" d="M144.6,61.4 C148,59 150.8,56 153.6,54.2 L157.4,56.6
+                                    C155,59.8 151.4,61.8 148,64 Z"/>
         <path class="vil-bare" d="M143,68.6 L147,58.6 L153.6,48"/>
         <circle class="vil-skin" cx="164" cy="42" r="7.6"/>
         <path class="vil-hair" d="M159,36.4 C162.6,32.4 169,31.4 173.2,34.4
@@ -6174,6 +6248,12 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
             <ellipse class="bth-jar-hi" cx="0" cy="-9.8" rx="3.4" ry="1.3"/>
             <path class="bth-jar-lo" d="M-6.5,1.4 C-6.2,5.2 -4.2,8.4 0,8.4 C4.2,8.4 6.2,5.2 6.5,1.4 Z"/>
           </g>
+          <!-- one hand over the shoulder of the jar, drawn after it, so
+               that she is visibly holding the thing she is pouring from
+               rather than resting it against herself -->
+          <path class="bth-arm" d="M4.2,-11.4 L8.6,-9.6"/>
+          <ellipse class="bth-skin" cx="9.4" cy="-9.3" rx="1.7" ry="1.35"
+                   transform="rotate(22 9.4 -9.3)"/>
         </g>
       </g>
 
@@ -6354,47 +6434,55 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
         <path id="e-au" d="M3.5,-3.4 C5.6,-5.2 6.5,-8.3 6.3,-11.5"/>
         <path id="e-as" d="M3.4,-3.6 C5.2,-6 5.4,-9.4 3.6,-11.4"/>
         <circle id="e-hd2" cx="6.35" cy="-12.2" r=".95"/>
+        <g id="e-sol"><rect fill="var(--t-pole)" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path fill="var(--t-steel)" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect fill="var(--t-crimson)" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle fill="var(--t-skin)" cx="0" cy="-13.7" r="2.2"/><path fill="var(--t-steel)" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect fill="var(--t-crimson)" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
         <g id="e-f" fill="var(--n-ink)"><ellipse cx="1.38" cy="-9.5" rx=".45" ry=".56"/><path d="M1.62,-6.95 L2.42,-6.88" fill="none" stroke="var(--n-ink)" stroke-width=".34" stroke-linecap="round" opacity=".58"/></g>
       </defs>
 
       <g class="tri-crowdback">
-        <path class="tri-far" d="M-86.0,25.4 H170.0 V22.6 C110,22.2 60,23 10,22.5 C-20,22.2 -40,22.9 -86.0,22.5 Z M-85.04,24.9 V22.03 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M-84.84,20.11 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M-82.52,24.9 V20.80 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M-82.48,18.73 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M-80.58,24.9 V21.12 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M-80.44,19.36 a0.79,0.79 0 1 0 1.58,0 a0.79,0.79 0 1 0 -1.58,0 Z M-78.27,24.9 V21.69 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M-78.21,19.79 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M-75.25,24.9 V20.97 a1.00,1.00 0 0 1 2.00,0 V24.9 Z M-75.13,19.05 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M-73.23,24.9 V21.99 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M-73.04,19.85 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M-71.25,24.9 V21.08 a1.16,1.16 0 0 1 2.32,0 V24.9 Z M-71.15,18.81 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M-68.48,24.9 V21.85 a0.98,0.98 0 0 1 1.96,0 V24.9 Z M-68.28,20.05 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M-65.46,24.9 V21.16 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M-65.38,18.95 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M-63.33,24.9 V21.86 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M-63.14,19.95 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M-61.22,24.9 V21.30 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M-61.04,19.32 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M-58.74,24.9 V22.04 a1.10,1.10 0 0 1 2.20,0 V24.9 Z M-58.59,19.94 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M-55.97,24.9 V20.58 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M-55.94,18.48 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M-53.68,24.9 V20.93 a0.94,0.94 0 0 1 1.88,0 V24.9 Z M-53.60,19.09 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M-50.78,24.9 V20.90 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M-50.65,18.76 a0.98,0.98 0 1 0 1.96,0 a0.98,0.98 0 1 0 -1.96,0 Z M-47.51,24.9 V20.29 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M-47.45,18.55 a0.82,0.82 0 1 0 1.64,0 a0.82,0.82 0 1 0 -1.64,0 Z M-45.72,24.9 V21.55 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M-45.53,19.78 a0.77,0.77 0 1 0 1.54,0 a0.77,0.77 0 1 0 -1.54,0 Z M-42.57,24.9 V20.60 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M-42.52,18.75 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M-40.64,24.9 V21.50 a0.92,0.92 0 0 1 1.84,0 V24.9 Z M-40.62,19.63 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M-38.51,24.9 V21.57 a1.07,1.07 0 0 1 2.14,0 V24.9 Z M-38.39,19.50 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M-36.29,24.9 V22.03 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M-36.08,19.89 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M-34.17,24.9 V21.75 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M-34.08,19.63 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M-32.14,24.9 V21.01 a0.87,0.87 0 0 1 1.74,0 V24.9 Z M-32.08,19.29 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M-30.59,24.9 V20.83 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M-30.48,18.59 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M-28.63,24.9 V21.37 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M-28.40,19.27 a0.91,0.91 0 1 0 1.82,0 a0.91,0.91 0 1 0 -1.82,0 Z M-26.15,24.9 V21.82 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M-25.95,19.92 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M-23.51,24.9 V20.88 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M-23.41,18.65 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M-20.26,24.9 V20.60 a1.00,1.00 0 0 1 2.00,0 V24.9 Z M-20.11,18.71 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M-18.58,24.9 V20.67 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M-18.44,18.60 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M-16.61,24.9 V21.60 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M-16.54,19.87 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M-14.66,24.9 V21.54 a1.17,1.17 0 0 1 2.34,0 V24.9 Z M-14.60,19.20 a1.11,1.11 0 1 0 2.22,0 a1.11,1.11 0 1 0 -2.22,0 Z M-11.24,24.9 V20.62 a0.90,0.90 0 0 1 1.80,0 V24.9 Z M-11.19,18.83 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M-8.50,24.9 V20.69 a0.91,0.91 0 0 1 1.82,0 V24.9 Z M-8.33,19.00 a0.74,0.74 0 1 0 1.48,0 a0.74,0.74 0 1 0 -1.48,0 Z M-5.41,24.9 V20.34 a0.90,0.90 0 0 1 1.80,0 V24.9 Z M-5.34,18.57 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M-3.09,24.9 V21.52 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M-3.01,19.31 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M0.08,24.9 V20.79 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M0.17,18.71 a0.97,0.97 0 1 0 1.94,0 a0.97,0.97 0 1 0 -1.94,0 Z M2.73,24.9 V21.70 a1.02,1.02 0 0 1 2.04,0 V24.9 Z M2.90,19.79 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M5.56,24.9 V21.56 a0.92,0.92 0 0 1 1.84,0 V24.9 Z M5.62,19.74 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M7.62,24.9 V20.72 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M7.80,18.67 a0.91,0.91 0 1 0 1.82,0 a0.91,0.91 0 1 0 -1.82,0 Z M10.50,24.9 V21.30 a1.10,1.10 0 0 1 2.20,0 V24.9 Z M10.61,19.16 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M13.40,24.9 V21.31 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M13.59,19.54 a0.77,0.77 0 1 0 1.54,0 a0.77,0.77 0 1 0 -1.54,0 Z M15.07,24.9 V21.17 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M15.25,19.00 a0.97,0.97 0 1 0 1.94,0 a0.97,0.97 0 1 0 -1.94,0 Z M18.27,24.9 V21.82 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M18.47,19.69 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M20.33,24.9 V21.08 a1.16,1.16 0 0 1 2.32,0 V24.9 Z M20.54,18.92 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M22.20,24.9 V21.82 a1.13,1.13 0 0 1 2.26,0 V24.9 Z M22.22,19.52 a1.11,1.11 0 1 0 2.22,0 a1.11,1.11 0 1 0 -2.22,0 Z M25.06,24.9 V21.37 a1.01,1.01 0 0 1 2.02,0 V24.9 Z M25.20,19.45 a0.87,0.87 0 1 0 1.74,0 a0.87,0.87 0 1 0 -1.74,0 Z M26.86,24.9 V20.53 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M26.97,18.66 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M28.81,24.9 V21.17 a0.94,0.94 0 0 1 1.88,0 V24.9 Z M28.86,19.30 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M31.75,24.9 V21.43 a0.99,0.99 0 0 1 1.98,0 V24.9 Z M31.78,19.43 a0.96,0.96 0 1 0 1.92,0 a0.96,0.96 0 1 0 -1.92,0 Z M33.90,24.9 V21.29 a1.00,1.00 0 0 1 2.00,0 V24.9 Z M33.94,19.28 a0.96,0.96 0 1 0 1.92,0 a0.96,0.96 0 1 0 -1.92,0 Z M36.32,24.9 V21.52 a1.17,1.17 0 0 1 2.34,0 V24.9 Z M36.50,19.31 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M39.78,24.9 V21.07 a0.95,0.95 0 0 1 1.90,0 V24.9 Z M39.94,19.29 a0.79,0.79 0 1 0 1.58,0 a0.79,0.79 0 1 0 -1.58,0 Z M42.04,24.9 V21.18 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M42.24,19.16 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M44.46,24.9 V21.25 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M44.58,19.26 a0.91,0.91 0 1 0 1.82,0 a0.91,0.91 0 1 0 -1.82,0 Z M46.41,24.9 V21.39 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M46.49,19.57 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M49.58,24.9 V21.98 a0.99,0.99 0 0 1 1.98,0 V24.9 Z M49.64,20.01 a0.93,0.93 0 1 0 1.86,0 a0.93,0.93 0 1 0 -1.86,0 Z M51.72,24.9 V20.82 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M51.85,18.99 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M53.78,24.9 V21.19 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M53.81,19.09 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M56.09,24.9 V22.00 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M56.20,19.94 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M58.23,24.9 V21.63 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M58.28,19.88 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M60.83,24.9 V21.18 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M60.88,18.94 a1.07,1.07 0 1 0 2.14,0 a1.07,1.07 0 1 0 -2.14,0 Z M63.63,24.9 V21.60 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M63.70,19.38 a1.05,1.05 0 1 0 2.10,0 a1.05,1.05 0 1 0 -2.10,0 Z M65.79,24.9 V21.00 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M65.84,18.82 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M68.03,24.9 V21.90 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M68.08,19.66 a1.07,1.07 0 1 0 2.14,0 a1.07,1.07 0 1 0 -2.14,0 Z M71.11,24.9 V20.73 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M71.12,18.92 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M73.54,24.9 V20.94 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M73.60,18.71 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M75.79,24.9 V21.47 a0.98,0.98 0 0 1 1.96,0 V24.9 Z M75.90,19.58 a0.87,0.87 0 1 0 1.74,0 a0.87,0.87 0 1 0 -1.74,0 Z M78.92,24.9 V22.01 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M79.04,19.96 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M81.35,24.9 V20.67 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M81.36,18.55 a1.03,1.03 0 1 0 2.06,0 a1.03,1.03 0 1 0 -2.06,0 Z M83.68,24.9 V21.22 a0.98,0.98 0 0 1 1.96,0 V24.9 Z M83.85,19.39 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M85.69,24.9 V21.65 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M85.78,19.94 a0.79,0.79 0 1 0 1.58,0 a0.79,0.79 0 1 0 -1.58,0 Z M87.98,24.9 V21.93 a1.05,1.05 0 0 1 2.10,0 V24.9 Z M88.18,19.99 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M90.74,24.9 V21.20 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M90.83,19.18 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M93.83,24.9 V20.90 a0.87,0.87 0 0 1 1.74,0 V24.9 Z M93.92,19.21 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M95.78,24.9 V20.69 a0.91,0.91 0 0 1 1.82,0 V24.9 Z M95.79,18.84 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M97.68,24.9 V22.06 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M97.75,19.92 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M100.27,24.9 V20.48 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M100.42,18.51 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M102.18,24.9 V21.47 a1.02,1.02 0 0 1 2.04,0 V24.9 Z M102.28,19.48 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M104.69,24.9 V21.59 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M104.78,19.51 a0.97,0.97 0 1 0 1.94,0 a0.97,0.97 0 1 0 -1.94,0 Z M107.12,24.9 V21.44 a1.17,1.17 0 0 1 2.34,0 V24.9 Z M107.21,19.14 a1.08,1.08 0 1 0 2.16,0 a1.08,1.08 0 1 0 -2.16,0 Z M109.89,24.9 V20.65 a1.10,1.10 0 0 1 2.20,0 V24.9 Z M110.04,18.55 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M111.87,24.9 V20.52 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M111.89,18.33 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M113.73,24.9 V21.07 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M113.82,18.87 a1.03,1.03 0 1 0 2.06,0 a1.03,1.03 0 1 0 -2.06,0 Z M116.32,24.9 V20.32 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M116.37,18.57 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M118.97,24.9 V22.08 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M119.02,19.86 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M121.21,24.9 V21.52 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M121.34,19.32 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M123.98,24.9 V21.22 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M124.01,18.98 a1.08,1.08 0 1 0 2.16,0 a1.08,1.08 0 1 0 -2.16,0 Z M126.68,24.9 V21.63 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M126.79,19.92 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M128.93,24.9 V21.35 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M128.94,19.54 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M131.58,24.9 V21.70 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M131.63,19.76 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M133.65,24.9 V21.55 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M133.78,19.78 a0.80,0.80 0 1 0 1.60,0 a0.80,0.80 0 1 0 -1.60,0 Z M136.55,24.9 V21.29 a0.87,0.87 0 0 1 1.74,0 V24.9 Z M136.58,19.54 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M139.05,24.9 V21.73 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M139.27,19.66 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M142.08,24.9 V21.56 a1.16,1.16 0 0 1 2.32,0 V24.9 Z M142.10,19.20 a1.14,1.14 0 1 0 2.28,0 a1.14,1.14 0 1 0 -2.28,0 Z M144.76,24.9 V20.74 a0.91,0.91 0 0 1 1.82,0 V24.9 Z M144.83,18.95 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M147.39,24.9 V21.74 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M147.54,20.07 a0.74,0.74 0 1 0 1.48,0 a0.74,0.74 0 1 0 -1.48,0 Z M149.95,24.9 V21.01 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M149.99,19.25 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M152.25,24.9 V21.08 a1.02,1.02 0 0 1 2.04,0 V24.9 Z M152.42,19.17 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M154.40,24.9 V21.24 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M154.58,19.15 a0.93,0.93 0 1 0 1.86,0 a0.93,0.93 0 1 0 -1.86,0 Z M157.12,24.9 V20.37 a0.94,0.94 0 0 1 1.88,0 V24.9 Z M157.17,18.50 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M159.31,24.9 V21.10 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M159.47,19.28 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M161.89,24.9 V21.17 a0.99,0.99 0 0 1 1.98,0 V24.9 Z M162.04,19.30 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M164.24,24.9 V21.74 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M164.46,19.63 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z"/>
+        <path class="tri-far" d="M-122.0,25.4 H206.0 V22.6 C110,22.2 60,23 10,22.5 C-20,22.2 -40,22.9 -122.0,22.5 Z M-121.04,24.9 V22.03 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M-120.84,20.11 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M-118.52,24.9 V20.80 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M-118.48,18.73 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M-116.58,24.9 V21.12 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M-116.44,19.36 a0.79,0.79 0 1 0 1.58,0 a0.79,0.79 0 1 0 -1.58,0 Z M-114.27,24.9 V21.69 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M-114.21,19.79 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M-111.25,24.9 V20.97 a1.00,1.00 0 0 1 2.00,0 V24.9 Z M-111.13,19.05 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M-109.23,24.9 V21.99 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M-109.04,19.85 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M-107.25,24.9 V21.08 a1.16,1.16 0 0 1 2.32,0 V24.9 Z M-107.15,18.81 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M-104.48,24.9 V21.85 a0.98,0.98 0 0 1 1.96,0 V24.9 Z M-104.28,20.05 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M-101.46,24.9 V21.16 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M-101.38,18.95 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M-99.33,24.9 V21.86 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M-99.14,19.95 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M-97.22,24.9 V21.30 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M-97.04,19.32 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M-94.74,24.9 V22.04 a1.10,1.10 0 0 1 2.20,0 V24.9 Z M-94.59,19.94 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M-91.97,24.9 V20.58 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M-91.94,18.48 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M-89.68,24.9 V20.93 a0.94,0.94 0 0 1 1.88,0 V24.9 Z M-89.60,19.09 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M-86.78,24.9 V20.90 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M-86.65,18.76 a0.98,0.98 0 1 0 1.96,0 a0.98,0.98 0 1 0 -1.96,0 Z M-83.51,24.9 V20.29 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M-83.45,18.55 a0.82,0.82 0 1 0 1.64,0 a0.82,0.82 0 1 0 -1.64,0 Z M-81.72,24.9 V21.55 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M-81.53,19.78 a0.77,0.77 0 1 0 1.54,0 a0.77,0.77 0 1 0 -1.54,0 Z M-78.57,24.9 V20.60 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M-78.52,18.75 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M-76.64,24.9 V21.50 a0.92,0.92 0 0 1 1.84,0 V24.9 Z M-76.62,19.63 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M-74.51,24.9 V21.57 a1.07,1.07 0 0 1 2.14,0 V24.9 Z M-74.39,19.50 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M-72.29,24.9 V22.03 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M-72.08,19.89 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M-70.17,24.9 V21.75 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M-70.08,19.63 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M-68.14,24.9 V21.01 a0.87,0.87 0 0 1 1.74,0 V24.9 Z M-68.08,19.29 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M-66.59,24.9 V20.83 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M-66.48,18.59 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M-64.63,24.9 V21.37 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M-64.40,19.27 a0.91,0.91 0 1 0 1.82,0 a0.91,0.91 0 1 0 -1.82,0 Z M-62.15,24.9 V21.82 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M-61.95,19.92 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M-59.51,24.9 V20.88 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M-59.41,18.65 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M-56.26,24.9 V20.60 a1.00,1.00 0 0 1 2.00,0 V24.9 Z M-56.11,18.71 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M-54.58,24.9 V20.67 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M-54.44,18.60 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M-52.61,24.9 V21.60 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M-52.54,19.87 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M-50.66,24.9 V21.54 a1.17,1.17 0 0 1 2.34,0 V24.9 Z M-50.60,19.20 a1.11,1.11 0 1 0 2.22,0 a1.11,1.11 0 1 0 -2.22,0 Z M-47.24,24.9 V20.62 a0.90,0.90 0 0 1 1.80,0 V24.9 Z M-47.19,18.83 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M-44.50,24.9 V20.69 a0.91,0.91 0 0 1 1.82,0 V24.9 Z M-44.33,19.00 a0.74,0.74 0 1 0 1.48,0 a0.74,0.74 0 1 0 -1.48,0 Z M-41.41,24.9 V20.34 a0.90,0.90 0 0 1 1.80,0 V24.9 Z M-41.34,18.57 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M-39.09,24.9 V21.52 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M-39.01,19.31 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M-35.92,24.9 V20.79 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M-35.83,18.71 a0.97,0.97 0 1 0 1.94,0 a0.97,0.97 0 1 0 -1.94,0 Z M-33.27,24.9 V21.70 a1.02,1.02 0 0 1 2.04,0 V24.9 Z M-33.10,19.79 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M-30.44,24.9 V21.56 a0.92,0.92 0 0 1 1.84,0 V24.9 Z M-30.38,19.74 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M-28.38,24.9 V20.72 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M-28.20,18.67 a0.91,0.91 0 1 0 1.82,0 a0.91,0.91 0 1 0 -1.82,0 Z M-25.50,24.9 V21.30 a1.10,1.10 0 0 1 2.20,0 V24.9 Z M-25.39,19.16 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M-22.60,24.9 V21.31 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M-22.41,19.54 a0.77,0.77 0 1 0 1.54,0 a0.77,0.77 0 1 0 -1.54,0 Z M-20.93,24.9 V21.17 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M-20.75,19.00 a0.97,0.97 0 1 0 1.94,0 a0.97,0.97 0 1 0 -1.94,0 Z M-17.73,24.9 V21.82 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M-17.53,19.69 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M-15.67,24.9 V21.08 a1.16,1.16 0 0 1 2.32,0 V24.9 Z M-15.46,18.92 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M-13.80,24.9 V21.82 a1.13,1.13 0 0 1 2.26,0 V24.9 Z M-13.78,19.52 a1.11,1.11 0 1 0 2.22,0 a1.11,1.11 0 1 0 -2.22,0 Z M-10.94,24.9 V21.37 a1.01,1.01 0 0 1 2.02,0 V24.9 Z M-10.80,19.45 a0.87,0.87 0 1 0 1.74,0 a0.87,0.87 0 1 0 -1.74,0 Z M-9.14,24.9 V20.53 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M-9.03,18.66 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M-7.19,24.9 V21.17 a0.94,0.94 0 0 1 1.88,0 V24.9 Z M-7.14,19.30 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M-4.25,24.9 V21.43 a0.99,0.99 0 0 1 1.98,0 V24.9 Z M-4.22,19.43 a0.96,0.96 0 1 0 1.92,0 a0.96,0.96 0 1 0 -1.92,0 Z M-2.10,24.9 V21.29 a1.00,1.00 0 0 1 2.00,0 V24.9 Z M-2.06,19.28 a0.96,0.96 0 1 0 1.92,0 a0.96,0.96 0 1 0 -1.92,0 Z M0.32,24.9 V21.52 a1.17,1.17 0 0 1 2.34,0 V24.9 Z M0.50,19.31 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M3.78,24.9 V21.07 a0.95,0.95 0 0 1 1.90,0 V24.9 Z M3.94,19.29 a0.79,0.79 0 1 0 1.58,0 a0.79,0.79 0 1 0 -1.58,0 Z M6.04,24.9 V21.18 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M6.24,19.16 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M8.46,24.9 V21.25 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M8.58,19.26 a0.91,0.91 0 1 0 1.82,0 a0.91,0.91 0 1 0 -1.82,0 Z M10.41,24.9 V21.39 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M10.49,19.57 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M13.58,24.9 V21.98 a0.99,0.99 0 0 1 1.98,0 V24.9 Z M13.64,20.01 a0.93,0.93 0 1 0 1.86,0 a0.93,0.93 0 1 0 -1.86,0 Z M15.72,24.9 V20.82 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M15.85,18.99 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M17.78,24.9 V21.19 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M17.81,19.09 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M20.09,24.9 V22.00 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M20.20,19.94 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M22.23,24.9 V21.63 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M22.28,19.88 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M24.83,24.9 V21.18 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M24.88,18.94 a1.07,1.07 0 1 0 2.14,0 a1.07,1.07 0 1 0 -2.14,0 Z M27.63,24.9 V21.60 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M27.70,19.38 a1.05,1.05 0 1 0 2.10,0 a1.05,1.05 0 1 0 -2.10,0 Z M29.79,24.9 V21.00 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M29.84,18.82 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M32.03,24.9 V21.90 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M32.08,19.66 a1.07,1.07 0 1 0 2.14,0 a1.07,1.07 0 1 0 -2.14,0 Z M35.11,24.9 V20.73 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M35.12,18.92 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M37.54,24.9 V20.94 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M37.60,18.71 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M39.79,24.9 V21.47 a0.98,0.98 0 0 1 1.96,0 V24.9 Z M39.90,19.58 a0.87,0.87 0 1 0 1.74,0 a0.87,0.87 0 1 0 -1.74,0 Z M42.92,24.9 V22.01 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M43.04,19.96 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M45.35,24.9 V20.67 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M45.36,18.55 a1.03,1.03 0 1 0 2.06,0 a1.03,1.03 0 1 0 -2.06,0 Z M47.68,24.9 V21.22 a0.98,0.98 0 0 1 1.96,0 V24.9 Z M47.85,19.39 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M49.69,24.9 V21.65 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M49.78,19.94 a0.79,0.79 0 1 0 1.58,0 a0.79,0.79 0 1 0 -1.58,0 Z M51.98,24.9 V21.93 a1.05,1.05 0 0 1 2.10,0 V24.9 Z M52.18,19.99 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M54.74,24.9 V21.20 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M54.83,19.18 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M57.83,24.9 V20.90 a0.87,0.87 0 0 1 1.74,0 V24.9 Z M57.92,19.21 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M59.78,24.9 V20.69 a0.91,0.91 0 0 1 1.82,0 V24.9 Z M59.79,18.84 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M61.68,24.9 V22.06 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M61.75,19.92 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M64.27,24.9 V20.48 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M64.42,18.51 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M66.18,24.9 V21.47 a1.02,1.02 0 0 1 2.04,0 V24.9 Z M66.28,19.48 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M68.69,24.9 V21.59 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M68.78,19.51 a0.97,0.97 0 1 0 1.94,0 a0.97,0.97 0 1 0 -1.94,0 Z M71.12,24.9 V21.44 a1.17,1.17 0 0 1 2.34,0 V24.9 Z M71.21,19.14 a1.08,1.08 0 1 0 2.16,0 a1.08,1.08 0 1 0 -2.16,0 Z M73.89,24.9 V20.65 a1.10,1.10 0 0 1 2.20,0 V24.9 Z M74.04,18.55 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M75.87,24.9 V20.52 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M75.89,18.33 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M77.73,24.9 V21.07 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M77.82,18.87 a1.03,1.03 0 1 0 2.06,0 a1.03,1.03 0 1 0 -2.06,0 Z M80.32,24.9 V20.32 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M80.37,18.57 a0.83,0.83 0 1 0 1.66,0 a0.83,0.83 0 1 0 -1.66,0 Z M82.97,24.9 V22.08 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M83.02,19.86 a1.06,1.06 0 1 0 2.12,0 a1.06,1.06 0 1 0 -2.12,0 Z M85.21,24.9 V21.52 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M85.34,19.32 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M87.98,24.9 V21.22 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M88.01,18.98 a1.08,1.08 0 1 0 2.16,0 a1.08,1.08 0 1 0 -2.16,0 Z M90.68,24.9 V21.63 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M90.79,19.92 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M92.93,24.9 V21.35 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M92.94,19.54 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M95.58,24.9 V21.70 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M95.63,19.76 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M97.65,24.9 V21.55 a0.93,0.93 0 0 1 1.86,0 V24.9 Z M97.78,19.78 a0.80,0.80 0 1 0 1.60,0 a0.80,0.80 0 1 0 -1.60,0 Z M100.55,24.9 V21.29 a0.87,0.87 0 0 1 1.74,0 V24.9 Z M100.58,19.54 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M103.05,24.9 V21.73 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M103.27,19.66 a0.90,0.90 0 1 0 1.80,0 a0.90,0.90 0 1 0 -1.80,0 Z M106.08,24.9 V21.56 a1.16,1.16 0 0 1 2.32,0 V24.9 Z M106.10,19.20 a1.14,1.14 0 1 0 2.28,0 a1.14,1.14 0 1 0 -2.28,0 Z M108.76,24.9 V20.74 a0.91,0.91 0 0 1 1.82,0 V24.9 Z M108.83,18.95 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M111.39,24.9 V21.74 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M111.54,20.07 a0.74,0.74 0 1 0 1.48,0 a0.74,0.74 0 1 0 -1.48,0 Z M113.95,24.9 V21.01 a0.88,0.88 0 0 1 1.76,0 V24.9 Z M113.99,19.25 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M116.25,24.9 V21.08 a1.02,1.02 0 0 1 2.04,0 V24.9 Z M116.42,19.17 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M118.40,24.9 V21.24 a1.11,1.11 0 0 1 2.22,0 V24.9 Z M118.58,19.15 a0.93,0.93 0 1 0 1.86,0 a0.93,0.93 0 1 0 -1.86,0 Z M121.12,24.9 V20.37 a0.94,0.94 0 0 1 1.88,0 V24.9 Z M121.17,18.50 a0.89,0.89 0 1 0 1.78,0 a0.89,0.89 0 1 0 -1.78,0 Z M123.31,24.9 V21.10 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M123.47,19.28 a0.81,0.81 0 1 0 1.62,0 a0.81,0.81 0 1 0 -1.62,0 Z M125.89,24.9 V21.17 a0.99,0.99 0 0 1 1.98,0 V24.9 Z M126.04,19.30 a0.84,0.84 0 1 0 1.68,0 a0.84,0.84 0 1 0 -1.68,0 Z M128.24,24.9 V21.74 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M128.46,19.63 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M131.18,24.9 V20.42 a1.01,1.01 0 0 1 2.02,0 V24.9 Z M131.20,18.37 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M132.89,24.9 V20.71 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M132.98,18.51 a1.03,1.03 0 1 0 2.06,0 a1.03,1.03 0 1 0 -2.06,0 Z M135.91,24.9 V21.27 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M136.14,19.15 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M139.19,24.9 V20.93 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M139.29,18.80 a0.99,0.99 0 1 0 1.98,0 a0.99,0.99 0 1 0 -1.98,0 Z M141.30,24.9 V21.24 a1.09,1.09 0 0 1 2.18,0 V24.9 Z M141.35,19.06 a1.04,1.04 0 1 0 2.08,0 a1.04,1.04 0 1 0 -2.08,0 Z M143.46,24.9 V21.78 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M143.63,19.85 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M145.91,24.9 V21.51 a0.96,0.96 0 0 1 1.92,0 V24.9 Z M145.96,19.59 a0.91,0.91 0 1 0 1.82,0 a0.91,0.91 0 1 0 -1.82,0 Z M147.68,24.9 V20.79 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M147.77,18.71 a0.97,0.97 0 1 0 1.94,0 a0.97,0.97 0 1 0 -1.94,0 Z M150.42,24.9 V21.01 a0.89,0.89 0 0 1 1.78,0 V24.9 Z M150.45,19.22 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M152.99,24.9 V20.96 a1.14,1.14 0 0 1 2.28,0 V24.9 Z M153.15,18.79 a0.98,0.98 0 1 0 1.96,0 a0.98,0.98 0 1 0 -1.96,0 Z M155.19,24.9 V20.89 a0.94,0.94 0 0 1 1.88,0 V24.9 Z M155.35,19.13 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M158.32,24.9 V21.78 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M158.41,19.89 a0.88,0.88 0 1 0 1.76,0 a0.88,0.88 0 1 0 -1.76,0 Z M160.51,24.9 V21.50 a1.04,1.04 0 0 1 2.08,0 V24.9 Z M160.63,19.49 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M163.33,24.9 V20.97 a1.00,1.00 0 0 1 2.00,0 V24.9 Z M163.47,19.07 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M165.43,24.9 V21.64 a1.03,1.03 0 0 1 2.06,0 V24.9 Z M165.45,19.55 a1.01,1.01 0 1 0 2.02,0 a1.01,1.01 0 1 0 -2.02,0 Z M167.61,24.9 V21.51 a1.06,1.06 0 0 1 2.12,0 V24.9 Z M167.75,19.48 a0.92,0.92 0 1 0 1.84,0 a0.92,0.92 0 1 0 -1.84,0 Z M169.91,24.9 V20.61 a1.12,1.12 0 0 1 2.24,0 V24.9 Z M169.96,18.37 a1.07,1.07 0 1 0 2.14,0 a1.07,1.07 0 1 0 -2.14,0 Z M171.67,24.9 V21.83 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M171.84,19.65 a0.98,0.98 0 1 0 1.96,0 a0.98,0.98 0 1 0 -1.96,0 Z M174.86,24.9 V20.61 a1.08,1.08 0 0 1 2.16,0 V24.9 Z M174.98,18.52 a0.96,0.96 0 1 0 1.92,0 a0.96,0.96 0 1 0 -1.92,0 Z M177.32,24.9 V20.81 a1.05,1.05 0 0 1 2.10,0 V24.9 Z M177.52,18.87 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M180.01,24.9 V21.74 a1.02,1.02 0 0 1 2.04,0 V24.9 Z M180.17,19.82 a0.86,0.86 0 1 0 1.72,0 a0.86,0.86 0 1 0 -1.72,0 Z M182.62,24.9 V20.88 a0.91,0.91 0 0 1 1.82,0 V24.9 Z M182.74,19.14 a0.79,0.79 0 1 0 1.58,0 a0.79,0.79 0 1 0 -1.58,0 Z M184.69,24.9 V21.86 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M184.90,19.72 a0.94,0.94 0 1 0 1.88,0 a0.94,0.94 0 1 0 -1.88,0 Z M187.86,24.9 V20.94 a0.92,0.92 0 0 1 1.84,0 V24.9 Z M187.93,19.13 a0.85,0.85 0 1 0 1.70,0 a0.85,0.85 0 1 0 -1.70,0 Z M189.86,24.9 V21.16 a1.17,1.17 0 0 1 2.34,0 V24.9 Z M189.96,18.87 a1.07,1.07 0 1 0 2.14,0 a1.07,1.07 0 1 0 -2.14,0 Z M192.12,24.9 V21.00 a1.15,1.15 0 0 1 2.30,0 V24.9 Z M192.17,18.70 a1.10,1.10 0 1 0 2.20,0 a1.10,1.10 0 1 0 -2.20,0 Z M194.38,24.9 V21.37 a0.97,0.97 0 0 1 1.94,0 V24.9 Z M194.40,19.40 a0.95,0.95 0 1 0 1.90,0 a0.95,0.95 0 1 0 -1.90,0 Z M196.37,24.9 V21.12 a1.16,1.16 0 0 1 2.32,0 V24.9 Z M196.55,18.93 a0.98,0.98 0 1 0 1.96,0 a0.98,0.98 0 1 0 -1.96,0 Z M198.91,24.9 V20.60 a0.87,0.87 0 0 1 1.74,0 V24.9 Z M199.00,18.91 a0.78,0.78 0 1 0 1.56,0 a0.78,0.78 0 1 0 -1.56,0 Z M201.79,24.9 V21.19 a0.90,0.90 0 0 1 1.80,0 V24.9 Z M201.89,19.45 a0.80,0.80 0 1 0 1.60,0 a0.80,0.80 0 1 0 -1.60,0 Z"/>
       </g>
 
       <!-- the army, holding the route open -->
       <g class="tri-line">
-        <g transform="translate(-87.4,25.2) scale(0.457)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-79.5,25.1) scale(0.464)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-72.0,25.2) scale(0.488)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-64.0,25.2) scale(0.456)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-55.0,25.5) scale(0.477)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-46.8,25.7) scale(0.476)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-38.4,25.1) scale(0.444)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-31.0,25.7) scale(0.431)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-22.4,25.1) scale(0.467)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-13.0,25.6) scale(0.470)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(-4.9,25.7) scale(0.454)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(2.9,25.5) scale(0.461)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(11.8,25.5) scale(0.490)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(20.9,25.3) scale(0.432)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(29.2,25.6) scale(0.487)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(37.6,25.6) scale(0.455)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(46.0,25.8) scale(0.469)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(55.1,25.7) scale(0.443)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(64.4,25.7) scale(0.475)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(73.6,25.7) scale(0.500)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(82.7,25.2) scale(0.480)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(91.5,25.4) scale(0.468)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(99.1,25.3) scale(0.435)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(108.1,25.1) scale(0.469)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(117.4,25.6) scale(0.436)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(126.0,25.5) scale(0.430)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(134.7,25.5) scale(0.478)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(142.4,25.2) scale(0.487)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(149.8,25.7) scale(0.496)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-      
-        <g transform="translate(158.7,25.5) scale(0.479)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
-        <g transform="translate(167.4,25.6) scale(0.497)"><rect class="tri-pole" x="2.6" y="-18.4" width=".75" height="18" rx=".38"/><path class="tri-steel" d="M3.75,-19.8 L4.7,-17.5 L2.8,-17.5 Z"/><rect class="tri-crimson" x="-2.4" y="-11.6" width="4.8" height="12.2" rx="2.4"/><circle class="tri-skin" cx="0" cy="-13.7" r="2.2"/><path class="tri-steel" d="M-2.4,-14.3 A2.4,2.6 0 0 1 2.4,-14.3 L2.4,-13.5 L-2.4,-13.5 Z"/><rect class="tri-crimson" x="-.45" y="-17.2" width=".9" height="3.1" rx=".45"/></g>
+        <use href="#e-sol" transform="translate(-120.0,25.3) scale(0.440)"/>
+        <use href="#e-sol" transform="translate(-110.8,25.1) scale(0.431)"/>
+        <use href="#e-sol" transform="translate(-102.3,25.3) scale(0.444)"/>
+        <use href="#e-sol" transform="translate(-94.1,25.5) scale(0.478)"/>
+        <use href="#e-sol" transform="translate(-85.3,25.6) scale(0.470)"/>
+        <use href="#e-sol" transform="translate(-76.3,25.8) scale(0.450)"/>
+        <use href="#e-sol" transform="translate(-68.4,25.2) scale(0.489)"/>
+        <use href="#e-sol" transform="translate(-58.9,25.7) scale(0.432)"/>
+        <use href="#e-sol" transform="translate(-50.9,25.5) scale(0.450)"/>
+        <use href="#e-sol" transform="translate(-43.1,25.1) scale(0.456)"/>
+        <use href="#e-sol" transform="translate(-33.9,25.6) scale(0.469)"/>
+        <use href="#e-sol" transform="translate(-25.1,25.7) scale(0.433)"/>
+        <use href="#e-sol" transform="translate(-17.6,25.6) scale(0.487)"/>
+        <use href="#e-sol" transform="translate(-8.5,25.6) scale(0.472)"/>
+        <use href="#e-sol" transform="translate(0.5,25.6) scale(0.488)"/>
+        <use href="#e-sol" transform="translate(8.6,25.4) scale(0.472)"/>
+        <use href="#e-sol" transform="translate(16.9,25.5) scale(0.485)"/>
+        <use href="#e-sol" transform="translate(24.4,25.5) scale(0.469)"/>
+        <use href="#e-sol" transform="translate(32.3,25.5) scale(0.473)"/>
+        <use href="#e-sol" transform="translate(40.2,25.6) scale(0.463)"/>
+        <use href="#e-sol" transform="translate(48.1,25.3) scale(0.483)"/>
+        <use href="#e-sol" transform="translate(57.7,25.6) scale(0.484)"/>
+        <use href="#e-sol" transform="translate(65.5,25.4) scale(0.440)"/>
+        <use href="#e-sol" transform="translate(75.0,25.5) scale(0.464)"/>
+        <use href="#e-sol" transform="translate(84.3,25.6) scale(0.468)"/>
+        <use href="#e-sol" transform="translate(93.2,25.7) scale(0.464)"/>
+        <use href="#e-sol" transform="translate(100.9,25.7) scale(0.447)"/>
+        <use href="#e-sol" transform="translate(110.1,25.1) scale(0.466)"/>
+        <use href="#e-sol" transform="translate(118.8,25.7) scale(0.489)"/>
+        <use href="#e-sol" transform="translate(128.3,25.7) scale(0.448)"/>
+        <use href="#e-sol" transform="translate(136.3,25.1) scale(0.464)"/>
+        <use href="#e-sol" transform="translate(144.8,25.6) scale(0.443)"/>
+        <use href="#e-sol" transform="translate(152.8,25.4) scale(0.435)"/>
+        <use href="#e-sol" transform="translate(160.9,25.2) scale(0.467)"/>
+        <use href="#e-sol" transform="translate(169.6,25.4) scale(0.461)"/>
+        <use href="#e-sol" transform="translate(178.5,25.2) scale(0.493)"/>
+        <use href="#e-sol" transform="translate(186.0,25.7) scale(0.481)"/>
+        <use href="#e-sol" transform="translate(194.9,25.3) scale(0.485)"/>
+        <use href="#e-sol" transform="translate(203.1,25.6) scale(0.473)"/>
       </g>
 
       <g class="tri-proc">
@@ -6499,41 +6587,51 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
 
       <!-- our side of the route. Backs of heads: we are in the crowd. -->
       <g class="tri-crowdnear">
-        <g transform="translate(-10.2,51.7) scale(-0.644,0.644)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t0" class="tri-n-h"/><g transform="rotate(-15 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(54.3,52.9) scale(-0.668,0.668)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t0" class="tri-n-d"/><g transform="rotate(-13 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(104.0,52.4) scale(0.737,0.737)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t0" class="tri-n-b"/><g transform="rotate(-15 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(-60.9,51.7) scale(0.753,0.753)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t0" class="tri-n-b"/><g transform="rotate(-13 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(-68.2,51.1) scale(-0.883,0.883)"><use href="#e-au" class="tri-n-arm tri-n-sk3"/><use href="#e-hd2" class="tri-n-sk3"/><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-g"/><use href="#e-hd" class="tri-n-sk3"/><use href="#e-bk" class="tri-n-hair"/></g>
-        <g transform="translate(147.1,51.8) scale(0.883,0.883)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-e"/><g transform="rotate(-6 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(3.3,50.1) scale(-0.896,0.896)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-f"/><g transform="rotate(7 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g></g>
-        <g transform="translate(32.3,50.3) scale(0.901,0.901)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-c"/><g transform="rotate(-6 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(66.5,50.2) scale(-0.924,0.924)"><use href="#e-au" class="tri-n-arm tri-n-sk2"/><use href="#e-hd2" class="tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-b"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(5 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(-49.5,51.3) scale(0.932,0.932)"><use href="#e-au" class="tri-n-arm tri-n-sk3"/><use href="#e-hd2" class="tri-n-sk3"/><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-h"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(5 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(95.9,51.3) scale(-0.936,0.936)"><use href="#e-as" class="tri-n-arm tri-n-sk1"/><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-g"/><g transform="rotate(-4 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-f"/></g></g>
-        <g transform="translate(-17.6,50.7) scale(0.986,0.986)"><use href="#e-as" class="tri-n-arm tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-e"/><g transform="rotate(-4 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-f"/></g></g>
-        <g transform="translate(109.0,50.8) scale(-0.989,0.989)"><use href="#e-au" class="tri-n-arm tri-n-sk2"/><use href="#e-hd2" class="tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-e"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
-        <g transform="translate(140.2,50.6) scale(-1.007,1.007)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-a"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-ht"/><use href="#e-f"/></g>
-        <g transform="translate(133.1,51.7) scale(1.008,1.008)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-f"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(-8 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(46.7,51.0) scale(1.010,1.010)"><use href="#e-au" class="tri-n-arm tri-n-sk2"/><use href="#e-hd2" class="tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-a"/><use href="#e-hd" class="tri-n-sk2"/><use href="#e-bk" class="tri-n-hair"/></g>
-        <g transform="translate(153.9,51.2) scale(-1.022,1.022)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-h"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
-        <g transform="translate(-84.0,50.5) scale(1.030,1.030)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-a"/><g transform="rotate(-6 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(87.7,50.6) scale(-1.032,1.032)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-d"/><use href="#e-mn" class="tri-n-m2"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
-        <g transform="translate(-41.4,50.6) scale(1.037,1.037)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-c"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
-        <g transform="translate(-33.2,51.2) scale(1.044,1.044)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-f"/><g transform="rotate(8 0 -6)"><use href="#e-hd" class="tri-n-sk1"/><use href="#e-bk" class="tri-n-hair"/></g></g>
-        <g transform="translate(39.2,50.4) scale(1.053,1.053)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-f"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
-        <g transform="translate(25.1,50.5) scale(1.070,1.070)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-g"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-ht"/><use href="#e-f"/></g>
-        <g transform="translate(10.5,50.4) scale(1.075,1.075)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-a"/><use href="#e-hd" class="tri-n-sk1"/><use href="#e-bk" class="tri-n-hair"/></g>
-        <g transform="translate(162.1,51.4) scale(1.081,1.081)"><use href="#e-au" class="tri-n-arm tri-n-sk1"/><use href="#e-hd2" class="tri-n-sk1"/><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-c"/><use href="#e-hd" class="tri-n-sk1"/><use href="#e-bk" class="tri-n-hair"/></g>
-        <g transform="translate(-26.0,51.6) scale(1.091,1.091)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-b"/><use href="#e-mn" class="tri-n-m2"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
-        <g transform="translate(116.6,51.3) scale(-1.091,1.091)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-h"/><g transform="rotate(7 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g></g>
-        <g transform="translate(-76.4,50.5) scale(1.105,1.105)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-d"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
-        <g transform="translate(-56.3,50.7) scale(1.110,1.110)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-e"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-ht"/><use href="#e-f"/></g>
-        <g transform="translate(73.9,50.8) scale(-1.126,1.126)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-e"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
-        <g transform="translate(58.9,51.0) scale(1.128,1.128)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-g"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-ht"/><use href="#e-f"/></g>
-        <g transform="translate(124.8,50.8) scale(-1.133,1.133)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-c"/><use href="#e-hd" class="tri-n-sk3"/><use href="#e-bk" class="tri-n-hair"/></g>
-        <g transform="translate(-4.5,51.5) scale(1.143,1.143)"><use href="#e-au" class="tri-n-arm tri-n-sk3"/><use href="#e-hd2" class="tri-n-sk3"/><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-c"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
-        <g transform="translate(17.7,50.4) scale(1.154,1.154)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-d"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(-8 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
-        <g transform="translate(80.8,51.4) scale(-1.158,1.158)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-h"/><g transform="rotate(8 0 -6)"><use href="#e-hd" class="tri-n-sk3"/><use href="#e-bk" class="tri-n-hair"/></g></g>
+        <g transform="translate(-46.2,51.7) scale(-0.644,0.644)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t0" class="tri-n-h"/><g transform="rotate(-15 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(134.3,51.7) scale(0.656,0.656)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t0" class="tri-n-f"/><g transform="rotate(-13 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(18.3,52.9) scale(-0.668,0.668)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t0" class="tri-n-d"/><g transform="rotate(-13 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(185.0,51.9) scale(0.673,0.673)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t0" class="tri-n-d"/><g transform="rotate(-15 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(68.0,52.4) scale(0.737,0.737)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t0" class="tri-n-b"/><g transform="rotate(-15 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(-96.9,51.7) scale(0.753,0.753)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t0" class="tri-n-b"/><g transform="rotate(-13 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(-104.2,51.1) scale(-0.883,0.883)"><use href="#e-au" class="tri-n-arm tri-n-sk3"/><use href="#e-hd2" class="tri-n-sk3"/><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-g"/><use href="#e-hd" class="tri-n-sk3"/><use href="#e-bk" class="tri-n-hair"/></g>
+        <g transform="translate(111.1,51.8) scale(0.883,0.883)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-e"/><g transform="rotate(-6 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(154.5,51.3) scale(-0.887,0.887)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-g"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
+        <g transform="translate(-32.7,50.1) scale(-0.896,0.896)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-f"/><g transform="rotate(7 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g></g>
+        <g transform="translate(-3.7,50.3) scale(0.901,0.901)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-c"/><g transform="rotate(-6 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(190.8,50.2) scale(-0.908,0.908)"><use href="#e-au" class="tri-n-arm tri-n-sk1"/><use href="#e-hd2" class="tri-n-sk1"/><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-g"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
+        <g transform="translate(30.5,50.2) scale(-0.924,0.924)"><use href="#e-au" class="tri-n-arm tri-n-sk2"/><use href="#e-hd2" class="tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-b"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(5 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(-85.5,51.3) scale(0.932,0.932)"><use href="#e-au" class="tri-n-arm tri-n-sk3"/><use href="#e-hd2" class="tri-n-sk3"/><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-h"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(5 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(59.9,51.3) scale(-0.936,0.936)"><use href="#e-as" class="tri-n-arm tri-n-sk1"/><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-g"/><g transform="rotate(-4 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-f"/></g></g>
+        <g transform="translate(177.4,50.2) scale(0.950,0.950)"><use href="#e-as" class="tri-n-arm tri-n-sk3"/><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-a"/><g transform="rotate(-4 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-f"/></g></g>
+        <g transform="translate(169.4,51.1) scale(0.962,0.962)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-f"/><use href="#e-mn" class="tri-n-m2"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
+        <g transform="translate(-53.6,50.7) scale(0.986,0.986)"><use href="#e-as" class="tri-n-arm tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-e"/><g transform="rotate(-4 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-f"/></g></g>
+        <g transform="translate(73.0,50.8) scale(-0.989,0.989)"><use href="#e-au" class="tri-n-arm tri-n-sk2"/><use href="#e-hd2" class="tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-e"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
+        <g transform="translate(104.2,50.6) scale(-1.007,1.007)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-a"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-ht"/><use href="#e-f"/></g>
+        <g transform="translate(97.1,51.7) scale(1.008,1.008)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-f"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(-8 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(10.7,51.0) scale(1.010,1.010)"><use href="#e-au" class="tri-n-arm tri-n-sk2"/><use href="#e-hd2" class="tri-n-sk2"/><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-a"/><use href="#e-hd" class="tri-n-sk2"/><use href="#e-bk" class="tri-n-hair"/></g>
+        <g transform="translate(117.9,51.2) scale(-1.022,1.022)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-h"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
+        <g transform="translate(-120.0,50.5) scale(1.030,1.030)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-a"/><g transform="rotate(-6 0 -6)"><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(51.7,50.6) scale(-1.032,1.032)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-d"/><use href="#e-mn" class="tri-n-m2"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
+        <g transform="translate(139.6,51.7) scale(-1.033,1.033)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-a"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-ht"/><use href="#e-f"/></g>
+        <g transform="translate(-77.4,50.6) scale(1.037,1.037)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t1" class="tri-n-c"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
+        <g transform="translate(-69.2,51.2) scale(1.044,1.044)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-f"/><g transform="rotate(8 0 -6)"><use href="#e-hd" class="tri-n-sk1"/><use href="#e-bk" class="tri-n-hair"/></g></g>
+        <g transform="translate(3.2,50.4) scale(1.053,1.053)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-f"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
+        <g transform="translate(147.1,50.9) scale(-1.063,1.063)"><use href="#e-au" class="tri-n-arm tri-n-sk1"/><use href="#e-hd2" class="tri-n-sk1"/><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-d"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(5 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(-10.9,50.5) scale(1.070,1.070)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-g"/><use href="#e-hn" class="tri-n-sk2"/><use href="#e-hr" class="tri-n-hair-g"/><use href="#e-ht"/><use href="#e-f"/></g>
+        <g transform="translate(-25.5,50.4) scale(1.075,1.075)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-a"/><use href="#e-hd" class="tri-n-sk1"/><use href="#e-bk" class="tri-n-hair"/></g>
+        <g transform="translate(126.1,51.4) scale(1.081,1.081)"><use href="#e-au" class="tri-n-arm tri-n-sk1"/><use href="#e-hd2" class="tri-n-sk1"/><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-c"/><use href="#e-hd" class="tri-n-sk1"/><use href="#e-bk" class="tri-n-hair"/></g>
+        <g transform="translate(-62.0,51.6) scale(1.091,1.091)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-b"/><use href="#e-mn" class="tri-n-m2"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
+        <g transform="translate(80.6,51.3) scale(-1.091,1.091)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-h"/><g transform="rotate(7 0 -6)"><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g></g>
+        <g transform="translate(-112.4,50.5) scale(1.105,1.105)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-d"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
+        <g transform="translate(-92.3,50.7) scale(1.110,1.110)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t2" class="tri-n-e"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-ht"/><use href="#e-f"/></g>
+        <g transform="translate(162.6,50.9) scale(1.121,1.121)"><use href="#e-nk" class="tri-n-sk2"/><use href="#e-t2" class="tri-n-b"/><g transform="rotate(8 0 -6)"><use href="#e-hd" class="tri-n-sk2"/><use href="#e-bk" class="tri-n-hair"/></g></g>
+        <g transform="translate(37.9,50.8) scale(-1.126,1.126)"><use href="#e-nk" class="tri-n-sk1"/><use href="#e-t1" class="tri-n-e"/><use href="#e-hn" class="tri-n-sk1"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g>
+        <g transform="translate(22.9,51.0) scale(1.128,1.128)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-g"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-ht"/><use href="#e-f"/></g>
+        <g transform="translate(88.8,50.8) scale(-1.133,1.133)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-c"/><use href="#e-hd" class="tri-n-sk3"/><use href="#e-bk" class="tri-n-hair"/></g>
+        <g transform="translate(198.7,51.4) scale(1.135,1.135)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-b"/><g transform="rotate(7 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-vl"/><use href="#e-f"/></g></g>
+        <g transform="translate(-40.5,51.5) scale(1.143,1.143)"><use href="#e-au" class="tri-n-arm tri-n-sk3"/><use href="#e-hd2" class="tri-n-sk3"/><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-c"/><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g>
+        <g transform="translate(-18.3,50.4) scale(1.154,1.154)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t1" class="tri-n-d"/><use href="#e-mn" class="tri-n-m1"/><g transform="rotate(-8 0 -6)"><use href="#e-hn" class="tri-n-sk3"/><use href="#e-hr" class="tri-n-hair"/><use href="#e-f"/></g></g>
+        <g transform="translate(44.8,51.4) scale(-1.158,1.158)"><use href="#e-nk" class="tri-n-sk3"/><use href="#e-t2" class="tri-n-h"/><g transform="rotate(8 0 -6)"><use href="#e-hd" class="tri-n-sk3"/><use href="#e-bk" class="tri-n-hair"/></g></g>
       </g>
     </svg>
   </div>
