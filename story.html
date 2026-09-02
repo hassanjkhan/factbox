@@ -536,21 +536,41 @@ html.no-motion *::after{animation:none !important}
    other beat, instead of turning into a page you have to scroll past.
    -------------------------------------------------------------------------- */
 .shelf{
-  display:flex;gap:10px;margin:18px 0 20px;
+  display:flex;gap:10px;
+  /* Centred when the covers fit, flush-left when they do not. Plain
+     `center` clips the start of an overflowing row, which is unreachable —
+     `safe` is the whole reason this works at both sizes. */
+  justify-content:safe center;
   overflow-x:auto;overscroll-behavior-x:contain;
-  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
-  scrollbar-width:none;padding-bottom:2px;
-  /* Break out of the caption's padding so the row runs edge to edge. Boxed
-     inside it the last cover was clipped mid-cell, which reads as broken
-     rather than as "there is more this way". The inset padding keeps the
-     first and last cover clear of the screen edge. */
-  margin-left:-22px; margin-right:-22px;
-  padding-left:22px; padding-right:22px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+
+  /* `.cap > *` caps its children at 34rem and centres them with
+     margin-inline:auto. Both are wrong for a row that is meant to run past
+     the text column, and the auto margins were fighting the negative ones —
+     which is why this sat pinned to the left instead of spanning. */
+  max-width:none;
+  margin:18px calc(50% - 50vw) 20px;
+  padding:0 22px 2px;
   scroll-padding-left:22px;
+
+  /* The caption scroller claims `touch-action:pan-y` for vertical reading, and
+     that inheritance is what stopped this row being draggable at all on a
+     phone. Claiming pan-x back is the fix. */
+  touch-action:pan-x;
+
+  /* A cover sliced by the viewport edge reads as a rendering bug. Fading the
+     last few percent turns the same pixels into "the row continues", which is
+     what they actually mean. */
+  -webkit-mask-image:linear-gradient(to right,
+    transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+  mask-image:linear-gradient(to right,
+    transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+
+  /* Settle on whole covers rather than mid-cover. */
+  scroll-snap-type:x mandatory;
 }
-@media (min-width:700px){
-  .shelf{margin-left:-26px;margin-right:-26px;padding-left:26px;padding-right:26px}
-}
+.shelfcard{scroll-snap-align:center}
 .shelf::-webkit-scrollbar{display:none}
 .shelfcard{flex:none;width:88px;scroll-snap-align:start;
   text-decoration:none;color:inherit;-webkit-tap-highlight-color:transparent}
@@ -593,6 +613,17 @@ html.no-motion *::after{animation:none !important}
   color:rgba(244,238,230,.62);
 }
 .endfoot a{color:rgba(244,238,230,.72)}
+
+/* Someone returning on a new phone lands on this page, not the shelf. Without
+   a way back in from here, their only route is to pay a second time. */
+.haveacct{
+  margin:14px 0 0;text-align:center;font-size:13.5px;
+  color:rgba(244,238,230,.62);
+}
+.haveacct a{
+  color:#FF7A5C;font-weight:700;text-decoration:none;
+  display:inline-block;padding:8px 4px;min-height:44px;line-height:28px;
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    SCENES A — door · painting · fleet · afternoon
@@ -6914,6 +6945,8 @@ end.innerHTML =
     '<p class="fine">Sign up first &mdash; three days free before anything ' +
       'is charged.</p>' +
     '<a class="ghostlink" href="stories.html">See what is inside first</a>' +
+    '<p class="haveacct">Already have an account? ' +
+      '<a href="login.html?next=%2Fstories.html">Sign in</a></p>' +
     '<p class="endfoot">' +
       '<a href="explore.html">Explore</a> &middot; <a href="library.html">Library</a> &middot; ' +
       '<a href="credits.html">Artwork credits</a> &middot; <a href="support.html">Support</a>' +
@@ -6931,7 +6964,13 @@ deck.appendChild(end);
   if (!shelf) return;
   var centre = function () {
     var over = shelf.scrollWidth - shelf.clientWidth;
-    if (over > 0) shelf.scrollLeft = Math.round(over / 2);
+    if (over <= 0) return;                       /* they all fit; leave it */
+    var card = shelf.querySelector(".shelfcard");
+    if (!card) { shelf.scrollLeft = Math.round(over / 2); return; }
+    /* Land on a cover boundary. Half a painting at the left edge is the thing
+       that reads as broken, and rounding to the pitch costs nothing. */
+    var pitch = card.getBoundingClientRect().width + 10;   /* + gap */
+    shelf.scrollLeft = Math.round(over / 2 / pitch) * pitch;
   };
   centre();
   /* Covers are lazy, so the row's width is not final on the first frame. */
