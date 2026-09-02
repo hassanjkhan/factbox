@@ -652,7 +652,15 @@
     if (shown || dead) return;
     shown = true;
     paint();
-    try { document.body.appendChild(btn); document.body.appendChild(note); }
+    /* Into the reader's top-right rail if it has one, so the account pill and
+       this button lay themselves out as a row instead of being handed the same
+       fixed corner and covering each other. Body is the fallback, and is what
+       the composed story pages use — they have no rail. */
+    try {
+      var rail = document.querySelector(".topbar-r");
+      (rail || document.body).appendChild(btn);
+      document.body.appendChild(note);
+    }
     catch (e) { shown = false; return; }
 
     /* --------------------------------------------------------------------

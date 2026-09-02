@@ -244,6 +244,11 @@ img{max-width:100%;display:block}
 
 .topbar{
   position:fixed; top:var(--top-safe); left:12px; z-index:31;
+  /* Boxes, not baselines. These are an <a> with words in it and a <button>
+     with only an icon; aligned inline they sit on a shared text baseline, and
+     the icon-only one has no text to put on it, so it hung low by a
+     descender's worth. align-items:center is the whole fix. */
+  display:flex; align-items:center; gap:8px;
 }
 .back{
   display:inline-flex; align-items:center; gap:7px;
@@ -496,7 +501,19 @@ html.fb-hdr .acct{visibility:hidden}
    the top bar. The control mirrors that pill on the opposite side, at the
    same 38px height the back button already uses, and shows one link rather
    than two so the two bars never meet in the middle of a phone. */
-.topbar-r{position:fixed; top:var(--top-safe); right:12px; z-index:31}
+.topbar-r{
+  position:fixed; top:var(--top-safe); right:12px; z-index:31;
+  display:flex; align-items:center; gap:8px;
+}
+
+/* The ambient-sound button is created by js/audio-reader.js, which puts it in
+   this rail when the page has one. Both used to be position:fixed at
+   right:12px — two elements given the same corner and no way to see each
+   other, so the speaker sat on top of the reader's own name. In here it is a
+   flex item like the account pill beside it, and the row does the arranging.
+   On the composed story pages there is no rail and it stays fixed; that rule
+   still lives in css/audio-reader.css. */
+.topbar-r .fb-sound{position:static; top:auto; right:auto}
 .acct.is-float{min-height:0}
 .acct.is-float a{
   min-height:38px; padding:0 13px; border-radius:var(--pill);
