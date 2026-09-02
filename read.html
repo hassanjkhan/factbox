@@ -38,20 +38,27 @@
     return at;
   }
 
-  function beat(c, plate, cap, cr) {
+  function beat(c, plate, cap, cr, n, stack) {
     var cls = "beat is-" + (c.beat || "card").replace(/[^a-z]/gi, "")
             + (c.long ? " is-long" : "");
-    var eyebrow = "";
     var body = c.body
       ? "<p>" + FB.esc(c.body) + "</p>" : "";
     var cite = c.src
       ? '<p class="cite">' + FB.esc(c.src) + "</p>" : "";
+    /* Six camera variants, cycled by card index, so consecutive cards never
+       share a move — a stack of nine identical slow pushes reads as a stall
+       rather than as motion. Deterministic, so it is the same on every reload. */
     return '' +
-      '<section class="' + cls + '">' +
+      '<section class="' + cls + '"' +
+        ' data-stack="' + FB.esc(stack.id) + '"' +
+        ' data-topic="' + FB.esc(stack.topic || "") + '"' +
+        ' data-beat="' + FB.esc(c.beat || "") + '"' +
+        ' data-card="' + n + '"' +
+        ' data-cam="' + (n % 6) + '">' +
         '<div class="art">' +
           '<img alt="" decoding="async" src="img/stacks/' + FB.esc(plate) + '.webp">' +
         '</div>' +
-        '<div class="copy">' + eyebrow +
+        '<div class="copy">' +
           '<h2>' + FB.esc(c.head) + '</h2>' + body + cite +
         '</div>' +
         '<p class="plate-credit">' + FB.creditLine(cap, cr) + '</p>' +
@@ -106,8 +113,8 @@
     var html = s.cards.map(function (c, n) {
       var k = at[n];
       var sup = (k !== undefined) ? s.supp[k] : null;
-      return sup ? beat(c, sup.img, sup.cap, sup.cr)
-                 : beat(c, s.img, s.cap, s.cr);
+      return sup ? beat(c, sup.img, sup.cap, sup.cr, n, s)
+                 : beat(c, s.img, s.cap, s.cr, n, s);
     }).join("");
 
     /* The next stack the reader can actually open, so the end card never
@@ -123,6 +130,29 @@
 
     /* Progress, and the drop-off card index — the number the CTO README says
        actually pays. Reported once per stack, at the deepest card reached. */
+    /* `live` marks the card on screen. The motion, atmosphere and sound layers
+       all key off it, and at most one card is ever animating or audible.
+
+       The first card gets it on the next frame rather than waiting for the
+       observer's first tick, and — the lesson from shipping a wordless page —
+       nothing that can throw runs before this point. */
+    var beats = [].slice.call(deck.querySelectorAll(".beat, .pane"));
+    if (window.IntersectionObserver) {
+      var io = new IntersectionObserver(function (es) {
+        for (var k = 0; k < es.length; k++) {
+          es[k].target.classList.toggle("live", es[k].isIntersecting);
+        }
+      }, { threshold: 0.55 });
+      for (var b = 0; b < beats.length; b++) io.observe(beats[b]);
+    } else {
+      /* No observer: mark them all live rather than none. Everything degrades
+         to "always on", which is worse for battery and correct for reading. */
+      for (var b2 = 0; b2 < beats.length; b2++) beats[b2].classList.add("live");
+    }
+    if (beats[0]) {
+      requestAnimationFrame(function () { beats[0].classList.add("live"); });
+    }
+
     var total = s.cards.length + 1, deepest = 0, reported = false;
     function onScroll() {
       var h = deck.clientHeight || 1;
