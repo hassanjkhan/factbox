@@ -94,8 +94,8 @@ read a story. <a href="stories.html" style="color:#FF7A5C">All stories</a></p></
         '<div class="plate"><img alt="" src="img/thumbs/' + FB.esc(s.img) + '.webp"></div>' +
         '<h2>' + FB.esc(s.title) + '</h2>' +
         '<p>' + FB.esc(s.hook) + '</p>' +
-        '<button class="go" id="pay" type="button">Read all 51 stories · $3.99/mo</button>' +
-        '<p class="fine">Cancel any time. Two stories are free to read first.</p>' +
+        '<button class="go" id="pay" type="button">Read the rest of this story</button>' +
+        '<p class="fine">Two stories are free. The rest needs an account — three days free first.</p>' +
         '<a class="ghost" href="stories.html">Back to stories</a>' +
       '</section>';
   }
@@ -121,7 +121,7 @@ read a story. <a href="stories.html" style="color:#FF7A5C">All stories</a></p></
     if (!s.free && !FB.unlocked()) {
       deck.innerHTML = paywall(s);
       document.getElementById("pay").addEventListener("click", function () {
-        FB.checkout(this);
+        FB.checkout(this, "paywall");
       });
       FB.track("paywall_view", { stack: s.id });
       return;

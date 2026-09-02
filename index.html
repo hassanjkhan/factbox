@@ -6958,9 +6958,9 @@ end.innerHTML =
     '<p class="sub">Fifty more, sourced the same way. Cleopatra, the Bible, ' +
       'Rome, and the people we have flattened into statues.</p>' +
     '<div class="shelf"><a class=\'shelfcard isfree\' href=\'read.html?s=02\'><span class=\'shelfplate\'><img src=\'img/thumbs/s02.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'></span><em>Cleopatra the seductress</em></a><a class=\'shelfcard\' href=\'read.html?s=05\'><span class=\'shelfplate\'><img src=\'img/thumbs/s05.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>The Ark of the Covenant</em></a><a class=\'shelfcard\' href=\'read.html?s=09\'><span class=\'shelfplate\'><img src=\'img/thumbs/s09.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Chernobyl</em></a><a class=\'shelfcard\' href=\'read.html?s=14\'><span class=\'shelfplate\'><img src=\'img/thumbs/s14.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Timeline of the Book of Revelation</em></a><a class=\'shelfcard\' href=\'read.html?s=22\'><span class=\'shelfplate\'><img src=\'img/thumbs/s22.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Galatians 5: the fruit test</em></a><a class=\'shelfcard\' href=\'read.html?s=26\'><span class=\'shelfplate\'><img src=\'img/thumbs/s26.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>The Gnostics</em></a><a class=\'shelfcard\' href=\'read.html?s=31\'><span class=\'shelfplate\'><img src=\'img/thumbs/s31.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Alexander the Great&#39;s missing tomb</em></a><a class=\'shelfcard\' href=\'read.html?s=32\'><span class=\'shelfplate\'><img src=\'img/thumbs/s32.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Joan of Arc</em></a><a class=\'shelfcard\' href=\'read.html?s=39\'><span class=\'shelfplate\'><img src=\'img/thumbs/s39.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Napoleon wasn&#39;t short</em></a><a class=\'shelfcard\' href=\'read.html?s=43\'><span class=\'shelfplate\'><img src=\'img/thumbs/s43.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Rasputin wouldn&#39;t die</em></a><a class=\'shelfcard\' href=\'read.html?s=44\'><span class=\'shelfplate\'><img src=\'img/thumbs/s44.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Genghis Khan&#39;s hidden grave</em></a><a class=\'shelfcard\' href=\'read.html?s=50\'><span class=\'shelfplate\'><img src=\'img/thumbs/s50.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>The Ides of March</em></a></div>' +
-    '<button class="go pay" id="pay" type="button">Read all 51 stories &middot; $3.99/mo</button>' +
-    '<p class="fine">Cancel any time. Every card says where it came from, ' +
-      'and says so when nobody actually knows.</p>' +
+    '<button class="go pay" id="pay" type="button">Read the rest of season one</button>' +
+    '<p class="fine">Sign up first &mdash; three days free before anything ' +
+      'is charged.</p>' +
     '<a class="ghostlink" href="stories.html">See what is inside first</a>' +
     '<p class="endfoot">' +
       '<a href="explore.html">Explore</a> &middot; <a href="library.html">Library</a> &middot; ' +
@@ -6972,13 +6972,10 @@ deck.appendChild(end);
 rail.appendChild(document.createElement("i"));
 
 document.getElementById("pay").addEventListener("click", () => {
-  track("subscribe_click");
-  if (PAY) { location.href = PAY; return; }
-  /* No link configured yet: say so rather than doing nothing, which reads
-     as a broken button and is worse than an honest one. */
-  const b = document.getElementById("pay");
-  b.textContent = "Not taking payments yet";
-  b.disabled = true;
+  track("subscribe_click", { from: "story" });
+  /* Money is the last screen now, not the first. This walks to the funnel,
+     which asks for an email, runs onboarding, then shows the plans. */
+  location.href = "join.html?from=story";
 });
 
 /* --------------------------------------------------------------------------

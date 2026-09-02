@@ -382,11 +382,11 @@ var FBR = (function () {
 
       /* The route to the rest, stated once, plainly. No countdown, no nag. */
       if (!open) {
-        var buy = el("button", "go", "Read all 51 stories · $3.99/mo");
+        var buy = el("button", "go", "Read the rest of season one");
         buy.type = "button";
         buy.addEventListener("click", function () {
           try {
-            if (window.FB && typeof FB.checkout === "function") { FB.checkout(buy); return; }
+            if (window.FB && typeof FB.checkout === "function") { FB.checkout(buy, "endcard"); return; }
           } catch (e) {}
           location.href = "stories.html";
         });

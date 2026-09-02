@@ -483,7 +483,7 @@
     if (pay) {
       try {
         pay.addEventListener("click", function () {
-          try { if (FB.checkout) FB.checkout(this); } catch (e) {}
+          try { if (FB.checkout) FB.checkout(this, "explore"); } catch (e) {}
         });
       } catch (e) {}
     }
