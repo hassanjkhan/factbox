@@ -128,7 +128,36 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
       '</section>';
   }
 
-  FB.load().then(function (stacks) {
+  /* Both the story list and the answer to "is this reader a subscriber".
+     Deciding on the first alone is what sent a signed-in subscriber into the
+     sign-up funnel: FB.unlocked() is synchronous and Firebase is not, so the
+     paywall rendered before the account had answered, and a reader could tap
+     through it before the correction landed.
+
+     Capped, so a reader whose auth never resolves still gets the page rather
+     than a spinner. Falling through to the paywall is the safe direction —
+     it offers a way in; a blank screen offers nothing. */
+  function accessSettled() {
+    return new Promise(function (done) {
+      var finished = false;
+      function go() { if (!finished) { finished = true; done(); } }
+      setTimeout(go, 2500);
+      try {
+        if (window.FBU && FBU.ready) { FBU.ready().then(go, go); return; }
+      } catch (e) {}
+      var tries = 0;
+      var t = setInterval(function () {
+        tries++;
+        try {
+          if (window.FBU && FBU.ready) { clearInterval(t); FBU.ready().then(go, go); }
+          else if (tries > 12) { clearInterval(t); go(); }
+        } catch (e) { clearInterval(t); go(); }
+      }, 200);
+    });
+  }
+
+  Promise.all([FB.load(), accessSettled()]).then(function (r) {
+    var stacks = r[0];
     var want = String(id == null ? "" : id).toUpperCase();
     var i = -1;
     for (var q = 0; q < stacks.length; q++) {
@@ -146,6 +175,8 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     var s = stacks[i];
     document.title = s.title + " · Factbox";
 
+    /* Asked after the wait above, so this is the account's answer and not a
+       guess made before it arrived. */
     if (!s.free && !FB.unlocked()) {
       deck.innerHTML = paywall(s);
       document.getElementById("pay").addEventListener("click", function () {
