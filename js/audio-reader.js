@@ -161,9 +161,21 @@
      Which bed a card wants.
 
      Most specific wins:
-        stacks[stack].beats[beat]  ->  stacks[stack].bed
-     -> topics[topic].beats[beat]  ->  topics[topic].bed
-     -> default
+        stacks[stack].cards[card]  ->  stacks[stack].beats[beat]
+     -> stacks[stack].bed          ->  topics[topic].beats[beat]
+     -> topics[topic].bed          ->  default
+
+     The first rung is the per-card map (data/cardaudio.json, merged into
+     data/audio.json; see AUDIO-CARDS.md). `card` is the 0-based index
+     read.html writes into data-card — the s.cards.map(function (c, n)) index,
+     NOT the 1-based c.n in stacks.json, which differ wherever a stack has a
+     gap in its numbering. Stack 26 is the one that does: nine cards whose n
+     runs 1–8 then 10, so its keys are "0"…"8" and every one of them would be
+     off by one against c.n from card 9 on.
+
+     Every rung is still guarded on CFG.beds[…], so a card naming a bed whose
+     mp3 is not in the manifest falls through to the next rung rather than to
+     silence. That is the whole ladder, unchanged below the new top rung.
 
      A card carrying neither data-stack nor data-topic — the paywall pane, the
      end card — resolves to null, and null HOLDS whatever is already playing
@@ -173,8 +185,10 @@
   function attr(el, n) {
     try { return (el && el.getAttribute) ? el.getAttribute(n) : null; } catch (e) { return null; }
   }
-  function pick(node, beat) {
+  function pick(node, beat, card) {
     if (!node) return null;
+    if (card != null && node.cards && node.cards[card] &&
+        CFG.beds[node.cards[card].bed]) return node.cards[card].bed;
     if (beat && node.beats && node.beats[beat] && CFG.beds[node.beats[beat]])
       return node.beats[beat];
     if (node.bed && CFG.beds[node.bed]) return node.bed;
@@ -184,10 +198,10 @@
     if (!el) return null;
     var stack = attr(el, "data-stack"), topic = attr(el, "data-topic");
     if (!stack && !topic) return null;          /* not a scored card: hold    */
-    var beat = attr(el, "data-beat");
-    var k = pick(CFG.stacks && stack ? CFG.stacks[stack] : null, beat);
+    var beat = attr(el, "data-beat"), card = attr(el, "data-card");
+    var k = pick(CFG.stacks && stack ? CFG.stacks[stack] : null, beat, card);
     if (k) return k;
-    k = pick(CFG.topics && topic ? CFG.topics[topic] : null, beat);
+    k = pick(CFG.topics && topic ? CFG.topics[topic] : null, beat, card);
     if (k) return k;
     return CFG.beds[CFG["default"]] ? CFG["default"] : null;
   }

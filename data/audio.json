@@ -1,6 +1,6 @@
 {
  "version": 1,
- "note": "Bed map for read.html. Resolution, most specific first: stacks[stack].beats[beat] -> stacks[stack].bed -> topics[topic].beats[beat] -> topics[topic].bed -> default. An unresolved beat HOLDS whatever is already playing; it never cuts to silence. See AUDIO-READER.md.",
+ "note": "Bed map for read.html. Resolution, most specific first: stacks[stack].cards[card] -> stacks[stack].beats[beat] -> stacks[stack].bed -> topics[topic].beats[beat] -> topics[topic].bed -> default. `card` is the 0-based data-card index read.html writes, not the 1-based n in stacks.json. An unresolved card or beat HOLDS whatever is already playing; it never cuts to silence. The per-card rows are merged in from data/cardaudio.json, which keeps the per-card reasoning and stays out of the browser's way. See AUDIO-READER.md and AUDIO-CARDS.md.",
  "base": "audio/",
  "default": "scroll",
  "beds": {
@@ -93,6 +93,71 @@
    "file": "search.mp3",
    "gain": 0.72,
    "note": "ACCENT. The room after it was searched. The deliberate near-silence of the set."
+  },
+  "battle": {
+   "file": "battle.mp3",
+   "gain": 0.85,
+   "note": "An army at middle distance. Mass, metal, low ground rumble. No voices."
+  },
+  "court": {
+   "file": "court.mp3",
+   "gain": 0.82,
+   "note": "An indoor throne room. Hard marble, a low human murmur that never resolves into words."
+  },
+  "crypt": {
+   "file": "crypt.mp3",
+   "gain": 0.78,
+   "note": "Small, dead, underground. No outside at all, a slow drip, a floor rumble. Tomb, cave, cell."
+  },
+  "dig": {
+   "file": "dig.mp3",
+   "gain": 0.8,
+   "note": "An excavation outdoors. Loose grit and soil, thin wind, sparse tool contact."
+  },
+  "field": {
+   "file": "field.mp3",
+   "gain": 0.8,
+   "note": "Open warm countryside. Grass, insects, a bird or two. Galilee, Kentucky, a garden."
+  },
+  "fire": {
+   "file": "fire.mp3",
+   "gain": 0.88,
+   "note": "A large fire close by. Broad roar with irregular crackle over it."
+  },
+  "hall": {
+   "file": "hall.mp3",
+   "gain": 0.82,
+   "note": "A 19th-century wooden interior with people in it. Theatre, courthouse, meeting house."
+  },
+  "night": {
+   "file": "night.mp3",
+   "gain": 0.78,
+   "note": "Outdoors after dark. Crickets, cool still air, one far-off dog."
+  },
+  "river": {
+   "file": "river.mp3",
+   "gain": 0.85,
+   "note": "Moving fresh water close by, reeds on the bank."
+  },
+  "road": {
+   "file": "road.mp3",
+   "gain": 0.82,
+   "note": "Travel on foot outdoors. Grit underfoot, wide dry air."
+  },
+  "storm": {
+   "file": "storm.mp3",
+   "gain": 0.85,
+   "note": "Rain on hard ground with distant thunder. The sky closing over."
+  },
+  "temple": {
+   "file": "temple.mp3",
+   "gain": 0.85,
+   "note": "An enormous sacred stone interior. Vast slow air, a brazier hiss, a deep held tone."
+  },
+  "void": {
+   "file": "void.mp3",
+   "gain": 0.8,
+   "note": "Vast and airless. A very low sustained tone with a slow shimmer far above it. Heaven, the sky, the cosmos."
   }
  },
  "topics": {
@@ -135,6 +200,38 @@
    "beats": {
     "question": "coil",
     "turn": "basket"
+   },
+   "cards": {
+    "0": {
+     "bed": "palace"
+    },
+    "1": {
+     "bed": "palace"
+    },
+    "2": {
+     "bed": "palace"
+    },
+    "3": {
+     "bed": "bath"
+    },
+    "4": {
+     "bed": "basket"
+    },
+    "5": {
+     "bed": "basket"
+    },
+    "6": {
+     "bed": "basket"
+    },
+    "7": {
+     "bed": "search"
+    },
+    "8": {
+     "bed": "search"
+    },
+    "9": {
+     "bed": "search"
+    }
    }
   },
   "02": {
@@ -143,6 +240,41 @@
    "topic": "cleopatra",
    "beats": {
     "turn": "gallery"
+   },
+   "cards": {
+    "0": {
+     "bed": "palace"
+    },
+    "1": {
+     "bed": "palace"
+    },
+    "2": {
+     "bed": "harbour-arrival"
+    },
+    "3": {
+     "bed": "harbour-arrival"
+    },
+    "4": {
+     "bed": "palace"
+    },
+    "5": {
+     "bed": "palace"
+    },
+    "6": {
+     "bed": "palace"
+    },
+    "7": {
+     "bed": "basket"
+    },
+    "8": {
+     "bed": "basket"
+    },
+    "9": {
+     "bed": "basket"
+    },
+    "10": {
+     "bed": "copies"
+    }
    }
   },
   "03": {
@@ -152,12 +284,73 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "harbour"
+    },
+    "1": {
+     "bed": "harbour"
+    },
+    "2": {
+     "bed": "sea"
+    },
+    "3": {
+     "bed": "sea"
+    },
+    "4": {
+     "bed": "dig"
+    },
+    "5": {
+     "bed": "dig"
+    },
+    "6": {
+     "bed": "temple"
+    },
+    "7": {
+     "bed": "temple"
+    }
    }
   },
   "04": {
    "bed": "vault",
    "title": "7 Deadly Sins Explained",
-   "topic": "church_history"
+   "topic": "church_history",
+   "cards": {
+    "0": {
+     "bed": "vault"
+    },
+    "1": {
+     "bed": "vault"
+    },
+    "2": {
+     "bed": "wind"
+    },
+    "3": {
+     "bed": "wind"
+    },
+    "4": {
+     "bed": "wind"
+    },
+    "5": {
+     "bed": "field"
+    },
+    "6": {
+     "bed": "field"
+    },
+    "7": {
+     "bed": "scroll"
+    },
+    "8": {
+     "bed": "scroll"
+    },
+    "9": {
+     "bed": "scroll"
+    },
+    "10": {
+     "bed": "scroll"
+    }
+   }
   },
   "05": {
    "bed": "vault",
@@ -166,6 +359,44 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "temple"
+    },
+    "1": {
+     "bed": "temple"
+    },
+    "2": {
+     "bed": "temple"
+    },
+    "3": {
+     "bed": "temple"
+    },
+    "4": {
+     "bed": "temple"
+    },
+    "5": {
+     "bed": "battle"
+    },
+    "6": {
+     "bed": "battle"
+    },
+    "7": {
+     "bed": "reactor"
+    },
+    "8": {
+     "bed": "reactor"
+    },
+    "9": {
+     "bed": "dig"
+    },
+    "10": {
+     "bed": "dig"
+    },
+    "11": {
+     "bed": "dig"
+    }
    }
   },
   "06": {
@@ -174,6 +405,41 @@
    "topic": "new_testament",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "night"
+    },
+    "1": {
+     "bed": "night"
+    },
+    "2": {
+     "bed": "crypt"
+    },
+    "3": {
+     "bed": "crypt"
+    },
+    "4": {
+     "bed": "field"
+    },
+    "5": {
+     "bed": "field"
+    },
+    "6": {
+     "bed": "copies"
+    },
+    "7": {
+     "bed": "copies"
+    },
+    "8": {
+     "bed": "copies"
+    },
+    "9": {
+     "bed": "copies"
+    },
+    "10": {
+     "bed": "copies"
+    }
    }
   },
   "07": {
@@ -182,6 +448,35 @@
    "topic": "us_history",
    "beats": {
     "turn": "triumph"
+   },
+   "cards": {
+    "0": {
+     "bed": "letter"
+    },
+    "1": {
+     "bed": "triumph"
+    },
+    "2": {
+     "bed": "triumph"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "hall"
+    },
+    "6": {
+     "bed": "hall"
+    },
+    "7": {
+     "bed": "hall"
+    },
+    "8": {
+     "bed": "hall"
+    }
    }
   },
   "07B": {
@@ -190,6 +485,47 @@
    "topic": "old_testament",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "bath"
+    },
+    "1": {
+     "bed": "field"
+    },
+    "2": {
+     "bed": "field"
+    },
+    "3": {
+     "bed": "bath"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "battle"
+    },
+    "6": {
+     "bed": "court"
+    },
+    "7": {
+     "bed": "court"
+    },
+    "8": {
+     "bed": "court"
+    },
+    "9": {
+     "bed": "court"
+    },
+    "10": {
+     "bed": "court"
+    },
+    "11": {
+     "bed": "court"
+    },
+    "12": {
+     "bed": "court"
+    }
    }
   },
   "08": {
@@ -199,6 +535,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "hall"
+    },
+    "1": {
+     "bed": "hall"
+    },
+    "2": {
+     "bed": "door"
+    },
+    "3": {
+     "bed": "hall"
+    },
+    "4": {
+     "bed": "hall"
+    },
+    "5": {
+     "bed": "road"
+    },
+    "6": {
+     "bed": "letter"
+    },
+    "7": {
+     "bed": "letter"
+    }
    }
   },
   "09": {
@@ -208,6 +570,44 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "reactor"
+    },
+    "1": {
+     "bed": "reactor"
+    },
+    "2": {
+     "bed": "reactor"
+    },
+    "3": {
+     "bed": "reactor"
+    },
+    "4": {
+     "bed": "reactor"
+    },
+    "5": {
+     "bed": "reactor"
+    },
+    "6": {
+     "bed": "reactor"
+    },
+    "7": {
+     "bed": "fire"
+    },
+    "8": {
+     "bed": "reactor"
+    },
+    "9": {
+     "bed": "reactor"
+    },
+    "10": {
+     "bed": "wind"
+    },
+    "11": {
+     "bed": "wind"
+    }
    }
   },
   "10": {
@@ -217,6 +617,35 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "crypt"
+    },
+    "1": {
+     "bed": "road"
+    },
+    "2": {
+     "bed": "road"
+    },
+    "3": {
+     "bed": "road"
+    },
+    "4": {
+     "bed": "crypt"
+    },
+    "5": {
+     "bed": "crypt"
+    },
+    "6": {
+     "bed": "crypt"
+    },
+    "7": {
+     "bed": "crypt"
+    },
+    "8": {
+     "bed": "copies"
+    }
    }
   },
   "11": {
@@ -226,6 +655,41 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "sea"
+    },
+    "1": {
+     "bed": "field"
+    },
+    "2": {
+     "bed": "field"
+    },
+    "3": {
+     "bed": "field"
+    },
+    "4": {
+     "bed": "night"
+    },
+    "5": {
+     "bed": "night"
+    },
+    "6": {
+     "bed": "triumph"
+    },
+    "7": {
+     "bed": "triumph"
+    },
+    "8": {
+     "bed": "vault"
+    },
+    "9": {
+     "bed": "vault"
+    },
+    "10": {
+     "bed": "vault"
+    }
    }
   },
   "12": {
@@ -234,6 +698,32 @@
    "topic": "new_testament",
    "beats": {
     "turn": "vault"
+   },
+   "cards": {
+    "0": {
+     "bed": "field"
+    },
+    "1": {
+     "bed": "field"
+    },
+    "2": {
+     "bed": "night"
+    },
+    "3": {
+     "bed": "night"
+    },
+    "4": {
+     "bed": "night"
+    },
+    "5": {
+     "bed": "triumph"
+    },
+    "6": {
+     "bed": "vault"
+    },
+    "7": {
+     "bed": "vault"
+    }
    }
   },
   "13": {
@@ -242,6 +732,32 @@
    "topic": "church_history",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "coil"
+    },
+    "1": {
+     "bed": "vault"
+    },
+    "2": {
+     "bed": "vault"
+    },
+    "3": {
+     "bed": "vault"
+    },
+    "4": {
+     "bed": "vault"
+    },
+    "5": {
+     "bed": "fire"
+    },
+    "6": {
+     "bed": "fire"
+    },
+    "7": {
+     "bed": "vault"
+    }
    }
   },
   "14": {
@@ -250,6 +766,44 @@
    "topic": "church_history",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "void"
+    },
+    "1": {
+     "bed": "sea"
+    },
+    "2": {
+     "bed": "void"
+    },
+    "3": {
+     "bed": "void"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "battle"
+    },
+    "6": {
+     "bed": "battle"
+    },
+    "7": {
+     "bed": "battle"
+    },
+    "8": {
+     "bed": "battle"
+    },
+    "9": {
+     "bed": "void"
+    },
+    "10": {
+     "bed": "void"
+    },
+    "11": {
+     "bed": "void"
+    }
    }
   },
   "15": {
@@ -258,6 +812,35 @@
    "topic": "old_testament",
    "beats": {
     "turn": "triumph"
+   },
+   "cards": {
+    "0": {
+     "bed": "court"
+    },
+    "1": {
+     "bed": "court"
+    },
+    "2": {
+     "bed": "battle"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "temple"
+    },
+    "5": {
+     "bed": "temple"
+    },
+    "6": {
+     "bed": "court"
+    },
+    "7": {
+     "bed": "court"
+    },
+    "8": {
+     "bed": "court"
+    }
    }
   },
   "16": {
@@ -266,6 +849,35 @@
    "topic": "old_testament",
    "beats": {
     "hook": "wind"
+   },
+   "cards": {
+    "0": {
+     "bed": "crypt"
+    },
+    "1": {
+     "bed": "crypt"
+    },
+    "2": {
+     "bed": "copies"
+    },
+    "3": {
+     "bed": "copies"
+    },
+    "4": {
+     "bed": "copies"
+    },
+    "5": {
+     "bed": "copies"
+    },
+    "6": {
+     "bed": "copies"
+    },
+    "7": {
+     "bed": "copies"
+    },
+    "8": {
+     "bed": "copies"
+    }
    }
   },
   "17": {
@@ -275,6 +887,35 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "crypt"
+    },
+    "1": {
+     "bed": "crypt"
+    },
+    "2": {
+     "bed": "harbour"
+    },
+    "3": {
+     "bed": "temple"
+    },
+    "4": {
+     "bed": "temple"
+    },
+    "5": {
+     "bed": "temple"
+    },
+    "6": {
+     "bed": "dig"
+    },
+    "7": {
+     "bed": "dig"
+    },
+    "8": {
+     "bed": "dig"
+    }
    }
   },
   "18": {
@@ -284,12 +925,70 @@
    "beats": {
     "question": "coil",
     "turn": "vials"
+   },
+   "cards": {
+    "0": {
+     "bed": "palace"
+    },
+    "1": {
+     "bed": "palace"
+    },
+    "2": {
+     "bed": "bath"
+    },
+    "3": {
+     "bed": "bath"
+    },
+    "4": {
+     "bed": "basket"
+    },
+    "5": {
+     "bed": "basket"
+    },
+    "6": {
+     "bed": "basket"
+    },
+    "7": {
+     "bed": "gallery"
+    },
+    "8": {
+     "bed": "gallery"
+    }
    }
   },
   "19": {
    "bed": "palace",
    "title": "Cleopatra's situationships",
-   "topic": "cleopatra"
+   "topic": "cleopatra",
+   "cards": {
+    "0": {
+     "bed": "palace"
+    },
+    "1": {
+     "bed": "palace"
+    },
+    "2": {
+     "bed": "court"
+    },
+    "3": {
+     "bed": "court"
+    },
+    "4": {
+     "bed": "harbour-arrival"
+    },
+    "5": {
+     "bed": "harbour-arrival"
+    },
+    "6": {
+     "bed": "sea"
+    },
+    "7": {
+     "bed": "sea"
+    },
+    "8": {
+     "bed": "sea"
+    }
+   }
   },
   "20": {
    "bed": "palace",
@@ -297,22 +996,132 @@
    "topic": "cleopatra",
    "beats": {
     "turn": "triumph"
+   },
+   "cards": {
+    "0": {
+     "bed": "palace"
+    },
+    "1": {
+     "bed": "palace"
+    },
+    "2": {
+     "bed": "palace"
+    },
+    "3": {
+     "bed": "palace"
+    },
+    "4": {
+     "bed": "basket"
+    },
+    "5": {
+     "bed": "basket"
+    },
+    "6": {
+     "bed": "palace"
+    },
+    "7": {
+     "bed": "triumph"
+    },
+    "8": {
+     "bed": "triumph"
+    }
    }
   },
   "21": {
    "bed": "letter",
    "title": "Lincoln kept losing",
-   "topic": "us_history"
+   "topic": "us_history",
+   "cards": {
+    "0": {
+     "bed": "field"
+    },
+    "1": {
+     "bed": "field"
+    },
+    "2": {
+     "bed": "hall"
+    },
+    "3": {
+     "bed": "hall"
+    },
+    "4": {
+     "bed": "hall"
+    },
+    "5": {
+     "bed": "hall"
+    },
+    "6": {
+     "bed": "battle"
+    },
+    "7": {
+     "bed": "letter"
+    }
+   }
   },
   "22": {
    "bed": "copies",
    "title": "Galatians 5: the fruit test",
-   "topic": "new_testament"
+   "topic": "new_testament",
+   "cards": {
+    "0": {
+     "bed": "basket"
+    },
+    "1": {
+     "bed": "copies"
+    },
+    "2": {
+     "bed": "field"
+    },
+    "3": {
+     "bed": "field"
+    },
+    "4": {
+     "bed": "field"
+    },
+    "5": {
+     "bed": "field"
+    },
+    "6": {
+     "bed": "field"
+    },
+    "7": {
+     "bed": "field"
+    },
+    "8": {
+     "bed": "copies"
+    }
+   }
   },
   "23": {
    "bed": "copies",
    "title": "Mary Magdalene wasn't a prostitute",
-   "topic": "new_testament"
+   "topic": "new_testament",
+   "cards": {
+    "0": {
+     "bed": "night"
+    },
+    "1": {
+     "bed": "night"
+    },
+    "2": {
+     "bed": "road"
+    },
+    "3": {
+     "bed": "crypt"
+    },
+    "4": {
+     "bed": "crypt"
+    },
+    "5": {
+     "bed": "copies"
+    },
+    "6": {
+     "bed": "copies"
+    },
+    "7": {
+     "bed": "gallery"
+    }
+   }
   },
   "24": {
    "bed": "wind",
@@ -321,6 +1130,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "triumph"
+    },
+    "1": {
+     "bed": "triumph"
+    },
+    "2": {
+     "bed": "temple"
+    },
+    "3": {
+     "bed": "temple"
+    },
+    "4": {
+     "bed": "court"
+    },
+    "5": {
+     "bed": "storm"
+    },
+    "6": {
+     "bed": "storm"
+    },
+    "7": {
+     "bed": "storm"
+    }
    }
   },
   "25": {
@@ -329,6 +1164,32 @@
    "topic": "new_testament",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "void"
+    },
+    "1": {
+     "bed": "storm"
+    },
+    "2": {
+     "bed": "storm"
+    },
+    "3": {
+     "bed": "void"
+    },
+    "4": {
+     "bed": "void"
+    },
+    "5": {
+     "bed": "void"
+    },
+    "6": {
+     "bed": "void"
+    },
+    "7": {
+     "bed": "void"
+    }
    }
   },
   "26": {
@@ -337,6 +1198,35 @@
    "topic": "church_history",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "coil"
+    },
+    "1": {
+     "bed": "void"
+    },
+    "2": {
+     "bed": "void"
+    },
+    "3": {
+     "bed": "vault"
+    },
+    "4": {
+     "bed": "vault"
+    },
+    "5": {
+     "bed": "field"
+    },
+    "6": {
+     "bed": "void"
+    },
+    "7": {
+     "bed": "void"
+    },
+    "8": {
+     "bed": "copies"
+    }
    }
   },
   "27": {
@@ -345,6 +1235,32 @@
    "topic": "cleopatra",
    "beats": {
     "landing": "triumph"
+   },
+   "cards": {
+    "0": {
+     "bed": "palace"
+    },
+    "1": {
+     "bed": "palace"
+    },
+    "2": {
+     "bed": "palace"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "triumph"
+    },
+    "6": {
+     "bed": "triumph"
+    },
+    "7": {
+     "bed": "search"
+    }
    }
   },
   "28": {
@@ -354,6 +1270,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "hall"
+    },
+    "1": {
+     "bed": "hall"
+    },
+    "2": {
+     "bed": "hall"
+    },
+    "3": {
+     "bed": "letter"
+    },
+    "4": {
+     "bed": "letter"
+    },
+    "5": {
+     "bed": "letter"
+    },
+    "6": {
+     "bed": "road"
+    },
+    "7": {
+     "bed": "letter"
+    }
    }
   },
   "29": {
@@ -362,12 +1304,64 @@
    "topic": "new_testament",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "temple"
+    },
+    "1": {
+     "bed": "temple"
+    },
+    "2": {
+     "bed": "night"
+    },
+    "3": {
+     "bed": "night"
+    },
+    "4": {
+     "bed": "temple"
+    },
+    "5": {
+     "bed": "temple"
+    },
+    "6": {
+     "bed": "temple"
+    },
+    "7": {
+     "bed": "temple"
+    }
    }
   },
   "30": {
    "bed": "copies",
    "title": "Who decided which books got into the Bible?",
-   "topic": "church_history"
+   "topic": "church_history",
+   "cards": {
+    "0": {
+     "bed": "copies"
+    },
+    "1": {
+     "bed": "copies"
+    },
+    "2": {
+     "bed": "copies"
+    },
+    "3": {
+     "bed": "copies"
+    },
+    "4": {
+     "bed": "vault"
+    },
+    "5": {
+     "bed": "copies"
+    },
+    "6": {
+     "bed": "copies"
+    },
+    "7": {
+     "bed": "copies"
+    }
+   }
   },
   "31": {
    "bed": "gallery",
@@ -376,6 +1370,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "battle"
+    },
+    "1": {
+     "bed": "battle"
+    },
+    "2": {
+     "bed": "battle"
+    },
+    "3": {
+     "bed": "court"
+    },
+    "4": {
+     "bed": "court"
+    },
+    "5": {
+     "bed": "crypt"
+    },
+    "6": {
+     "bed": "dig"
+    },
+    "7": {
+     "bed": "dig"
+    }
    }
   },
   "32": {
@@ -385,6 +1405,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "field"
+    },
+    "1": {
+     "bed": "field"
+    },
+    "2": {
+     "bed": "court"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "fire"
+    },
+    "6": {
+     "bed": "vault"
+    },
+    "7": {
+     "bed": "vault"
+    }
    }
   },
   "33": {
@@ -393,17 +1439,95 @@
    "topic": "church_history",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "fire"
+    },
+    "1": {
+     "bed": "vault"
+    },
+    "2": {
+     "bed": "vault"
+    },
+    "3": {
+     "bed": "vault"
+    },
+    "4": {
+     "bed": "vault"
+    },
+    "5": {
+     "bed": "fire"
+    },
+    "6": {
+     "bed": "fire"
+    },
+    "7": {
+     "bed": "gallery"
+    }
    }
   },
   "34": {
    "bed": "gallery",
    "title": "Biblical creatures look nothing like paintings",
-   "topic": "old_testament"
+   "topic": "old_testament",
+   "cards": {
+    "0": {
+     "bed": "gallery"
+    },
+    "1": {
+     "bed": "void"
+    },
+    "2": {
+     "bed": "void"
+    },
+    "3": {
+     "bed": "void"
+    },
+    "4": {
+     "bed": "void"
+    },
+    "5": {
+     "bed": "void"
+    },
+    "6": {
+     "bed": "void"
+    },
+    "7": {
+     "bed": "gallery"
+    }
+   }
   },
   "35": {
    "bed": "copies",
    "title": "Jesus's brothers and sisters",
-   "topic": "new_testament"
+   "topic": "new_testament",
+   "cards": {
+    "0": {
+     "bed": "copies"
+    },
+    "1": {
+     "bed": "field"
+    },
+    "2": {
+     "bed": "field"
+    },
+    "3": {
+     "bed": "vault"
+    },
+    "4": {
+     "bed": "copies"
+    },
+    "5": {
+     "bed": "copies"
+    },
+    "6": {
+     "bed": "copies"
+    },
+    "7": {
+     "bed": "copies"
+    }
+   }
   },
   "36": {
    "bed": "vault",
@@ -412,6 +1536,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "court"
+    },
+    "1": {
+     "bed": "court"
+    },
+    "2": {
+     "bed": "storm"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "search"
+    },
+    "6": {
+     "bed": "search"
+    },
+    "7": {
+     "bed": "vault"
+    }
    }
   },
   "37": {
@@ -420,6 +1570,32 @@
    "topic": "old_testament",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "copies"
+    },
+    "1": {
+     "bed": "copies"
+    },
+    "2": {
+     "bed": "storm"
+    },
+    "3": {
+     "bed": "storm"
+    },
+    "4": {
+     "bed": "crypt"
+    },
+    "5": {
+     "bed": "copies"
+    },
+    "6": {
+     "bed": "copies"
+    },
+    "7": {
+     "bed": "copies"
+    }
    }
   },
   "38": {
@@ -429,6 +1605,32 @@
    "beats": {
     "question": "coil",
     "turn": "vials"
+   },
+   "cards": {
+    "0": {
+     "bed": "court"
+    },
+    "1": {
+     "bed": "court"
+    },
+    "2": {
+     "bed": "court"
+    },
+    "3": {
+     "bed": "vials"
+    },
+    "4": {
+     "bed": "vials"
+    },
+    "5": {
+     "bed": "vials"
+    },
+    "6": {
+     "bed": "battle"
+    },
+    "7": {
+     "bed": "search"
+    }
    }
   },
   "39": {
@@ -437,6 +1639,32 @@
    "topic": "medieval_modern",
    "beats": {
     "turn": "triumph"
+   },
+   "cards": {
+    "0": {
+     "bed": "court"
+    },
+    "1": {
+     "bed": "court"
+    },
+    "2": {
+     "bed": "battle"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "gallery"
+    },
+    "6": {
+     "bed": "gallery"
+    },
+    "7": {
+     "bed": "gallery"
+    }
    }
   },
   "40": {
@@ -445,6 +1673,32 @@
    "topic": "medieval_modern",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "fire"
+    },
+    "1": {
+     "bed": "vault"
+    },
+    "2": {
+     "bed": "vault"
+    },
+    "3": {
+     "bed": "fire"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "vault"
+    },
+    "6": {
+     "bed": "vault"
+    },
+    "7": {
+     "bed": "vault"
+    }
    }
   },
   "41": {
@@ -453,6 +1707,32 @@
    "topic": "ancient_world",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "palace"
+    },
+    "1": {
+     "bed": "fire"
+    },
+    "2": {
+     "bed": "fire"
+    },
+    "3": {
+     "bed": "fire"
+    },
+    "4": {
+     "bed": "palace"
+    },
+    "5": {
+     "bed": "palace"
+    },
+    "6": {
+     "bed": "palace"
+    },
+    "7": {
+     "bed": "palace"
+    }
    }
   },
   "42": {
@@ -461,6 +1741,32 @@
    "topic": "church_history",
    "beats": {
     "turn": "triumph"
+   },
+   "cards": {
+    "0": {
+     "bed": "vault"
+    },
+    "1": {
+     "bed": "vault"
+    },
+    "2": {
+     "bed": "battle"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "court"
+    },
+    "6": {
+     "bed": "vault"
+    },
+    "7": {
+     "bed": "vault"
+    }
    }
   },
   "43": {
@@ -470,6 +1776,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "river"
+    },
+    "1": {
+     "bed": "court"
+    },
+    "2": {
+     "bed": "court"
+    },
+    "3": {
+     "bed": "vials"
+    },
+    "4": {
+     "bed": "vials"
+    },
+    "5": {
+     "bed": "river"
+    },
+    "6": {
+     "bed": "river"
+    },
+    "7": {
+     "bed": "river"
+    }
    }
   },
   "44": {
@@ -479,6 +1811,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "wind"
+    },
+    "1": {
+     "bed": "wind"
+    },
+    "2": {
+     "bed": "wind"
+    },
+    "3": {
+     "bed": "battle"
+    },
+    "4": {
+     "bed": "battle"
+    },
+    "5": {
+     "bed": "door"
+    },
+    "6": {
+     "bed": "dig"
+    },
+    "7": {
+     "bed": "dig"
+    }
    }
   },
   "45": {
@@ -488,6 +1846,32 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "temple"
+    },
+    "1": {
+     "bed": "temple"
+    },
+    "2": {
+     "bed": "field"
+    },
+    "3": {
+     "bed": "field"
+    },
+    "4": {
+     "bed": "road"
+    },
+    "5": {
+     "bed": "road"
+    },
+    "6": {
+     "bed": "search"
+    },
+    "7": {
+     "bed": "search"
+    }
    }
   },
   "46": {
@@ -496,12 +1880,64 @@
    "topic": "old_testament",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "field"
+    },
+    "1": {
+     "bed": "river"
+    },
+    "2": {
+     "bed": "river"
+    },
+    "3": {
+     "bed": "river"
+    },
+    "4": {
+     "bed": "river"
+    },
+    "5": {
+     "bed": "dig"
+    },
+    "6": {
+     "bed": "field"
+    },
+    "7": {
+     "bed": "field"
+    }
    }
   },
   "47": {
    "bed": "vault",
    "title": "Christians who said Jesus didn't suffer",
-   "topic": "church_history"
+   "topic": "church_history",
+   "cards": {
+    "0": {
+     "bed": "storm"
+    },
+    "1": {
+     "bed": "vault"
+    },
+    "2": {
+     "bed": "vault"
+    },
+    "3": {
+     "bed": "vault"
+    },
+    "4": {
+     "bed": "copies"
+    },
+    "5": {
+     "bed": "copies"
+    },
+    "6": {
+     "bed": "vault"
+    },
+    "7": {
+     "bed": "vault"
+    }
+   }
   },
   "48": {
    "bed": "vault",
@@ -509,6 +1945,32 @@
    "topic": "church_history",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "copies"
+    },
+    "1": {
+     "bed": "copies"
+    },
+    "2": {
+     "bed": "fire"
+    },
+    "3": {
+     "bed": "copies"
+    },
+    "4": {
+     "bed": "copies"
+    },
+    "5": {
+     "bed": "copies"
+    },
+    "6": {
+     "bed": "copies"
+    },
+    "7": {
+     "bed": "copies"
+    }
    }
   },
   "49": {
@@ -517,6 +1979,32 @@
    "topic": "church_history",
    "beats": {
     "question": "coil"
+   },
+   "cards": {
+    "0": {
+     "bed": "void"
+    },
+    "1": {
+     "bed": "copies"
+    },
+    "2": {
+     "bed": "copies"
+    },
+    "3": {
+     "bed": "copies"
+    },
+    "4": {
+     "bed": "copies"
+    },
+    "5": {
+     "bed": "vault"
+    },
+    "6": {
+     "bed": "vault"
+    },
+    "7": {
+     "bed": "gallery"
+    }
    }
   },
   "50": {
@@ -526,6 +2014,35 @@
    "beats": {
     "question": "coil",
     "landing": "search"
+   },
+   "cards": {
+    "0": {
+     "bed": "court"
+    },
+    "1": {
+     "bed": "court"
+    },
+    "2": {
+     "bed": "night"
+    },
+    "3": {
+     "bed": "court"
+    },
+    "4": {
+     "bed": "court"
+    },
+    "5": {
+     "bed": "court"
+    },
+    "6": {
+     "bed": "court"
+    },
+    "7": {
+     "bed": "court"
+    },
+    "8": {
+     "bed": "gallery"
+    }
    }
   }
  }
