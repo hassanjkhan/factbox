@@ -35,8 +35,9 @@
 <!-- Account, mirroring the back button on the other side. read.html has no
      .tabs row — it is a full-bleed deck — so the control takes the same
      floating pill the back button already uses, and carries one link rather
-     than two: the back button, the save button and this all share a 390px
-     line, and sign-up is one tap further on the page this points at. -->
+     than two: this and the back button share a 390px line, and sign-up is one
+     tap further on the page this points at. Save no longer sits on this line —
+     it moved to the action rail at the foot of the right edge. -->
 <div class="topbar-r">
   <span class="acct is-float" id="fb-acct">
     <a class="acct-in" id="fb-acct-in" href="/login?next=stories">Sign in</a>
@@ -216,14 +217,20 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     }
     FB.track("stack_open", { stack: s.id });
 
-    /* Saving lives beside the back button: the two things you do to a story
-       from outside the story itself. */
+    /* Saving lives in the action rail on the right edge, directly above the
+       sound button: the two things you do to a story from inside it. It went
+       on <body> rather than into .topbar because .topbar is the top-left rail
+       and belongs to "← Stories" — the way out, not a thing you do to the
+       story. .fb-rail-save carries position only (app.css); the glass stays
+       whatever saves.js paints inline, so the saved state still shows. */
     if (window.FBS) {
       var save = FBS.button(s.id, function (isSaved) {
         FB.track(isSaved ? "save_add" : "save_remove", { stack: s.id });
       }, s.title);
-      var topbar = document.querySelector(".topbar");
-      if (save && topbar) topbar.appendChild(save);
+      if (save) {
+        save.className += " fb-rail-save";
+        document.body.appendChild(save);
+      }
     }
 
     /* Offer to pick up where they stopped rather than jumping there. A silent

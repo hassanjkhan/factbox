@@ -6,29 +6,32 @@
    the deck. It defines only .fb-sound and .fb-sound-note, both of which are
    created by js/audio-reader.js and exist nowhere else in the site.
 
-   WHERE IT SITS, and why it is not negotiable
-   -------------------------------------------
-   * TOP-RIGHT. The reader's "← Stories" pill is fixed top-LEFT (.topbar, z 31
-     in app.css). This is its mirror: same rail (--top-safe), same glass, same
-     pill radius, same press. Two affordances, one visual family, no collision
-     at any width — .topbar is left-anchored and auto-width, this is
-     right-anchored and about 8em wide, and the two only meet below ~320px,
-     where the label drops (see the narrow-viewport rule at the bottom).
-   * NOT the bottom. --bottom-safe in app.css is max(13vh, toolbar + inset) for
-     one reason: the Instagram and TikTok in-app browsers draw their own
-     toolbar over the bottom of the viewport, and ~all of our traffic is in
-     one of them. A control down there is a control that cannot be tapped.
+   WHERE IT SITS, and why
+   ----------------------
+   * RIGHT EDGE, at the foot of the reader's action rail, with the save
+     bookmark stacked directly above it (.fb-rail-save in app.css). The two
+     things you do to a story without leaving it now read as one column, the
+     way they do in the apps our readers arrive from. The "← Stories" pill
+     keeps the top-left rail, and the account pill keeps the top-right one.
+   * ABOVE --bottom-safe, never below it. --bottom-safe in app.css is
+     max(13vh, toolbar + inset) for one reason: the Instagram and TikTok
+     in-app browsers draw their own toolbar over the bottom of the viewport,
+     and ~all of our traffic is in one of them. A control down there is a
+     control that cannot be tapped. That line is the rail's floor, so the
+     whole column clears the toolbar at every viewport height.
+   * The card's own words move aside rather than run underneath: .deck .copy
+     carries a right pad on narrow viewports (app.css). Past ~760px the copy
+     column is centred and narrow enough that the rail is already outside it.
    * z-index 32 — one above .topbar (31) and the progress bar (30), so a card's
-     own stacking context can never bury it. It is the only element on the page
-     above the back button, and it is 44px from the top of it.
+     own stacking context can never bury it.
    ========================================================================== */
 
 .fb-sound{
   position:fixed;
   right:12px;
-  /* Same rail as the back pill. The fallback repeats app.css's own definition
-     so this file is also correct if loaded standalone. */
-  top:var(--top-safe, calc(env(safe-area-inset-top, 0px) + 12px));
+  /* Floor of the action rail. The fallback repeats app.css's own definition of
+     --bottom-safe so this file is also correct if loaded standalone. */
+  bottom:var(--bottom-safe, max(13vh, calc(env(safe-area-inset-bottom,0px) + 64px)));
   z-index:32;
 
   appearance:none;-webkit-appearance:none;
@@ -94,12 +97,12 @@
   box-shadow:inset 0 0 0 1px rgba(255,247,237,.10);
 }
 .fb-sound.is-dead .ico{color:var(--dimmer, rgba(255,247,237,.52))}
-.fb-sound.is-gone{opacity:0;transform:translateY(-4px)}
+.fb-sound.is-gone{opacity:0;transform:translateY(4px)}
 
 /* --------------------------------------------------------------------------
    The note.
 
-   One line of glass under the pill, for one job: iOS mutes web audio when the
+   One line of glass above the rail, for one job: iOS mutes web audio when the
    hardware silent switch is on, there is no API that can detect it, and a
    reader who taps Sound and hears nothing concludes the page is broken. So the
    moment sound actually starts we say where to look. Once per device, ever.
@@ -107,7 +110,8 @@
 .fb-sound-note{
   position:fixed;
   right:12px;
-  top:calc(var(--top-safe, calc(env(safe-area-inset-top, 0px) + 12px)) + 46px);
+  /* Clear of the whole column: two 38px buttons and the 12px between them. */
+  bottom:calc(var(--bottom-safe, max(13vh, calc(env(safe-area-inset-bottom,0px) + 64px))) + 100px);
   z-index:32;
   max-width:min(17em, calc(100vw - 24px));
   padding:.6em .85em;
@@ -121,7 +125,7 @@
   font-size:.74rem;font-weight:600;line-height:1.4;letter-spacing:.005em;
   text-align:right;
   pointer-events:none;
-  opacity:0;transform:translateY(-6px);
+  opacity:0;transform:translateY(6px);
   transition:opacity .3s ease, transform .3s cubic-bezier(.2,.75,.25,1);
 }
 .fb-sound-note.on{opacity:1;transform:none}

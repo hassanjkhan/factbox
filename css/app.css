@@ -195,6 +195,14 @@ img{max-width:100%;display:block}
   padding:0 20px;
   max-width:620px; margin:0 auto;
 }
+/* The action rail owns the right edge at the foot of the card, so on a phone
+   the words stop before it instead of running underneath. 62px = the rail's
+   12px inset, its 38px button, and 12px of air. Past 760px the 620px column is
+   already centred clear of the rail, so a desktop keeps symmetrical copy.
+   Scoped to .deck: index.html and stories.html use .copy and have no rail. */
+@media (max-width:760px){
+  .deck .copy{padding-right:62px}
+}
 .copy .eyebrow{
   font-size:.7rem; font-weight:900; letter-spacing:.2em;
   color:var(--coral); margin:0 0 10px;
@@ -257,6 +265,29 @@ img{max-width:100%;display:block}
   box-shadow:inset 0 0 0 1px var(--hair);
   font-size:.83rem; font-weight:700; text-decoration:none;
   color:var(--parchment);
+}
+
+/* --------------------------------------------------------------------------
+   The reader's action rail.
+
+   Save and sound (.fb-sound, audio-reader.css) stack as one column on the
+   right edge, because they are the two things you do to a story from inside
+   it. Save used to sit in .topbar next to "← Stories", which filed a thing you
+   do to the story in the row you leave it by, and left three controls sitting
+   at three different heights across one strip of glass.
+
+   Built from the bottom up so the column keeps its floor on --bottom-safe:
+   the line the Instagram and TikTok toolbars draw over, and the line nothing
+   tappable goes below. 50px = the sound button's 38px plus 12px of air.
+
+   Position only. saves.js paints its own glass inline (background, colour and
+   border, both states), and inline wins — so this rule must not restate it or
+   the saved state would silently stop showing.
+   -------------------------------------------------------------------------- */
+.fb-rail-save{
+  position:fixed; right:12px;
+  bottom:calc(var(--bottom-safe) + 50px);
+  z-index:32;
 }
 
 /* End-of-stack card and the paywall share a centred column. */
