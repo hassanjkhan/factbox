@@ -557,7 +557,7 @@
     if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; }
     if (!shown) { drop(); return; }     /* never seen: just go                */
     btn.className = "fb-sound is-dead";
-    txt.textContent = msg;
+    say(msg, 2600);                     /* the label used to carry this       */
     btn.setAttribute("aria-disabled", "true");
     btn.removeAttribute("aria-pressed");
     setTimeout(function () {
@@ -622,8 +622,7 @@
         '<g class="wav"><path d="M15.4 9.2a4 4 0 0 1 0 5.6"/><path d="M18.1 6.8a7.6 7.6 0 0 1 0 10.4"/></g>' +
         '<g class="cut"><path d="M16.2 9.8l4.4 4.4"/><path d="M20.6 9.8l-4.4 4.4"/></g>' +
       '</svg>' +
-    '</span><span class="txt"></span>';
-  var txt = btn.querySelector(".txt");
+    '</span>';
 
   var note = document.createElement("div");
   note.className = "fb-sound-note";
@@ -633,9 +632,11 @@
   function paint() {
     var busy = (armed || (on && !everLoaded)) && !dead;
     btn.className = "fb-sound " + (on || armed ? "is-on" : "is-off") + (busy ? " is-busy" : "");
-    /* The label states the state, not the action — "Sound off" is what is true
-       right now. The accessible name says what a press will do. */
-    txt.textContent = (on || armed) ? "Sound on" : "Sound off";
+    /* No words. The speaker either has waves coming off it or a cross through
+       it, which is the same thing every player on the phone already says, and
+       a pill that reads "Sound off" over a painting is a caption competing
+       with the painting. The state still has a name for anyone who cannot see
+       the icon — it lives in aria-pressed and aria-label, below. */
     btn.setAttribute("aria-pressed", String(on || armed));
     btn.setAttribute("aria-label", (on || armed) ? "Ambient sound is on. Turn it off."
                                                  : "Ambient sound is off. Turn it on.");
@@ -654,19 +655,14 @@
     try { document.body.appendChild(btn); document.body.appendChild(note); }
     catch (e) { shown = false; return; }
 
-    /* Two soft pulses on the first card so the affordance is noticed, stopped
-       the moment the reader moves. Never under reduced motion, never for
-       someone who already has sound on. */
-    if (!calm() && recall(K_ON) !== "on") {
-      btn.classList.add("is-fresh");
-      var calmDown = function () { btn.classList.remove("is-fresh"); };
-      deck.addEventListener("scroll", calmDown, { passive: true });
-      setTimeout(calmDown, 9000);
-    }
-
     /* --------------------------------------------------------------------
-       Remembered "on" — across reloads AND across stories, since the key is
-       per-origin and shared with the flagship reader.
+       On by default, once.
+
+       Every story is scored, so sound is on unless the reader turned it off:
+       `!== "off"`, not `=== "on"`. Turning it off writes "off" and that is
+       final — it survives reloads and every other story, because the key is
+       per-origin and shared with the flagship reader. We ask once, they
+       answer once, we do not ask again.
 
        Autoplay is blocked, so a remembered choice cannot start on its own, and
        nothing is fetched until it can. The control shows the state it will be
@@ -675,7 +671,7 @@
        fails looks exactly like a page that never tried, because it does not
        try.
        -------------------------------------------------------------------- */
-    if (recall(K_ON) === "on" && !on) {
+    if (recall(K_ON) !== "off" && !on) {
       armed = true;
       paint();
       var EVENTS = ["pointerdown", "touchend", "mousedown", "keydown"], i;

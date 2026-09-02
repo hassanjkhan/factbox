@@ -173,9 +173,60 @@ var FBX = (function () {
     });
   }
 
+  /* ------------------------------------------------------------------------
+     correct(drew) — the only safe way for a page to say "redraw, I was wrong".
+
+     A page renders as soon as it has an answer, and once in a while a better
+     answer arrives afterwards: a cold Firestore, a phone waking from sleep, a
+     subscription that lands a beat late. The page is then showing padlocks the
+     reader has paid to remove, and it has to correct itself.
+
+     The obvious way to write that is `onChange(function (a) { if (a) reload() })`,
+     and it is how /stories came to reload forever. onChange fires IMMEDIATELY
+     when the answer is already known. On the shelf it was registered at the top
+     of the script, so it fired while the first render was still waiting on
+     fetch — the page's "already drawn" flag was still false, so it reloaded, so
+     it never finished the render, so it reloaded again. A signed-in reader
+     could not get to the shelf at all.
+
+     Three rules, in here, once, so no page can get them wrong again:
+
+       1. A caller cannot register before it has drawn. `drew` IS the render —
+          you pass the answer the thing on screen was actually built from — so
+          "did I finish rendering?" is not a flag anyone can forget to set.
+       2. A reload only happens when the answer got BETTER than what was drawn.
+          Locked -> unlocked is worth a reload. Nothing else is.
+       3. One reload per tab, ever. The flag lives in sessionStorage, because it
+          has to survive the very reload it is guarding — a variable would be
+          wiped by the reload and guard nothing. If some future path still gets
+          rules 1 and 2 wrong, the reader sees one extra reload, not a loop.
+     ------------------------------------------------------------------------ */
+  var ONCE = "fbx_corrected_v1";
+  function correct(drew) {
+    if (drew) return;                    /* already the best answer there is  */
+    onChange(function (allowed) {
+      if (!allowed) return;
+      try {
+        if (sessionStorage.getItem(ONCE) === "1") return;
+        sessionStorage.setItem(ONCE, "1");
+      } catch (e) { return; }            /* no session storage, no guard, no reload */
+      try { location.reload(); } catch (e2) {}
+    });
+  }
+
+  /* A reader who genuinely navigates gets the one correction back. Called on
+     the first page of a new visit rather than on unload, which does not run
+     reliably on iOS. */
+  try {
+    if (!/[?&]fbx=/.test(String(location.search || "")) &&
+        performance && performance.navigation &&
+        performance.navigation.type === 0) sessionStorage.removeItem(ONCE);
+  } catch (e) {}
+
   return {
     ready: ready,
     paint: paint,
+    correct: correct,
     can: can,
     why: why,
     isAdmin: isAdmin,

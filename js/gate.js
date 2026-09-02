@@ -103,16 +103,78 @@ var FB = (function () {
     } catch (e) {}
   }
 
+  /* --- the corpus, in three sizes ----------------------------------------
+
+     data/stacks.json is every word of all 51 stories: 413KB, about 95KB
+     gzipped. Every page used to fetch the whole thing — the reader, to show
+     one story; the shelves, to draw covers that display no card text at all.
+
+     tools/split-stacks.js writes two smaller shapes from it:
+
+       data/index.json        every stack, cards reduced to { n, head }.
+                              What a shelf needs. ~21KB gzipped.
+       data/story/<ID>.json   one stack, complete. ~3KB gzipped.
+
+     Both fall back to the monolith. If the split files were never generated,
+     or a deploy shipped without them, or an id has no file, these resolve
+     from data/stacks.json exactly as before. A 404 must cost a reader a
+     slower page, never an empty one.
+     ---------------------------------------------------------------------- */
+
+  function getJSON(url) {
+    return fetch(url, { cache: "force-cache" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
   var _cache = null;
   function load() {
     if (_cache) return _cache;
-    _cache = fetch("/data/stacks.json", { cache: "force-cache" })
-      .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
-      })
-      .then(function (d) { return d.stacks; });
+    _cache = getJSON("/data/stacks.json").then(function (d) { return d.stacks; });
     return _cache;
+  }
+
+  /* Every stack, without the card bodies. Shelves want this; nothing that
+     renders card text should. */
+  var _index = null;
+  function loadIndex() {
+    if (_index) return _index;
+    if (_cache) return _cache;          /* the full thing is already in hand */
+    _index = getJSON("/data/index.json")
+      .then(function (d) {
+        if (!d || !d.stacks || !d.stacks.length) throw new Error("empty index");
+        return d.stacks;
+      })
+      .catch(function () { return load(); });
+    return _index;
+  }
+
+  /* One story, complete. Resolves with the stack, or with null if there is
+     no such id — which is a different answer from "the fetch failed", and
+     the reader page renders a different screen for each. */
+  function loadStory(id) {
+    var want = String(id == null ? "" : id).toUpperCase();
+    function fromAll() {
+      return load().then(function (stacks) {
+        for (var i = 0; i < stacks.length; i++) {
+          if (String(stacks[i].id).toUpperCase() === want) return stacks[i];
+        }
+        return null;
+      });
+    }
+    /* The id becomes a path segment, so only the characters ids actually use
+       may reach the URL. Anything else never gets fetched. */
+    if (!want || !/^[A-Z0-9_-]{1,24}$/.test(want)) return fromAll();
+    if (_cache) return fromAll();       /* already paid for the monolith */
+    return getJSON("/data/story/" + want + ".json")
+      .then(function (d) {
+        if (!d || !d.stack || !d.stack.cards || !d.stack.cards.length) {
+          throw new Error("empty story");
+        }
+        return d.stack;
+      })
+      .catch(fromAll);
   }
 
   function esc(s) {
@@ -134,7 +196,19 @@ var FB = (function () {
       bits.push(esc(cr.credit));
     }
     var out = bits.join(" · ");
-    if (cr && cr.license) {
+
+    /* The licence is named only where naming it is the obligation.
+
+       A public-domain plate carries no condition at all, so "Public domain"
+       under a painting is a fact about copyright law rather than anything a
+       reader came here for — it reads as a disclaimer on work we chose. The
+       artist still gets their name.
+
+       The other 33 plates are CC BY or CC BY-SA, where naming and linking the
+       licence is the term that makes using them lawful. That stays, on the
+       card, not just on the credits page. Removing it would not be a tidier
+       design, it would be using someone's photograph against its terms. */
+    if (cr && cr.license && cr.tier && cr.tier !== "public_domain") {
       var lic = cr.licenseUrl
         ? '<a href="' + esc(cr.licenseUrl) + '" target="_blank" rel="noopener">' + esc(cr.license) + '</a>'
         : esc(cr.license);
@@ -158,6 +232,7 @@ var FB = (function () {
 
   return { PAY_URL: PAY_URL, JOIN_URL: JOIN_URL, joinURL: joinURL,
            unlocked: unlocked, checkout: checkout,
-           track: track, load: load, esc: esc, creditLine: creditLine,
+           track: track, load: load, loadIndex: loadIndex, loadStory: loadStory,
+           esc: esc, creditLine: creditLine,
            minutes: minutes };
 })();

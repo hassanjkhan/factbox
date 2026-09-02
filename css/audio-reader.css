@@ -33,9 +33,12 @@
 
   appearance:none;-webkit-appearance:none;
   font:inherit;cursor:pointer;
-  min-height:38px;                 /* matches .back in app.css                */
-  display:inline-flex;align-items:center;gap:.45em;
-  padding:0 .85em 0 .7em;
+  /* Icon only, so a circle: 38px matches .back's height in app.css, and the
+     button is the same glass pill as the back button with nothing written in
+     it. The words came off because the control sits over a painting. */
+  min-height:38px;width:38px;
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:0;
   border-radius:var(--pill, 999px);
   border:0;
   box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13));
@@ -62,13 +65,6 @@
 .fb-sound .ico .wav{opacity:0}
 .fb-sound .ico .cut{opacity:1}
 
-.fb-sound .txt{
-  white-space:nowrap;
-  /* "on" and "off" are different widths and the pill is right-anchored, so
-     without a fixed box the whole control would jump left on every toggle. */
-  min-width:4.9em;text-align:left;
-}
-
 /* ---- on ---------------------------------------------------------------- */
 .fb-sound.is-on{
   box-shadow:inset 0 0 0 1px rgba(255,122,92,.55);
@@ -86,14 +82,8 @@
 .fb-sound.is-busy .ico .wav{animation:fb-breathe 1.15s ease-in-out infinite}
 @keyframes fb-breathe{0%,100%{opacity:1}50%{opacity:.25}}
 
-/* ---- one gentle look at me, on the first card only, then never again ---- */
-.fb-sound.is-fresh{animation:fb-notice 2.4s ease-in-out 1.2s 2}
-@keyframes fb-notice{
-  0%,100%{box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13)),
-                     0 0 0 0 rgba(255,211,110,0)}
-  45%    {box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13)),
-                     0 0 0 5px rgba(255,211,110,.16)}
-}
+/* There is no "look at me" pulse any more: sound turns itself on with the
+   reader's first swipe, so the control has nothing left to advertise. */
 
 /* ---- dead: no beds on the server, or every fetch failed -----------------
    It says so once, then takes itself off the page rather than sitting there as
@@ -152,11 +142,8 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
   .fb-sound-note{transition:opacity .01s linear;transform:none}
 }
 
-/* Very short viewports (a phone in landscape) and very narrow ones (the only
-   place the back pill could ever reach this): the label goes, the 44px-ish
-   target stays. */
+/* Very short viewports (a phone in landscape). The button is already a 38px
+   circle at every width, so only the note needs to give ground. */
 @media (max-height:420px), (max-width:340px){
-  .fb-sound .txt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  .fb-sound{padding:0;width:38px;justify-content:center}
   .fb-sound-note{font-size:.7rem}
 }

@@ -216,12 +216,17 @@ var FBS = (function () {
      with aria-pressed and a 44px target — a save control that is a <div> is
      invisible to a screen reader and unreachable from a keyboard.
 
-     One label pair, one aria pattern and one saved-state paint across the
-     whole site: "Save" / "Saved", "Save to library: <title>" / "Remove from
-     library: <title>", and coral-tinted rather than coral-filled. The reader
-     page and the recommendation rows were showing three vocabularies and two
-     paints for one action. Tint, not fill, because a filled capsule reads as
-     a button not yet pressed — the same rule the nav tabs follow.
+     A bookmark, not the word "Save". This button lives on the reader, pinned
+     over a painting, next to "← Stories" and the sound control — and the
+     bookmark is the one icon every phone already teaches: Instagram, TikTok
+     and X all save with it, all in the same corner, all filled-when-saved.
+     A word there is a caption competing with the picture; the icon is read
+     without being read. The outline fills with coral when the story is in
+     the library, which is the whole state model, visible at a glance.
+
+     The sentence still exists for anyone who cannot see the icon — it moved
+     into aria-label ("Save to library: <title>" / "Remove from library:
+     <title>") and aria-pressed, which is where a screen reader looks anyway.
 
      button(id, onChange, title) -> HTMLButtonElement, or null if there is no DOM.
        onChange(isSaved, id) fires after every successful toggle.
@@ -244,12 +249,26 @@ var FBS = (function () {
       b.className = "fbs-save";
       b.stackId = k;
 
+      /* 38px circle: the same rail carries .back (38px, app.css) on the left
+         and .fb-sound (38px) on the right, and three controls at three
+         heights across one strip of glass is the thing you notice instead of
+         the painting. Under the 44px guideline, matching what this page has
+         always shipped for the other two. */
       var BASE =
-        "display:inline-flex;align-items:center;justify-content:center;gap:8px;" +
-        "min-height:44px;padding:0 18px;border-radius:999px;cursor:pointer;" +
-        "font:700 15px/1 ui-rounded,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" +
-        "letter-spacing:-.01em;-webkit-tap-highlight-color:transparent;" +
+        "display:inline-flex;align-items:center;justify-content:center;" +
+        "width:38px;height:38px;min-height:38px;padding:0;border-radius:999px;" +
+        "cursor:pointer;-webkit-tap-highlight-color:transparent;" +
         "-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);";
+
+      /* One path, drawn twice: stroked when the story is not saved, filled
+         when it is. `currentColor` means the two states are one colour swap. */
+      function mark(fill) {
+        return '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" ' +
+               'fill="' + (fill ? "currentColor" : "none") + '" stroke="currentColor" ' +
+               'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+               '<path d="M6.5 3.75h11a.75.75 0 0 1 .75.75v15.4l-6.25-4.1-6.25 4.1V4.5a.75.75 0 0 1 .75-.75z"/>' +
+               '</svg>';
+      }
 
       function paint() {
         try {
@@ -257,10 +276,15 @@ var FBS = (function () {
             b.disabled = true;
             b.setAttribute("aria-disabled", "true");
             b.removeAttribute("aria-pressed");
-            b.textContent = k ? "Saving unavailable" : "Save unavailable";
+            /* No room for a sentence on a 38px button, so the sentence goes
+               where a disabled control is actually interrogated: the tooltip
+               and the accessible name. The icon stays, dimmed, rather than
+               vanishing — a control that disappears reads as a bug. */
+            b.innerHTML = mark(false);
             b.title = k
               ? "This browser will not let the site remember anything."
               : "No story to save.";
+            b.setAttribute("aria-label", b.title);
             /* .52, matching --dimmer in app.css. .42 did not clear contrast
                on --raise, and this button paints itself. */
             b.style.cssText = BASE +
@@ -271,7 +295,8 @@ var FBS = (function () {
           var on = saved(k);
           b.setAttribute("aria-pressed", on ? "true" : "false");
           b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
-          b.textContent = on ? "Saved" : "Save";
+          b.innerHTML = mark(on);
+          b.title = on ? "Saved to your library" : "Save to your library";
           b.style.cssText = BASE + (on
             ? "background:rgba(255,122,92,.16);color:#FF7A5C;" +
               "border:1px solid rgba(255,122,92,.42);"

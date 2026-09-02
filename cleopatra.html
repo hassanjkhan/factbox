@@ -4383,9 +4383,12 @@ html.no-motion .s-triumph .tri-bleach    { opacity: .75 }
 
   appearance:none;-webkit-appearance:none;
   font:inherit;cursor:pointer;
-  min-height:var(--tap, 44px);
-  display:inline-flex;align-items:center;gap:.45em;
-  padding:0 .85em 0 .7em;
+  /* Icon only, so a circle. The words came off because this control sits over
+     a painting, and "Sound off" set in bold beside a speaker is a caption
+     competing with the picture for the one thing the page is for. */
+  min-height:var(--tap, 44px);width:var(--tap, 44px);
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:0;
   border-radius:var(--pill, 999px);
   border:1px solid rgba(255,255,255,.3);
   background:rgba(var(--veil, 20,16,24),.42);
@@ -4409,13 +4412,6 @@ html.no-motion .s-triumph .tri-bleach    { opacity: .75 }
 .fb-sound .ico .cut{transition:opacity .22s ease}
 .fb-sound .ico .wav{opacity:0}
 .fb-sound .ico .cut{opacity:1}
-
-.fb-sound .txt{
-  white-space:nowrap;
-  /* Tabular-ish: "on"/"off" must not shift the pill's left edge as it toggles,
-     so the label is right-anchored inside a fixed box. */
-  min-width:5.1em;text-align:left;
-}
 
 /* ---- on ---------------------------------------------------------------- */
 .fb-sound.is-on{
@@ -4496,10 +4492,9 @@ html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
   .fb-sound-note{transition:opacity .01s linear;transform:none}
 }
 
-/* Very short viewports (landscape phone): the label goes, the target stays. */
+/* Very short viewports (landscape phone). The button is icon-only at every
+   width now, so only the note gives ground. */
 @media (max-height:420px){
-  .fb-sound .txt{display:none}
-  .fb-sound{padding:0 .7em;min-width:var(--tap,44px);justify-content:center}
   .fb-sound-note{font-size:.7rem}
 }
 
@@ -7554,7 +7549,7 @@ addEventListener("keydown", e => {
     forget(K_ON);                       /* do not re-arm on the next reload   */
     if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; }
     btn.className = "fb-sound is-dead";
-    txt.textContent = msg;
+    say(msg, 2600);                     /* the label used to carry this       */
     btn.setAttribute("aria-disabled", "true");
     btn.removeAttribute("aria-pressed");
     setTimeout(function () {
@@ -7609,8 +7604,7 @@ addEventListener("keydown", e => {
         '<g class="wav"><path d="M15.4 9.2a4 4 0 0 1 0 5.6"/><path d="M18.1 6.8a7.6 7.6 0 0 1 0 10.4"/></g>' +
         '<g class="cut"><path d="M16.2 9.8l4.4 4.4"/><path d="M20.6 9.8l-4.4 4.4"/></g>' +
       '</svg>' +
-    '</span><span class="txt"></span>';
-  var txt = btn.querySelector(".txt");
+    '</span>';
 
   var note = document.createElement("div");
   note.className = "fb-sound-note";
@@ -7622,7 +7616,8 @@ addEventListener("keydown", e => {
     btn.className = "fb-sound " + (on || armed ? "is-on" : "is-off") + (busy ? " is-busy" : "");
     /* The label states the state, not the action — "Sound off" is what is true
        right now. The button's accessible name says what a press will do. */
-    txt.textContent = (on || armed) ? "Sound on" : "Sound off";
+    /* No words — see css. The state still has a name for anyone who cannot
+       see the icon: aria-pressed and aria-label, below. */
     btn.setAttribute("aria-pressed", String(on || armed));
     btn.setAttribute("aria-label", (on || armed) ? "Ambient sound is on. Turn it off."
                                                  : "Ambient sound is off. Turn it on.");
@@ -7637,15 +7632,6 @@ addEventListener("keydown", e => {
   paint();
   document.body.appendChild(btn);
   document.body.appendChild(note);
-
-  /* One soft pulse on the title beat so the affordance is noticed, and it stops
-     the moment the reader moves or touches anything. Never under no-motion. */
-  if (!calm() && recall(K_ON) === "off") {
-    btn.classList.add("is-fresh");
-    var calmDown = function () { btn.classList.remove("is-fresh"); };
-    deck.addEventListener("scroll", calmDown, { passive: true, once: true });
-    setTimeout(calmDown, 9000);
-  }
 
   /* ------------------------------------------------------------------------
      On by default.

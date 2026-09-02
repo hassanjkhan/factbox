@@ -138,7 +138,6 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
      Capped, so a reader whose auth never resolves still gets the page rather
      than a spinner. Falling through to the paywall is the safe direction —
      it offers a way in; a blank screen offers nothing. */
-  var shown = false;
 
   /* One module owns both the answer and when it is knowable. */
   function accessSettled() {
@@ -187,15 +186,11 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
 
       /* Belt and braces. If premium lands after the wait gave up — a slow
          snapshot, a cold Firestore, a phone that just woke up — the reader is
-         looking at a wall they have already paid to pass. Redraw rather than
-         make them find the reload button. */
-      try {
-        if (window.FBX && FBX.onChange) {
-          FBX.onChange(function (allowed) {
-            if (allowed && !shown) { shown = true; location.reload(); }
-          });
-        }
-      } catch (e) {}
+         looking at a wall they have already paid to pass. The wall is what was
+         drawn, so that is what gets passed in; FBX.correct owns the rest, and
+         owns it for every page, so this cannot become a reload loop the way
+         the hand-rolled version on the shelf did. */
+      try { if (window.FBX && FBX.correct) FBX.correct(false); } catch (e) {}
       return;
     }
 

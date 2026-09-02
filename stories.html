@@ -178,19 +178,17 @@
         section("The rest of season one", rest.length + " stories", rest);
       bar.hidden = false;
     }
+    /* Only now — with the shelf actually drawn — may the page ask to be
+       corrected. FBX.correct() takes the answer this render was built from and
+       owns the rest: better answer only, once per tab, ever. Registering it up
+       at the top of this script instead is what made /stories reload forever. */
+    try { if (window.FBX && FBX.correct) FBX.correct(open); } catch (e) {}
+
     FB.track("library_view");
   }).catch(function (e) {
     shelf.innerHTML = '<p class="fine" style="margin-top:28px">' +
       "Could not load the stories. Check your connection and reload." + '</p>';
   });
-
-  try {
-    if (window.FBX && FBX.onChange) {
-      FBX.onChange(function (allowed) {
-        if (allowed && !open) location.reload();
-      });
-    }
-  } catch (e) {}
 
   document.getElementById("pay").addEventListener("click", function () {
     FB.checkout(this, "home");
