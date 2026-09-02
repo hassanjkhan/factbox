@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#0E0B12">
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/recommend.css">
 <link rel="stylesheet" href="css/scenes.css">
 <link rel="stylesheet" href="css/audio-reader.css">
 </head>
@@ -20,6 +21,7 @@
 <script src="js/progress.js"></script>
 <script src="js/gate.js"></script>
 <script src="js/saves.js"></script>
+<script src="js/recommend.js"></script>
 <script src="js/scenes.js" defer></script>
 <script>
 (function () {
@@ -85,23 +87,6 @@
       '</section>';
   }
 
-  function endcard(next) {
-    var n = next
-      ? '<a class="nextrow" href="read.html?s=' + encodeURIComponent(next.id) + '" ' +
-        'style="text-decoration:none;color:inherit">' +
-          '<div class="plate"><img alt="" src="img/thumbs/' + FB.esc(next.img) + '.webp"></div>' +
-          '<div class="t"><b>' + FB.esc(next.title) + '</b>' +
-          '<span>' + next.cards.length + ' cards · ' + FB.minutes(next.secs) + '</span></div>' +
-        '</a>'
-      : "";
-    return '' +
-      '<section class="pane">' +
-        '<h2>That is the whole story.</h2>' +
-        (next ? '<p>Next up</p>' + n : "") +
-        '<a class="ghost" href="stories.html">All stories</a>' +
-      '</section>';
-  }
-
   FB.load().then(function (stacks) {
     var i = stacks.findIndex(function (s) { return s.id === id; });
     if (i === -1) { location.replace("stories.html"); return; }
@@ -125,15 +110,10 @@
                    : beat(c, s.img, s.cap, s.cr, n, s);
     }).join("");
 
-    /* The next stack the reader can actually open, so the end card never
-       offers something locked. */
-    var next = null;
-    for (var j = 1; j < stacks.length; j++) {
-      var cand = stacks[(i + j) % stacks.length];
-      if (cand.id !== s.id && (cand.free || FB.unlocked())) { next = cand; break; }
-    }
-
-    deck.innerHTML = html + endcard(next);
+    /* The end of a story is the highest-intent moment on the site, so it is
+       a real panel of recommendations rather than one arbitrary next story. */
+    deck.innerHTML = html;
+    deck.appendChild(FBR.endPanel(s, stacks, { n: 3 }));
     FB.track("stack_open", { stack: s.id });
 
     /* Saving lives beside the back button: the two things you do to a story
