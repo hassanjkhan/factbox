@@ -137,11 +137,17 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
      Capped, so a reader whose auth never resolves still gets the page rather
      than a spinner. Falling through to the paywall is the safe direction —
      it offers a way in; a blank screen offers nothing. */
+  var shown = false;
+
   function accessSettled() {
     return new Promise(function (done) {
       var finished = false;
       function go() { if (!finished) { finished = true; done(); } }
-      setTimeout(go, 3000);
+      /* auth.js settles billingReady() at its own 6s fallback. Capping below
+         that does not make the page faster, it makes the answer wrong — the
+         timeout fires, premium is still false, and a subscriber is shown the
+         paywall. Sit just past it. */
+      setTimeout(go, 6800);
 
       function hook() {
         try {
@@ -193,6 +199,18 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
         FB.checkout(this, "paywall");
       });
       FB.track("paywall_view", { stack: s.id });
+
+      /* Belt and braces. If premium lands after the wait gave up — a slow
+         snapshot, a cold Firestore, a phone that just woke up — the reader is
+         looking at a wall they have already paid to pass. Redraw rather than
+         make them find the reload button. */
+      try {
+        if (window.FBU && FBU.onPremium) {
+          FBU.onPremium(function (isPrem) {
+            if (isPrem && !shown) { shown = true; location.reload(); }
+          });
+        }
+      } catch (e) {}
       return;
     }
 
