@@ -121,7 +121,10 @@
           '<p>It re-opens your stories on any phone or browser. Email it to yourself.</p>' +
           '<input readonly aria-label="Your restore link" value="' + FB.esc(url) + '">' +
           '<button type="button" id="cp">Copy link</button>' +
-          '<p class="fine">' + FB.esc(FBP.RESTORE_NOTE) + '</p>';
+          '<p class="fine">' + FB.esc(FBP.RESTORE_NOTE) + '</p>' +
+          '<p class="fine" style="margin-top:10px">' +
+            'Manage or cancel your subscription in the ' +
+            '<a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">billing portal</a>.</p>';
         shelf.parentNode.insertBefore(box, shelf);
         box.querySelector("#cp").addEventListener("click", function () {
           var self = this, inp = box.querySelector("input");
