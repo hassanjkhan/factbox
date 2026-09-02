@@ -62,7 +62,7 @@
     <li>Three small values — whether you have access, your restore token, and where that access came from — are also mirrored into a first-party cookie, because in-app browsers wipe the other store.</li>
     <li>Payment is handled entirely by Stripe, on Stripe's own pages. Card details never touch this site.</li>
     <li>Your restore link is a <strong>bearer token</strong>: anyone holding it has access.</li>
-    <li>The pages are wired for Plausible, a cookieless analytics service. No analytics script is currently loaded on any page here, so as things stand nothing is measured at all.</li>
+    <li>Every page loads PostHog to measure which stories people finish, including how long each card is on screen. It stores a random id in your browser. There is a one-tap off switch in section 04.</li>
     <li>Clearing this site's data in your browser deletes everything the site holds. You do not have to ask us, because there is no copy anywhere else.</li>
   </ul>
 
@@ -142,15 +142,17 @@
      not identify you, follow you to other sites, or feed any advertising system.</p>
 
   <h2>04 · Analytics</h2>
-  <p>The pages call <a href="https://plausible.io/privacy" rel="noopener" target="_blank">Plausible Analytics</a>
-     if it is present, and do nothing at all if it is not.
-     <strong>No Plausible script is currently included on any page of this site, so as
-     things stand no analytics events leave your browser.</strong> What follows
-     describes what would be sent if it is switched on, so that turning it on does not
-     require you to re-read this page to find out.</p>
-  <p>Plausible is cookieless. It sets no cookie, stores nothing in your browser,
-     assigns you no identifier, and builds no profile that follows you across sites.
-     It counts events. This is the complete list of event names the site would send:</p>
+  <p>Every page loads <a href="https://posthog.com/privacy" rel="noopener" target="_blank">PostHog</a>,
+     a product-analytics service, hosted in the United States. It is how we find out
+     which stories people finish and which ones lose them, which is the only way the
+     next ones get better.</p>
+  <p><strong>PostHog stores an identifier in your browser</strong> so that two visits
+     from the same browser can be recognised as the same reader. That is not the
+     cookieless arrangement an earlier version of this page described, and it is the
+     part worth knowing: it is what makes "did anyone come back for a second story"
+     answerable. It is a random id, tied to no name, and it is not shared with anyone.
+     Turning it off is one tap, below.</p>
+  <p>This is the complete list of event names the site sends:</p>
   <ul>
     <li><code>library_view</code>, <code>explore_view</code>, <code>library_own_view</code> — a section of the site was opened.</li>
     <li><code>stack_open</code>, <code>resume_used</code>, <code>stack_complete</code>, <code>stack_dropoff</code> — a story was opened, resumed, finished, or left part-way, carrying the story id and the card number reached.</li>
@@ -159,6 +161,10 @@
     <li><code>paywall_view</code>, <code>subscribe_click</code>, <code>join_view</code>, <code>join_step</code>, <code>join_skip</code>, <code>join_interests</code>, <code>checkout_start</code> — the subscribe screen or a step of the sign-up flow was shown, skipped or completed, carrying the step name, the number of topics picked, or the plan chosen. <strong>Not the answers themselves, and never your email address.</strong></li>
     <li><code>join_signup</code>, <code>join_login_hit</code>, <code>join_login_known</code>, <code>join_login_miss</code>, <code>join_restore_use</code> — someone signed up, tried to log in, or used a restore link. These carry no properties at all.</li>
     <li><code>owner_unlock</code> — the site was unlocked with the owner's own passphrase.</li>
+    <li><code>card_view</code> — a card left the screen, carrying the story id, the card
+        number, its narrative beat, its subject, and <strong>how many seconds it was on
+        screen</strong>. This is the one that tells us where a story loses people.
+        Anything under a second is treated as a swipe passing through and is not sent.</li>
   </ul>
   <p>Every one of those carries at most a story id, a card number, a step name or a
      plan name. None of them carries your email address, your name, or the content of
@@ -167,11 +173,14 @@
      endpoint is an empty string, so it writes its line to the browser's developer
      console and sends nothing over the network. It is inert.</p>
   <h3>Turning it off</h3>
-  <p>There is no per-person switch, because there is no per-person record to switch
-     off. If you would rather the measurement did not run at all, any content blocker
-     that blocks <code>plausible.io</code> stops it, and the site behaves identically
-     without it — every call is wrapped so that a missing analytics script is simply
-     nothing happening.</p>
+  <p>Press the button. It takes effect immediately in this browser, is remembered, and
+     stops the analytics script from loading at all on your next visit — not merely
+     from reporting.</p>
+  <p><button type="button" id="fbq-off" class="go" style="max-width:320px">Turn analytics off in this browser</button></p>
+  <p id="fbq-off-said" class="fine" role="status" aria-live="polite"></p>
+  <p>A content blocker that blocks <code>posthog.com</code> does the same thing, and the
+     site behaves identically without it — every call is wrapped so that a missing
+     analytics script is simply nothing happening.</p>
 
   <h2>05 · Payment, and the restore link</h2>
   <p>Subscriptions are taken through <a href="https://stripe.com/privacy" rel="noopener" target="_blank">Stripe</a>,
@@ -278,5 +287,25 @@
   <p class="stamp">Factbox · Privacy Policy · Effective 2 September 2026. Describes
      factbox.app as it stands on that date. Not reviewed by a lawyer.</p>
 </main>
+<script src="js/analytics.js"></script>
+<script>
+(function () {
+  var b = document.getElementById("fbq-off"), said = document.getElementById("fbq-off-said");
+  if (!b) return;
+  function paint() {
+    var off = window.FBQ && FBQ.optedOut && FBQ.optedOut();
+    b.textContent = off ? "Turn analytics back on" : "Turn analytics off in this browser";
+    if (said) said.textContent = off ? "Analytics is off in this browser." : "";
+  }
+  b.addEventListener("click", function () {
+    try {
+      if (!window.FBQ) return;
+      FBQ.optedOut() ? FBQ.optIn() : FBQ.optOut();
+    } catch (e) {}
+    paint();
+  });
+  setTimeout(paint, 300);
+})();
+</script>
 </body>
 </html>

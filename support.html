@@ -145,9 +145,10 @@
      server behind the sign-up form, so we never receive them. The one exception is that
      your email is put into the Stripe checkout page so you do not type it twice.
      Your reading never leaves your browser at all. Payment is Stripe's, so Stripe holds
-     your billing details and we do not. The site is wired for a cookieless analytics
-     service, but no analytics script is currently loaded on any page, so as things stand
-     nothing is measured at all. The <a href="privacy.html">Privacy Policy</a> is the full
+     your billing details and we do not. We measure which stories people
+     finish and how long each card holds you, through PostHog, so that the next stories
+     are better than the last. It stores a random id in your browser and there is a
+     one-tap off switch on the Privacy page. The <a href="privacy.html">Privacy Policy</a> is the full
      account, key by key.</p>
 
   <h2>Accessibility</h2>
@@ -169,5 +170,6 @@
   </nav>
   <p class="stamp">Factbox · Support · Last updated 2 September 2026.</p>
 </main>
+<script src="js/analytics.js"></script>
 </body>
 </html>
