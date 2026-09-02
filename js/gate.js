@@ -82,8 +82,12 @@ var FB = (function () {
         store(KEY, "1");
         store(FIREBASE_SET, "1");
         try {
-          if (!sessionStorage.getItem("fb_sync_once")) {
-            sessionStorage.setItem("fb_sync_once", "1");
+          /* Once per page, not once per session. The guard used to be
+             session-wide, so the first page to sync spent it and every later
+             page was left showing padlocks with no correction coming. */
+          var mark = "fb_sync_" + location.pathname;
+          if (!sessionStorage.getItem(mark)) {
+            sessionStorage.setItem(mark, "1");
             location.reload();
           }
         } catch (e) {}

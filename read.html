@@ -141,17 +141,27 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     return new Promise(function (done) {
       var finished = false;
       function go() { if (!finished) { finished = true; done(); } }
-      setTimeout(go, 2500);
-      try {
-        if (window.FBU && FBU.ready) { FBU.ready().then(go, go); return; }
-      } catch (e) {}
+      setTimeout(go, 3000);
+
+      function hook() {
+        try {
+          if (!window.FBU) return false;
+          /* billingReady, not ready. ready() settles when the *identity* is
+             known; the subscription arrives later, on a Firestore snapshot.
+             Waiting on the wrong one is why a signed-in subscriber still saw
+             the paywall — the header already said their name while the answer
+             that matters had not landed. */
+          if (FBU.billingReady) { FBU.billingReady().then(go, go); return true; }
+          if (FBU.ready) { FBU.ready().then(go, go); return true; }
+        } catch (e) {}
+        return false;
+      }
+
+      if (hook()) return;
       var tries = 0;
       var t = setInterval(function () {
         tries++;
-        try {
-          if (window.FBU && FBU.ready) { clearInterval(t); FBU.ready().then(go, go); }
-          else if (tries > 12) { clearInterval(t); go(); }
-        } catch (e) { clearInterval(t); go(); }
+        if (hook() || tries > 15) { clearInterval(t); if (tries > 15) go(); }
       }, 200);
     });
   }
