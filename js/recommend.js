@@ -147,7 +147,7 @@ var FBR = (function () {
   /* Stack 01 is the illustrated one-off page; everything else is the reader. */
   function href(s) {
     var id = idOf(s);
-    if (id === "01") return "/story";
+    if (id === "01") return "/cleopatra";
     return "/read?s=" + encodeURIComponent(id);
   }
 

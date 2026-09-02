@@ -164,7 +164,7 @@
        its cover points there rather than at the generic reader — same rule as
        the home shelf. A locked cover still points at read.html, which is where
        the paywall lives; it is not this page's job to sell. */
-    if (s.id === "01") return "/story";
+    if (s.id === "01") return "/cleopatra";
     return "/read?s=" + encodeURIComponent(s.id);
   }
 
@@ -321,7 +321,7 @@
         var cont = FBP.continueReading(STACKS);
         if (cont && cont.stack) {
           out += '<a class="resume" href="' +
-                   esc(cont.id === "01" ? "/story" : cont.href) + '">' +
+                   esc(cont.id === "01" ? "/cleopatra" : cont.href) + '">' +
                    '<div class="plate"><img alt="" src="/img/thumbs/' +
                       esc(cont.stack.img) + '.webp"></div>' +
                    '<div class="t"><b>' + esc(cont.stack.title) + '</b>' +

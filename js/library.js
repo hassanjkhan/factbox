@@ -80,7 +80,7 @@
     /* Stack 01 is the fully illustrated version and lives at the front page,
        so it points there rather than at the generic reader. Same rule as
        stories.html — if it ever changes, it changes in both. */
-    return s.id === "01" ? "/story" : "/read?s=" + encodeURIComponent(s.id);
+    return s.id === "01" ? "/cleopatra" : "/read?s=" + encodeURIComponent(s.id);
   }
 
   function card(s, note) {
@@ -194,7 +194,7 @@
     if (cont && cont.stack) {
       html += '<div class="sechead"><h2>Continue reading</h2>' +
               '<span>' + esc(cont.pct + "% in") + '</span></div>' +
-              '<a class="resume" href="' + (cont.id === "01" ? "/story" : cont.href) + '">' +
+              '<a class="resume" href="' + (cont.id === "01" ? "/cleopatra" : cont.href) + '">' +
                 '<div class="plate"><img alt="" src="/img/thumbs/' + esc(cont.stack.img) + '.webp"></div>' +
                 '<div class="t"><b>' + esc(cont.stack.title) + '</b>' +
                 '<span>' + esc(cont.label) + '</span></div>' +

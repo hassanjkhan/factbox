@@ -86,7 +86,7 @@
     var href = "/read?s=" + encodeURIComponent(s.id);
     /* Stack 01 is the fully illustrated version and lives at the front page,
        so its cover points there rather than at the generic reader. */
-    if (s.id === "01") href = "/story";
+    if (s.id === "01") href = "/cleopatra";
     return '' +
       '<a class="card is-' + st.status + (locked ? " locked" : "") + '" href="' + href + '">' +
         '<div class="plate">' +
@@ -119,7 +119,7 @@
     var cont = FBP.continueReading(stacks);
     var resume = "";
     if (cont) {
-      var href = cont.id === "01" ? "/story" : cont.href;
+      var href = cont.id === "01" ? "/cleopatra" : cont.href;
       resume =
         '<a class="resume" href="' + href + '">' +
           '<div class="plate"><img alt="" src="/img/thumbs/' + FB.esc(cont.stack.img) + '.webp"></div>' +
