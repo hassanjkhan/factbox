@@ -278,12 +278,25 @@ var FBR = (function () {
     return plate;
   }
 
+  /* The same path saves.js draws on the reader's rail: stroked when the story
+     is not saved, filled when it is. Copied rather than imported because
+     saves.js exposes a whole button, not its art, and one bookmark drawn two
+     different ways on two screens is the thing a reader notices. */
+  function mark(fill) {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" ' +
+           'fill="' + (fill ? "currentColor" : "none") + '" stroke="currentColor" ' +
+           'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+           '<path d="M6.5 3.75h11a.75.75 0 0 1 .75.75v15.4l-6.25-4.1-6.25 4.1V4.5a.75.75 0 0 1 .75-.75z"/>' +
+           '</svg>';
+  }
+
   function saveBtn(s) {
     if (!window.FBS || typeof FBS.toggle !== "function") return null;
     var on = false;
     try { on = !!(FBS.saved && FBS.saved(str(s.id))); } catch (e) {}
     var name = str(s.title) ? ": " + str(s.title) : "";
-    var b = el("button", "rec-save", on ? "Saved" : "Save");
+    var b = el("button", "rec-save");
+    b.innerHTML = mark(on);
     b.type = "button";
     b.setAttribute("aria-pressed", on ? "true" : "false");
     b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
@@ -294,7 +307,7 @@ var FBR = (function () {
       try { var r = FBS.toggle(str(s.id)); now = (typeof r === "boolean") ? r : !on; }
       catch (e) { return; }
       on = now;
-      b.textContent = on ? "Saved" : "Save";
+      b.innerHTML = mark(on);
       b.setAttribute("aria-pressed", on ? "true" : "false");
       b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
       track("rec_save", { stack: str(s.id), on: on ? "1" : "0" });
@@ -304,8 +317,8 @@ var FBR = (function () {
 
   /* One recommendation. The link and the save button are siblings — a button
      nested inside an anchor is invalid and swallows the tap on some webviews. */
-  function row(s, slot) {
-    var wrap = el("div", "rec-row" + (s.locked ? " is-locked" : ""));
+  function tile(s, slot) {
+    var wrap = el("div", "rec-tile" + (s.locked ? " is-locked" : ""));
     var a = el("a", "rec-link");
     a.href = s.href;
     a.appendChild(cover(s));
@@ -322,9 +335,41 @@ var FBR = (function () {
     });
 
     wrap.appendChild(a);
+    /* Sibling of the anchor, never a child of it: nesting the two swallows the
+       tap in Instagram's webview. The CSS lifts it onto the cover. */
     var b = saveBtn(s);
     if (b) wrap.appendChild(b);
     return wrap;
+  }
+
+  /* The story they just finished, with a tick on it. It costs one cover and it
+     is the only thing on this pane that looks backwards — everything below it
+     is the next tap. A reader who has just spent three minutes should see that
+     it counted before being asked to spend three more. */
+  function doneBadge(s) {
+    try {
+      if (!s || !s.img) return null;
+      var w = el("div", "rec-done");
+      var plate = el("div", "plate");
+      var img = document.createElement("img");
+      img.alt = "";
+      img.decoding = "async";
+      img.src = "/img/thumbs/" + str(s.img) + ".webp";
+      img.onerror = function () {
+        this.onerror = null;                                /* one retry, never a loop */
+        this.src = "/img/stacks/" + str(s.img) + ".webp";
+      };
+      plate.appendChild(img);
+      var tick = el("span", "rec-check");
+      tick.setAttribute("aria-hidden", "true");
+      tick.innerHTML =
+        '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" ' +
+        'stroke="currentColor" stroke-width="3.4" stroke-linecap="round" ' +
+        'stroke-linejoin="round"><path d="M4.5 12.5 10 18 19.5 6.5"/></svg>';
+      plate.appendChild(tick);
+      w.appendChild(plate);
+      return w;
+    } catch (e) { return null; }
   }
 
   /* endPanel(current, stacks, opts) -> a .pane element for the end of a story.
@@ -365,6 +410,16 @@ var FBR = (function () {
       }
       if (picks.length < want && teaser) picks.push(teaser);
 
+      var done = doneBadge(current);
+      if (done) {
+        sec.appendChild(done);
+        /* Headway's line from the finished cover down into the next choice.
+           Decoration, so it is not in the accessible tree. */
+        var thread = el("div", "rec-thread");
+        thread.setAttribute("aria-hidden", "true");
+        sec.appendChild(thread);
+      }
+
       sec.appendChild(el("h2", null, str(opts.heading) || "That is the whole story"));
 
       var openable = 0;
@@ -375,8 +430,8 @@ var FBR = (function () {
       sec.appendChild(el("p", "rec-lede", lede));
 
       if (picks.length) {
-        var listEl = el("div", "rec-list");
-        for (var k = 0; k < picks.length; k++) listEl.appendChild(row(picks[k], k));
+        var listEl = el("div", "rec-rail");
+        for (var k = 0; k < picks.length; k++) listEl.appendChild(tile(picks[k], k));
         sec.appendChild(listEl);
       }
 
