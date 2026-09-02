@@ -1,0 +1,187 @@
+# Working on Factbox
+
+Read this first. It is written for a coding agent picking the repo up cold, and
+it exists because most of what will bite you here is not visible in the code.
+
+factbox.app is 51 history stories, 450 cards, one museum painting per card.
+Static files on GitHub Pages, a Firebase backend for the parts that must not be
+public, and Stripe for the money. There is no build step for the site itself:
+what is in the repo is what is served.
+
+
+## 1. Setup, once
+
+```sh
+git clone https://github.com/hassanjkhan/factbox
+cd factbox
+
+npm i -g firebase-tools
+firebase login                       # your own Google account
+firebase projects:list               # should show factbox-7cb97
+
+npm install --prefix tools           # jsdom, for the render checks
+cwebp -version || brew install webp   # only needed to add artwork
+```
+
+You need Owner or Editor on the Firebase project `factbox-7cb97`. Hassan grants
+that in the console under Project settings -> Users and permissions. Confirm it
+worked before doing anything else:
+
+```sh
+node tools/seed-firebase.js --dry-run
+```
+
+`51 stacks, 450 cards, 31 beds` and no error means you are in. This writes
+nothing. There is no service-account key anywhere in this repo and there should
+never be one — the seeder borrows the token from your own `firebase login`.
+
+
+## 2. The one rule that matters
+
+**Never ship a page that renders empty.**
+
+This site has shipped a page with no words on it. Twice. Both times every check
+passed: the HTML was valid, `node --check` was clean, every URL returned 200.
+None of that runs the script. A `getElementById` for a deleted element threw at
+the top of the file, before the observer that reveals text was installed, so the
+deck was built and no card ever became visible.
+
+So verification means running the page in a DOM and asserting real text is on
+the screen. Status codes prove nothing.
+
+```sh
+python3 -m http.server 8899 &
+cd tools
+node check-page.js  "stories.html"   ".card"    "Season one"
+node check-page.js  "read.html?s=02" ".beat"    "seductress"
+node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
+node check-story.js ../story.html
+node check-backend.js
+```
+
+Each exits non-zero on a script error, on finding none of the expected elements,
+or on missing expected text. Run them before every push. If you change anything
+about how a page renders, add a case.
+
+`tools/compose.py` carries the cheap half of the same idea: it refuses to build
+a page whose script looks up an id the page does not contain.
+
+
+## 3. House rules
+
+- **ES5 only in shipped client code.** Most readers arrive through the Instagram
+  and TikTok in-app browsers. No `let`, no `const`, no arrow functions, no
+  template literals, no `URLSearchParams`, no `Array.prototype.findIndex`. The
+  single exception is `js/auth.js`, which is a Firebase ES module loaded through
+  a dynamic `import()`; everything else reaches it through the `whenFBU()`
+  bridge described in `AUTH.md`.
+- **No framework, no bundler, no npm dependency in the served site.** `tools/`
+  may use whatever it likes; `/js` may not.
+- **One question, one answer.** "May this person read this?" is answered in
+  exactly one place, `js/access.js` (`FBX`). Do not add a second opinion — four
+  surfaces once answered it four ways on four different clocks, and paying
+  readers got padlocks. Details in section 6 of `SPEC.md`.
+- **Never reload the page on an access change.** Use `FBX.correct(drew)`. The
+  hand-rolled version of that is how the shelf came to reload forever.
+- **No error codes on screen, ever.** A reader sees a sentence, not a status.
+- **The immersion is the product.** Do not write copy that explains the
+  machinery ("this site is static files", "no server behind them").
+
+
+## 4. Adding or changing a story
+
+The corpus is `data/stacks.json`: 51 stacks, each with cards carrying `head`,
+`body`, an image id, and a credit block. It has **two homes**, and a change has
+to reach both:
+
+```sh
+node tools/seed-firebase.js --dry-run    # always look first
+node tools/seed-firebase.js              # the gated copy, for people who paid
+git push                                 # the static copy Pages serves
+```
+
+Skip the seeder and subscribers read the old text. Skip the push and everyone
+else does. `--dry-run` prints exactly which stories changed.
+
+Artwork is never hotlinked from Wikimedia. Every plate is fetched once,
+re-encoded to WebP and re-hosted here:
+
+```sh
+python3 tools/ingest_cards.py <manifest.csv> . --workers 2
+```
+
+Two workers, not five. Wikimedia returns 429 above that, and the run is
+resumable, so a rate-limited run is recoverable but a banned IP is not.
+
+**Licences are not a style choice.** 416 plates are public domain and carry no
+condition. 34 are CC BY-SA or CC BY, and for those, naming and linking the
+licence on the card is the term that makes using the photograph lawful. That is
+why `creditLine()` in `js/gate.js` prints a licence for some plates and not
+others. Do not "tidy" it. `tools/build_credits.py` regenerates `credits.html`
+from the same data.
+
+Audio: `tools/build-beds.py` makes the ambient beds (seamless loops, built here
+rather than licensed, so the provenance is ours), and `tools/build_cardaudio.py`
+maps cards to beds in `data/cardaudio.json`.
+
+
+## 5. The flagship story is generated — do not edit it by hand
+
+`story.html`, `cleopatra.html` and `firststory.html` are three copies of the
+illustrated Cleopatra story, built from `scenes/` by `tools/compose.py`. Editing
+them directly works right up until the next compose silently discards it.
+
+```sh
+python3 tools/compose.py     # scenes/ -> story.html, cleopatra.html, firststory.html
+```
+
+`scenes/CONTRACT.md` says what the scene files may and may not assume.
+
+
+## 6. URLs
+
+The site serves clean URLs: `/read`, `/stories`, `/login` — never `.html`.
+
+GitHub Pages resolves `/foo` to `foo.html` **before** `foo/index.html`. A
+directory-based clean URL plus a leftover `foo.html` stub therefore serves the
+stub, and a stub that redirects to its own clean URL redirects to itself. That
+is a real bug this site shipped: "Sign in" led to a white screen reading "Moved
+to /login". `curl -L` did not catch it, because following the redirect chain
+ends at a 200. Check what a URL actually renders, not what it returns.
+
+Every asset path is root-relative for the same reason: a relative path resolves
+differently from inside `/explore/` than from `/`.
+
+
+## 7. Backend
+
+- **Firestore** holds `customers/{uid}` (`premium`, `admin`), the story
+  documents, and onboarding answers. `firestore.rules` is closed by default;
+  `customers/{uid}` is readable only by that user and never client-writable —
+  only the Stripe webhook writes entitlement.
+- **Cloud Functions** (`functions/`, Node 20, us-central1): `stripeWebhook`
+  verifies Stripe's signature against `req.rawBody` — not the parsed body — and
+  `story.js` serves gated story text to a verified premium caller.
+- **Stripe** entitlement arrives by webhook. `client_reference_id` carries the
+  Firebase UID; that is the entire link between a payment and an account.
+- **Deploys**: `firebase deploy --only functions` / `--only firestore:rules`.
+  If a functions deploy fails on Secret Manager, you need the Secret Manager
+  Secret Accessor role — that is the Stripe webhook signing secret. Seeding
+  stories does not touch it.
+
+`BACKEND.md` and `AUTH.md` are the long versions. Node 20 is end-of-life for
+Cloud Functions on **30 October 2026**; moving to Node 22 is outstanding.
+
+
+## 8. Known and outstanding
+
+- `data/stacks.json` is public. Every word of all 51 stories is readable without
+  paying. Hassan knows and has decided to leave it for now; the Firestore path
+  exists for when that changes.
+- Email sign-ups have no display name yet (needs `FBU.setName()` around
+  `updateProfile`).
+- Audio is served with long-lived download tokens rather than signed URLs; the
+  IAM grant needed for signing was blocked.
+
+Ask Hassan before changing pricing, the paywall's free-story count, or anything
+in `LEGAL.md`.

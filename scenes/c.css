@@ -1,0 +1,1186 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SCENES C — harbour · letter · search   (beats 3, 6 and 8)
+
+   Same grammar as A and B. Composed at 390×844 first, checked at
+   1440×800. The shell's scrim plateaus between 34% and 58%, so that
+   band carries no detail in any of the three: a plank field, a bare
+   table, a bare wall. The bottom 12% is treated as sacrificial —
+   Instagram's toolbar sits on it — so nothing that means anything
+   lives below 88%.
+
+   Every selector is scoped under its .s-NAME and every class carries
+   a scene prefix (hrb- / ltr- / srh-), so nothing here can reach a
+   scene it does not own. Sizes in % / vmin / em only; the one place
+   raw numbers appear is inside an SVG's own user-unit space.
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────────
+   1 · .s-harbour — "Then Rome reaches Alexandria."
+
+   Six planes, each one lighter and hazier than the one in front:
+
+     0–29%   sky, the Pharos, the city, the quay and the crowd on it
+     29–36%  the fleet standing in at the harbour mouth
+     36–56%  open water — the caption's ground, and nothing else
+     44–63%  four liburnians in the near water, oars out
+     57–86%  the deck we are standing on, the legion along its rail
+     84–100% the sea alongside, mostly under the webview toolbar
+
+   Alexandria in 30 BCE: white limestone on a grid, a colonnaded
+   street, the Caesareum with its pair of obelisks, the palaces of
+   the Brucheion on Cape Lochias — where she is barricaded — and the
+   lighthouse at the harbour mouth in its three stages, square then
+   octagonal then round. The Heptastadion runs out to it on the left.
+   Daylight and from the water, so it does not repeat s-pharos.
+
+   Everything that spreads across the frame — the crowd, the rank of
+   legionaries, the shields — is a flex row of height-sized items, so
+   the figures stay the same size on a phone and on a desktop and the
+   line simply runs further on the wider one.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-harbour {
+  --ink:      62, 47, 74;
+  --butter:   255, 211, 110;
+  --butter-s: 255, 230, 174;
+  --crimson:  #A81F38;
+  background: #2E7C7C;
+}
+
+.s-harbour .hrb-sky {
+  position: absolute; left: 0; right: 0; top: 0; height: 30%;
+  background: linear-gradient(to bottom,
+    #6AA6B4 0%, #90BEC4 26%, #B8D3CF 52%, #DCDDCC 76%, #F3E8D0 92%, #FBF2DE 100%);
+}
+/* Sun high and behind us on the left; what we see is the glare it
+   puts on the haze and on the water. */
+.s-harbour .hrb-sun {
+  position: absolute; left: -16%; top: -6%; width: 70%; height: 36%;
+  background: radial-gradient(56% 74% at 36% 86%,
+    rgba(255, 250, 240, .72) 0%,
+    rgba(var(--butter-s), .30) 44%,
+    rgba(var(--butter), 0) 76%);
+  filter: blur(1.6vmin);
+  animation: hrbSun 21s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes hrbSun { 0% { opacity: .8 } 100% { opacity: 1 } }
+
+/* ── the Pharos ── */
+.s-harbour .hrb-pharos {
+  position: absolute; left: 2%; top: 2.5%;
+  height: 25.5%; aspect-ratio: .42;
+  opacity: .93;
+}
+.s-harbour .hrb-pharos svg { width: 100%; height: 100%; display: block; }
+.s-harbour .hrb-ph-stone { fill: #F2EADA; }
+.s-harbour .hrb-ph-shade { fill: #C9BCA8; }
+.s-harbour .hrb-ph-win   { fill: rgba(var(--ink), .34); }
+
+.s-harbour .hrb-hepta {
+  position: absolute; left: 0; width: 30%; top: 26.6%; height: 1.5%;
+  background: linear-gradient(to bottom, #E4DAC4, #B6A78C);
+  opacity: .85;
+}
+
+/* ── the city ── */
+.s-harbour .hrb-city-back {
+  position: absolute; left: -1%; right: -1%; bottom: 72.6%; height: 13.5%;
+  opacity: .88;
+}
+.s-harbour .hrb-city-back svg { width: 100%; height: 100%; display: block; }
+.s-harbour .hrb-cb  { fill: #DCD7D6; }
+.s-harbour .hrb-cb2 { fill: #C0B8BB; }
+
+.s-harbour .hrb-city svg { width: 100%; height: 100%; display: block; }
+.s-harbour .hrb-ct  { fill: #F6F1E6; }
+.s-harbour .hrb-col { fill: #CFC5B4; }
+.s-harbour .hrb-ped { fill: #FCF7EC; }
+.s-harbour .hrb-obe { fill: #DCC79E; }
+
+/* Height-led, like the Pharos and like everything afloat, so the far
+   shore keeps one scale. They used to be `min(46%, 40vh)` wide, which
+   on a short wide window put the temples nearly level with a
+   lighthouse they should be dwarfed by. */
+.s-harbour .hrb-city-a { position: absolute; left: 1%;   bottom: 73.6%; height:  8.8%; aspect-ratio: 2.42; opacity: .9; }
+.s-harbour .hrb-city-b { position: absolute; left: 41%;  bottom: 73.6%; height: 11.4%; aspect-ratio: 1.22; opacity: .95; }
+.s-harbour .hrb-city-c { position: absolute; right: -2%; bottom: 73.6%; height: 10.8%; aspect-ratio: 1.97; }
+
+/* A wash over the whole far shore. Distance is the point. */
+.s-harbour .hrb-quay {
+  position: absolute; left: 0; right: 0; top: 26.4%; height: 3%;
+  background: linear-gradient(to bottom, #E2D3B4 0%, #C9B695 54%, #A79176 100%);
+}
+.s-harbour .hrb-quayline {
+  position: absolute; left: 0; right: 0; top: 26.1%; height: .6%;
+  background: #F6EEDC;
+}
+.s-harbour .hrb-crowd {
+  position: absolute; left: -2%; right: -2%; top: 25.6%; height: 2%;
+  background-repeat: repeat-x;
+  background-position: 0 bottom;
+  background-size: auto 84%, auto 74%, auto 98%, auto 62%;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 .265vh, rgba( 58, 46, 72, .22) .265vh .755vh, transparent .755vh 2.04vh),
+    repeating-linear-gradient(90deg, transparent 0 1.31vh, rgba(122, 36, 56, .24) 1.31vh 1.75vh, transparent 1.75vh 3.06vh),
+    repeating-linear-gradient(90deg, transparent 0 3.35vh, rgba( 58, 46, 72, .22) 3.35vh 3.79vh, transparent 3.79vh 5.10vh),
+    repeating-linear-gradient(90deg, transparent 0 .265vh, rgba( 58, 46, 72, .26) .265vh .755vh, transparent .755vh 1.02vh);
+}
+
+.s-harbour .hrb-sea {
+  position: absolute; left: 0; right: 0; top: 29%; bottom: 0;
+  background: linear-gradient(to bottom,
+    #BFD9CE 0%,
+    #7FC4BE 3%,
+    #4FC3B8 10%,
+    #2FA098 26%,
+    #1F7A72 48%,
+    #17615E 72%,
+    #10474A 100%);
+}
+.s-harbour .hrb-searim {
+  position: absolute; left: 0; right: 0; top: 28.8%; height: .5%;
+  background: rgba(255, 250, 240, .72);
+}
+
+/* ── the fleet. Two ranks of the same silhouette, sized off their own
+      height so they never stretch; the further rank is smaller, paler
+      and half haze. ── */
+.s-harbour .hrb-fleet { position: absolute; inset: 0; }
+.s-harbour .hrb-fleet i { position: absolute; aspect-ratio: 1.72; }
+.s-harbour .hrb-fleet svg { width: 100%; height: 100%; display: block; }
+.s-harbour .hrb-d-hull { fill: currentColor; }
+.s-harbour .hrb-d-post { fill: currentColor; }
+.s-harbour .hrb-d-mast { fill: currentColor; }
+.s-harbour .hrb-d-sail { fill: var(--hrb-sail); }
+
+.s-harbour .hrb-fa { color: #7E9BA2; --hrb-sail: rgba(168, 31, 56, .40); opacity: .48; }
+.s-harbour .hrb-fa i { height: 2.1%; }
+.s-harbour .hrb-fa i:nth-child( 1) { left:  1.0%; top: 29.4%; height: 2.1%; }
+.s-harbour .hrb-fa i:nth-child( 2) { left: 10.0%; top: 30.6%; height: 1.8%; }
+.s-harbour .hrb-fa i:nth-child( 3) { left: 18.0%; top: 29.2%; height: 2.1%; }
+.s-harbour .hrb-fa i:nth-child( 4) { left: 26.0%; top: 31.0%; height: 2.4%; }
+.s-harbour .hrb-fa i:nth-child( 5) { left: 35.0%; top: 29.6%; height: 1.8%; }
+.s-harbour .hrb-fa i:nth-child( 6) { left: 43.0%; top: 30.8%; height: 2.1%; }
+.s-harbour .hrb-fa i:nth-child( 7) { left: 51.0%; top: 29.3%; height: 1.7%; }
+.s-harbour .hrb-fa i:nth-child( 8) { left: 59.0%; top: 31.2%; height: 2.4%; }
+.s-harbour .hrb-fa i:nth-child( 9) { left: 68.0%; top: 29.8%; height: 2.1%; }
+.s-harbour .hrb-fa i:nth-child(10) { left: 76.0%; top: 30.7%; height: 1.8%; }
+.s-harbour .hrb-fa i:nth-child(11) { left: 84.0%; top: 29.4%; height: 2.1%; }
+.s-harbour .hrb-fa i:nth-child(12) { left: 92.0%; top: 31.0%; height: 2.2%; }
+
+.s-harbour .hrb-fb { color: #48707B; --hrb-sail: rgba(168, 31, 56, .62); opacity: .74; }
+.s-harbour .hrb-fb i { height: 3.1%; }
+.s-harbour .hrb-fb i:nth-child(1) { left:  3.0%; top: 31.8%; height: 3.1%; }
+.s-harbour .hrb-fb i:nth-child(2) { left: 16.0%; top: 33.0%; height: 3.5%; }
+.s-harbour .hrb-fb i:nth-child(3) { left: 29.0%; top: 31.9%; height: 2.8%; }
+.s-harbour .hrb-fb i:nth-child(4) { left: 43.0%; top: 33.2%; height: 3.4%; }
+.s-harbour .hrb-fb i:nth-child(5) { left: 57.0%; top: 31.8%; height: 2.9%; }
+.s-harbour .hrb-fb i:nth-child(6) { left: 70.0%; top: 33.1%; height: 3.3%; }
+.s-harbour .hrb-fb i:nth-child(7) { left: 84.0%; top: 32.0%; height: 3.1%; }
+
+/* The band of glare across the middle of the water. This is what
+   keeps the caption's third quiet — there is nothing in it but
+   light. */
+.s-harbour .hrb-glare {
+  position: absolute; left: 0; right: 0; top: 29%; height: 26%;
+  background: linear-gradient(to bottom,
+    rgba(255, 250, 240, .42) 0%,
+    rgba(255, 250, 240, .16) 30%,
+    rgba(var(--butter-s), .05) 64%,
+    rgba(var(--butter-s), 0) 100%);
+}
+.s-harbour .hrb-glints { position: absolute; inset: 0; pointer-events: none; }
+.s-harbour .hrb-glints i {
+  position: absolute; height: .5vmin; border-radius: 1vmin;
+  background: rgba(255, 253, 246, .5);
+  animation: hrbGlint 32s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes hrbGlint {
+  0%   { transform: translateX(-2.2vmin); opacity: .18; }
+  50%  { opacity: .52; }
+  100% { transform: translateX(2.2vmin);  opacity: .26; }
+}
+.s-harbour .hrb-glints i:nth-child(1) { left:  8%; top: 37.4%; width: 12%; animation-duration: 30s; }
+.s-harbour .hrb-glints i:nth-child(2) { left: 52%; top: 39.6%; width: 17%; animation-duration: 38s; animation-delay: -11s; }
+.s-harbour .hrb-glints i:nth-child(3) { left: 28%; top: 42.6%; width: 9%; animation-duration: 34s; animation-delay: -21s; }
+.s-harbour .hrb-glints i:nth-child(4) { left: 66%; top: 45.4%; width: 14%; animation-duration: 44s; animation-delay:  -5s; }
+.s-harbour .hrb-glints i:nth-child(5) { left:  3%; top: 48.6%; width: 20%; animation-duration: 48s; animation-delay: -29s; height: .7vmin; }
+.s-harbour .hrb-glints i:nth-child(6) { left: 56%; top: 51.6%; width: 12%; animation-duration: 36s; animation-delay: -14s; height: .7vmin; }
+.s-harbour .hrb-glints i:nth-child(7) { left: 20%; top: 54.4%; width: 22%; animation-duration: 56s; animation-delay: -38s; height: .85vmin; }
+
+/* ── the liburnians. Low, oared, ram at the waterline, curved stern,
+      red sail brailed to the yard, shields on the rail, men on deck.
+      Each rides its own swell so the line never marches. ── */
+.s-harbour .hrb-lib {
+  position: absolute; aspect-ratio: 1.59;
+  transform-origin: 50% 92%;
+  animation: hrbSwell 12.6s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes hrbSwell {
+  0%   { transform: translateY(-.5%) rotate(-.34deg); }
+  100% { transform: translateY(.5%)  rotate(.34deg); }
+}
+.s-harbour .hrb-lib svg { width: 100%; height: 100%; display: block; }
+
+.s-harbour .hrb-l-hull   { fill: #3E3150; }
+.s-harbour .hrb-l-ram    { fill: #A08761; }
+.s-harbour .hrb-l-post   { fill: #4A3B5C; }
+.s-harbour .hrb-l-rail   { fill: #5D4C6E; }
+.s-harbour .hrb-l-shield circle { fill: #8E2038; stroke: rgba(224, 180, 74, .6); stroke-width: .8; }
+.s-harbour .hrb-l-men    { fill: #241B2E; }
+.s-harbour .hrb-l-mast,
+.s-harbour .hrb-l-yard   { fill: #33283F; }
+.s-harbour .hrb-l-sail   { fill: #B0263F; }
+.s-harbour .hrb-l-band   { fill: rgba(255, 211, 110, .78); }
+.s-harbour .hrb-l-flag   { fill: #E85F41; }
+.s-harbour .hrb-l-oar path {
+  fill: none; stroke: #4A3B5C; stroke-width: 2.2; stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.s-harbour .hrb-lib.l4 { left: 14%;  top: 40%;   height: 8.5%;  z-index: 1; opacity: .58; filter: saturate(.46) brightness(1.28); animation-duration: 17.2s; animation-delay: -5s; }
+.s-harbour .hrb-lib.l3 { left: 71%;  top: 49%;   height: 11.5%; z-index: 2; opacity: .84; filter: saturate(.78) brightness(1.08); animation-duration: 14.8s; animation-delay: -9s; }
+.s-harbour .hrb-lib.l2 { left: 40%;  top: 45%;   height: 13%;   z-index: 3; opacity: .94; filter: saturate(.9) brightness(1.03); animation-duration: 11.2s; animation-delay: -3s; }
+.s-harbour .hrb-lib.l1 { left: -13%; top: 48%;   height: 16%;   z-index: 4; animation-duration: 12.6s;
+                         filter: drop-shadow(0 .8vmin 1.4vmin rgba(8, 34, 40, .34)); }
+
+/* ── the deck we are standing on ── */
+.s-harbour .hrb-bob {
+  position: absolute; inset: 0; z-index: 6;
+  transform-origin: 50% 96%;
+  animation: hrbDeck 15.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes hrbDeck {
+  0%   { transform: translateY(-.34%) rotate(-.16deg); }
+  100% { transform: translateY(.34%)  rotate(.16deg); }
+}
+
+/* The vexillum on its pole, carried in the rank. Rome, said out loud. */
+.s-harbour .hrb-pole {
+  position: absolute; left: 91%; top: 53.5%; height: 16.1%;
+  width: .42vh; margin-left: -.21vh;
+  border-radius: .6vmin;
+  background: linear-gradient(to right, #241B2E, #4A3B5C 60%, #1B1425);
+}
+.s-harbour .hrb-vex {
+  position: absolute; left: 91.4%; top: 53.9%; width: 6.5%; height: 4.8%;
+  transform-origin: 0% 0%;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 74%, 76% 100%, 50% 78%, 24% 100%, 0% 74%);
+  background: linear-gradient(to bottom, #C4283F 0%, #8A1830 100%);
+  box-shadow: inset 0 .6vmin 0 rgba(255, 211, 110, .55);
+  animation: hrbFlag 6.6s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes hrbFlag {
+  0%   { transform: skewY(-1.4deg) scaleX(.95); }
+  100% { transform: skewY(1.6deg)  scaleX(1); }
+}
+
+/* The rank along the rail. Each man is sized off his own height and
+   overlaps his neighbour by a height-led amount too (it was -.6vmin,
+   which made the shields overlap twice as far on a landscape window
+   as on a phone), so the rank is the same rank at every size — just
+   more of it. There are a hundred and four of them because a 2.5:1
+   window needs about ninety-six to reach past both edges; the extras
+   are clipped, and cost four static boxes each. Each is a helmet, a crest and a
+   scutum, which at this size is the whole of a legionary; the shields
+   overlap into one line, which is what a boarding party looks like.
+   The red and the gold of the fleet are carried here. */
+.s-harbour .hrb-troop {
+  position: absolute; left: -5%; right: -5%; top: 62.4%; height: 7.2%;
+  display: flex; align-items: flex-end;
+}
+.s-harbour .hrb-troop i {
+  position: relative; flex: 0 0 auto; height: 100%; aspect-ratio: .46;
+}
+.s-harbour .hrb-troop i + i { margin-left: -.28vh; }
+/* A pilum standing up behind every fourth man. Painted straight onto
+   the flex item, so it costs no element. */
+.s-harbour .hrb-troop i:nth-child(4n+2) {
+  background: linear-gradient(#6E5836, #6E5836) no-repeat 84% 2% / 5% 58%;
+}
+.s-harbour .hrb-troop i:nth-child(7n+3) {
+  background: linear-gradient(#6E5836, #6E5836) no-repeat 14% 6% / 5% 54%;
+}
+/* Shoulders and neck. The head is no longer part of this shape — it
+   used to be one polygon from crown to hem, which is why the rank read
+   as a row of bottles. */
+.s-harbour .hrb-troop i::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, #1B1425 0%, #33273D 62%, #150F1E 100%);
+  clip-path: polygon(37% 15%, 63% 15%, 65% 31%, 96% 45%, 96% 100%, 4% 100%, 4% 45%, 35% 31%);
+}
+/* the scutum, dropped a little so the man above it has a neck */
+.s-harbour .hrb-troop i::after {
+  content: ''; position: absolute; left: 3%; top: 47%; width: 84%; height: 53%;
+  border-radius: 26% 26% 22% 22% / 15% 15% 13% 13%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(240, 208, 130, .9) 0 9%, rgba(240, 208, 130, 0) 10%),
+    linear-gradient(102deg, #A02A40 0%, #8A1B31 56%, #5E0F1F 100%);
+  box-shadow: .3vmin .3vmin .9vmin rgba(9, 22, 26, .44);
+}
+/* THE HEAD. A bronze helmet with a bowl, a face under it and two eyes
+   in the face — which is the difference between a man and a bottle.
+   Four boxes an infantryman, all of them static paint: the rank has no
+   animation of its own and never had. */
+.s-harbour .hrb-troop b {
+  position: absolute; left: 29%; right: 29%; top: 0; height: 23%;
+  border-radius: 52% 52% 38% 38% / 58% 58% 42% 42%;
+  background: linear-gradient(104deg, #46391F 0%, #7B6737 52%, #382E17 100%);
+}
+/* the crest, over the bowl */
+.s-harbour .hrb-troop b::before {
+  content: ''; position: absolute; left: 26%; right: 26%; top: -36%; height: 44%;
+  border-radius: 50% 50% 0 0;
+  background: rgba(158, 38, 62, .95);
+}
+/* the face under the brim, with the eyes in it */
+.s-harbour .hrb-troop b::after {
+  content: ''; position: absolute; left: 21%; right: 21%; top: 47%; bottom: 5%;
+  border-radius: 20% 20% 46% 46%;
+  background:
+    radial-gradient(circle at 32% 34%, #1A1220 0 13%, rgba(26, 18, 32, 0) 14%),
+    radial-gradient(circle at 68% 34%, #1A1220 0 13%, rgba(26, 18, 32, 0) 14%),
+    linear-gradient(100deg, #A47B5B 0%, #8A6547 100%);
+}
+/* Nobody in a rank faces exactly the same way. The head shifts, the
+   face inside the helmet shifts with it, and some of them have lost
+   the crest off the helmet altogether. */
+.s-harbour .hrb-troop i:nth-child(3n) b::before { background: rgba(150, 112, 24, .9); }
+.s-harbour .hrb-troop i:nth-child(5n) b::before { display: none; }
+.s-harbour .hrb-troop i:nth-child(2n) b        { left: 24%; right: 30%; }
+.s-harbour .hrb-troop i:nth-child(2n) b::after { left: 14%; right: 28%; }
+.s-harbour .hrb-troop i:nth-child(3n+1) b        { left: 30%; right: 24%; }
+.s-harbour .hrb-troop i:nth-child(3n+1) b::after { left: 28%; right: 14%; }
+.s-harbour .hrb-troop i:nth-child(7n) b        { top: 3%; height: 21%; }
+.s-harbour .hrb-troop i:nth-child(4n)  { height: 95%; }
+.s-harbour .hrb-troop i:nth-child(7n)  { height: 91%; }
+.s-harbour .hrb-troop i:nth-child(9n)  { height: 98%; }
+.s-harbour .hrb-troop i:nth-child(11n) { height: 88%; }
+.s-harbour .hrb-troop i:nth-child(6n)::after {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(240, 208, 130, .8) 0 9%, rgba(240, 208, 130, 0) 10%),
+    linear-gradient(102deg, #7C5A14 0%, #63470A 56%, #3E2C04 100%);
+}
+
+/* The hull. It runs off both edges on purpose — we are on it. */
+.s-harbour .hrb-hull {
+  position: absolute; left: -12%; right: -6%; top: 69.4%; height: 17%;
+}
+.s-harbour .hrb-hull svg { width: 100%; height: 100%; display: block; }
+
+.s-harbour .hrb-cap     { fill: #7E688A; }
+.s-harbour .hrb-caplit  { fill: rgba(var(--butter-s), .52); }
+.s-harbour .hrb-sheer   { fill: #5B4867; }
+.s-harbour .hrb-wale    { fill: #2C2138; }
+.s-harbour .hrb-walelit { fill: rgba(var(--butter), .26); }
+.s-harbour .hrb-lowwale { fill: rgba(9, 22, 26, .40); }
+.s-harbour .hrb-plank path {
+  fill: none; stroke: rgba(var(--butter-s), .21); stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+.s-harbour .hrb-plank-d path { stroke: rgba(9, 6, 14, .28); stroke-width: 1.4; }
+.s-harbour .hrb-seam path {
+  fill: none; stroke: rgba(9, 6, 14, .24); stroke-width: 1.3;
+  vector-effect: non-scaling-stroke;
+}
+.s-harbour .hrb-portring ellipse { fill: #6E5C7C; }
+.s-harbour .hrb-port ellipse     { fill: #0B0712; }
+.s-harbour .hrb-tar { fill: rgba(9, 6, 14, .18); }
+
+/* ── the sea alongside ── */
+.s-harbour .hrb-nearsea {
+  position: absolute; left: 0; right: 0; top: 86%; bottom: 0; z-index: 7;
+  background: linear-gradient(to bottom,
+    #16605E 0%, #114C4E 34%, #0C383B 74%, #08272B 100%);
+}
+.s-harbour .hrb-reflect {
+  position: absolute; left: 0; right: 0; top: 86%; height: 8%; z-index: 8;
+  background: linear-gradient(to bottom,
+    rgba(28, 20, 40, .62) 0%, rgba(28, 20, 40, .22) 52%, rgba(28, 20, 40, 0) 100%);
+  filter: blur(1vmin);
+}
+.s-harbour .hrb-ripple {
+  position: absolute; border-radius: 50%; z-index: 8;
+  background: linear-gradient(to bottom,
+    rgba(214, 240, 236, .16), rgba(214, 240, 236, .02));
+  filter: blur(.6vmin);
+}
+.s-harbour .hrb-ripple.r1 { left: -6%; right: -6%; top: 91%;   height: 1.8%; }
+.s-harbour .hrb-ripple.r2 { left: -6%; right: -6%; top: 96%;   height: 2.2%; }
+
+/* Oars out of the ports, blades just in. The lefts are percentages
+   of the scene and so is the hull box, so they stay together. */
+.s-harbour .hrb-oars { position: absolute; inset: 0; z-index: 9; }
+.s-harbour .hrb-oars i {
+  position: absolute;
+  width: 1.66vh; height: 10.5%;
+  margin-left: -.83vh;
+  transform-origin: 50% 0%;
+  transform: rotate(19deg);
+  clip-path: polygon(40% 0%, 60% 0%, 62% 60%, 96% 74%, 84% 100%, 16% 100%, 38% 74%);
+  background: linear-gradient(to bottom,
+    #8B7462 0%, #6E5A55 40%, #4A3C46 70%, rgba(22, 78, 78, .7) 92%, rgba(22, 78, 78, .24) 100%);
+}
+.s-harbour .hrb-oars i:nth-child(1) { left: -1.4%; top: 78.5%; }
+.s-harbour .hrb-oars i:nth-child(2) { left: 17.5%; top: 78.7%; }
+.s-harbour .hrb-oars i:nth-child(3) { left: 36.4%; top: 78.8%; }
+.s-harbour .hrb-oars i:nth-child(4) { left: 55.3%; top: 78.8%; }
+.s-harbour .hrb-oars i:nth-child(5) { left: 74.2%; top: 78.7%; }
+.s-harbour .hrb-oars i:nth-child(6) { left: 93.0%; top: 78.5%; }
+
+.s-harbour .hrb-wash {
+  position: absolute; left: -4%; right: -4%; top: 84.2%; height: 4%; z-index: 10;
+  border-radius: 50%;
+  background: radial-gradient(50% 76% at 50% 44%,
+    rgba(214, 240, 236, .5) 0%, rgba(214, 240, 236, .18) 46%, rgba(214, 240, 236, 0) 78%);
+  filter: blur(1.1vmin);
+}
+
+.s-harbour .hrb-vig {
+  position: absolute; inset: 0; z-index: 11;
+  background:
+    linear-gradient(to bottom, rgba(14, 34, 48, .34) 0%, rgba(14, 34, 48, 0) 18%),
+    radial-gradient(98% 78% at 50% 50%,
+      rgba(18, 24, 34, 0) 44%, rgba(18, 24, 34, .26) 86%, rgba(18, 24, 34, .44) 100%);
+}
+
+.page.live .s-harbour .hrb-sun,
+.page.live .s-harbour .hrb-lib,
+.page.live .s-harbour .hrb-bob,
+.page.live .s-harbour .hrb-vex,
+.page.live .s-harbour .hrb-glints i { animation-play-state: running; }
+
+
+/* ───────────────────────────────────────────────────────────────────
+   2 · .s-letter — "Then she writes to Octavian."
+
+   She is at the table with the stylus still in her hand and five
+   lines on the sheet, the fifth stopped short of the margin with a
+   blot at the end of it. One lamp on her right does all the
+   lighting, so her right edge carries the rim and her shadow goes up
+   and to the left — which is where the door is.
+
+   The interruption is two motions at once: a cold seam widening on
+   the left as a door does (24s), and a soft shadow crossing it
+   (19s). Neither is fast. Warm, and then wrong.
+
+   Vertical grammar: room 0–42%, table 42–100%, her head 20–36%,
+   sheet 63–88%. What the caption crosses is her shoulder and a bare
+   plane of table — dark, flat, quiet.
+
+   Everything on the table lives inside .ltr-stage, and the stage is
+   ASPECT-LOCKED: full scene height, width derived from that height at
+   9/20. It used to be `min(100%, 84vh)` wide against a full-height
+   box, which is not a lock at all — the box changed shape with the
+   window while the objects in it stayed height-led, so at 1280×620
+   her stylus floated a hand's width to the left of the sheet and the
+   wax and the lamp had slid off their marks. Now the stage box is the
+   same shape at every size and every object is a fraction of it, so
+   the tip of the stylus lands on the same word of the same line
+   whatever the window does. 9/20 rather than the 390/844 of the
+   reference phone so that the box is still full height on a 360×800
+   or 412×915 handset — anything narrower simply loses a little off
+   both edges instead of squashing the picture.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-letter {
+  --ink:      62, 47, 74;
+  --butter:   255, 211, 110;
+  --butter-s: 255, 230, 174;
+  --cold:     206, 222, 232;
+  --lilac:    183, 156, 237;
+  background: #17101A;
+}
+
+.s-letter .ltr-room {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(80% 54% at 80% 62%, rgba(var(--butter), .20), rgba(var(--butter), 0) 74%),
+    linear-gradient(to bottom, #241823 0%, #1A1219 54%, #120C15 100%);
+}
+.s-letter .ltr-back {
+  position: absolute; left: 0; right: 0; top: 0; height: 44%;
+  background: linear-gradient(to bottom, #110C15 0%, #1C141D 52%, #33232A 100%);
+}
+
+.s-letter .ltr-stage {
+  position: absolute; left: 50%; top: 0; height: 100%;
+  aspect-ratio: 9 / 20;
+  transform: translateX(-50%);
+}
+
+/* Her shadow, thrown away from the lamp: up the wall and to the
+   left, which is the only place it could go. */
+.s-letter .ltr-cast {
+  position: absolute; left: -26%; top: 0; width: 64%; height: 46%;
+  background: radial-gradient(46% 52% at 64% 76%,
+    rgba(6, 4, 8, .8) 0%, rgba(6, 4, 8, .34) 52%, rgba(6, 4, 8, 0) 82%);
+  filter: blur(3vmin);
+}
+
+.s-letter .ltr-table {
+  position: absolute; left: -50vw; right: -50vw; top: 42%; bottom: 0;
+  background: linear-gradient(to bottom,
+    #6A4830 0%, #8B6242 6%, #9A6E4A 18%, #8A6240 44%, #6E4C2C 74%, #46301F 92%, #2C1F17 100%);
+}
+.s-letter .ltr-grain {
+  position: absolute; left: -50vw; right: -50vw; top: 42%; bottom: 0;
+  background: repeating-linear-gradient(93deg,
+    rgba(255, 233, 188, 0)    0 2.6%,
+    rgba(255, 233, 188, .03)  2.6% 3.2%,
+    rgba(46, 30, 20, .04)     3.2% 3.8%);
+}
+.s-letter .ltr-edge {
+  position: absolute; left: -50vw; right: -50vw; top: 41.6%; height: .5%;
+  background: linear-gradient(to bottom, rgba(var(--butter-s), .38), rgba(var(--butter), .05));
+}
+
+/* ── her ── */
+.s-letter .ltr-her,
+.s-letter .ltr-arm {
+  position: absolute; left: -6%; top: 11%;
+  height: 60%; aspect-ratio: .714;
+}
+.s-letter .ltr-her svg,
+.s-letter .ltr-arm svg { width: 100%; height: 100%; display: block; }
+.s-letter .ltr-body   { fill: #2A2136; }
+.s-letter .ltr-sleeve { fill: #2E2439; }
+.s-letter .ltr-hair   { fill: #291D33; }
+.s-letter .ltr-head   { fill: #6B5059; }
+.s-letter .ltr-neck   { fill: #55404A; }
+.s-letter .ltr-hand   { fill: #6A4E56; }
+/* Her face. Flat idiom, as everywhere: an ink ellipse for the eye, one
+   lid line, one lip line. She is lit from the lamp on her right, so the
+   only bright thing on her is the edge the lamp actually reaches —
+   forehead, nose, lip — and everything else stays in the dark. */
+.s-letter .ltr-eye    { fill: #221829; }
+.s-letter .ltr-ear    { fill: none; stroke: #4A363E; stroke-width: 1.5;
+                        stroke-linecap: round; }
+.s-letter .ltr-lid    { fill: none; stroke: #221829; stroke-width: 1.7;
+                        stroke-linecap: round; }
+.s-letter .ltr-lip    { fill: none; stroke: #221829; stroke-width: 1.5;
+                        stroke-linecap: round; opacity: .85; }
+.s-letter .ltr-rim2   { fill: rgba(255, 211, 110, .30); }
+.s-letter .ltr-grip path { fill: none; stroke: #4C363E; stroke-width: 1.3;
+                        stroke-linecap: round; }
+.s-letter .ltr-diadem { fill: rgba(255, 211, 110, .78); }
+.s-letter .ltr-rim    { fill: rgba(255, 211, 110, .34); }
+.s-letter .ltr-pen    { fill: #8E7A63; }
+.s-letter .ltr-nib    { fill: #241B2E; }
+.s-letter .ltr-fold path {
+  fill: none; stroke: rgba(255, 211, 110, .10); stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ── the sheet ── */
+.s-letter .ltr-shadow {
+  position: absolute; right: 0; bottom: 10.6%;
+  width: 88%; height: 5%;
+  border-radius: 50%;
+  background: radial-gradient(58% 100% at 50% 50%, rgba(0, 0, 0, .5), rgba(0, 0, 0, 0) 74%);
+  filter: blur(1.2vmin);
+}
+.s-letter .ltr-sheet {
+  position: absolute; right: 2%; bottom: 12%;
+  height: 25%; aspect-ratio: 1.55; max-width: 96%;
+  transform: rotate(-3.2deg);
+}
+.s-letter .ltr-sheet svg { width: 100%; height: 100%; display: block; }
+.s-letter .ltr-page  { fill: #F5E6C9; }
+.s-letter .ltr-curl  { fill: #DCC69E; }
+.s-letter .ltr-fibre path { fill: none; stroke: #9A6B00; stroke-width: .9; opacity: .07; }
+.s-letter .ltr-ink rect { fill: #4A3550; opacity: .82; }
+.s-letter .ltr-half     { opacity: .48; }
+.s-letter .ltr-blot     { fill: #4A3550; opacity: .58; }
+.s-letter .ltr-blot-s   { opacity: .4; }
+
+/* ── wax, the ring, the lamp ── */
+.s-letter .ltr-wax {
+  position: absolute; left: 64%; top: 55.4%;
+  height: 3.6%; aspect-ratio: 2.5;
+}
+.s-letter .ltr-pool {
+  position: absolute; left: 0; bottom: 0; width: 54%; height: 34%;
+  border-radius: 54% 42% 60% 46% / 66% 58% 46% 52%;
+  background: radial-gradient(60% 70% at 40% 30%, #B62F46, #741224);
+  box-shadow: 0 .3vmin .8vmin rgba(0, 0, 0, .45);
+}
+.s-letter .ltr-stick {
+  position: absolute; right: 0; top: 6%; width: 62%; height: 26%;
+  border-radius: 1vmin; transform: rotate(-10deg);
+  background: linear-gradient(to bottom, #C33A50 0%, #A81F38 50%, #6F1226 100%);
+}
+.s-letter .ltr-stick-t {
+  position: absolute; right: 1%; top: 9%; width: 15%; height: 20%;
+  border-radius: 1vmin; transform: rotate(-10deg);
+  background: rgba(255, 179, 193, .40);
+}
+.s-letter .ltr-lamp {
+  position: absolute; right: 1%; top: 53.4%;
+  height: 6.2%; aspect-ratio: 1.85;
+}
+.s-letter .ltr-lamp-b {
+  position: absolute; left: 0; right: 22%; bottom: 0; height: 62%;
+  border-radius: 46% 46% 50% 50% / 34% 34% 100% 100%;
+  background: linear-gradient(to bottom, #D2A337 0%, #A87615 48%, #6E4C0A 100%);
+  box-shadow: 0 .5vmin 1.4vmin rgba(0, 0, 0, .55);
+}
+.s-letter .ltr-lamp-r {
+  position: absolute; left: -2%; right: 20%; bottom: 52%; height: 22%;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, #E9CA79, #A87615);
+}
+.s-letter .ltr-lamp-s {
+  position: absolute; right: 4%; bottom: 28%; width: 34%; height: 30%;
+  clip-path: polygon(0% 0%, 100% 30%, 100% 72%, 0% 100%);
+  background: linear-gradient(to right, #B8851C, #E0B44A);
+}
+.s-letter .ltr-flame {
+  position: absolute; right: 1%; bottom: 54%;
+  width: 2.6vmin; height: 5.6vmin;
+  border-radius: 50% 50% 46% 46% / 78% 78% 100% 100%;
+  background: linear-gradient(to top,
+    rgba(255, 122, 92, .92), rgba(255, 211, 110, .96) 50%, rgba(255, 250, 240, .92));
+  filter: blur(.4vmin);
+  transform-origin: 50% 100%;
+  animation: ltrFlame 4.2s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.s-letter .ltr-flame-i {
+  position: absolute; right: 2.4%; bottom: 56%;
+  width: 1.1vmin; height: 2.6vmin;
+  border-radius: 50% 50% 46% 46% / 74% 74% 100% 100%;
+  background: rgba(255, 253, 246, .95);
+  filter: blur(.22vmin);
+  transform-origin: 50% 100%;
+  animation: ltrFlame 4.2s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes ltrFlame {
+  0%   { transform: scale(.9, .92)    translateX(-.2vmin); opacity: .88; }
+  100% { transform: scale(1.05, 1.08) translateX(.2vmin);  opacity: 1; }
+}
+.s-letter .ltr-halo {
+  position: absolute; left: -190%; right: -190%; top: -300%; bottom: -190%;
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 62% 40%,
+    rgba(var(--butter-s), .40) 0%, rgba(var(--butter), .12) 44%, rgba(var(--butter), 0) 74%);
+  filter: blur(1.2vmin);
+}
+
+/* Everything the scene knows comes from that lamp; this is the light
+   it puts on the table, laid over the objects rather than under
+   them. It is the last child of the stage, not a sibling of it, so
+   the pool of light cannot walk away from the lamp that casts it.
+   The box is three stage-widths wide and centred on the stage, and
+   the two gradients are placed at a third of their old coordinates
+   plus a third — which is the same light in the same place on the
+   390×844 frame, with room to die out over a wider table. */
+.s-letter .ltr-warm {
+  position: absolute; left: -100%; right: -100%; top: 0; bottom: 0;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(11.33% 22% at 59.33% 58%, rgba(var(--butter-s), .40), rgba(var(--butter), 0) 78%),
+    radial-gradient(23.33% 36% at 54.00% 74%, rgba(var(--butter), .22), rgba(var(--butter), 0) 82%);
+  animation: ltrWarm 17s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes ltrWarm { 0% { opacity: .84 } 100% { opacity: 1 } }
+
+/* ── the interruption ── */
+.s-letter .ltr-open {
+  position: absolute; inset: 0;
+  transform-origin: 0% 50%;
+  mix-blend-mode: screen;
+  animation: ltrOpen 24s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes ltrOpen {
+  0%,  14% { transform: scaleX(.10); opacity: .38; }
+  100%     { transform: scaleX(1);   opacity: .92; }
+}
+.s-letter .ltr-wedge {
+  position: absolute; left: -4%; top: -6%; width: 54%; height: 112%;
+  clip-path: polygon(0% 0%, 30% 0%, 100% 100%, 0% 100%);
+  background: linear-gradient(100deg,
+    rgba(var(--cold), .74) 0%,
+    rgba(var(--cold), .30) 28%,
+    rgba(var(--lilac), .13) 56%,
+    rgba(79, 195, 184, .04) 80%,
+    rgba(79, 195, 184, 0) 100%);
+  filter: blur(1.6vmin);
+}
+/* The gap itself, kept out of .ltr-open so the scaling that widens
+   the wedge cannot squeeze the seam out of existence — it has to
+   read as a hairline of daylight even at the shut end of the cycle. */
+.s-letter .ltr-seam {
+  position: absolute; left: -.6%; top: -8%; bottom: -8%;
+  width: 2vmin; border-radius: 2vmin;
+  transform-origin: 0% 50%;
+  mix-blend-mode: screen;
+  background: linear-gradient(to bottom,
+    rgba(var(--cold), .42) 0%,
+    rgba(242, 249, 253, .96) 34%,
+    rgba(242, 249, 253, .88) 68%,
+    rgba(var(--cold), .46) 100%);
+  filter: blur(.5vmin);
+  box-shadow: 0 0 3vmin rgba(var(--cold), .5);
+  animation: ltrSeam 24s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes ltrSeam {
+  0%   { transform: scaleX(.5);  opacity: .62; }
+  100% { transform: scaleX(2.6); opacity: 1; }
+}
+/* The guards reaching the door. Soft, unresolved, and it only ever
+   crosses the cold. */
+.s-letter .ltr-figure {
+  position: absolute; left: 0; top: -12%; width: 21%; height: 124%;
+  background: linear-gradient(to right,
+    rgba(10, 7, 13, 0) 0%,
+    rgba(10, 7, 13, .82) 34%,
+    rgba(10, 7, 13, .78) 66%,
+    rgba(10, 7, 13, 0) 100%);
+  filter: blur(2.4vmin);
+  opacity: 0;
+  animation: ltrPass 19s ease-in-out infinite;
+  animation-play-state: paused;
+}
+@keyframes ltrPass {
+  0%,  56% { transform: translateX(-52%); opacity: 0; }
+  70%      { opacity: .9; }
+  86%      { opacity: .74; }
+  100%     { transform: translateX(112%); opacity: 0; }
+}
+.s-letter .ltr-chill {
+  position: absolute; inset: 0;
+  background: linear-gradient(104deg,
+    rgba(79, 195, 184, .24) 0%,
+    rgba(var(--lilac), .12) 30%,
+    rgba(var(--lilac), .03) 48%,
+    rgba(var(--lilac), 0) 62%);
+  animation: ltrChill 24s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes ltrChill { 0% { opacity: .14 } 100% { opacity: 1 } }
+
+.s-letter .ltr-vig {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(12, 8, 14, .48) 0%, rgba(12, 8, 14, 0) 16%),
+    radial-gradient(94% 72% at 62% 58%,
+      rgba(12, 8, 14, 0) 36%, rgba(12, 8, 14, .32) 82%, rgba(12, 8, 14, .58) 100%);
+}
+
+.page.live .s-letter .ltr-warm,
+.page.live .s-letter .ltr-flame,
+.page.live .s-letter .ltr-flame-i,
+.page.live .s-letter .ltr-open,
+.page.live .s-letter .ltr-seam,
+.page.live .s-letter .ltr-figure,
+.page.live .s-letter .ltr-chill { animation-play-state: running; }
+
+
+/* ───────────────────────────────────────────────────────────────────
+   3 · .s-search — "Nobody has ever established it."
+
+   The room after. Wall to 62%, floor below it, the door open on the
+   right onto a flat pale nothing. Everything that was searched lies
+   between 64% and 88%: the cloth off the couch, three cushions, a
+   bowl over, the basket on its side with the figs out of it. The
+   middle third is bare wall, which is also the argument — there is
+   nothing in this room and there never was.
+
+   Cool, high-key, a stop over-exposed. The only motion is the end of
+   the cloth nobody caught.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-search {
+  --ink:   62, 47, 74;
+  --lilac: 183, 156, 237;
+  background: #D6CEE0;
+}
+
+.s-search .srh-wall {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 38%;
+  background:
+    linear-gradient(96deg,
+      rgba(var(--lilac), .22) 0%,
+      rgba(var(--lilac), .03) 38%,
+      rgba(var(--lilac), 0) 66%,
+      rgba(var(--lilac), .12) 100%),
+    linear-gradient(to bottom,
+      #E7E1EE 0%, #F4F0F6 24%, #F7F3F7 50%, #EFEAF2 78%, #E3DCEA 100%);
+}
+.s-search .srh-courses {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 38%;
+  background:
+    repeating-linear-gradient(to bottom,
+      rgba(var(--ink), 0) 0 8.2%,
+      rgba(var(--ink), .05) 8.2% 8.7%),
+    repeating-linear-gradient(to right,
+      rgba(var(--ink), 0) 0 26%,
+      rgba(var(--ink), .035) 26% 26.5%);
+}
+
+/* The door, standing open. Nothing in it. Narrow, and pitched to
+   about the value of the wall, so it never competes with the words. */
+.s-search .srh-door {
+  position: absolute; right: 3%; top: 19%;
+  height: 43%; aspect-ratio: .36;
+}
+.s-search .srh-void {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    #FCFAFA 0%, #F6F2F5 46%, #EAE4EE 80%, #DBD3E3 100%);
+  box-shadow: inset .6vmin 0 1.8vmin rgba(var(--ink), .10);
+}
+.s-search .srh-jamb {
+  position: absolute; left: -7%; top: -2%; bottom: 0; width: 7%;
+  background: linear-gradient(to right, #CFC5D8, #EDE7F1);
+}
+.s-search .srh-head {
+  position: absolute; left: -7%; right: -9%; top: -4%; height: 4%;
+  background: linear-gradient(to bottom, #F2ECF4, #CDC3D7);
+}
+/* The leaf, swung back against the wall. */
+.s-search .srh-leaf {
+  position: absolute; left: -58%; top: 3%; width: 52%; height: 95%;
+  clip-path: polygon(0% 5%, 100% 0%, 100% 100%, 0% 93%);
+  background: linear-gradient(100deg, #C6BAD2 0%, #B0A3C0 48%, #9689AA 100%);
+  box-shadow: .5vmin 0 1.6vmin rgba(var(--ink), .16);
+}
+.s-search .srh-plank {
+  position: absolute; top: 0; bottom: 0; width: 1.4%;
+  background: rgba(50, 40, 62, .16);
+}
+.s-search .srh-pk-a { left: 34%; }
+.s-search .srh-pk-b { left: 68%; }
+.s-search .srh-brace {
+  position: absolute; left: 5%; right: 5%; top: 60%; height: 4.4%;
+  border-radius: .4vmin;
+  background: rgba(255, 251, 247, .26);
+}
+
+.s-search .srh-floor {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 38%;
+  background: linear-gradient(to bottom,
+    #BFB4CE 0%, #ADA1C0 16%, #9689AE 50%, #7F7398 84%, #6D6285 100%);
+}
+.s-search .srh-slabs {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 38%;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(rgba(var(--ink), .13), rgba(var(--ink), .13)),
+    linear-gradient(rgba(var(--ink), .11), rgba(var(--ink), .11)),
+    linear-gradient(rgba(var(--ink), .09), rgba(var(--ink), .09)),
+    linear-gradient(rgba(var(--ink), .07), rgba(var(--ink), .07)),
+    linear-gradient(rgba(var(--ink), .06), rgba(var(--ink), .06)),
+    linear-gradient(rgba(var(--ink), .06), rgba(var(--ink), .06));
+  background-size:
+    100% .45%, 100% .55%, 100% .7%,
+    .35% 20%, .38% 32%, .4% 26%;
+  background-position:
+    0 18%, 0 50%, 0 88%,
+    15% 18%, 56% 50%, 81% 88%;
+}
+.s-search .srh-skirt {
+  position: absolute; left: 0; right: 0; bottom: 37.6%; height: 1.1%;
+  background: linear-gradient(to bottom,
+    rgba(255, 253, 250, .72) 0%, rgba(255, 253, 250, .3) 34%, rgba(var(--ink), .34) 100%);
+}
+.s-search .srh-base {
+  position: absolute; left: 0; right: 0; bottom: 36.4%; height: 1.8%;
+  background: linear-gradient(to top, rgba(var(--ink), .13), rgba(var(--ink), 0));
+}
+/* What the doorway lays on the flags. The door is height-led
+   (.36 × 43% of the scene); this used to be 64% of the scene WIDE, so
+   at 1280×620 the patch of light was four times the width of the
+   opening it came through and started nowhere near it. It is now
+   three door-widths wide — same height-led measure — and pinned to
+   the same right edge as the door, so its top edge runs from jamb to
+   jamb at every size: the opening is the last third of this box. */
+.s-search .srh-spill {
+  position: absolute; right: 3%; top: 61.6%; height: 22%; aspect-ratio: 2.1109;
+  clip-path: polygon(66.7% 0%, 100% 0%, 100% 100%, 48% 100%);
+  background: linear-gradient(to bottom,
+    rgba(255, 253, 250, .58) 0%,
+    rgba(255, 253, 250, .26) 50%,
+    rgba(255, 253, 250, .04) 100%);
+  filter: blur(1.4vmin);
+}
+
+/* Everything on the floor is inside one stage, and the stage is
+   ASPECT-LOCKED at 9/20: full scene height, width taken from that
+   height, same frame at every size. It was `min(100%, 78vh)` wide against a
+   full-height box, which let the box change shape — the couch is
+   height-led and the cloth on it is width-led, so on a wide window
+   the cloth crept along the couch and the cushions spread away from
+   the basket. Locked, the group is one picture at every size. */
+.s-search .srh-stage {
+  position: absolute; left: 50%; top: 0; height: 100%;
+  aspect-ratio: 9 / 20;
+  transform: translateX(-50%);
+}
+
+/* The couch, stripped. */
+.s-search .srh-couch {
+  position: absolute; left: -2%; bottom: 22%;
+  height: 12.5%; aspect-ratio: 2.3;
+}
+.s-search .srh-frame {
+  position: absolute; left: 2%; right: 2%; top: 32%; height: 20%;
+  border-radius: .5vmin;
+  background: linear-gradient(to bottom, #C4B69C 0%, #A0917A 58%, #756A60 100%);
+}
+.s-search .srh-slab {
+  position: absolute; left: -2%; right: -2%; top: 22%; height: 12%;
+  border-radius: .5vmin;
+  background: linear-gradient(to bottom, #EFE6D2, #C2B49B);
+}
+.s-search .srh-leg {
+  position: absolute; top: 50%; bottom: 0; width: 7%;
+  border-radius: 0 0 .4vmin .4vmin;
+  background: linear-gradient(to bottom, #A2937B, #6B6058);
+}
+.s-search .srh-leg-l { left: 11%; }
+.s-search .srh-leg-r { right: 11%; }
+.s-search .srh-bolster {
+  position: absolute; right: 3%; top: 0%; width: 24%; height: 24%;
+  border-radius: 50%;
+  transform: rotate(-9deg);
+  background: linear-gradient(to bottom, #F2DCE1, #D6A5B1);
+}
+.s-search .srh-under {
+  position: absolute; left: 0; right: 0; bottom: -6%; height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(50% 60% at 50% 40%, rgba(var(--ink), .32), rgba(var(--ink), 0) 74%);
+  filter: blur(.9vmin);
+}
+
+/* The cloth. Half on the couch, the rest on the floor, and the end
+   of it still going. */
+.s-search .srh-cloth { position: absolute; inset: 0; }
+.s-search .srh-onbed {
+  position: absolute; left: 1%; top: 65.2%; width: 24%; height: 2.6%;
+  border-radius: .5vmin .5vmin 0 0;
+  transform: skewX(-11deg);
+  background: linear-gradient(to bottom, #C24354, #97223A);
+}
+.s-search .srh-hang {
+  position: absolute; left: 6%; top: 66.2%; width: 18%; height: 9.2%;
+  transform-origin: 50% 0%;
+  animation: srhSway 6.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes srhSway {
+  0%   { transform: rotate(-1.6deg); }
+  100% { transform: rotate(1.7deg); }
+}
+.s-search .srh-fall {
+  position: absolute; inset: 0;
+  clip-path: polygon(0% 0%, 100% 0%, 98% 74%, 88% 100%, 70% 86%, 50% 100%, 30% 84%, 12% 98%, 2% 72%);
+  background: linear-gradient(102deg, #B32B43 0%, #CE5265 32%, #97223A 72%, #7E1830 100%);
+}
+.s-search .srh-fold {
+  position: absolute; left: 40%; top: 4%; width: 7%; height: 78%;
+  background: rgba(255, 179, 193, .22);
+}
+.s-search .srh-pool {
+  position: absolute; left: 2%; top: 78.6%; width: 27%; height: 4.8%;
+  border-radius: 52% 40% 58% 44% / 66% 58% 46% 54%;
+  background:
+    repeating-linear-gradient(74deg,
+      rgba(255, 179, 193, 0)   0 5%,
+      rgba(255, 179, 193, .16) 5% 6.4%,
+      rgba(62, 12, 26, .16)    6.4% 7.6%),
+    linear-gradient(104deg, #B23349 0%, #97223A 52%, #7B172C 100%);
+  box-shadow: 0 .5vmin 1.2vmin rgba(var(--ink), .2);
+}
+.s-search .srh-pool2 {
+  position: absolute; left: 19%; top: 81.4%; width: 18%; height: 3.6%;
+  border-radius: 44% 60% 38% 62% / 56% 44% 64% 48%;
+  background:
+    repeating-linear-gradient(68deg,
+      rgba(255, 179, 193, 0)   0 6%,
+      rgba(255, 179, 193, .15) 6% 7.4%,
+      rgba(62, 12, 26, .14)    7.4% 8.6%),
+    linear-gradient(98deg, #BE3B51, #9A2438);
+}
+
+/* Cushions, anywhere. Flat, because they have been thrown down. */
+.s-search .srh-cush {
+  position: absolute;
+  border-radius: 44% 48% 46% 50% / 54% 50% 56% 52%;
+  box-shadow: 0 .6vmin 1.4vmin rgba(var(--ink), .2),
+              inset 0 -.7vmin 1.2vmin rgba(var(--ink), .18);
+}
+.s-search .srh-c1 {
+  left: 35%; top: 74.6%; height: 5.2%; aspect-ratio: 1.85;
+  transform: rotate(-10deg);
+  background:
+    radial-gradient(circle at 50% 52%, rgba(var(--ink), .16) 0 5%, rgba(62, 47, 74, 0) 6%),
+    linear-gradient(to bottom, #F7BDC8 0%, #E39CAA 60%, #BE7486 100%);
+}
+.s-search .srh-c2 {
+  left: 19%; top: 83.2%; height: 4.4%; aspect-ratio: 2;
+  transform: rotate(6deg);
+  background:
+    radial-gradient(circle at 50% 52%, rgba(var(--ink), .16) 0 5%, rgba(62, 47, 74, 0) 6%),
+    linear-gradient(to bottom, #C1ACE8 0%, #A288D6 60%, #7862AC 100%);
+}
+.s-search .srh-c3 {
+  left: 73%; top: 66.4%; height: 4.4%; aspect-ratio: 1.6;
+  transform: rotate(-34deg);
+  background:
+    radial-gradient(circle at 50% 52%, rgba(var(--ink), .16) 0 5%, rgba(62, 47, 74, 0) 6%),
+    linear-gradient(to bottom, #EBD5A8 0%, #D6B87E 60%, #A98F58 100%);
+}
+
+/* A bowl, over. */
+.s-search .srh-bowl {
+  position: absolute; left: 30%; top: 71.8%;
+  height: 3.2%; aspect-ratio: 2.2;
+  transform: rotate(6deg);
+}
+.s-search .srh-bw-b {
+  position: absolute; inset: 8% 0 24% 0;
+  border-radius: 50% 50% 10% 10% / 100% 100% 18% 18%;
+  background: linear-gradient(to bottom, #D2A945, #8A6410 72%, #63470B 100%);
+}
+.s-search .srh-bw-r {                       /* the foot ring, uppermost */
+  position: absolute; left: 30%; right: 30%; top: 0; height: 20%;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, #E0BC6A, #A07C22);
+}
+
+/* The basket, over on its side. The mouth is toward us and there is
+   nothing in it, which is the picture. */
+.s-search .srh-basket {
+  position: absolute; left: 46%; bottom: 12%;
+  height: 15.5%; aspect-ratio: 1.67; max-width: 52%;
+}
+.s-search .srh-basket svg { width: 100%; height: 100%; display: block; }
+.s-search .srh-bshade { fill: rgba(62, 47, 74, .16); }
+.s-search .srh-weave  { fill: #EDC66F; }
+.s-search .srh-warp path {
+  fill: none; stroke: #C79E45; stroke-width: 2; opacity: .5;
+  vector-effect: non-scaling-stroke;
+}
+.s-search .srh-band path {
+  fill: none; stroke: #C79E45; stroke-width: 3; opacity: .34;
+  vector-effect: non-scaling-stroke;
+}
+.s-search .srh-mouthd { fill: #D6A94F; }
+.s-search .srh-mouth  { fill: #9E7529; }
+.s-search .srh-hollow { fill: #4E3A12; }
+.s-search .srh-rim    { fill: #FFDF95; }
+.s-search .srh-figs ellipse { fill: #6B4BB0; opacity: .8; }
+.s-search .srh-stalk path {
+  fill: none; stroke: #4E7B58; stroke-width: 2.2; stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Dust, still coming down. Nobody is here to disturb it. */
+.s-search .srh-motes {
+  position: absolute; left: 30%; right: 6%; top: 12%; bottom: 34%;
+  pointer-events: none;
+}
+.s-search .srh-motes i {
+  position: absolute;
+  width: .62vmin; aspect-ratio: 1; border-radius: 50%;
+  background: rgba(255, 255, 255, .95);
+  opacity: 0;
+  animation: srhFall 44s linear infinite;
+  animation-play-state: paused;
+}
+@keyframes srhFall {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  14%  { opacity: .62; }
+  76%  { opacity: .42; }
+  100% { transform: translate(var(--x, -2vmin), var(--y, 18vmin)); opacity: 0; }
+}
+.s-search .srh-motes i:nth-child(1) { left: 14%; top:  4%; --x: -2vmin; --y: 20vmin; animation-duration: 48s; animation-delay:  -4s; }
+.s-search .srh-motes i:nth-child(2) { left: 38%; top: 16%; --x:  1vmin; --y: 16vmin; animation-duration: 56s; animation-delay: -18s; width: .5vmin; }
+.s-search .srh-motes i:nth-child(3) { left: 62%; top:  8%; --x: -3vmin; --y: 22vmin; animation-duration: 40s; animation-delay: -29s; }
+.s-search .srh-motes i:nth-child(4) { left: 24%; top: 34%; --x:  2vmin; --y: 14vmin; animation-duration: 62s; animation-delay: -11s; width: .48vmin; }
+.s-search .srh-motes i:nth-child(5) { left: 78%; top: 26%; --x: -1vmin; --y: 19vmin; animation-duration: 50s; animation-delay: -37s; }
+.s-search .srh-motes i:nth-child(6) { left: 50%; top: 44%; --x: -2vmin; --y: 12vmin; animation-duration: 66s; animation-delay: -23s; width: .52vmin; }
+.s-search .srh-motes i:nth-child(7) { left:  6%; top: 22%; --x:  1vmin; --y: 21vmin; animation-duration: 54s; animation-delay: -46s; width: .46vmin; }
+
+/* A stop over. The room is brighter than the hour deserves — laid on
+   last so it bleaches the objects as well as the walls. */
+.s-search .srh-glare {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(52% 40% at 80% 32%, rgba(255, 253, 250, .40), rgba(255, 253, 250, 0) 76%),
+    linear-gradient(to bottom,
+      rgba(255, 253, 250, .26) 0%,
+      rgba(255, 253, 250, .10) 46%,
+      rgba(255, 253, 250, .14) 100%);
+  animation: srhGlare 28s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes srhGlare { 0% { opacity: .74 } 100% { opacity: 1 } }
+
+.s-search .srh-vig {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(74, 62, 96, .28) 0%, rgba(74, 62, 96, 0) 15%),
+    radial-gradient(96% 74% at 46% 50%,
+      rgba(74, 62, 96, 0) 40%, rgba(74, 62, 96, .18) 84%, rgba(74, 62, 96, .32) 100%);
+}
+
+.page.live .s-search .srh-glare,
+.page.live .s-search .srh-hang,
+.page.live .s-search .srh-motes i { animation-play-state: running; }
+
+
+/* ───────────────────────────────────────────────────────────────────
+   Reduced motion. Every one of the three has to hold as a still
+   frame, and a paused animation rests on its 0% keyframe — which for
+   the door, the shadow and the dust is invisible. So they are given
+   a resting state that is a picture rather than an absence.
+   ─────────────────────────────────────────────────────────────────── */
+
+html.no-motion .s-harbour .hrb-sun,
+html.no-motion .s-harbour .hrb-lib,
+html.no-motion .s-harbour .hrb-bob,
+html.no-motion .s-harbour .hrb-vex,
+html.no-motion .s-harbour .hrb-glints i,
+html.no-motion .s-letter .ltr-warm,
+html.no-motion .s-letter .ltr-flame,
+html.no-motion .s-letter .ltr-flame-i,
+html.no-motion .s-letter .ltr-open,
+html.no-motion .s-letter .ltr-seam,
+html.no-motion .s-letter .ltr-figure,
+html.no-motion .s-letter .ltr-chill,
+html.no-motion .s-search .srh-glare,
+html.no-motion .s-search .srh-hang,
+html.no-motion .s-search .srh-motes i {
+  animation: none !important;
+}
+
+html.no-motion .s-harbour .hrb-lib,
+html.no-motion .s-harbour .hrb-bob      { transform: none; }
+html.no-motion .s-harbour .hrb-sun      { opacity: .92; }
+html.no-motion .s-harbour .hrb-vex      { transform: skewY(.8deg); }
+html.no-motion .s-harbour .hrb-glints i { opacity: .56; }
+
+html.no-motion .s-letter .ltr-warm    { opacity: .94; }
+html.no-motion .s-letter .ltr-flame,
+html.no-motion .s-letter .ltr-flame-i { transform: none; opacity: .96; }
+html.no-motion .s-letter .ltr-open    { transform: scaleX(.66); opacity: .86; }
+html.no-motion .s-letter .ltr-seam    { transform: scaleX(1.8); opacity: .9; }
+html.no-motion .s-letter .ltr-figure  { transform: translateX(48%); opacity: .74; }
+html.no-motion .s-letter .ltr-chill   { opacity: .64; }
+
+html.no-motion .s-search .srh-glare    { opacity: .9; }
+html.no-motion .s-search .srh-hang     { transform: rotate(.6deg); }
+html.no-motion .s-search .srh-motes i  { opacity: .44; transform: translate(-1vmin, 8vmin); }

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141018">
+<meta name="color-scheme" content="dark">
+<!-- Link preview. Absolute URLs are required — scrapers do not resolve
+     relative paths. When the site moves to its own domain, BASE below is
+     the only thing that changes. -->
+<meta name="description" content="The snake is in every painting of her, and nobody has ever found it. A three-minute history story, every card sourced.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Factbox">
+<meta property="og:title" content="How did Cleopatra die?">
+<meta property="og:description" content="The snake is in every painting of her, and nobody has ever found it. A three-minute history story, every card sourced.">
+<meta property="og:url" content="https://factbox.app/story.html">
+<meta property="og:image" content="https://factbox.app/img/share.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="An old-master painting of Cleopatra with an asp, beside the words “How did Cleopatra die?”">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How did Cleopatra die?">
+<meta name="twitter:description" content="The snake is in every painting of her, and nobody has ever found it. A three-minute history story, every card sourced.">
+<meta name="twitter:image" content="https://factbox.app/img/share.jpg">
+<meta name="twitter:image:alt" content="An old-master painting of Cleopatra with an asp, beside the words “How did Cleopatra die?”">
+
+<title>How did Cleopatra die? — Factbox</title>
+
+<!-- COMPOSE:CSS — inline shell.css, then a.css, then b.css, in that order.
+     Standalone these three links do the same job. -->
+<link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="a.css">
+<link rel="stylesheet" href="b.css">
+
+<!-- The only chrome on the whole page. -->
+<div class="rail" id="rail" aria-hidden="true"></div>
+
+<!-- Every .page is built by shell.js from STORIES. -->
+<main class="deck" id="deck"></main>
+
+<!--
+  Scene bank. The composer pastes the scene agents' markup between the two
+  markers below; shell.js lifts each `.scene .s-NAME` out by class and drops it
+  into the matching page. Order in here does not matter — the story data names
+  the scene it wants. A beat whose scene is missing still composes: shell.js
+  substitutes a neutral night ground.
+-->
+<div id="scene-bank" hidden>
+  <!-- COMPOSE:SCENES-A -->
+  <!-- COMPOSE:SCENES-B -->
+</div>
+
+<!-- COMPOSE:JS — inline shell.js here. -->
+<script src="shell.js"></script>

@@ -1,0 +1,417 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SCENES D — copies · vials. Every selector scoped under its .s-NAME.
+   Composed for 390×844 portrait first; checked at 1440×800.
+
+   Both scenes share the vertical grammar of the other eight: the plane
+   the subject stands on is around y=70–80%, the subject lives between
+   ~60% and ~86%, the middle third is a wash the caption sits on, and
+   the bottom 12–15% is sacrificial (the in-app browser toolbar).
+
+   One structural difference worth knowing about: in both scenes the
+   ground plane is a *child* of the art box rather than a sibling with
+   its own viewport-% top. The subjects are drawn in SVG user units and
+   the box is sized against `vh` as well as `%`, so a sibling plane
+   drifts off the feet of the objects between a phone and a desktop.
+   As a child it is expressed in fractions of the box, and the back
+   edge stays welded to the far end of the arrangement everywhere.
+
+   The same rule inside the figures: every person is head over neck over
+   shoulder over limb, each drawn so the one below it is painted *over*
+   its base. Head, neck and body are held together by overlap, never by
+   two shapes stopping at the same coordinate — a butt joint opens into
+   a gap the moment anything moves; an overlap cannot.
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────────
+   9 · .s-copies — "The snake comes from Plutarch."
+   Beat 4 already spent the single papyrus. This one is the chain the
+   papyrus arrived down: a rank of codices going back into an archive,
+   the nearest whole and legible, each one behind it copied from the
+   one in front and worse for it — a word gone, a line gone, a line
+   written back in somebody else's ink — until the far ones are only a
+   suggestion. Past the last of them there is a gap with a scuff on the
+   plane and nothing standing in it: the account nobody can name.
+   The moving thing is the transmission itself. A pulse of attention
+   travels back down the rank and gives out before it reaches the gap.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-copies {
+  --wall-hi: #332A3E;
+  --wall:    #201A28;
+  --wall-lo: #130F1B;
+  --plane:   #2C2436;
+  --plane-lo:#171220;
+  --lilac:   #B79CED;
+  --fix:     #8A62CE;
+}
+
+.s-copies .cop-room {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(74% 44% at 86% 4%, rgba(255,211,110,.15), rgba(255,211,110,0) 70%),
+    linear-gradient(177deg, var(--wall-hi) 0%, var(--wall) 44%, var(--wall-lo) 100%);
+}
+
+/* The rest of the archive, up in the dark: rolled ends in a rack, and
+   a shelf edge catching what light there is. Never more than a hint —
+   the caption has to sit on the wall below it. */
+.s-copies .cop-rack {
+  position: absolute; left: 0; right: 0; top: 8%; height: 19%;
+  background:
+    linear-gradient(180deg,
+      rgba(255,247,237,0) 86%, rgba(255,247,237,.16) 86%,
+      rgba(255,247,237,.16) 92%, rgba(255,247,237,0) 92%),
+    repeating-linear-gradient(90deg,
+      rgba(183,156,237,.16) 0 1.8%, rgba(183,156,237,0) 1.8% 4.5%),
+    linear-gradient(180deg, rgba(255,247,237,.05), rgba(255,247,237,0) 88%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 2%, #000 46%, #000 90%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 2%, #000 46%, #000 90%, transparent 100%);
+  opacity: .8;
+}
+
+/* The lamp is off frame to the upper right, over the copy we can read.
+   Everything further back is further from it. */
+.s-copies .cop-lamp {
+  position: absolute; right: -10%; top: -14%;
+  width: 62vmin; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255,211,110,.20) 0%, rgba(255,211,110,.07) 44%, rgba(255,211,110,0) 72%);
+  animation: copLamp 16.5s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes copLamp { from { opacity: .62 } to { opacity: 1 } }
+
+.s-copies .cop-art {
+  position: absolute; left: 50%; bottom: 14%;
+  width: min(112%, 60vh); aspect-ratio: 3.2051;
+  transform: translateX(-47%);
+}
+.s-copies .cop-art svg { position: relative; width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* The plane, in fractions of the art box — see the note at the top. */
+.s-copies .cop-plane {
+  position: absolute; left: -300%; right: -300%; top: 2%; height: 320%;
+  background: linear-gradient(180deg,
+    var(--plane) 0%, var(--plane-lo) 22%, #100C16 62%, #0B0810 100%);
+}
+/* the lamp's pool on the plane, over the near end of the rank — it is
+   what the copyist is lit by, and what the far end has run out of */
+.s-copies .cop-pool {
+  position: absolute; left: 44%; top: -22%; width: 86%; height: 150%;
+  background: radial-gradient(58% 46% at 48% 46%,
+    rgba(255,211,110,.22) 0%, rgba(255,211,110,.07) 46%, rgba(255,211,110,0) 74%);
+}
+.s-copies .cop-edge {
+  position: absolute; left: -300%; right: -300%; top: 1.2%; height: 2.6%;
+  background: linear-gradient(90deg,
+    rgba(255,214,170,0) 0%, rgba(255,214,170,.07) 34%,
+    rgba(255,214,170,.26) 84%, rgba(255,214,170,0) 100%);
+}
+
+/* One codex. The pages, the boards under them, the gutter between. */
+.s-copies .cop-page  { fill: var(--pg); }
+.s-copies .cop-board { fill: var(--bd); }
+.s-copies .cop-gut   { fill: var(--bd); opacity: .74; }
+.s-copies .cop-sh    { fill: #0A0710; opacity: .5; }
+
+/* The marks. Never letters — strokes, the same hand as the papyrus. */
+.s-copies .cop-ink rect { fill: var(--nk); opacity: .84; }
+/* the line somebody wrote back in, which is now part of the account */
+.s-copies .cop-ink .cop-fix { fill: var(--fix); opacity: .9; }
+
+/* Down the rank: paler paper, greyer ink, and less of the account left
+   on the page. `--o` is the resting opacity, `--oh` the crest of the
+   pulse — the pulse loses amplitude as it goes, like everything else. */
+.s-copies .cop-c1 { --pg:#FDF4E6; --bd:#5F4494; --nk:#3E2F4A; --o:.96; --oh:1   }
+.s-copies .cop-c2 { --pg:#EFE0CB; --bd:#55407F; --nk:#4A3B56; --o:.80; --oh:.93 }
+.s-copies .cop-c3 { --pg:#D9CABB; --bd:#4C3B6C; --nk:#584A61; --o:.60; --oh:.74 }
+.s-copies .cop-c4 { --pg:#BCADAE; --bd:#453A5C; --nk:#6A5E70; --o:.42; --oh:.53 }
+.s-copies .cop-c5 { --pg:#9B8D9B; --bd:#3E3650; --nk:#7C7280; --o:.27; --oh:.34 }
+.s-copies .cop-c6 { --pg:#7C7189; --bd:#383247; --nk:#8B7B93; --o:.15; --oh:.19 }
+
+/* Resting state is the whole rank as it stands, so a scene that is not
+   the live one still composes; the pulse only exists while live. */
+.s-copies .cop-c {
+  opacity: var(--o);
+  animation: copPass 26s ease-in-out infinite;
+  animation-play-state: paused;
+}
+@keyframes copPass {
+  0%        { opacity: var(--o)  }
+  5%        { opacity: var(--oh) }
+  13%       { opacity: var(--o)  }
+  100%      { opacity: var(--o)  }
+}
+/* Negative delays, decreasing in magnitude down the rank, so the crest
+   passes from the copy at our elbow to the far end and not the reverse.
+   It starts about three seconds after the beat goes live. */
+.s-copies .cop-c1 { animation-delay: -24.0s }
+.s-copies .cop-c2 { animation-delay: -22.8s }
+.s-copies .cop-c3 { animation-delay: -21.6s }
+.s-copies .cop-c4 { animation-delay: -20.4s }
+.s-copies .cop-c5 { animation-delay: -19.2s }
+.s-copies .cop-c6 { animation-delay: -18.0s }
+
+/* The gap at the end of the rank. It fades and does not quite return. */
+.s-copies .cop-gone-sh { fill: #090610; }
+.s-copies .cop-gone-mk { fill: #9B8BA3; opacity: .62; }
+.s-copies .cop-gone {
+  opacity: .5;
+  animation: copGone 21.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes copGone { from { opacity: .22 } to { opacity: .68 } }
+
+/* The copyist. Silhouette in the dim of the room, with the lamp behind
+   his shoulder: the rim down his back is the only edge that catches it,
+   and his face and hands come back up out of the lit page in front of
+   him. He is drawn last, so he is in front of the codex he is copying. */
+.s-copies .cop-fig   { fill: #17111F; }
+.s-copies .cop-hair  { fill: #0F0A17; }
+.s-copies .cop-skin  { fill: #9A6E58; }
+.s-copies .cop-face  { fill: #A87A60; }
+.s-copies .cop-arm   { fill: none; stroke: #17111F; stroke-width: 8.6; stroke-linecap: round; }
+.s-copies .cop-cuff  { fill: none; stroke: #241C33; stroke-width: 9.4;
+                       stroke-linecap: round; }
+/* His face. The house draws a face as an ink ellipse for the eye and a
+   short ink line for the mouth — see PipView — and nothing else, so
+   that is what he gets, plus the one lid that says he is looking down
+   rather than out. All static shapes: no filter, no extra animation. */
+.s-copies .cop-eye   { fill: #14101C; }
+.s-copies .cop-lid   { fill: none; stroke: #14101C; stroke-width: 1.3;
+                       stroke-linecap: round; }
+.s-copies .cop-mouth { fill: none; stroke: #14101C; stroke-width: 1.25;
+                       stroke-linecap: round; opacity: .72; }
+.s-copies .cop-knuck { fill: none; stroke: #6E4F3F; stroke-width: 1.1;
+                       stroke-linecap: round; opacity: .75; }
+.s-copies .cop-quill { fill: #E7D7B4; }
+.s-copies .cop-plume { fill: #F3E7CC; opacity: .8; }
+.s-copies .cop-rim   { fill: none; stroke: #C79448; stroke-width: 1.9; opacity: .62;
+                       stroke-linecap: round; }
+
+/* Distance. The far half of the rank is dropped into the room's own
+   colour rather than blacked out, so it reads as depth, not as a bar. */
+.s-copies .cop-haze {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    rgba(19,15,27,.58) 0%, rgba(19,15,27,.18) 12%, rgba(19,15,27,0) 34%);
+}
+.s-copies .cop-vig {
+  position: absolute; inset: 0;
+  background: radial-gradient(88% 66% at 64% 68%, rgba(0,0,0,0) 44%, rgba(0,0,0,.46) 100%);
+}
+
+@media (orientation: landscape) {
+  .s-copies .cop-art { width: min(112%, 82vh) }
+  .s-copies .cop-lamp { width: 46vmin }
+}
+
+.page.live .s-copies .cop-c,
+.page.live .s-copies .cop-gone,
+.page.live .s-copies .cop-lamp { animation-play-state: running; }
+
+html.no-motion .s-copies .cop-c    { animation: none; opacity: var(--o) }
+html.no-motion .s-copies .cop-gone { animation: none; opacity: .5 }
+html.no-motion .s-copies .cop-lamp { animation: none; opacity: .85 }
+
+
+/* ───────────────────────────────────────────────────────────────────
+   11 · .s-mausoleum — "Some historians think poison."
+   Beat 10 is the basket: warm, domestic, figs on a ledge in the last
+   of the light. This is the room those figs were supposedly carried
+   into, and it is nothing like it.
+
+   The place is the mausoleum she had built for herself by the temple
+   of Isis, moved her treasure into, and barricaded herself in — which
+   is where she actually died, and which almost nobody pictures. So:
+   stone, grave goods against the wall, a barred door the guards had to
+   break with the morning showing round its edges, one oil lamp. Her on
+   the couch in royal regalia with a small vessel at her lips, Iras
+   collapsed at the foot, Charmion still straightening the diadem. The
+   physician's table stands to one side with its vials and mortar —
+   that is the card's argument, not the whole picture.
+
+   Cool where the basket was warm: the only warmth is the one lamp, and
+   the light coming round the door is daylight and cold. The flame is
+   the one thing in the room that moves.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-mausoleum {
+  --wall-hi:  #57445A;
+  --wall:     #382B44;
+  --wall-lo:  #221929;
+  --gold:     #C9A24E;
+  --gold-hi:  #FFD36E;
+  --gold-lo:  #7E6229;
+  --purple:   #6B4BB0;
+  --purple-lo:#4A3577;
+  --drape:    #2F2249;
+  --drape-hi: #3E2E5E;
+  --linen:    #EFE3CC;
+  --linen-lo: #AE9C7C;
+  --skin:     #C08A6B;
+  --attend:   #423450;
+  --attend-hi:#54445F;
+  --hair:     #1F1826;
+  --cold:     #CFE3E6;
+  --stone:    #6B5C6E;
+  --wood:     #4A3928;
+}
+
+.s-mausoleum .vil-room {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(64% 40% at 30% 66%, rgba(255,211,110,.17), rgba(255,211,110,0) 74%),
+    radial-gradient(40% 30% at 8% 62%, rgba(207,227,230,.10), rgba(207,227,230,0) 76%),
+    linear-gradient(178deg, #1A1322 0%, var(--wall-lo) 16%, var(--wall) 58%, var(--wall-hi) 100%);
+}
+/* courses of block. They say the room is cut stone and nothing more,
+   and they fade out well before the caption sits on them. */
+.s-mausoleum .vil-courses {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(180deg,
+    rgba(183,156,237,0) 0 5.4%, rgba(183,156,237,.05) 5.4% 5.75%);
+  -webkit-mask-image: radial-gradient(76% 46% at 40% 76%, #000 0%, rgba(0,0,0,.2) 74%, transparent 100%);
+          mask-image: radial-gradient(76% 46% at 40% 76%, #000 0%, rgba(0,0,0,.2) 74%, transparent 100%);
+}
+
+/* the top of the wall, so the chamber has a ceiling rather than a void */
+.s-mausoleum .vil-cornice {
+  position: absolute; left: 0; right: 0; top: 17.5%; height: 4.2%;
+  background: linear-gradient(180deg,
+    rgba(183,156,237,.10) 0 14%, rgba(87,68,90,.5) 14% 78%, rgba(18,13,24,.5) 78% 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 20%, #000 80%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+
+.s-mausoleum .vil-art {
+  position: absolute; left: 50%; bottom: 12.5%;
+  width: min(100%, 56vh); aspect-ratio: 1.7241;
+  transform: translateX(-50%);
+}
+/* overflow visible: the floor and the wall base are drawn as rects far
+   wider than the box, so they run to both edges of any viewport while
+   staying welded to the feet of everything standing on them. */
+.s-mausoleum .vil-art svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+.s-mausoleum .vil-base { fill: #100B16; opacity: .8; }
+
+/* the door */
+.s-mausoleum .vil-jamb  { fill: #100B16; }
+.s-mausoleum .vil-leaf  { fill: #241C2E; }
+.s-mausoleum .vil-plank rect { fill: #191322; }
+.s-mausoleum .vil-seam rect  { fill: var(--cold); opacity: .72; }
+.s-mausoleum .vil-doorpool   { fill: var(--cold); opacity: .15; }
+.s-mausoleum .vil-bar rect   { fill: var(--wood); }
+.s-mausoleum .vil-bar .vil-brk { fill: #5C4632; }
+
+/* what she moved in here with her */
+.s-mausoleum .vil-chest    { fill: #362A3E; }
+.s-mausoleum .vil-chest-hi { fill: #47384F; }
+.s-mausoleum .vil-strap    { fill: var(--gold-lo); opacity: .7; }
+.s-mausoleum .vil-amph     { fill: #2C2236; }
+.s-mausoleum .vil-amph-b   { fill: #33283D; }
+.s-mausoleum .vil-glint rect { fill: var(--gold-hi); opacity: .5; }
+
+/* the lamp */
+.s-mausoleum .vil-lamp-b,
+.s-mausoleum .vil-lamp-s,
+.s-mausoleum .vil-lamp-d { fill: #7E6229; }
+.s-mausoleum .vil-flame-o { fill: #FF9A5C; opacity: .85; }
+.s-mausoleum .vil-flame-i { fill: var(--gold-hi); }
+.s-mausoleum .vil-pool { opacity: .9; }
+
+/* the physician's table */
+.s-mausoleum .vil-top   { fill: var(--stone); }
+.s-mausoleum .vil-leg rect { fill: #4F4356; }
+.s-mausoleum .vil-bowl  { fill: #8B7B93; }
+.s-mausoleum .vil-rim   { fill: #A79AAE; }
+.s-mausoleum .vil-pestle{ fill: #A79AAE; }
+.s-mausoleum .vil-paper { fill: #F1E8D6; }
+.s-mausoleum .vil-vb    { fill: #D9E4E2; opacity: .82; }
+.s-mausoleum .vil-vc    { fill: #A8823E; }
+
+/* the three of them */
+.s-mausoleum .vil-cast    { fill: #0C0812; opacity: .42; }
+.s-mausoleum .vil-robe    { fill: var(--attend); }
+.s-mausoleum .vil-robe-hi { fill: var(--attend-hi); }
+.s-mausoleum .vil-skin    { fill: var(--skin); }
+.s-mausoleum .vil-hair    { fill: var(--hair); }
+.s-mausoleum .vil-bare    { fill: none; stroke: var(--skin); stroke-width: 4.6;
+                        stroke-linecap: round; stroke-linejoin: round; }
+.s-mausoleum .vil-thin    { fill: none; stroke: var(--skin); stroke-width: 3.8;
+                        stroke-linecap: round; stroke-linejoin: round; }
+
+/* the couch */
+.s-mausoleum .vil-leg2 rect { fill: var(--gold-lo); }
+.s-mausoleum .vil-rail      { fill: var(--gold); }
+.s-mausoleum .vil-head-b    { fill: #A8873F; }
+.s-mausoleum .vil-mat       { fill: var(--linen-lo); }
+.s-mausoleum .vil-cover     { fill: var(--drape); }
+.s-mausoleum .vil-cover-hi  { fill: var(--drape-hi); }
+
+/* her */
+.s-mausoleum .vil-gown    { fill: var(--linen); }
+.s-mausoleum .vil-mantle  { fill: var(--purple); opacity: .9; }
+.s-mausoleum .vil-hem     { fill: var(--gold); opacity: .8; }
+.s-mausoleum .vil-collar  { fill: var(--gold); opacity: .9; }
+.s-mausoleum .vil-diadem  { fill: var(--gold-hi); }
+/* Faces, in the flat idiom: an ink eye, a lid, a level mouth. Cleopatra
+   and Charmion are awake and Iras is not, which is the whole reason
+   this room is an argument — so Iras gets the shut lid and no eye. */
+.s-mausoleum .vil-eye   { fill: #16111D; }
+.s-mausoleum .vil-lid   { fill: none; stroke: #16111D; stroke-width: .95;
+                          stroke-linecap: round; }
+.s-mausoleum .vil-shut  { fill: none; stroke: #16111D; stroke-width: .9;
+                          stroke-linecap: round; opacity: .85; }
+.s-mausoleum .vil-mouth { fill: none; stroke: #16111D; stroke-width: .8;
+                          stroke-linecap: round; opacity: .78; }
+.s-mausoleum .vil-knuck path { fill: none; stroke: #8E6349; stroke-width: .75;
+                          stroke-linecap: round; opacity: .85; }
+.s-mausoleum .vil-vessel path { fill: #DCD2BE; }
+.s-mausoleum .vil-vessel ellipse { fill: #F3ECDC; }
+
+/* The one thing moving in the room. */
+.s-mausoleum .vil-flame {
+  transform-box: fill-box; transform-origin: 50% 92%;
+  animation: vilGutter 6.2s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes vilGutter {
+  from { transform: scale(.92, .86) translateX(-2%) }
+  46%  { transform: scale(1.02, 1.06) translateX(1.4%) }
+  to   { transform: scale(.97, 1.16) translateX(-.6%) }
+}
+.s-mausoleum .vil-fireglow,
+.s-mausoleum .vil-pool {
+  animation: vilCore 8.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes vilCore { from { opacity: .72 } to { opacity: 1 } }
+
+/* a whisper: the morning behind the door, which is not coming in */
+.s-mausoleum .vil-seam {
+  animation: vilSeam 21s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes vilSeam { from { opacity: .78 } to { opacity: 1 } }
+
+.s-mausoleum .vil-warm {
+  position: absolute; inset: 0;
+  background: radial-gradient(52% 26% at 30% 78%, rgba(255,211,110,.1), rgba(255,211,110,0) 76%);
+}
+.s-mausoleum .vil-vig {
+  position: absolute; inset: 0;
+  background: radial-gradient(92% 68% at 50% 74%, rgba(0,0,0,0) 40%, rgba(0,0,0,.52) 100%);
+}
+
+.page.live .s-mausoleum .vil-flame,
+.page.live .s-mausoleum .vil-fireglow,
+.page.live .s-mausoleum .vil-pool,
+.page.live .s-mausoleum .vil-seam { animation-play-state: running; }
+
+html.no-motion .s-mausoleum .vil-flame    { animation: none; transform: none }
+html.no-motion .s-mausoleum .vil-fireglow { animation: none; opacity: .9 }
+html.no-motion .s-mausoleum .vil-pool     { animation: none; opacity: .9 }
+html.no-motion .s-mausoleum .vil-seam     { animation: none; opacity: .9 }

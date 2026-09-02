@@ -1,0 +1,736 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SCENES E — bath · triumph
+
+   Composed for 390×844 portrait first, desktop second. Two fixed
+   rules came out of measuring the real shell rather than guessing:
+
+     • the caption box occupies 41.4–58.6% of the viewport on a phone
+       and 42.2–57.8% on a desktop, so nothing that carries meaning
+       sits between 40% and 60%;
+     • the bottom 12% is under the in-app browser toolbar, so nothing
+       that carries meaning sits below 88%.
+
+   Both scenes therefore hang their cast off one bottom-anchored art
+   box whose height is pinned to ~28% of the viewport at every size
+   (`min(N%, Mvh)` against a fixed aspect-ratio). The ground plane is
+   a CHILD of that box, not a sibling, so the floor line stays welded
+   to the things standing on it whatever the window does.
+
+   Every selector scoped under .s-bath / .s-triumph. Sizes in % / vmin
+   / em; SVG user units inside the art boxes. Motion is paused until
+   `.page.live` and gone under `html.no-motion`.
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────────
+   1 · .s-bath — "She bathes. She dresses in royal robes. She eats a
+   final meal."
+
+   THE LIGHT. The old scene put a shaft on the floor that its window
+   could not have thrown. Here the opening is at 62–79% × 13–26% of
+   the scene and the shaft is clipped in that same percentage space,
+   its two long edges leaving the two jambs at 62% and 79% on the
+   sill line at 26%:
+
+       polygon(62% 26%, 79% 26%, 47.2% 92%, 22.9% 92%)
+
+   Both are percentages of the same box, so the relationship survives
+   every aspect ratio the page can be given — a percentage layout
+   stretches affinely, and an affine stretch keeps straight lines
+   straight and coincident points coincident. The bright patch is the
+   same polygon masked to the water band, so the light lands exactly
+   as wide as the beam that carried it, at 33–56% — which is where
+   she is sitting, on a phone and on a desktop.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-bath {
+  --shade: 62, 47, 74;
+  --butter: 255, 211, 110;
+  --butter-soft: 255, 234, 184;
+  --skin: #C9915F;
+  --skin-lo: #A8703F;
+  --hair: #2E2334;
+  --water: #3FA79E;
+  --water-lo: #1F7A72;
+  --stone: #EBD9BB;
+  /* The art box's own width expression, as a token. The cast is welded
+     to a height-led box (`min(96%, 46vh)`) while the window and the
+     shaft it throws were measured against the viewport — so on a short
+     wide window the light landed on bare floor a hundred pixels to the
+     left of the woman it was supposed to be falling on. Everything that
+     has to agree with the basin is now a fraction of this instead. */
+  --aw: min(96%, 46vh);
+  background: #C3A183;
+}
+
+.s-bath .bth-wall {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(92deg,
+      rgba(var(--shade), .34) 0%,
+      rgba(var(--shade), .10) 30%,
+      rgba(var(--butter), .05) 62%,
+      rgba(var(--butter), .20) 100%),
+    linear-gradient(to bottom,
+      rgba(var(--shade), .46) 0%,
+      rgba(var(--shade), .10) 16%,
+      rgba(var(--shade), .01) 40%,
+      rgba(var(--shade), .16) 68%,
+      rgba(var(--shade), .38) 100%),
+    linear-gradient(to bottom, #CFAA83 0%, #E4C69E 34%, #D2B08B 66%, #B2937B 100%);
+}
+
+/* Plastered ashlar. Barely there — it says wall, and nothing else. */
+.s-bath .bth-courses {
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(to bottom,
+      rgba(var(--shade), 0) 0 7.4vmin, rgba(var(--shade), .055) 7.4vmin 7.7vmin),
+    repeating-linear-gradient(to right,
+      rgba(var(--shade), 0) 0 22vmin, rgba(var(--shade), .04) 22vmin 22.3vmin);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 56%, transparent 72%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 56%, transparent 72%);
+}
+
+/* The painted band at the top of the wall. Greek court, Egyptian
+   palace: a meander in Egyptian blue over red ochre, which is what
+   the Alexandrian plaster fragments actually carry. */
+.s-bath .bth-frieze {
+  position: absolute; left: 0; right: 0; top: 3.2%; height: 3.4%;
+  background:
+    linear-gradient(to bottom,
+      rgba(154, 107, 0, .55) 0 10%, rgba(0, 0, 0, 0) 10% 90%,
+      rgba(154, 107, 0, .55) 90% 100%),
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0) 0 1.5vmin,
+      rgba(154, 107, 0, .30) 1.5vmin 4.2vmin,
+      rgba(0, 0, 0, 0) 4.2vmin 5.7vmin),
+    linear-gradient(to bottom, #E8CBA6, #D9B58E);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+  opacity: .46;
+}
+
+/* ── the opening ──────────────────────────────────────────────── */
+/* Left/width off --aw so the opening rides with the room; top/height
+   stay viewport-relative, because that is a height and heights already
+   agree. At 390×844 this lands within half a percent of the numbers it
+   replaces — it only starts to matter as the window gets wider. */
+.s-bath .bth-win { position: absolute; top: 13%; height: 13%;
+                   left: calc(50% + .12 * var(--aw));
+                   width: calc(.17 * var(--aw)); }
+
+.s-bath .bth-splay {
+  position: absolute; inset: -14% -11%;
+  background: linear-gradient(to bottom,
+    rgba(255, 247, 237, .34), rgba(255, 247, 237, .07));
+}
+.s-bath .bth-open {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, #FCFEFC 0%, #E8F6F1 38%, #FFF3D2 100%);
+  box-shadow: 0 0 6vmin rgba(var(--butter), .62), 0 0 1.5vmin rgba(255, 253, 244, .92);
+  animation: e-bth-glow 17s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-bth-glow { 0% { filter: brightness(.95) } 100% { filter: brightness(1.08) } }
+
+.s-bath .bth-mull {
+  position: absolute; left: 48.4%; width: 3.2%; top: 0; bottom: 0;
+  background: rgba(var(--shade), .46);
+}
+.s-bath .bth-sill {
+  position: absolute; left: -15%; right: -15%; top: 100%; height: 15%;
+  border-radius: 0 0 .3vmin .3vmin;
+  background: linear-gradient(to bottom, #F4E5CA, #B79779);
+}
+.s-bath .bth-bloom {
+  position: absolute; inset: -80% -70%;
+  background: radial-gradient(50% 50% at 50% 50%,
+    rgba(var(--butter-soft), .40) 0%, rgba(var(--butter), 0) 70%);
+  mix-blend-mode: screen;
+}
+
+/* ── the shaft ────────────────────────────────────────────────── */
+.s-bath .bth-shaft,
+.s-bath .bth-land {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  /* The same two jambs, and a foot that lands where the basin is: the
+     four corners are all fractions of --aw now, so the beam leaves the
+     window it was thrown from and arrives on her at every window shape. */
+  clip-path: polygon(calc(50% + .12 * var(--aw)) 26%,
+                     calc(50% + .29 * var(--aw)) 26%,
+                     calc(50% - .03 * var(--aw)) 92%,
+                     calc(50% - .283 * var(--aw)) 92%);
+  mix-blend-mode: screen;
+}
+.s-bath .bth-shaft {
+  z-index: 2;
+  background: linear-gradient(to bottom,
+    rgba(var(--butter-soft), 0) 24.6%,
+    rgba(255, 250, 236, .72) 27%,
+    rgba(var(--butter-soft), .24) 38%,
+    rgba(var(--butter), .09) 56%,
+    rgba(var(--butter), .07) 72%,
+    rgba(var(--butter), .09) 84%,
+    rgba(var(--butter), 0) 92.5%);
+  filter: blur(1.2vmin);
+}
+/* Where the shaft arrives. Same polygon, so the patch is exactly as
+   wide as the beam that made it. */
+.s-bath .bth-land {
+  z-index: 6;
+  background: linear-gradient(to bottom,
+    rgba(255, 246, 220, 0) 68%,
+    rgba(255, 250, 232, .12) 74%,
+    rgba(255, 250, 232, .34) 80.5%,
+    rgba(var(--butter-soft), .26) 85%,
+    rgba(var(--butter), .07) 89%,
+    rgba(var(--butter), 0) 92%);
+  filter: blur(2vmin);
+  animation: e-bth-breathe 19s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-bth-breathe { 0% { opacity: .82 } 100% { opacity: 1 } }
+
+.s-bath .bth-motes {
+  position: absolute; left: 24%; right: 40%; top: 28%; bottom: 22%;
+  z-index: 7; pointer-events: none;
+}
+.s-bath .bth-motes i {
+  position: absolute;
+  width: .75vmin; aspect-ratio: 1; border-radius: 50%;
+  background: rgba(255, 251, 240, .95);
+  opacity: .34;
+  animation: e-bth-mote 32s ease-in-out infinite;
+  animation-play-state: paused;
+}
+@keyframes e-bth-mote {
+  0%   { transform: translate(0, 0) scale(.55); opacity: .10 }
+  24%  { opacity: .54 }
+  72%  { opacity: .32 }
+  100% { transform: translate(var(--x, -5vmin), var(--y, 9vmin)) scale(1); opacity: 0 }
+}
+.s-bath .bth-motes i:nth-child(1) { left: 74%; top:  6%; --x: -5vmin; --y: 11vmin; animation-duration: 36s; animation-delay: -4s }
+.s-bath .bth-motes i:nth-child(2) { left: 58%; top: 19%; --x: -4vmin; --y: 15vmin; animation-duration: 44s; animation-delay: -17s; width: .58vmin }
+.s-bath .bth-motes i:nth-child(3) { left: 82%; top: 31%; --x: -6vmin; --y:  8vmin; animation-duration: 30s; animation-delay: -25s }
+.s-bath .bth-motes i:nth-child(4) { left: 44%; top: 43%; --x: -3vmin; --y: 12vmin; animation-duration: 48s; animation-delay: -9s;  width: .55vmin }
+.s-bath .bth-motes i:nth-child(5) { left: 66%; top: 55%; --x: -7vmin; --y:  7vmin; animation-duration: 38s; animation-delay: -33s }
+.s-bath .bth-motes i:nth-child(6) { left: 32%; top: 66%; --x: -3vmin; --y:  9vmin; animation-duration: 54s; animation-delay: -20s; width: .62vmin }
+.s-bath .bth-motes i:nth-child(7) { left: 52%; top: 76%; --x: -5vmin; --y:  6vmin; animation-duration: 34s; animation-delay: -42s }
+.s-bath .bth-motes i:nth-child(8) { left: 70%; top: 12%; --x: -4vmin; --y: 17vmin; animation-duration: 60s; animation-delay: -28s; width: .5vmin }
+.s-bath .bth-motes i:nth-child(9) { left: 38%; top: 34%; --x: -8vmin; --y: 10vmin; animation-duration: 41s; animation-delay: -50s; width: .52vmin }
+
+/* ── the art box: floor line, basin, three women ──────────────── */
+.s-bath .bth-art {
+  position: absolute; left: 50%; bottom: 12%;
+  width: min(96%, 46vh); aspect-ratio: 100 / 63;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+.s-bath .bth-art svg { position: relative; width: 100%; height: 100%; display: block; overflow: visible }
+
+/* The floor. A child of the art box — 24 of the viewBox's 63 units —
+   so the line where the wall stops stays welded to the basin. */
+.s-bath .bth-plane {
+  position: absolute; left: -300%; right: -300%; top: 38.1%; height: 340%;
+  background: linear-gradient(to bottom,
+    #D9BC97 0%, #C6A883 26%, #AC8F78 62%, #8E7573 100%);
+}
+.s-bath .bth-planeline {
+  position: absolute; left: -300%; right: -300%; top: 38.1%; height: 1.1%;
+  background: linear-gradient(90deg,
+    rgba(var(--shade), .34), rgba(var(--butter-soft), .30) 62%, rgba(var(--shade), .30));
+}
+
+.s-bath .bth-sh   { fill: rgba(62, 47, 74, .20) }
+.s-bath .bth-sh2  { fill: rgba(62, 47, 74, .26) }
+
+/* Stone: the coping is the floor, because the basin is sunk into it. */
+.s-bath .bth-cope    { fill: #E3CFAE }
+.s-bath .bth-cope-hi { fill: rgba(255, 247, 237, .58) }
+.s-bath .bth-lip     { fill: rgba(255, 247, 237, .40) }
+.s-bath .bth-basin   { fill: #9C8C7A }
+.s-bath .bth-water   { fill: var(--water) }
+.s-bath .bth-shade   { fill: var(--water-lo); opacity: .70 }
+.s-bath .bth-step    { fill: #6FCBC0; opacity: .60 }
+.s-bath .bth-step2   { fill: #58BAB0; opacity: .55 }
+.s-bath .bth-water-fg{ fill: #46B0A6 }
+.s-bath .bth-rip     { fill: rgba(255, 247, 237, .46) }
+
+.s-bath .bth-skin    { fill: var(--skin) }
+.s-bath .bth-hi      { fill: rgba(var(--butter-soft), .34) }
+.s-bath .bth-hair    { fill: var(--hair) }
+/* Faces. The same two marks the app's own mascot is drawn with — an
+   ink ellipse for the eye and a short ink line for the mouth (see
+   PipView) — and nothing else. Level, never curved: this is her last
+   morning and none of the three of them is pleased about it. */
+.s-bath .bth-eye     { fill: var(--hair) }
+.s-bath .bth-nose    { fill: none; stroke: var(--skin-lo); stroke-width: .5;
+                       stroke-linecap: round }
+.s-bath .bth-mouth   { fill: none; stroke: var(--hair); stroke-width: .48;
+                       stroke-linecap: round; opacity: .72 }
+.s-bath .bth-arm     { fill: none; stroke: var(--skin); stroke-width: 3.1; stroke-linecap: round }
+.s-bath .bth-arm-w   { stroke: var(--skin-lo); opacity: .8 }
+.s-bath .bth-linen   { fill: #FDF3E4 }
+.s-bath .bth-blush   { fill: #F2B7BF }
+.s-bath .bth-crimson { fill: #A81F38 }
+.s-bath .bth-crimson-hi { fill: #C63C52 }
+.s-bath .bth-crimson-lo { fill: #8A1830 }
+.s-bath .bth-gold    { fill: #FFD36E }
+.s-bath .bth-diadem  { fill: none; stroke: #FFD36E; stroke-width: 1 }
+
+.s-bath .bth-jar      { fill: #B87A3C }
+.s-bath .bth-jar-b    { fill: #A26A34 }
+.s-bath .bth-jar-hi   { fill: #D79A57 }
+.s-bath .bth-jar-lo   { fill: #9A6330 }
+.s-bath .bth-handle2  { fill: none; stroke: #8F5C2C; stroke-width: 1.4; stroke-linecap: round }
+.s-bath .bth-jar-band { fill: rgba(46, 35, 52, .22) }
+.s-bath .bth-handle   { fill: none; stroke: #A26A34; stroke-width: 1.3; stroke-linecap: round }
+
+.s-bath .bth-bronze    { fill: #A87615 }
+.s-bath .bth-bronze-hi { fill: #D2A337 }
+.s-bath .bth-fig       { fill: #6B4BB0 }
+.s-bath .bth-fig-hi    { fill: rgba(183, 156, 237, .55) }
+.s-bath .bth-cup       { fill: #C89A4E }
+.s-bath .bth-cup-hi    { fill: #E9C67E }
+
+.s-bath .bth-stream    { fill: rgba(226, 248, 246, .66); filter: blur(.12vmin) }
+.s-bath .bth-stream-hi { fill: none; stroke: rgba(255, 255, 255, .55); stroke-width: .35 }
+.s-bath .bth-drop      { fill: rgba(240, 253, 251, .8) }
+.s-bath .bth-drop2     { fill: rgba(246, 254, 253, .9) }
+
+/* ── motion. The pour is the one thing that moves; the rest breathes. */
+.s-bath .bth-pour {
+  transform-box: fill-box; transform-origin: 50% 0;
+  animation: e-bth-pour 2.9s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-bth-pour {
+  0%   { transform: scaleX(.90) scaleY(1);    opacity: .78 }
+  100% { transform: scaleX(1.06) scaleY(1.01); opacity: 1 }
+}
+.s-bath .bth-splash {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: e-bth-splash 2.9s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-bth-splash {
+  0%   { opacity: .45; transform: translateY(3%) scale(.94) }
+  100% { opacity: .95; transform: translateY(-3%) scale(1) }
+}
+.s-bath .bth-rip {
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: e-bth-rip 9s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-bth-rip {
+  0%   { transform: translateX(-8%) scaleX(.9);  opacity: .38 }
+  100% { transform: translateX(8%)  scaleX(1.06); opacity: .8 }
+}
+.s-bath .bth-rip2 { animation-duration: 11s;  animation-delay: -3s }
+.s-bath .bth-rip4 { animation-duration: 12s;  animation-delay: -8s }
+.s-bath .bth-rip5 { animation-duration: 8.4s; animation-delay: -2s }
+
+.s-bath .bth-cleo {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: e-bth-breathe-c 4.6s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-bth-breathe-c {
+  0%   { transform: translateY(.35%) scaleY(.996) }
+  100% { transform: translateY(-.35%) scaleY(1) }
+}
+.s-bath .bth-swaya, .s-bath .bth-swayb {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: e-bth-sway 5.2s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.s-bath .bth-swayb { animation-duration: 6.4s; animation-delay: -2.2s }
+@keyframes e-bth-sway {
+  0%   { transform: rotate(-.9deg) }
+  100% { transform: rotate(.9deg) }
+}
+
+.page.live .s-bath .bth-open,
+.page.live .s-bath .bth-land,
+.page.live .s-bath .bth-motes i,
+.page.live .s-bath .bth-pour,
+.page.live .s-bath .bth-splash,
+.page.live .s-bath .bth-rip,
+.page.live .s-bath .bth-cleo,
+.page.live .s-bath .bth-swaya,
+.page.live .s-bath .bth-swayb { animation-play-state: running }
+
+.s-bath .bth-vig {
+  position: absolute; inset: 0; z-index: 8; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(var(--shade), .30) 0%, rgba(var(--shade), 0) 16%),
+    radial-gradient(92% 66% at 46% 66%,
+      rgba(var(--shade), 0) 40%, rgba(var(--shade), .22) 80%, rgba(var(--shade), .48) 100%);
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+   2 · .s-triumph — "She will not be paraded."
+
+   A street in Rome in 29 BCE with the crowd on both sides of us: the
+   far bank of onlookers at 74%, the near bank at 86% drawn as the
+   backs of heads, so the reader is standing in it. The procession
+   runs between them — standards, an eagle, legionaries, the lictors
+   with their fasces, the four-horse chariot — and carried through
+   the middle of it, the effigy. Nobody is in chains, because nobody
+   was: what Rome paraded was a wooden queen on a couch with a snake
+   on her arm.
+
+   Same art-box discipline as .s-bath, pinned to ~26–33% of the
+   viewport, street plane welded to it as a child.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-triumph {
+  --shade: 62, 47, 74;
+  --hot: 255, 240, 214;
+  /* The near bank builds every figure out of one shape in <defs>, and
+     a stylesheet cannot reach inside a <use> shadow tree — but a custom
+     property inherits into it. So the three colours the shared shapes
+     need live here, as tokens, rather than as unreachable classes. */
+  --n-veil: #DFCCAA;
+  --n-hat:  #9A6B00;
+  --n-ink:  #2E2334;
+  /* Same reason: the rank of soldiers holding the route open is one
+     shape in <defs> used forty-odd times over. */
+  --t-pole:    #8A6B45;
+  --t-steel:   #9AA3AE;
+  --t-crimson: #A81F38;
+  --t-skin:    #C08152;
+  --stone: #E8D8BE;
+  --stone-lo: #C9B091;
+  background: #E2CBA9;
+}
+
+.s-triumph .tri-sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    #EFD9B4 0%, #F6E7C9 26%, #FBF1DA 52%, #F2E0C1 74%, #DDC29F 100%);
+}
+/* The end of the route, over-bright: everything is walking into it. */
+.s-triumph .tri-glare {
+  position: absolute; inset: 0;
+  background: radial-gradient(40% 24% at 50% 70%,
+    rgba(255, 252, 240, .72) 0%, rgba(255, 244, 214, .30) 42%, rgba(255, 240, 214, 0) 100%);
+}
+
+/* The Capitol, at the far end of it and above it. */
+/* Laurel swagged across the route, which is how it was dressed. It
+   lives above the caption and gives the top third something to be. */
+.s-triumph .tri-swag {
+  position: absolute; left: 0; right: 0; top: 15%; height: 17%;
+  opacity: .72;
+}
+.s-triumph .tri-swag svg { width: 100%; height: 100%; display: block; overflow: visible }
+.s-triumph .tri-rope  { fill: none; stroke: #1F7A72; stroke-width: 5.6; stroke-linecap: round; opacity: .34 }
+.s-triumph .tri-garl  { fill: none; stroke: #4E8F72; stroke-width: 4; stroke-linecap: round;
+                        stroke-dasharray: 5 2.4 }
+.s-triumph .tri-garl2 { fill: none; stroke: #8FDCA8; stroke-width: 2.2; stroke-linecap: round;
+                        stroke-dasharray: 3.4 3; opacity: .8 }
+.s-triumph .tri-rib   { fill: none; stroke: #A81F38; stroke-width: 1.5; stroke-linecap: round; opacity: .85 }
+
+/* The flanks of the street. Their bases are masked away into the
+   haze rather than ending on a line, so they can never disagree with
+   the street plane, which is welded to a differently-sized box. */
+.s-triumph .tri-col {
+  position: absolute; top: 42%; height: 36%; width: 19%;
+  opacity: .40;
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, #000 14%, #000 50%, rgba(0,0,0,.3) 80%, transparent 100%);
+          mask-image:
+    linear-gradient(to bottom, transparent 0, #000 14%, #000 50%, rgba(0,0,0,.3) 80%, transparent 100%);
+}
+.s-triumph .tri-col-l { left: 0 }
+.s-triumph .tri-col-r { right: 0 }
+/* soften the inner edge so the flank does not end on a hard line */
+.s-triumph .tri-col-l svg { -webkit-mask-image: linear-gradient(90deg, #000 62%, transparent 100%);
+                                    mask-image: linear-gradient(90deg, #000 62%, transparent 100%) }
+.s-triumph .tri-col-r svg { -webkit-mask-image: linear-gradient(270deg, #000 62%, transparent 100%);
+                                    mask-image: linear-gradient(270deg, #000 62%, transparent 100%) }
+.s-triumph .tri-col svg { width: 100%; height: 100%; display: block }
+.s-triumph .tri-blk    { fill: #C2A585 }
+.s-triumph .tri-blk-hi { fill: #E7D4B7 }
+.s-triumph .tri-arch   { fill: #7E6753 }
+.s-triumph .tri-win    { fill: #8E7660; opacity: .7 }
+
+.s-triumph .tri-haze {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    rgba(var(--hot), 0) 48%,
+    rgba(var(--hot), .26) 68%,
+    rgba(var(--hot), .08) 80%,
+    rgba(var(--hot), 0) 90%);
+}
+
+/* ── the art box ──────────────────────────────────────────────── */
+.s-triumph .tri-art {
+  position: absolute; left: 50%; bottom: 12%;
+  width: min(110%, 56vh); aspect-ratio: 84 / 50;
+  transform: translateX(-50%);
+}
+.s-triumph .tri-art svg { position: relative; width: 100%; height: 100%; display: block; overflow: visible }
+
+/* 22 of the viewBox's 50 units — the far kerb. */
+.s-triumph .tri-street {
+  position: absolute; left: -300%; right: -300%; top: 44%; height: 340%;
+  background: linear-gradient(to bottom,
+    #D5BE9C 0%, #C9AF8B 22%, #B79975 58%, #9C8065 100%);
+}
+.s-triumph .tri-kerb {
+  position: absolute; left: -300%; right: -300%; top: 44%; height: 1.3%;
+  background: linear-gradient(90deg,
+    rgba(var(--shade), .18), rgba(255, 250, 236, .5) 50%, rgba(var(--shade), .18));
+}
+
+.s-triumph .tri-sh    { fill: rgba(62, 47, 74, .17) }
+.s-triumph .tri-skin  { fill: #C08152 }
+.s-triumph .tri-t-e   { fill: #CDAE8B }
+
+/* ── the far bank ───────────────────────────────────────────────
+   One path, one tone. Distance is drawn by taking things AWAY: no
+   faces, no arms, no colour, and no line between one head and the
+   head beside it. It is a ridge the near people stand in front of,
+   not a second cast. Also one SVG node instead of a hundred and
+   twenty, which is the cheapest thing in the scene. */
+.s-triumph .tri-far { fill: #9B8A90 }
+
+/* ── the near bank ──────────────────────────────────────────────
+   The reverse of it: these are the people we are standing among, so
+   they carry the colour, the height differences, the postures and
+   the faces. Every part of it is a static shape — the whole bank
+   moves on the one transform it already had, nothing in it animates
+   on its own and nothing in it filters. */
+.s-triumph .tri-n-sk1 { fill: #C08152 }
+.s-triumph .tri-n-sk2 { fill: #9E6540 }
+.s-triumph .tri-n-sk3 { fill: #D2946A }
+.s-triumph .tri-n-hair   { fill: #2E2334 }
+.s-triumph .tri-n-hair-g { fill: #6E6070 }
+.s-triumph .tri-n-a { fill: #A8462F }   /* coral-deep, in shade */
+.s-triumph .tri-n-b { fill: #256B66 }   /* teal-deep            */
+.s-triumph .tri-n-c { fill: #8A6417 }   /* butter-deep          */
+.s-triumph .tri-n-d { fill: #5C4691 }   /* lilac-deep           */
+.s-triumph .tri-n-e { fill: #8E2438 }   /* crimson              */
+.s-triumph .tri-n-f { fill: #4E6070 }   /* steel, darkened      */
+.s-triumph .tri-n-g { fill: #497F5E }   /* mint, darkened       */
+.s-triumph .tri-n-h { fill: #CDBA9C }   /* parchment, in shade  */
+.s-triumph .tri-n-m1 { fill: #8E2438 }
+.s-triumph .tri-n-m2 { fill: #5C4691 }
+.s-triumph .tri-n-arm { fill: none; stroke-width: 1.9; stroke-linecap: round }
+.s-triumph .tri-n-arm.tri-n-sk1 { stroke: #C08152 }
+.s-triumph .tri-n-arm.tri-n-sk2 { stroke: #9E6540 }
+.s-triumph .tri-n-arm.tri-n-sk3 { stroke: #D2946A }
+.s-triumph .tri-toga  { fill: #FAF2E2 }
+.s-triumph .tri-crimson { fill: #A81F38 }
+.s-triumph .tri-gold  { fill: #FFD36E }
+.s-triumph .tri-steel { fill: #9AA3AE }
+.s-triumph .tri-pole  { fill: #8A6B45 }
+.s-triumph .tri-poleb { fill: #8A6B45 }
+.s-triumph .tri-fasc  { fill: #B08A55 }
+.s-triumph .tri-cord  { fill: #6E5230 }
+.s-triumph .tri-purple{ fill: #7A1B34 }
+.s-triumph .tri-lau   { fill: #6FBF8C }
+.s-triumph .tri-crown { fill: none; stroke: #FFD36E; stroke-width: 1.1; stroke-linecap: round }
+
+.s-triumph .tri-armline  { fill: none; stroke: #C08152; stroke-width: 1.5; stroke-linecap: round }
+.s-triumph .tri-armline2 { fill: none; stroke: #C08152; stroke-width: 1.7; stroke-linecap: round }
+
+.s-triumph .tri-hb     { fill: #7E5B3C }
+.s-triumph .tri-hb-lo  { fill: #5E4229 }
+.s-triumph .tri-hb-hi  { fill: #916B48 }
+.s-triumph .tri-hb2    { fill: #A0785A }
+.s-triumph .tri-hb2-lo { fill: #7E5B3C }
+.s-triumph .tri-hb2-hi { fill: #B08A6A }
+.s-triumph .tri-plume  { fill: #A81F38 }
+.s-triumph .tri-wreath2{ fill: none; stroke: #FFD36E; stroke-width: .75 }
+.s-triumph .tri-tail  { fill: none; stroke: #4E3722; stroke-width: 1.2; stroke-linecap: round }
+
+.s-triumph .tri-carb    { fill: #C69A46 }
+.s-triumph .tri-carb-hi { fill: rgba(255, 247, 237, .5) }
+.s-triumph .tri-yoke    { fill: none; stroke: #8A6B45; stroke-width: 1 }
+.s-triumph .tri-wheel   { fill: #8A6B45 }
+.s-triumph .tri-wheel-in{ fill: #C69A46 }
+.s-triumph .tri-spokes path { stroke: #C69A46; stroke-width: .8; fill: none }
+
+/* The effigy. The only thing in the frame at full strength. */
+.s-triumph .tri-halo {
+  fill: rgba(255, 252, 240, .62);
+  filter: blur(.45vmin);
+  animation: e-tri-halo 9s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-tri-halo { 0% { opacity: .55 } 100% { opacity: 1 } }
+.s-triumph .tri-couch    { fill: #6B4E30 }
+.s-triumph .tri-couch-hi { fill: #8A6941 }
+.s-triumph .tri-cloth    { fill: #A81F38 }
+.s-triumph .tri-mantle   { fill: #C33F55 }
+.s-triumph .tri-cush     { fill: #FFD36E }
+.s-triumph .tri-eff      { fill: #FFF7ED; stroke: rgba(62, 47, 74, .30); stroke-width: .3 }
+.s-triumph .tri-eff-skin { fill: #E8C49E; stroke: rgba(62, 47, 74, .30); stroke-width: .3 }
+.s-triumph .tri-eff-hair { fill: #3E2F4A }
+/* Painted on the wood, in the same flat idiom as everyone else. */
+.s-triumph .tri-eff-eye   { fill: #3E2F4A }
+.s-triumph .tri-eff-mouth { fill: none; stroke: #3E2F4A; stroke-width: .42;
+                            stroke-linecap: round; opacity: .8 }
+.s-triumph .tri-eff-arm  { fill: none; stroke: #E8C49E; stroke-width: 1.5; stroke-linecap: round }
+.s-triumph .tri-serp     { fill: none; stroke: #2E2334; stroke-width: 1.05; stroke-linecap: round }
+.s-triumph .tri-serp-h   { fill: #2E2334 }
+
+/* Depth, the right way round. Aerial perspective puts saturation and
+   detail at the front and flattens what is far off — so the far bank
+   is washed back into the haze and the near bank is at full strength.
+   It used to be the other way about. */
+.s-triumph .tri-crowdback { opacity: .38 }
+.s-triumph .tri-line      { opacity: .72 }
+.s-triumph .tri-crowdnear { opacity: 1 }
+
+/* ── motion. Nothing arrives. It breathes, sways, and stays. ───── */
+.s-triumph .tri-proc {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: e-tri-drift 46s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-tri-drift { 0% { transform: translateX(-.7%) } 100% { transform: translateX(.7%) } }
+
+.s-triumph .tri-bobA, .s-triumph .tri-bobB,
+.s-triumph .tri-bobC, .s-triumph .tri-bobD {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: e-tri-bob 2.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-tri-bob { 0% { transform: translateY(1.1%) } 100% { transform: translateY(-1.1%) } }
+.s-triumph .tri-bobB { animation-duration: 2.6s; animation-delay: -1.1s }
+.s-triumph .tri-bobC { animation-duration: 2.2s; animation-delay: -.7s }
+.s-triumph .tri-bobD { animation-duration: 2.8s; animation-delay: -1.6s }
+
+.s-triumph .tri-litter {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: e-tri-rock 3.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-tri-rock {
+  0%   { transform: translateY(.7%) rotate(-.45deg) }
+  100% { transform: translateY(-.7%) rotate(.45deg) }
+}
+
+.s-triumph .tri-vex {
+  transform-box: fill-box; transform-origin: 50% 0;
+  animation: e-tri-vex 4.6s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-tri-vex { 0% { transform: rotate(-4.5deg) } 100% { transform: rotate(4.5deg) } }
+
+.s-triumph .tri-crowdnear {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: e-tri-near 5.8s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-tri-near {
+  0%   { transform: translateY(.5%) scaleX(.999) }
+  100% { transform: translateY(-.5%) scaleX(1.001) }
+}
+.s-triumph .tri-crowdback {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: e-tri-back 13s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+/* Transform only. It used to breathe its opacity as well, which meant
+   repainting a path the width of three viewports on every frame for a
+   change of about six percent on something already at .38 — invisible,
+   and the most expensive thing in the scene. */
+@keyframes e-tri-back {
+  0%   { transform: translateX(-.25%) }
+  100% { transform: translateX(.25%) }
+}
+
+/* The half-step of unreality: a warm bleach that comes and goes, so
+   the whole parade reads as imagined rather than recorded. */
+.s-triumph .tri-bleach {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(64% 34% at 50% 76%,
+      rgba(255, 250, 236, .18) 0%, rgba(255, 250, 236, 0) 100%),
+    linear-gradient(to bottom,
+      rgba(255, 250, 236, 0) 56%,
+      rgba(255, 250, 236, .13) 74%,
+      rgba(255, 250, 236, 0) 94%);
+  animation: e-tri-bleach 21s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes e-tri-bleach { 0% { opacity: .5 } 100% { opacity: 1 } }
+
+.page.live .s-triumph .tri-proc,
+.page.live .s-triumph .tri-bobA,
+.page.live .s-triumph .tri-bobB,
+.page.live .s-triumph .tri-bobC,
+.page.live .s-triumph .tri-bobD,
+.page.live .s-triumph .tri-litter,
+.page.live .s-triumph .tri-vex,
+.page.live .s-triumph .tri-halo,
+.page.live .s-triumph .tri-crowdnear,
+.page.live .s-triumph .tri-crowdback,
+.page.live .s-triumph .tri-bleach { animation-play-state: running }
+
+.s-triumph .tri-vig {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(var(--shade), .26) 0%, rgba(var(--shade), 0) 18%),
+    linear-gradient(90deg,
+      rgba(var(--shade), .30) 0%, rgba(var(--shade), 0) 16%,
+      rgba(var(--shade), 0) 84%, rgba(var(--shade), .30) 100%),
+    radial-gradient(96% 70% at 50% 62%,
+      rgba(var(--shade), 0) 42%, rgba(var(--shade), .22) 80%, rgba(var(--shade), .46) 100%);
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+   Reduced motion. Every animation off, and every animated thing left
+   somewhere it composes — a paused animation rests on frame 0, which
+   for the motes is opacity .10 and for the bleach is .45.
+   ─────────────────────────────────────────────────────────────────── */
+
+html.no-motion .s-bath .bth-open,
+html.no-motion .s-bath .bth-land,
+html.no-motion .s-bath .bth-motes i,
+html.no-motion .s-bath .bth-pour,
+html.no-motion .s-bath .bth-splash,
+html.no-motion .s-bath .bth-rip,
+html.no-motion .s-bath .bth-cleo,
+html.no-motion .s-bath .bth-swaya,
+html.no-motion .s-bath .bth-swayb,
+html.no-motion .s-triumph .tri-proc,
+html.no-motion .s-triumph .tri-bobA,
+html.no-motion .s-triumph .tri-bobB,
+html.no-motion .s-triumph .tri-bobC,
+html.no-motion .s-triumph .tri-bobD,
+html.no-motion .s-triumph .tri-litter,
+html.no-motion .s-triumph .tri-vex,
+html.no-motion .s-triumph .tri-halo,
+html.no-motion .s-triumph .tri-crowdnear,
+html.no-motion .s-triumph .tri-crowdback,
+html.no-motion .s-triumph .tri-bleach { animation: none !important }
+
+html.no-motion .s-bath .bth-land      { opacity: .94 }
+html.no-motion .s-bath .bth-motes i   { opacity: .38; transform: translate(-3vmin, 5vmin) scale(.85) }
+html.no-motion .s-bath .bth-pour      { transform: none; opacity: .95 }
+html.no-motion .s-bath .bth-splash    { opacity: .8; transform: none }
+html.no-motion .s-bath .bth-rip       { opacity: .62; transform: none }
+html.no-motion .s-bath .bth-cleo,
+html.no-motion .s-bath .bth-swaya,
+html.no-motion .s-bath .bth-swayb     { transform: none }
+html.no-motion .s-triumph .tri-proc,
+html.no-motion .s-triumph .tri-bobA,
+html.no-motion .s-triumph .tri-bobB,
+html.no-motion .s-triumph .tri-bobC,
+html.no-motion .s-triumph .tri-bobD,
+html.no-motion .s-triumph .tri-litter,
+html.no-motion .s-triumph .tri-vex,
+html.no-motion .s-triumph .tri-crowdnear { transform: none }
+html.no-motion .s-triumph .tri-crowdback { transform: none; opacity: .38 }
+html.no-motion .s-triumph .tri-halo      { opacity: .8 }
+html.no-motion .s-triumph .tri-bleach    { opacity: .75 }

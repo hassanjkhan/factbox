@@ -1,0 +1,135 @@
+/* ==========================================================================
+   Factbox reader — ambient sound
+   The control, and nothing else. No layout is owned here: every rule below is
+   `position:fixed`, so this file can be added to or removed from the build
+   without moving a single pixel of the deck.
+
+   It borrows the shell's glass-pill language on purpose. The sources pill sits
+   top-left; this is its mirror image top-right, same height, same glass, same
+   press. Two affordances, one visual family, nothing bolted on.
+   ========================================================================== */
+
+.fb-sound{
+  position:fixed;
+  right:12px;
+  /* Same rail as the sources pill. Fallback repeats shell.css's definition so
+     this file also works standalone in the scene harness. */
+  top:var(--top-safe, calc(env(safe-area-inset-top, 0px) + 12px));
+  z-index:7;                       /* over the rail (6) and the sources pill (5) */
+
+  appearance:none;-webkit-appearance:none;
+  font:inherit;cursor:pointer;
+  /* Icon only, so a circle. The words came off because this control sits over
+     a painting, and "Sound off" set in bold beside a speaker is a caption
+     competing with the picture for the one thing the page is for. */
+  min-height:var(--tap, 44px);width:var(--tap, 44px);
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:0;
+  border-radius:var(--pill, 999px);
+  border:1px solid rgba(255,255,255,.3);
+  background:rgba(var(--veil, 20,16,24),.42);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);
+  backdrop-filter:blur(16px) saturate(1.2);
+  color:rgba(255,255,255,.94);
+  font-size:.8rem;font-weight:700;letter-spacing:.01em;
+  transition:background .2s ease, border-color .2s ease,
+             transform .12s ease, opacity .3s ease;
+}
+.fb-sound:active{transform:scale(.96)}
+.fb-sound:focus-visible{outline:2px solid var(--butter,#FFD36E);outline-offset:3px}
+
+.fb-sound .ico{
+  width:17px;height:17px;flex:none;display:block;
+  color:rgba(255,255,255,.8);
+  transition:color .25s ease;
+}
+.fb-sound .ico svg{width:100%;height:100%;display:block;overflow:visible}
+.fb-sound .ico .wav,
+.fb-sound .ico .cut{transition:opacity .22s ease}
+.fb-sound .ico .wav{opacity:0}
+.fb-sound .ico .cut{opacity:1}
+
+/* ---- on ---------------------------------------------------------------- */
+.fb-sound.is-on{
+  border-color:rgba(255,122,92,.55);
+  background:rgba(var(--veil, 20,16,24),.5);
+}
+.fb-sound.is-on .ico{color:var(--coral,#FF7A5C)}
+.fb-sound.is-on .ico .wav{opacity:1}
+.fb-sound.is-on .ico .cut{opacity:0}
+
+/* ---- loading ------------------------------------------------------------
+   Between the tap and the first sound there is a fetch. On cellular that can
+   be a second or two of nothing, which is exactly the moment a reader decides
+   the page is broken — so the waves breathe while it is in flight. */
+.fb-sound.is-busy .ico .wav{animation:fb-breathe 1.15s ease-in-out infinite}
+@keyframes fb-breathe{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ---- one gentle look at me, on the title beat only, then never again ---- */
+.fb-sound.is-fresh{animation:fb-notice 2.4s ease-in-out 1.2s 2}
+@keyframes fb-notice{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,211,110,0)}
+  45%    {box-shadow:0 0 0 5px rgba(255,211,110,.16)}
+}
+
+/* ---- dead: no audio shipped, or the fetch failed ------------------------
+   It says so once, then takes itself off the page rather than sitting there
+   as a button that does nothing. */
+.fb-sound.is-dead{
+  pointer-events:none;
+  color:rgba(255,255,255,.72);
+  border-color:rgba(255,255,255,.18);
+}
+.fb-sound.is-dead .ico{color:rgba(255,255,255,.5)}
+.fb-sound.is-gone{opacity:0;transform:translateY(-4px)}
+
+/* --------------------------------------------------------------------------
+   The note.
+
+   One line of glass under the pill. It exists for one job: iOS mutes web audio
+   when the hardware silent switch is on, there is no API that can detect it,
+   and a reader who taps Sound and hears nothing concludes the page is broken.
+   So the moment sound actually starts we say where to look, once per device.
+   -------------------------------------------------------------------------- */
+.fb-sound-note{
+  position:fixed;
+  right:12px;
+  top:calc(var(--top-safe, calc(env(safe-area-inset-top, 0px) + 12px)) + var(--tap, 44px) + 8px);
+  z-index:7;
+  max-width:min(17em, calc(100vw - 24px));
+  padding:.6em .85em;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(var(--veil, 20,16,24),.72);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2);
+  backdrop-filter:blur(18px) saturate(1.2);
+  color:rgba(255,255,255,.88);
+  font-size:.74rem;font-weight:600;line-height:1.4;letter-spacing:.005em;
+  text-align:right;
+  pointer-events:none;
+  opacity:0;transform:translateY(-6px);
+  transition:opacity .3s ease, transform .3s cubic-bezier(.2,.75,.25,1);
+}
+.fb-sound-note.on{opacity:1;transform:none}
+
+/* --------------------------------------------------------------------------
+   Reduced motion. The shell reads it as "no animation"; we read it as a hint
+   about this reader in general — so the control stops drawing attention to
+   itself, and the beds play quieter (that part lives in audio.js).
+   Sound stays available: an explicit tap is still an explicit tap.
+   -------------------------------------------------------------------------- */
+html.no-motion .fb-sound,
+html.no-motion .fb-sound .ico .wav{animation:none}
+html.no-motion .fb-sound.is-busy{opacity:.72}
+html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .fb-sound,.fb-sound .ico .wav{animation:none}
+  .fb-sound.is-busy{opacity:.72}
+  .fb-sound-note{transition:opacity .01s linear;transform:none}
+}
+
+/* Very short viewports (landscape phone). The button is icon-only at every
+   width now, so only the note gives ground. */
+@media (max-height:420px){
+  .fb-sound-note{font-size:.7rem}
+}

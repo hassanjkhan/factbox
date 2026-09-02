@@ -1,0 +1,517 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SCENES B — beats 5–8. Every selector scoped under its .s-NAME.
+   Composed for 390×844 portrait first; checked at 1440×800.
+   Vertical grammar shared by all four: the ground line sits at ~78%,
+   the subject lives between ~58% and ~86%, the middle third is a wash,
+   and the bottom 12% is treated as sacrificial (Instagram's toolbar).
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────────
+   5 · .s-scroll — "Our earliest witness says he doesn't know."
+   A papyrus, part unrolled. Six lines of marks arrive one after
+   another and then stop. The blank quarter after them is the subject;
+   the two rolled accounts up in the light are the other versions.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-scroll {
+  --parch:   #FFF7ED;
+  --parch-d: #F3E2C9;
+  --page:    #FDF4E6;
+  --page-lo: #EFDCBE;
+  --curl:    #E7D3AE;
+  --roll:    #F0DCB2;
+  --roll-in: #DEC593;
+  --plum:    #6B4BB0;
+  --ink:     #3E2F4A;
+}
+
+.s-scroll .scr-ground {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 70% at 50% 108%, rgba(154,107,0,.13), rgba(154,107,0,0) 62%),
+    linear-gradient(178deg, var(--parch) 0%, #FDF1E1 46%, var(--parch-d) 100%);
+}
+
+/* the light coming across the desk — the whisper up top */
+.s-scroll .scr-glow {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(44% 28% at 22% 13%, rgba(255,211,110,.55), rgba(255,211,110,0) 72%),
+    radial-gradient(70% 40% at 80% 2%,  rgba(255,251,244,.7), rgba(255,251,244,0) 70%);
+  animation: scrGlow 15s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes scrGlow { from { opacity: .68 } to { opacity: 1 } }
+
+/* the warm plane it all lies on */
+.s-scroll .scr-desk {
+  position: absolute; left: 0; right: 0; top: 58%; bottom: 0;
+  background: linear-gradient(180deg, rgba(154,107,0,0) 0%, rgba(154,107,0,.09) 52%, rgba(154,107,0,.18) 100%);
+}
+
+/* the other accounts, rolled and unopened */
+.s-scroll .scr-spares {
+  position: absolute; left: 6%; top: 10.5%; width: min(42%, 33vh); aspect-ratio: 2.1;
+  opacity: .9;
+}
+.s-scroll .scr-spares svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.s-scroll .scr-spare rect { fill: var(--roll); }
+.s-scroll .scr-spare .scr-tie { fill: var(--plum); opacity: .22; }
+.s-scroll .scr-spare .scr-cap { fill: #E6CE9A; }
+.s-scroll .scr-spare .scr-eye { fill: #C9AF74; }
+.s-scroll .scr-spare-b { opacity: .82; }
+.s-scroll .scr-spares .scr-sh   { fill: #9A6B00; opacity: .13; }
+.s-scroll .scr-spare .scr-open  { fill: #FBF0DA; }
+.s-scroll .scr-spare .scr-mark  { fill: var(--plum); opacity: .5; }
+
+/* the sheet */
+.s-scroll .scr-shadow {
+  position: absolute; left: 50%; bottom: 13.6%;
+  width: min(90%, 56vh); height: 3%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(60% 100% at 50% 50%, rgba(62,47,74,.17), rgba(62,47,74,0) 72%);
+}
+.s-scroll .scr-sheet {
+  position: absolute; left: 50%; bottom: 15%;
+  width: min(94%, 58vh); aspect-ratio: 2.5;
+  transform: translateX(-50%);
+}
+.s-scroll .scr-sheet svg { width: 100%; height: 100%; display: block; }
+
+.s-scroll .scr-page    { fill: var(--page); }
+.s-scroll .scr-page-lo { fill: var(--page-lo); opacity: .5; }
+.s-scroll .scr-curl    { fill: var(--curl); }
+.s-scroll .scr-fibre path { fill: none; stroke: #9A6B00; stroke-width: .7; opacity: .07; }
+.s-scroll .scr-roll rect          { fill: var(--roll); }
+.s-scroll .scr-roll .scr-roll-end { fill: #FBEAC6; }
+.s-scroll .scr-roll .scr-roll-in  { fill: var(--roll-in); opacity: .6; }
+.s-scroll .scr-roll .scr-roll-sp  { fill: none; stroke: #C9A96E; stroke-width: 1.4; opacity: .6; }
+
+/* the marks. Never letters — strokes. */
+.s-scroll .scr-ink rect      { fill: var(--plum); opacity: .82; }
+.s-scroll .scr-ink .scr-tick { fill: var(--ink); opacity: .74; }
+
+/* Base state is the written page, so a scene that is not the live one
+   still composes; the write-on only exists while the page is live. */
+.s-scroll .scr-row {
+  transform-box: fill-box;
+  transform-origin: 0% 50%;
+  animation: scrWrite 26s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.page:not(.live) .s-scroll .scr-row { animation-name: none; }
+.s-scroll .scr-r1 { animation-delay: 0s }
+.s-scroll .scr-r2 { animation-delay: 1.15s }
+.s-scroll .scr-r3 { animation-delay: 2.30s }
+.s-scroll .scr-r4 { animation-delay: 3.45s }
+.s-scroll .scr-r5 { animation-delay: 4.60s }
+.s-scroll .scr-r6 { animation-delay: 5.75s }
+
+@keyframes scrWrite {
+  0%        { transform: scaleX(0); opacity: 0 }
+  2%        { opacity: 1 }
+  9%        { transform: scaleX(1); opacity: 1 }
+  84%       { transform: scaleX(1); opacity: 1 }
+  93%, 100% { transform: scaleX(1); opacity: 0 }
+}
+
+.page.live .s-scroll .scr-row,
+.page.live .s-scroll .scr-glow { animation-play-state: running; }
+
+html.no-motion .s-scroll .scr-glow { animation: none; opacity: .9 }
+html.no-motion .s-scroll .scr-row  { animation: none; transform: none; opacity: 1 }
+
+
+/* ───────────────────────────────────────────────────────────────────
+   6 · .s-coil — "Why do historians doubt the snake?"
+   Something coiled, mostly in shadow, never quite resolved. One cold
+   glint travels over its back. Two faint marks off to the side, which
+   is all anyone ever claimed to see. No head, deliberately.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-coil {
+  --night:  #1B1620;
+  --scale1: #443A52;
+  --scale2: #392F45;
+  --scale3: #50445F;
+  --blush:  #FFB3C1;
+}
+
+.s-coil .coi-ground {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #171219 0%, var(--night) 44%, #120E17 100%);
+}
+/* a cold, unexplained source somewhere off to the upper right */
+.s-coil .coi-lift {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(46% 26% at 47% 74%, rgba(88,76,106,.6), rgba(88,76,106,0) 74%),
+    radial-gradient(70% 46% at 86% 4%,  rgba(154,163,174,.13), rgba(154,163,174,0) 68%);
+}
+/* the shadow it is lying in — the bottom of the coil never resolves */
+.s-coil .coi-dark {
+  position: absolute; left: 0; right: 0; top: 72%; bottom: 0;
+  background: linear-gradient(180deg, rgba(18,14,23,0) 0%, rgba(18,14,23,.72) 46%, rgba(18,14,23,.96) 100%);
+}
+.s-coil .coi-vig {
+  position: absolute; inset: 0;
+  background: radial-gradient(86% 62% at 50% 68%, rgba(0,0,0,0) 44%, rgba(0,0,0,.5) 100%);
+}
+
+.s-coil .coi-art {
+  position: absolute; left: 50%; bottom: 15%;
+  height: 26%; aspect-ratio: 1.244;
+  transform: translateX(-50%);
+}
+.s-coil .coi-art svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+.s-coil .coi-arc { fill: none; stroke-linecap: round; }
+.s-coil .coi-arc-a { stroke: var(--scale1); stroke-width: 11.5; }
+.s-coil .coi-arc-b { stroke: var(--scale3); stroke-width: 11; }
+.s-coil .coi-arc-c { stroke: var(--scale2); stroke-width: 9; }
+.s-coil .coi-tail { fill: none; stroke: url(#coi-fade); stroke-width: 10.5; stroke-linecap: round; }
+
+/* it fades between there and not-there on a period nothing else shares */
+.s-coil .coi-body {
+  opacity: .62;
+  animation: coiPresence 17.3s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes coiPresence { from { opacity: .44 } to { opacity: .88 } }
+
+/* the single cold highlight, sliding slowly along its back */
+.s-coil .coi-glint {
+  fill: none; stroke-width: 2.8; stroke-linecap: round; opacity: .45;
+  animation: coiGlint 19s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes coiGlint {
+  from { stroke-dashoffset: -8;  opacity: .3 }
+  50%  { opacity: .72 }
+  to   { stroke-dashoffset: -56; opacity: .24 }
+}
+
+.s-coil .coi-marks ellipse { fill: var(--blush); }
+.s-coil .coi-marks {
+  opacity: .5;
+  animation: coiMarks 11.7s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes coiMarks { from { opacity: .34 } to { opacity: .7 } }
+
+@media (orientation: landscape) {
+  .s-coil .coi-art { height: 34%; bottom: 13% }
+}
+
+.page.live .s-coil .coi-body,
+.page.live .s-coil .coi-glint,
+.page.live .s-coil .coi-marks { animation-play-state: running; }
+
+html.no-motion .s-coil .coi-body  { animation: none; opacity: .68 }
+html.no-motion .s-coil .coi-glint { animation: none; opacity: .5 }
+html.no-motion .s-coil .coi-marks { animation: none; opacity: .55 }
+
+
+/* ───────────────────────────────────────────────────────────────────
+   7 · .s-basket — "The basket, and the other theory."
+   Plutarch's figs on a ledge in the last of the light. Something
+   curved among them, in the same olive as the leaves, so it could be
+   a stem. Warm and domestic — that is the horror.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-basket {
+  --wall:   #F3E3CE;
+  --wall-d: #E2CDAB;
+  --card:   #FFFBF4;
+  --sunk:   #E0CBAB;
+  --but-d:  #9A6B00;
+  --olive:  #4E7B58;
+  --blush:  #FFE3E8;
+}
+
+.s-basket .bsk-wall {
+  position: absolute; inset: 0;
+  background: linear-gradient(176deg, #F9EEDF 0%, var(--wall) 42%, var(--wall-d) 100%);
+}
+
+/* the window, with the evening still in it */
+.s-basket .bsk-window {
+  position: absolute; left: 21%; top: 9%;
+  height: 22%; aspect-ratio: .58;
+  transform: translateX(-50%);
+  background: var(--card);
+  border-radius: 50% 50% 8% 8% / 32% 32% 4% 4%;
+  box-shadow: 0 1vmin 2.6vmin rgba(62,47,74,.07);
+}
+.s-basket .bsk-pane {
+  position: absolute; inset: 9% 11% 6% 11%;
+  background: linear-gradient(180deg, var(--blush) 0%, #FFEDD2 68%, #FFDCA6 100%);
+  border-radius: 50% 50% 6% 6% / 34% 34% 3% 3%;
+}
+.s-basket .bsk-lamp {
+  position: absolute; left: 50%; bottom: 10%;
+  width: 82%; aspect-ratio: 1; transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,211,110,.95) 0%, rgba(255,211,110,.42) 44%, rgba(255,211,110,0) 72%);
+}
+.s-basket .bsk-bar {
+  position: absolute; left: 11%; right: 11%; top: 46%;
+  height: 3.2%; border-radius: 1em;
+  background: rgba(255,251,244,.92);
+}
+
+/* what the window throws across the room */
+.s-basket .bsk-shaft,
+.s-basket .bsk-shaft2 {
+  position: absolute; filter: blur(.6vmin);
+}
+.s-basket .bsk-shaft {
+  left: 6%; top: 12%; width: 74%; height: 70%;
+  clip-path: polygon(16% 0%, 30% 0%, 100% 100%, 42% 100%);
+  background: linear-gradient(168deg, rgba(255,211,110,.55), rgba(255,211,110,.16) 62%, rgba(255,211,110,0) 96%);
+}
+.s-basket .bsk-shaft2 {
+  left: 6%; top: 12%; width: 74%; height: 70%;
+  clip-path: polygon(19% 0%, 24% 0%, 74% 100%, 55% 100%);
+  background: linear-gradient(168deg, rgba(255,251,244,.7), rgba(255,251,244,.1) 66%, rgba(255,251,244,0) 96%);
+}
+
+.s-basket .bsk-motes { position: absolute; inset: 0; }
+.s-basket .bsk-motes i {
+  position: absolute; width: 1vmin; aspect-ratio: 1; border-radius: 50%;
+  background: var(--card); opacity: .6;
+  animation: bskMote 22s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.s-basket .bsk-m1 { left: 26%; top: 32%; animation-delay: 0s }
+.s-basket .bsk-m2 { left: 34%; top: 46%; animation-delay: -4s; opacity: .4 }
+.s-basket .bsk-m3 { left: 42%; top: 28%; animation-delay: -9s }
+.s-basket .bsk-m4 { left: 31%; top: 58%; animation-delay: -13s; opacity: .34 }
+.s-basket .bsk-m5 { left: 47%; top: 41%; animation-delay: -17s; opacity: .48 }
+@keyframes bskMote {
+  from { transform: translate(0,0) }
+  to   { transform: translate(2.2vmin, -3.2vmin) }
+}
+
+/* the ledge */
+.s-basket .bsk-sunk {
+  position: absolute; left: 0; right: 0; top: 79%; bottom: 0;
+  background: linear-gradient(180deg, var(--sunk) 0%, #D2BB96 100%);
+}
+.s-basket .bsk-slab {
+  position: absolute; left: -2%; right: -2%; top: 78.2%;
+  height: 4.2%; border-radius: 1.4vmin;
+  background: linear-gradient(180deg, var(--card) 0%, #F5E9D5 100%);
+}
+.s-basket .bsk-pool {
+  position: absolute; left: 20%; width: 54%; top: 78.4%;
+  height: 1.5%; border-radius: 50%;
+  background: rgba(255,211,110,.72); filter: blur(.8vmin);
+}
+.s-basket .bsk-cast {
+  position: absolute; left: 34%; width: 46%; top: 80.2%;
+  height: 1.4%; border-radius: 50%;
+  background: rgba(62,47,74,.15); filter: blur(.6vmin);
+}
+
+.s-basket .bsk-art {
+  position: absolute; left: 50%; bottom: 19.5%;
+  height: 21.5%; aspect-ratio: 1.917;
+  transform: translateX(-50%);
+}
+.s-basket .bsk-art svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+.s-basket .bsk-weave     { fill: url(#bsk-weave-g); }
+.s-basket .bsk-band rect { fill: var(--but-d); opacity: .16; }
+.s-basket .bsk-warp rect { fill: var(--but-d); opacity: .09; }
+.s-basket .bsk-shade     { fill: var(--but-d); opacity: .14; }
+.s-basket .bsk-hollow    { fill: #A9762A; opacity: .5; }
+.s-basket .bsk-rim-d     { fill: #E0AE49; }
+.s-basket .bsk-rim       { fill: #FFDF95; }
+
+.s-basket .bsk-lit   { color: #8A62CE; }
+.s-basket .bsk-dim   { color: #6B4BB0; }
+.s-basket .bsk-stray { color: #7B55C0; }
+.s-basket .bsk-leaf  { fill: var(--olive); opacity: .5; }
+.s-basket .bsk-leaf-b { opacity: .42; }
+.s-basket .bsk-leaf-s { opacity: .3; }
+
+/* the figs settle a hair, out of phase with each other */
+.s-basket .bsk-fig {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: bskSettle 12.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.s-basket .bsk-f1 { animation-delay: -0.7s }
+.s-basket .bsk-f2 { animation-delay: -2.1s }
+.s-basket .bsk-f3 { animation-delay: -3.6s }
+.s-basket .bsk-f4 { animation-delay: -5.0s }
+.s-basket .bsk-f5 { animation-delay: -6.4s }
+.s-basket .bsk-f6 { animation-delay: -7.8s }
+.s-basket .bsk-f7 { animation-delay: -9.2s }
+@keyframes bskSettle { from { rotate: -1deg } to { rotate: 1deg } }
+
+/* the thing among the fruit. The same olive as the leaves. No head. */
+.s-basket .bsk-coil circle   { fill: none; stroke: var(--olive); stroke-linecap: round; }
+.s-basket .bsk-coil rect     { fill: var(--olive); }
+.s-basket .bsk-coil-b circle { stroke-width: 9.5; }
+.s-basket .bsk-coil-f circle { stroke-width: 8.5; }
+.s-basket .bsk-coil {
+  opacity: .5;
+  animation: bskPresence 17.3s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.s-basket .bsk-coil-f { animation-delay: -2.4s }
+@keyframes bskPresence { from { opacity: .36 } to { opacity: .7 } }
+
+@media (orientation: landscape) {
+  .s-basket .bsk-art    { height: 24% }
+  .s-basket .bsk-window { height: 26% }
+}
+
+.page.live .s-basket .bsk-coil,
+.page.live .s-basket .bsk-fig,
+.page.live .s-basket .bsk-motes i { animation-play-state: running; }
+
+html.no-motion .s-basket .bsk-coil    { animation: none; opacity: .54 }
+html.no-motion .s-basket .bsk-fig     { animation: none; rotate: none }
+html.no-motion .s-basket .bsk-motes i { animation: none; transform: none }
+
+
+/* ───────────────────────────────────────────────────────────────────
+   8 · .s-pharos — "The honest answer is: we don't know."
+   Alexandria at dusk from the water. The fire is lit, the city is
+   dark, 275 years end here. The fire is the one thing that moves.
+   ─────────────────────────────────────────────────────────────────── */
+
+.s-pharos {
+  --stone:  #241B2E;
+  --butter: #FFD36E;
+}
+
+.s-pharos .phr-sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    #130E19 0%, #1B1620 15%, #2A1F38 30%, #43305C 44%,
+    #6C4468 55%, #A6535C 63%, #DC6C4C 68%, #FF9A6E 70%, #FF9A6E 100%);
+}
+.s-pharos .phr-stars { position: absolute; inset: 0; }
+.s-pharos .phr-stars i {
+  position: absolute; width: .55vmin; aspect-ratio: 1; border-radius: 50%;
+  background: #FFF7ED; opacity: .55;
+}
+.s-pharos .phr-hglow {
+  position: absolute; inset: 0;
+  background: radial-gradient(58% 22% at 54% 70%, rgba(255,180,130,.6), rgba(255,122,92,0) 72%);
+}
+.s-pharos .phr-sea {
+  position: absolute; left: 0; right: 0; top: 70%; bottom: 0;
+  background: linear-gradient(180deg,
+    #2E6E74 0%, #235B63 18%, #17414E 48%, #0E2833 82%, #0B1D28 100%);
+}
+/* the water lying flat */
+.s-pharos .phr-calm {
+  position: absolute; left: 0; right: 0; top: 70%; bottom: 0;
+  background: repeating-linear-gradient(180deg,
+    rgba(220,240,240,.055) 0 .5%, rgba(220,240,240,0) .5% 5.5%);
+}
+.s-pharos .phr-searim {
+  position: absolute; left: 0; right: 0; top: 69.7%; height: .5%;
+  background: linear-gradient(90deg, rgba(255,200,150,0) 6%, rgba(255,214,170,.7) 40%,
+                                      rgba(255,238,205,.9) 56%, rgba(255,200,150,0) 92%);
+}
+
+/* the city, dark, edge to edge */
+.s-pharos .phr-city {
+  position: absolute; left: 0; right: 0; bottom: 30%; height: 5.4%;
+}
+.s-pharos .phr-city svg { width: 100%; height: 100%; display: block; }
+.s-pharos .phr-blocks rect,
+.s-pharos .phr-blocks path { fill: #1E1727; }
+.s-pharos .phr-lights rect { fill: var(--butter); opacity: .36; }
+
+.s-pharos .phr-boat {
+  position: absolute; height: 2.6%; aspect-ratio: 1.57;
+  transform: translateX(-50%);
+}
+.s-pharos .phr-boat svg { width: 100%; height: 100%; display: block; }
+.s-pharos .phr-boat path,
+.s-pharos .phr-boat rect { fill: #16101E; opacity: .8; }
+.s-pharos .phr-boat-a { left: 70%; bottom: 27.8%; height: 2.1%; opacity: .9 }
+.s-pharos .phr-boat-b { left: 13%; bottom: 26.6%; height: 3% }
+
+/* the light on the water */
+.s-pharos .phr-wake {
+  position: absolute; left: 27%; bottom: 1%;
+  width: 46%; height: 29%;
+  transform: translateX(-50%);
+}
+.s-pharos .phr-wake svg { width: 100%; height: 100%; display: block; }
+.s-pharos .phr-streaks rect { fill: #FFDCA6; }
+.s-pharos .phr-streaks {
+  opacity: .5;
+  transform-box: fill-box; transform-origin: 50% 50%;
+  animation: phrWake 26s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes phrWake {
+  from { transform: translateY(-1.4%); opacity: .38 }
+  to   { transform: translateY(2.4%);  opacity: .62 }
+}
+
+/* the fire's reach into the dusk */
+.s-pharos .phr-halo {
+  position: absolute; left: 27%; bottom: 68.5%;
+  width: 30vmin; aspect-ratio: 1;
+  transform: translate(-50%, 50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,211,110,.34) 0%, rgba(255,154,92,.14) 40%, rgba(255,122,92,0) 70%);
+  animation: phrHalo 7.9s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes phrHalo {
+  from { opacity: .72; transform: translate(-50%,50%) scale(.94) }
+  to   { opacity: 1;   transform: translate(-50%,50%) scale(1.06) }
+}
+
+.s-pharos .phr-tower {
+  position: absolute; left: 27%; bottom: 30%;
+  height: 40%; aspect-ratio: .2308;
+  transform: translateX(-50%);
+}
+.s-pharos .phr-tower svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.s-pharos .phr-stone path,
+.s-pharos .phr-stone rect { fill: var(--stone); }
+.s-pharos .phr-lit path,
+.s-pharos .phr-lit rect { fill: #6B4457; opacity: .85; }
+.s-pharos .phr-win rect { fill: var(--butter); opacity: .3; }
+
+.s-pharos .phr-flame-o { fill: #FF9A5C; opacity: .85; }
+.s-pharos .phr-flame-i { fill: var(--butter); }
+.s-pharos .phr-fire {
+  transform-box: fill-box; transform-origin: 50% 92%;
+  animation: phrGutter 5.4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes phrGutter {
+  from { transform: scale(.93, .88) translateX(-1.5%) }
+  46%  { transform: scale(1.02, 1.06) translateX(1%) }
+  to   { transform: scale(.97, 1.14) translateX(-.5%) }
+}
+.s-pharos .phr-glow {
+  animation: phrCore 6.7s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes phrCore { from { opacity: .8 } to { opacity: 1 } }
+
+.page.live .s-pharos .phr-fire,
+.page.live .s-pharos .phr-glow,
+.page.live .s-pharos .phr-halo,
+.page.live .s-pharos .phr-streaks { animation-play-state: running; }
+
+html.no-motion .s-pharos .phr-fire    { animation: none; transform: none }
+html.no-motion .s-pharos .phr-glow    { animation: none; opacity: .92 }
+html.no-motion .s-pharos .phr-halo    { animation: none; opacity: .9; transform: translate(-50%,50%) }
+html.no-motion .s-pharos .phr-streaks { animation: none; transform: none; opacity: .5 }

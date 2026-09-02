@@ -9,13 +9,13 @@ no page ever got `.live`, and captions are `opacity:0` until it lands.
 These run the page in a real DOM instead.
 
 ```sh
-npm install jsdom
+npm install                  # jsdom
 python3 -m http.server 8899 --directory .. &
 
 node check-story.js ../story.html                      # illustrated story
 node check-page.js  "stories.html"   ".card"    "Season one"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
-node check-page.js  "read.html?s=44" ".paywall" "3.99"
+node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
 node check-page.js  "credits.html"   "table tr" "Share-alike"
 ```
 

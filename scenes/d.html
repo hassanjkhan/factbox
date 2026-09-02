@@ -1,0 +1,532 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     SCENES D — copies · vials
+     Beat 9 (Plutarch is late and second-hand) and beat 11 (the poison
+     argument). Flat layers, back to front; everything a fraction of
+     the box; one slow moving thing each.
+
+     Both scenes draw the plane their subject stands on *inside* the
+     art box rather than as a viewport-% sibling — .s-copies as a child
+     div in fractions of the box, .s-mausoleum as over-wide rects in the
+     SVG with overflow visible. The subjects are in SVG user units and
+     the boxes are capped in `vh`, so a sibling floor drifts off their
+     feet between a phone and a desktop. This way it cannot.
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- 9 · THE COPIES ────────────────────────────────────────────────
+     Beat 4 already spent the single papyrus, so this is the chain the
+     papyrus came down. A copyist at his desk with the account open in
+     front of him — a specific man, at a specific remove, writing — and
+     behind him the rank he is copying from: each codex copied from the
+     one in front of it and worse for it, a word gone, a line gone, a
+     line written back in somebody else's ink, until the far ones are
+     only a suggestion. Past the last of them a gap with a scuff on the
+     plane and nothing standing in it: the source nobody can name.
+     The moving thing is the transmission. A pulse travels back down
+     the rank and gives out before it reaches the gap. -->
+<div class="scene s-copies" aria-hidden="true">
+  <div class="cop-room"></div>
+  <div class="cop-rack"></div>
+  <div class="cop-lamp"></div>
+
+  <div class="cop-art">
+    <div class="cop-plane"></div>
+    <div class="cop-edge"></div>
+    <div class="cop-pool"></div>
+    <svg viewBox="0 26 250 78" preserveAspectRatio="xMidYMax meet">
+      <!-- the far end of the rank. Whatever stood here is not here. -->
+      <g class="cop-gone">
+        <ellipse class="cop-gone-sh" cx="18" cy="43.6" rx="7.6" ry="1.7"/>
+        <rect class="cop-gone-mk" x="14" y="42.5" width="8.2" height="1.4" rx=".7"/>
+      </g>
+
+      <g class="cop-c cop-c6" transform="translate(29,48.26) scale(0.318) rotate(1.0)">
+        <ellipse class="cop-sh" cx="0" cy="2.6" rx="35" ry="4.2"/>
+        <path class="cop-board" d="M0,-5 L-31,-1 L-31,3.4 L0,-1.1 Z"/>
+        <path class="cop-board" d="M0,-5 L31,-1 L31,3.4 L0,-1.1 Z"/>
+        <path class="cop-page"  d="M0,-42 L-31,-46 L-31,-1 L0,-5 Z"/>
+        <path class="cop-page"  d="M0,-42 L31,-46 L31,-1 L0,-5 Z"/>
+        <path class="cop-gut"   d="M-1.7,-42.1 L1.7,-42.1 L1.7,-5 L-1.7,-5 Z"/>
+      </g>
+      <g class="cop-c cop-c5" transform="translate(42,54.00) scale(0.400) rotate(-1.4)">
+        <ellipse class="cop-sh" cx="0" cy="2.6" rx="35" ry="4.2"/>
+        <path class="cop-board" d="M0,-5 L-31,-1 L-31,3.4 L0,-1.1 Z"/>
+        <path class="cop-board" d="M0,-5 L31,-1 L31,3.4 L0,-1.1 Z"/>
+        <path class="cop-page"  d="M0,-42 L-31,-46 L-31,-1 L0,-5 Z"/>
+        <path class="cop-page"  d="M0,-42 L31,-46 L31,-1 L0,-5 Z"/>
+        <path class="cop-gut"   d="M-1.7,-42.1 L1.7,-42.1 L1.7,-5 L-1.7,-5 Z"/>
+        <g class="cop-ink">
+          <rect x="-27.5" y="-31.0" width="2.7" height="2.4" rx="1.2"/>
+          <rect x="-19.5" y="-31.0" width="3.3" height="2.4" rx="1.2"/>
+          <rect x="-9.7" y="-31.0" width="5.2" height="2.4" rx="1.2"/>
+          <rect x="19.1" y="-14.5" width="8.4" height="2.4" rx="1.2"/>
+        </g>
+      </g>
+      <g class="cop-c cop-c4" transform="translate(60,61.35) scale(0.505) rotate(2.1)">
+        <ellipse class="cop-sh" cx="0" cy="2.6" rx="35" ry="4.2"/>
+        <path class="cop-board" d="M0,-5 L-31,-1 L-31,3.4 L0,-1.1 Z"/>
+        <path class="cop-board" d="M0,-5 L31,-1 L31,3.4 L0,-1.1 Z"/>
+        <path class="cop-page"  d="M0,-42 L-31,-46 L-31,-1 L0,-5 Z"/>
+        <path class="cop-page"  d="M0,-42 L31,-46 L31,-1 L0,-5 Z"/>
+        <path class="cop-gut"   d="M-1.7,-42.1 L1.7,-42.1 L1.7,-5 L-1.7,-5 Z"/>
+        <g class="cop-ink">
+          <rect x="-22.2" y="-36.5" width="4.3" height="2.4" rx="1.2"/>
+          <rect x="-16.5" y="-36.5" width="4.9" height="2.4" rx="1.2"/>
+          <rect x="-10.3" y="-36.5" width="5.8" height="2.4" rx="1.2"/>
+          <rect x="9.1" y="-36.5" width="5.0" height="2.4" rx="1.2"/>
+          <rect x="15.4" y="-36.5" width="5.3" height="2.4" rx="1.2"/>
+          <rect x="-21.8" y="-25.5" width="4.7" height="2.4" rx="1.2"/>
+          <rect x="-9.7" y="-25.5" width="5.2" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-25.5" width="2.2" height="2.4" rx="1.2"/>
+          <rect x="8.0" y="-25.5" width="3.6" height="2.4" rx="1.2"/>
+          <rect x="23.4" y="-25.5" width="4.1" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-14.5" width="5.6" height="2.4" rx="1.2"/>
+          <rect x="-13.7" y="-14.5" width="9.2" height="2.4" rx="1.2"/>
+          <rect x="15.7" y="-14.5" width="5.1" height="2.4" rx="1.2"/>
+        </g>
+      </g>
+      <g class="cop-c cop-c3" transform="translate(84,70.45) scale(0.635) rotate(-1.9)">
+        <ellipse class="cop-sh" cx="0" cy="2.6" rx="35" ry="4.2"/>
+        <path class="cop-board" d="M0,-5 L-31,-1 L-31,3.4 L0,-1.1 Z"/>
+        <path class="cop-board" d="M0,-5 L31,-1 L31,3.4 L0,-1.1 Z"/>
+        <path class="cop-page"  d="M0,-42 L-31,-46 L-31,-1 L0,-5 Z"/>
+        <path class="cop-page"  d="M0,-42 L31,-46 L31,-1 L0,-5 Z"/>
+        <path class="cop-gut"   d="M-1.7,-42.1 L1.7,-42.1 L1.7,-5 L-1.7,-5 Z"/>
+        <g class="cop-ink">
+          <rect x="-27.5" y="-36.5" width="4.7" height="2.4" rx="1.2"/>
+          <rect x="-21.5" y="-36.5" width="7.7" height="2.4" rx="1.2"/>
+          <rect x="-12.4" y="-36.5" width="7.9" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-36.5" width="3.0" height="2.4" rx="1.2"/>
+          <rect x="8.8" y="-36.5" width="3.4" height="2.4" rx="1.2"/>
+          <rect x="18.4" y="-36.5" width="3.8" height="2.4" rx="1.2"/>
+          <rect x="23.5" y="-36.5" width="4.0" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-31.0" width="5.8" height="2.4" rx="1.2"/>
+          <rect x="-20.4" y="-31.0" width="7.1" height="2.4" rx="1.2"/>
+          <rect x="-12.0" y="-31.0" width="7.5" height="2.4" rx="1.2"/>
+          <rect class="cop-fix" x="4.5" y="-31.0" width="5.5" height="2.4" rx="1.2"/>
+          <rect class="cop-fix" x="11.3" y="-31.0" width="5.9" height="2.4" rx="1.2"/>
+          <rect class="cop-fix" x="18.6" y="-31.0" width="8.9" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-25.5" width="3.8" height="2.4" rx="1.2"/>
+          <rect x="-22.4" y="-25.5" width="4.1" height="2.4" rx="1.2"/>
+          <rect x="-10.4" y="-25.5" width="5.9" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-25.5" width="3.6" height="2.4" rx="1.2"/>
+          <rect x="9.4" y="-25.5" width="4.1" height="2.4" rx="1.2"/>
+          <rect x="21.4" y="-25.5" width="6.1" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-14.5" width="2.4" height="2.4" rx="1.2"/>
+          <rect x="-19.3" y="-14.5" width="3.4" height="2.4" rx="1.2"/>
+          <rect x="-14.6" y="-14.5" width="4.3" height="2.4" rx="1.2"/>
+          <rect x="-8.9" y="-14.5" width="4.4" height="2.4" rx="1.2"/>
+          <rect x="9.0" y="-14.5" width="3.9" height="2.4" rx="1.2"/>
+          <rect x="14.3" y="-14.5" width="4.8" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-9.0" width="5.3" height="2.4" rx="1.2"/>
+        </g>
+      </g>
+      <g class="cop-c cop-c2" transform="translate(116,82.00) scale(0.800) rotate(1.5)">
+        <ellipse class="cop-sh" cx="0" cy="2.6" rx="35" ry="4.2"/>
+        <path class="cop-board" d="M0,-5 L-31,-1 L-31,3.4 L0,-1.1 Z"/>
+        <path class="cop-board" d="M0,-5 L31,-1 L31,3.4 L0,-1.1 Z"/>
+        <path class="cop-page"  d="M0,-42 L-31,-46 L-31,-1 L0,-5 Z"/>
+        <path class="cop-page"  d="M0,-42 L31,-46 L31,-1 L0,-5 Z"/>
+        <path class="cop-gut"   d="M-1.7,-42.1 L1.7,-42.1 L1.7,-5 L-1.7,-5 Z"/>
+        <g class="cop-ink">
+          <rect x="-27.5" y="-36.5" width="3.6" height="2.4" rx="1.2"/>
+          <rect x="-22.6" y="-36.5" width="4.1" height="2.4" rx="1.2"/>
+          <rect x="-17.2" y="-36.5" width="5.1" height="2.4" rx="1.2"/>
+          <rect x="-10.8" y="-36.5" width="6.3" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-36.5" width="5.9" height="2.4" rx="1.2"/>
+          <rect x="11.7" y="-36.5" width="7.0" height="2.4" rx="1.2"/>
+          <rect x="20.0" y="-36.5" width="7.5" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-31.0" width="6.2" height="2.4" rx="1.2"/>
+          <rect x="-20.0" y="-31.0" width="6.3" height="2.4" rx="1.2"/>
+          <rect x="-12.3" y="-31.0" width="7.8" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-31.0" width="3.7" height="2.4" rx="1.2"/>
+          <rect x="9.5" y="-31.0" width="4.5" height="2.4" rx="1.2"/>
+          <rect x="15.4" y="-31.0" width="4.5" height="2.4" rx="1.2"/>
+          <rect x="21.2" y="-31.0" width="6.3" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-25.5" width="5.5" height="2.4" rx="1.2"/>
+          <rect x="-20.7" y="-25.5" width="6.5" height="2.4" rx="1.2"/>
+          <rect x="-12.9" y="-25.5" width="8.4" height="2.4" rx="1.2"/>
+          <rect x="9.4" y="-25.5" width="5.0" height="2.4" rx="1.2"/>
+          <rect x="15.7" y="-25.5" width="5.2" height="2.4" rx="1.2"/>
+          <rect x="22.2" y="-25.5" width="5.3" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-20.0" width="4.8" height="2.4" rx="1.2"/>
+          <rect x="-21.4" y="-20.0" width="7.3" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-20.0" width="3.6" height="2.4" rx="1.2"/>
+          <rect x="9.4" y="-20.0" width="4.9" height="2.4" rx="1.2"/>
+          <rect x="15.6" y="-20.0" width="5.2" height="2.4" rx="1.2"/>
+          <rect x="22.1" y="-20.0" width="5.4" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-14.5" width="6.7" height="2.4" rx="1.2"/>
+          <rect x="-19.5" y="-14.5" width="6.7" height="2.4" rx="1.2"/>
+          <rect x="-11.5" y="-14.5" width="7.0" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-14.5" width="3.8" height="2.4" rx="1.2"/>
+          <rect x="9.6" y="-14.5" width="4.6" height="2.4" rx="1.2"/>
+          <rect x="15.5" y="-14.5" width="4.8" height="2.4" rx="1.2"/>
+          <rect x="21.6" y="-14.5" width="5.9" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-9.0" width="5.7" height="2.4" rx="1.2"/>
+          <rect x="-13.2" y="-9.0" width="8.7" height="2.4" rx="1.2"/>
+          <rect x="9.4" y="-9.0" width="4.7" height="2.4" rx="1.2"/>
+        </g>
+      </g>
+      <g class="cop-c cop-c1" transform="translate(160,96.00) scale(1.000) rotate(-1.1)">
+        <ellipse class="cop-sh" cx="0" cy="2.6" rx="35" ry="4.2"/>
+        <path class="cop-board" d="M0,-5 L-31,-1 L-31,3.4 L0,-1.1 Z"/>
+        <path class="cop-board" d="M0,-5 L31,-1 L31,3.4 L0,-1.1 Z"/>
+        <path class="cop-page"  d="M0,-42 L-31,-46 L-31,-1 L0,-5 Z"/>
+        <path class="cop-page"  d="M0,-42 L31,-46 L31,-1 L0,-5 Z"/>
+        <path class="cop-gut"   d="M-1.7,-42.1 L1.7,-42.1 L1.7,-5 L-1.7,-5 Z"/>
+        <g class="cop-ink">
+          <rect x="-27.5" y="-36.5" width="5.7" height="2.4" rx="1.2"/>
+          <rect x="-20.5" y="-36.5" width="6.8" height="2.4" rx="1.2"/>
+          <rect x="-12.4" y="-36.5" width="7.9" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-36.5" width="4.9" height="2.4" rx="1.2"/>
+          <rect x="10.7" y="-36.5" width="7.5" height="2.4" rx="1.2"/>
+          <rect x="19.6" y="-36.5" width="7.9" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-31.0" width="2.6" height="2.4" rx="1.2"/>
+          <rect x="-23.6" y="-31.0" width="3.4" height="2.4" rx="1.2"/>
+          <rect x="-18.9" y="-31.0" width="3.8" height="2.4" rx="1.2"/>
+          <rect x="-13.8" y="-31.0" width="3.8" height="2.4" rx="1.2"/>
+          <rect x="-8.7" y="-31.0" width="4.2" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-31.0" width="3.0" height="2.4" rx="1.2"/>
+          <rect x="8.8" y="-31.0" width="4.1" height="2.4" rx="1.2"/>
+          <rect x="14.2" y="-31.0" width="5.9" height="2.4" rx="1.2"/>
+          <rect x="21.4" y="-31.0" width="6.1" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-25.5" width="3.0" height="2.4" rx="1.2"/>
+          <rect x="-23.2" y="-25.5" width="4.3" height="2.4" rx="1.2"/>
+          <rect x="-17.6" y="-25.5" width="4.8" height="2.4" rx="1.2"/>
+          <rect x="-11.5" y="-25.5" width="7.0" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-25.5" width="5.9" height="2.4" rx="1.2"/>
+          <rect x="11.7" y="-25.5" width="6.9" height="2.4" rx="1.2"/>
+          <rect x="19.9" y="-25.5" width="7.6" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-20.0" width="5.0" height="2.4" rx="1.2"/>
+          <rect x="-21.2" y="-20.0" width="5.6" height="2.4" rx="1.2"/>
+          <rect x="-14.3" y="-20.0" width="9.8" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-20.0" width="6.0" height="2.4" rx="1.2"/>
+          <rect x="11.8" y="-20.0" width="7.1" height="2.4" rx="1.2"/>
+          <rect x="20.2" y="-20.0" width="7.3" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-14.5" width="2.7" height="2.4" rx="1.2"/>
+          <rect x="-23.5" y="-14.5" width="2.9" height="2.4" rx="1.2"/>
+          <rect x="-19.3" y="-14.5" width="3.6" height="2.4" rx="1.2"/>
+          <rect x="-14.4" y="-14.5" width="4.1" height="2.4" rx="1.2"/>
+          <rect x="-9.0" y="-14.5" width="4.5" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-14.5" width="5.7" height="2.4" rx="1.2"/>
+          <rect x="11.5" y="-14.5" width="6.0" height="2.4" rx="1.2"/>
+          <rect x="18.9" y="-14.5" width="8.6" height="2.4" rx="1.2"/>
+          <rect x="-27.5" y="-9.0" width="2.4" height="2.4" rx="1.2"/>
+          <rect x="-23.8" y="-9.0" width="3.1" height="2.4" rx="1.2"/>
+          <rect x="-19.5" y="-9.0" width="3.8" height="2.4" rx="1.2"/>
+          <rect x="-14.4" y="-9.0" width="4.0" height="2.4" rx="1.2"/>
+          <rect x="-9.1" y="-9.0" width="4.6" height="2.4" rx="1.2"/>
+          <rect x="4.5" y="-9.0" width="3.4" height="2.4" rx="1.2"/>
+          <rect x="9.2" y="-9.0" width="3.6" height="2.4" rx="1.2"/>
+        </g>
+      </g>
+
+      <!-- The copyist. He is bent over the nearest codex with a pen in
+           his hand, lit from the lamp off frame to his right, so the rim
+           down his back is the only edge that catches it and his face
+           comes back up out of the page in front of him. He is the whole
+           point of the card: not "an account" — a man, working, more
+           than a century downstream of anybody who was there. -->
+      <g class="cop-scribe">
+        <path class="cop-fig" d="M232,180 C236,134 230,98 222,80
+                                 C217,68 209,62 200,62
+                                 C192,62 185,66 182,74
+                                 C179,82 181,91 186,98
+                                 C193,108 197,126 198,144
+                                 L199,180 Z"/>
+        <path class="cop-hair" d="M202,44 C210,46 214,53 213,61
+                                  C212,68 207,72 201,73
+                                  C204,64 204,52 202,44 Z"/>
+        <circle class="cop-skin cop-face" cx="194" cy="54" r="10.8"/>
+        <path class="cop-hair" d="M182.6,50 C183.6,40.6 192,35.4 201,37.4
+                                  C208,39 212,44.6 212,51
+                                  C207,45.6 198,43.6 190,45.6 C187,46.4 184,47.6 182.6,50 Z"/>
+        <!-- His face, coming back up out of the lit page. Profile,
+             because that is the way a man bent over a line is turned:
+             the nose off the edge of the skull, one eye under a heavy
+             lid looking down at the words, an ear, a mouth. -->
+        <ellipse class="cop-skin" cx="199.4" cy="56.8" rx="1.8" ry="2.4"/>
+        <path class="cop-knuck" d="M198.4,55.6 C199.4,56 199.6,57.4 198.9,58.2"/>
+        <path class="cop-face" d="M184.2,52.6 L179.3,56.1 L184.6,58.2 Z"/>
+        <path class="cop-lid" d="M186,53.4 C187.5,52.3 189.7,52.4 190.8,53.7"/>
+        <ellipse class="cop-eye" cx="188.4" cy="55" rx="1.5" ry="1.7"/>
+        <path class="cop-mouth" d="M187.6,62.3 L191,62.7"/>
+        <path class="cop-fig" d="M200,68 C207,70 212,76 214,84 L206,88
+                                 C204,82 201,77 196,75 Z"/>
+        <path class="cop-arm" d="M210,86 C200,82 186,78 174,76"/>
+        <path class="cop-cuff" d="M212,88 C206,85.4 199,83 192,81.4"/>
+        <ellipse class="cop-skin" cx="171" cy="75" rx="5.8" ry="4.5"
+                 transform="rotate(-14 171 75)"/>
+        <path class="cop-knuck" d="M170.6,70.9 C171.6,72.1 171.9,73.8 171.4,75.4"/>
+        <path class="cop-quill" d="M169.6,73.4 L172.4,71 L185,47.5 L182.2,46.6 Z"/>
+        <path class="cop-plume" d="M182.2,46.6 L185,47.5 C188,42 188.5,37 186,33
+                                   C184,37.5 183,42 182.2,46.6 Z"/>
+        <path class="cop-rim" d="M211,54 C213,59 212.6,65 220.6,78.4"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="cop-haze"></div>
+  <div class="cop-vig"></div>
+</div>
+
+
+<!-- 11 · THE VIALS ────────────────────────────────────────────────
+     Not a still life of equipment — the room, and what the poison
+     argument actually claims happened in it.
+
+     The place is her mausoleum: she had a tomb built for herself by
+     the temple of Isis, moved the treasure into it and shut herself
+     in, and that is where she died (Plutarch, Antony 74–85). So: a
+     stone chamber with grave goods stacked against the wall and a
+     barred door the guards had to break, cold daylight showing round
+     its edges. Her on the couch in royal regalia with a small vessel
+     at her lips; Iras collapsed at the foot of it; Charmion kneeling
+     at the head, still setting the diadem straight — the two deaths
+     that make one snake hard to believe. The physician's table stands
+     to one side: vials, mortar, a folded paper of powder. That is the
+     card's argument — a court with physicians had quieter options.
+
+     Nobody is slipping out of a door. Every ancient account has this
+     as her own act; the argument is only about the means.
+
+     One lamp, and its flame is the only thing moving. The room draws
+     its own floor as over-wide rects with `overflow:visible`, so the
+     floor line can never drift off the feet of the people on it. -->
+<div class="scene s-mausoleum" aria-hidden="true">
+  <div class="vil-room"></div>
+  <div class="vil-courses"></div>
+  <div class="vil-cornice"></div>
+
+  <div class="vil-art">
+    <svg viewBox="0 0 200 116" preserveAspectRatio="xMidYMax meet">
+      <defs>
+        <linearGradient id="vil-floor-g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0"   stop-color="#3A2E3E"/>
+          <stop offset=".38" stop-color="#251C2E"/>
+          <stop offset="1"   stop-color="#150E1B"/>
+        </linearGradient>
+        <radialGradient id="vil-pool-g" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0"   stop-color="#FFD36E" stop-opacity=".34"/>
+          <stop offset=".5"  stop-color="#FF9A5C" stop-opacity=".11"/>
+          <stop offset="1"   stop-color="#FF7A5C" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="vil-fire-g" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0"   stop-color="#FFD36E" stop-opacity=".6"/>
+          <stop offset=".45" stop-color="#FF9A5C" stop-opacity=".2"/>
+          <stop offset="1"   stop-color="#FF7A5C" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <!-- the chamber floor, drawn wider than the box on purpose -->
+      <rect class="vil-floor" x="-400" y="28" width="1000" height="420" fill="url(#vil-floor-g)"/>
+      <rect class="vil-base"  x="-400" y="26.4" width="1000" height="3.4"/>
+
+      <!-- the door they had to break. Shut, barred, and cold round the
+           edges, because the only light behind it is the morning. -->
+      <g class="vil-door">
+        <rect class="vil-jamb" x="9"   y="-30" width="44"   height="58"/>
+        <rect class="vil-leaf" x="12"  y="-27" width="38"   height="55"/>
+        <g class="vil-plank">
+          <rect x="21.6" y="-27" width="1.3" height="55"/>
+          <rect x="30.8" y="-27" width="1.3" height="55"/>
+          <rect x="40"   y="-27" width="1.3" height="55"/>
+        </g>
+        <g class="vil-seam">
+          <rect x="12"   y="-28.2" width="38"  height="1.2"/>
+          <rect x="10.9" y="-27"   width="1.1" height="55"/>
+          <rect x="50"   y="-27"   width="1.1" height="55"/>
+          <rect x="12"   y="27.2"  width="38"  height="1.4"/>
+        </g>
+        <ellipse class="vil-doorpool" cx="31" cy="32" rx="24" ry="4.4"/>
+        <g class="vil-bar">
+          <rect x="4" y="-7" width="52" height="6.4" rx="1.6"/>
+          <rect class="vil-brk" x="8"  y="-9.4" width="5" height="11.2" rx="1.4"/>
+          <rect class="vil-brk" x="47" y="-9.4" width="5" height="11.2" rx="1.4"/>
+        </g>
+      </g>
+
+      <!-- the treasure she moved in with her, stacked against the wall -->
+      <g class="vil-hoard">
+        <path class="vil-amph" d="M104,28 C100,20 100,12 104,6 C102,4 102,1 105,0 L111,0
+                                  C114,1 114,4 112,6 C116,12 116,20 112,28 Z"/>
+        <path class="vil-amph vil-amph-b" d="M122,28 C119,21 119,14 122,9 C120.5,7 121,4.5 123,4 L128,4
+                                  C130,4.5 130.5,7 129,9 C132,14 132,21 129,28 Z"/>
+        <rect class="vil-chest"    x="74" y="11" width="30" height="17" rx="1.6"/>
+        <rect class="vil-chest-hi" x="72" y="6"  width="34" height="6"  rx="1.6"/>
+        <rect class="vil-strap"    x="86" y="11" width="5"  height="17"/>
+        <rect class="vil-chest"    x="134" y="16" width="22" height="12" rx="1.4"/>
+        <rect class="vil-chest-hi" x="132" y="12" width="26" height="5"  rx="1.4"/>
+        <g class="vil-glint">
+          <rect x="77"  y="8"  width="4.4" height="2" rx="1"/>
+          <rect x="96"  y="8"  width="3.2" height="2" rx="1"/>
+          <rect x="139" y="13.4" width="4"  height="1.8" rx=".9"/>
+          <rect x="150" y="24"  width="5"  height="2.2" rx="1.1"/>
+          <rect x="158" y="25.4" width="6.4" height="2.2" rx="1.1"/>
+          <rect x="152" y="21.4" width="4.6" height="2"   rx="1"/>
+          <rect x="81"  y="14.4" width="3.6" height="1.8" rx=".9"/>
+          <rect x="94"  y="19"   width="4.2" height="1.8" rx=".9"/>
+          <rect x="106" y="2.6"  width="3.2" height="1.6" rx=".8"/>
+        </g>
+      </g>
+
+      <!-- the one lamp. Kept low on purpose: it is the only bright thing
+           in the room and it has to stay clear of the caption band. -->
+      <g class="vil-lamp">
+        <ellipse class="vil-lamp-b" cx="60" cy="44" rx="7.4" ry="2.4"/>
+        <rect class="vil-lamp-s" x="58.6" y="24" width="2.8" height="20" rx="1.2"/>
+        <path class="vil-lamp-d" d="M52.6,24 L67.4,24 C66.4,20.4 63.6,18.6 60,18.6
+                                    C56.4,18.6 53.6,20.4 52.6,24 Z"/>
+        <circle class="vil-fireglow" cx="60" cy="14" r="17" fill="url(#vil-fire-g)"/>
+        <g class="vil-flame">
+          <path class="vil-flame-o" d="M60,2 C64.6,7 66.4,10.4 65.8,13.4
+                                       C65.2,16.4 62.6,18 60,18 C57.4,18 54.8,16.4 54.2,13.4
+                                       C53.6,10.4 55.4,7 60,2 Z"/>
+          <path class="vil-flame-i" d="M60,6.6 C62.6,9.4 63.4,11.6 63,13.6
+                                       C62.6,15.4 61.4,16.4 60,16.4 C58.6,16.4 57.4,15.4 57,13.6
+                                       C56.6,11.6 57.4,9.4 60,6.6 Z"/>
+        </g>
+      </g>
+      <ellipse class="vil-pool" cx="60" cy="50" rx="66" ry="16" fill="url(#vil-pool-g)"/>
+
+      <!-- the physician's table. The card's whole argument, standing
+           to one side of it: a court that kept people who did this. -->
+      <g class="vil-bench">
+        <ellipse class="vil-cast" cx="21" cy="68" rx="21" ry="3"/>
+        <g class="vil-leg">
+          <rect x="5"  y="52" width="2.6" height="16" rx="1.1"/>
+          <rect x="20" y="52" width="2.6" height="16" rx="1.1"/>
+          <rect x="35" y="52" width="2.6" height="16" rx="1.1"/>
+        </g>
+        <rect class="vil-top" x="1" y="48.4" width="40" height="4" rx="1.6"/>
+        <path class="vil-paper" d="M3,45.4 L12,43.6 L14.4,48.4 L5.4,50 Z"/>
+        <path class="vil-bowl" d="M28.6,40 C28.6,45.6 31.4,48.4 34.6,48.4
+                                  C37.8,48.4 40.6,45.6 40.6,40 Z"/>
+        <ellipse class="vil-rim" cx="34.6" cy="40" rx="6" ry="1.5"/>
+        <rect class="vil-pestle" x="35.6" y="30" width="2.2" height="12" rx="1.1"
+              transform="rotate(16 36.7 36)"/>
+        <g class="vil-vials">
+          <rect class="vil-vb" x="15.4" y="39.4" width="4.6" height="9"  rx="1.4"/>
+          <rect class="vil-vc" x="16.4" y="36.6" width="2.6" height="3.2" rx=".9"/>
+          <rect class="vil-vb" x="21.4" y="36.6" width="4.2" height="11.8" rx="1.4"/>
+          <rect class="vil-vc" x="22.3" y="33.8" width="2.4" height="3.2" rx=".9"/>
+          <rect class="vil-vb" x="26.8" y="41"  width="4.4" height="7.4" rx="1.3"/>
+          <rect class="vil-vc" x="27.7" y="38.4" width="2.6" height="3"  rx=".9"/>
+        </g>
+      </g>
+
+      <!-- Charmion, kneeling behind the head of the couch. Plutarch has
+           the guards find her still setting the diadem straight. -->
+      <g class="vil-charm">
+        <ellipse class="vil-cast" cx="190" cy="101" rx="18" ry="3.4"/>
+        <!-- Throat first, then the arm, then the robe over the top of
+             both: head overlaps neck overlaps shoulder overlaps arm, so
+             the chain is held by overlaps and not by three shapes that
+             happen to line up. Nothing here can gap. -->
+        <path class="vil-skin" d="M186.8,52 L193.2,52 L195.6,68 L185,68 Z"/>
+        <path class="vil-thin" d="M185.6,68 C183,57.4 181,45.8 178.4,39"/>
+        <path class="vil-robe" d="M177,101 C176,88 179,74 186,65
+                                  C189.6,60.4 195,59 199.6,61 C205,63.4 208,68 208,75
+                                  L208,101 Z"/>
+        <path class="vil-robe-hi" d="M199.6,61 C205,63.4 208,68 208,75 L208,101 L199.6,101 Z"/>
+        <circle class="vil-skin" cx="190" cy="49" r="6.4"/>
+        <path class="vil-hair" d="M183.4,49 C182.6,41.6 187.4,36.6 193.4,36.6
+                                  C198.4,36.6 202,40.4 202,45.2 C202,50 199.8,53.2 196.6,55
+                                  C198,48 193.6,43.4 187,44.4 C185.4,44.8 184,46.6 183.4,49 Z"/>
+        <path class="vil-skin" d="M184.3,47.6 L182.1,49.2 L184.5,50.6 Z"/>
+        <path class="vil-lid" d="M185.6,46.8 C186.5,46.1 188,46.1 188.9,46.8"/>
+        <ellipse class="vil-eye" cx="187.2" cy="48.2" rx=".85" ry="1.05"/>
+        <path class="vil-mouth" d="M185.7,52.3 L188.2,52.6"/>
+        <ellipse class="vil-skin" cx="176.6" cy="36.6" rx="3.4" ry="2.6"
+                 transform="rotate(-30 176.6 36.6)"/>
+      </g>
+
+      <!-- the couch -->
+      <g class="vil-couch">
+        <ellipse class="vil-cast" cx="108" cy="95" rx="80" ry="4"/>
+        <g class="vil-leg2">
+          <rect x="38"  y="86" width="5.4" height="8" rx="1.2"/>
+          <rect x="106" y="86" width="5.4" height="8" rx="1.2"/>
+          <rect x="172" y="86" width="5.4" height="8" rx="1.2"/>
+        </g>
+        <path class="vil-head-b" d="M167,87 L167,56.6 C167,51.6 171.4,48.8 175.8,49.8
+                                    C179.6,50.8 181.4,54.6 180.4,58.2 L176.4,87 Z"/>
+        <rect class="vil-rail" x="30" y="81.4" width="156" height="6" rx="2.2"/>
+        <rect class="vil-mat"  x="32" y="70"   width="150" height="12.4" rx="4"/>
+        <path class="vil-cover" d="M32,78 L182,78 L181,88 C140,93 76,92 33,88 Z"/>
+        <path class="vil-cover-hi" d="M32,78 L182,78 L181.6,82 L32,82 Z"/>
+      </g>
+
+      <!-- Cleopatra, in royal regalia, with the vessel at her lips.
+           One silhouette read foot to head: shin, knee, hip, chest,
+           shoulder, and the head against the raised end of the couch. -->
+      <g class="vil-cleo">
+        <!-- Her throat, tipped back the way the head is. Drawn before
+             the gown so the shoulder and the collar close over its base,
+             and behind the head so the jaw closes over its top — the
+             head is held on by overlap at both ends. -->
+        <path class="vil-skin" d="M152,55 L157.5,44.6 L163.5,48.2 L158,58.6 Z"/>
+        <path class="vil-gown" d="M62,70.4 C70,65.4 80,62.8 92,61.8
+                                  C104,60.8 116,61.8 126,60.6
+                                  C136,59.4 145,57.2 156.6,52.2
+                                  L164,58.2 C157,64.8 147,68.6 133,71.6
+                                  C117,74.8 96,75.2 78,74.6 C70,74.2 65,73 62,70.4 Z"/>
+        <path class="vil-mantle" d="M62,70.4 C70,65.4 80,62.8 92,61.8
+                                    C102,61 112,61.6 121,61 L123,73.8
+                                    C108,75.2 92,75.4 78,74.6 C70,74.2 65,73 62,70.4 Z"/>
+        <path class="vil-hem" d="M121,61 C124,60.8 126.6,60.6 129,60.2 L131,73
+                                 C128,73.4 125.4,73.6 123,73.8 Z"/>
+        <path class="vil-collar" d="M144.6,61.4 C148,59 150.8,56 153.6,54.2 L157.4,56.6
+                                    C155,59.8 151.4,61.8 148,64 Z"/>
+        <path class="vil-bare" d="M143,68.6 L147,58.6 L153.6,48"/>
+        <circle class="vil-skin" cx="164" cy="42" r="7.6"/>
+        <path class="vil-hair" d="M159,36.4 C162.6,32.4 169,31.4 173.2,34.4
+                                  C177.4,37.4 178,43.4 175,47.6 C173,50.4 170,52 167,52.4
+                                  C171,47.4 171.4,41.4 168,38 C165.8,35.8 162,35.4 159,36.4 Z"/>
+        <!-- the knot at the nape she wears in every scene she is in -->
+        <circle class="vil-hair" cx="175.2" cy="48.2" r="3"/>
+        <path class="vil-diadem" d="M156.8,37.6 C160.2,34.4 166,33.2 171.4,34.4
+                                    C174,35 176,36.4 177.2,37.8 L175.4,40.8
+                                    C173.8,38.8 170.6,37.6 166.8,37.6 C163,37.6 159.6,38.6 157.6,40.2 Z"/>
+        <!-- her face. The nose off the skull, the lid low over the eye,
+             and the mouth at the rim of the cup — which is the only
+             claim this card makes about how she died. -->
+        <path class="vil-lid" d="M158.5,39.5 C159.5,38.7 161.4,38.7 162.4,39.6"/>
+        <ellipse class="vil-eye" cx="160.4" cy="41" rx=".95" ry="1.15"/>
+        <path class="vil-mouth" d="M157.4,45.3 L159.6,45.5"/>
+        <g class="vil-vessel">
+          <path d="M150.4,41.2 C150.4,44.8 152,46.8 154,46.8 C156,46.8 157.6,44.8 157.6,41.2 Z"/>
+          <ellipse cx="154" cy="41.2" rx="3.6" ry="1.1"/>
+        </g>
+        <ellipse class="vil-skin" cx="153.4" cy="47.6" rx="3.6" ry="2.9"
+                 transform="rotate(-32 153.4 47.6)"/>
+        <!-- the nose over the rim of the cup, because that is where a
+             nose is when a cup is at the mouth -->
+        <path class="vil-skin" d="M157.2,39.4 L154.6,41.3 L157.3,42.9 Z"/>
+        <g class="vil-knuck">
+          <path d="M151,45.8 C152,45.1 153.3,45 154.3,45.4"/>
+          <path d="M151.4,48.4 C152.5,47.8 153.8,47.7 154.8,48.2"/>
+        </g>
+      </g>
+
+      <!-- Iras, who went first, at the foot of it -->
+      <g class="vil-iras">
+        <ellipse class="vil-cast" cx="54" cy="99" rx="22" ry="3.4"/>
+        <path class="vil-robe" d="M34,99 C33,90 37,82 45,79 C52,76.4 60,77.6 65,82
+                                  C69,86 70,93 68,99 Z"/>
+        <path class="vil-robe-hi" d="M45,79 C52,76.4 60,77.6 65,82 L58,86
+                                     C53,82.6 47,81.4 42,82.4 Z"/>
+        <circle class="vil-skin" cx="42" cy="76" r="5.8"/>
+        <path class="vil-hair" d="M36.4,74.4 C36,69.4 40,65.6 45,66 C49.6,66.4 52.6,70 52,74.4
+                                  C51.4,78 49,80.4 46,81.4 C48.6,76 46,71.4 41.4,71.4
+                                  C39.4,71.4 37.4,72.6 36.4,74.4 Z"/>
+        <path class="vil-skin" d="M47.4,74.7 L49.4,76 L47.4,77.4 Z"/>
+        <path class="vil-shut" d="M43.2,74.8 C44.2,75.7 45.7,75.7 46.6,74.9"/>
+        <path class="vil-mouth" d="M44.8,79 L47.2,78.8"/>
+        <path class="vil-bare" d="M49,85 C57,87.6 65,89.6 71,90"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="vil-warm"></div>
+  <div class="vil-vig"></div>
+</div>

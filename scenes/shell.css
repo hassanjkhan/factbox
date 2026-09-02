@@ -1,0 +1,597 @@
+/* ==========================================================================
+   Factbox reader — shell
+   Phone-first. 390x844 is the design size. 100% of traffic arrives from
+   Instagram / TikTok, which means an in-app webview: a viewport that resizes
+   mid-scroll and a persistent bottom toolbar eating 44-60pt.
+   Everything below is built around those two facts.
+   ========================================================================== */
+
+:root{
+  /* any sliver a browser leaves is scene-coloured, never a black bar */
+
+  color-scheme:dark;
+
+  /* Theme.swift palette */
+  --parchment:#FFF7ED; --ink:#3E2F4A; --ink-soft:#8B7B93;
+  --coral:#FF7A5C; --coral-deep:#E85F41; --crimson:#A81F38;
+  --teal:#4FC3B8; --teal-deep:#1F7A72;
+  --butter:#FFD36E; --butter-deep:#9A6B00;
+  --lilac:#B79CED; --lilac-deep:#6B4BB0;
+  --mint:#8FDCA8; --blush:#FFB3C1; --steel:#9AA3AE;
+  --night:#1B1620;
+
+  --ui:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+
+  /* Scrim ground. Slightly cooler + darker than --night so it reads as light,
+     not as a grey box, over both parchment and near-black scenes. */
+  --veil:20,16,24;
+
+  /* The bottom of an in-app webview is not ours. Instagram parks a toolbar
+     over roughly the last 44-60pt of it. Nothing tappable and nothing that has
+     to be read goes below --bottom-safe, which is the larger of "the bottom
+     15% of the viewport" and "the toolbar plus the home indicator".
+     Consequence: the only interactive things on a beat are the sources pill
+     (top-left) and, on the question beat, the two options in the middle. */
+  --toolbar:60px;
+  --bottom-safe:max(15vh, calc(env(safe-area-inset-bottom, 0px) + var(--toolbar) + 4px));
+  --top-safe:calc(env(safe-area-inset-top, 0px) + 12px);
+
+  --tap:44px;                    /* minimum touch target, everywhere */
+  --pill:999px;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:#141018;margin:0;height:100%}
+body{
+  background:#0E0B12;
+  color:#fff;
+  font-family:var(--ui);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  overscroll-behavior:none;
+  text-rendering:optimizeLegibility;
+}
+
+/* --------------------------------------------------------------------------
+   The stack.
+   Height is `100dvh`, with a plain `100vh` fallback first for anything that
+   does not support the unit. Nothing pins a pixel height any more: doing so
+   left the deck shorter than the screen in an in-app webview, with the page
+   background showing through underneath it.
+   -------------------------------------------------------------------------- */
+.deck{
+  height:100vh;
+  height:100dvh;
+  overflow-y:auto;
+  scroll-snap-type:y mandatory;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  scrollbar-width:none;
+}
+.deck::-webkit-scrollbar{display:none}
+
+.page{
+  position:relative;
+  /* Off-screen beats cost nothing to keep in the document. Without this,
+     fifteen elaborate scenes all render at once and the main thread stalls
+     hard enough that the IntersectionObserver stops firing — which, because
+     captions animate in on .live, looks like the text has vanished. */
+  content-visibility:auto;
+  contain-intrinsic-size:100vw 100dvh;
+  height:100vh;
+  height:100dvh;
+  scroll-snap-align:start;
+  scroll-snap-stop:always;
+  overflow:hidden;
+  isolation:isolate;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* --------------------------------------------------------------------------
+   Scene host. The contract: absolute, inset 0, overflow hidden. Scenes
+   position their layers inside this and nowhere else.
+   -------------------------------------------------------------------------- */
+.scene{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  z-index:0;
+  background:var(--night);      /* so a scene that paints late is never white */
+  contain:paint;
+}
+/* A beat whose scene has not landed yet still composes. */
+.scene-missing{
+  background:
+    radial-gradient(120% 80% at 50% 12%, #2A2233 0%, #17131C 62%, #100D15 100%);
+}
+
+/* --------------------------------------------------------------------------
+   The scrim.
+
+   The problem: caption text has to stay legible over an unknown illustration
+   — s-pharos is near-black, s-scroll is near-white parchment. Two layers
+   solve it, and they compound:
+
+   1) `.scrim` — a page-wide vertical gradient with a plateau across the band
+      the caption occupies. Peak alpha .46.
+   2) `.cap` background — a radial veil that hugs the text block itself, so a
+      short caption gets a small pool of shade and a long one gets a big
+      one. Peak alpha .52.
+
+   Compounded at the text centre: 1 - (1-.46)(1-.52) = .74.
+   Over parchment #FFF7ED that composites to rgb(81,77,79) — white text on it
+   is 7.4:1, comfortably past AA at any size.
+   Over a near-black scene it is simply a touch more black: ~19:1.
+   Both extremes pass without the shell knowing anything about the scene.
+
+   Text-shadow underneath is the third belt: it catches the case where a scene
+   puts a bright shape right behind a descender.
+   -------------------------------------------------------------------------- */
+.scrim{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:linear-gradient(to bottom,
+    rgba(var(--veil),.30)   0%,
+    rgba(var(--veil),.10)  10%,
+    rgba(var(--veil),.05)  20%,
+    rgba(var(--veil),.24)  26%,
+    rgba(var(--veil),.42)  34%,
+    rgba(var(--veil),.42)  58%,
+    rgba(var(--veil),.30)  68%,
+    rgba(var(--veil),.16)  80%,
+    rgba(var(--veil),.42) 100%);
+}
+
+/* --------------------------------------------------------------------------
+   Caption.
+   `.capwrap` is the scroller and the centring box; `.cap` is full-bleed so the
+   adaptive veil below has no side seam on a phone. Vertically the block is
+   centred in the space *above* the webview toolbar — the guard padding lifts
+   it to roughly 45% of the viewport, which is where the scrim plateau sits.
+   -------------------------------------------------------------------------- */
+.capwrap{
+  position:absolute;inset:0;z-index:2;
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(var(--top-safe) + 40px) 0 calc(var(--top-safe) + 40px);
+  overflow-y:auto;overscroll-behavior-y:auto;scrollbar-width:none;
+  touch-action:pan-y;
+}
+.capwrap::-webkit-scrollbar{display:none}
+
+.cap{
+  width:100%;
+  padding:26px 22px;
+  text-shadow:0 1px 2px rgba(var(--veil),.5), 0 1px 14px rgba(var(--veil),.45);
+  /* Layer 2 of the scrim — see the note above .scrim. It is sized to the text
+     block, so a two-line caption gets a small pool of shade and a long one
+     gets a big one, and it holds a flat plateau across every line rather than
+     falling off at the top and bottom the way a radial does — those edges are
+     exactly where the smallest text sits. It fades out inside the padding, and
+     on a phone it runs to both screen edges, so there is no side seam. */
+  background:linear-gradient(to bottom,
+    rgba(var(--veil),0)   0%,
+    rgba(var(--veil),.30) 5%,
+    rgba(var(--veil),.52) 13%,
+    rgba(var(--veil),.52) 87%,
+    rgba(var(--veil),.30) 95%,
+    rgba(var(--veil),0) 100%);
+}
+.cap > *{max-width:34rem;margin-inline:auto}
+
+.hl{
+  margin:0 auto;
+  font-size:clamp(1.85rem,7.8vw,2.9rem);
+  font-weight:800;
+  letter-spacing:-.03em;
+  line-height:1.05;
+  text-wrap:balance;
+}
+.sub{
+  margin:.7em auto 0;
+  font-size:clamp(1rem,4.2vw,1.12rem);
+  line-height:1.5;
+  font-weight:500;
+  color:rgba(255,255,255,.9);
+}
+
+/* Timeline — flat, no boxes, no pills. It is a caption, not a table. */
+.tl{margin:1.15em auto 0;display:flex;flex-direction:column;gap:.9em}
+.tl .row{display:flex;flex-direction:column;gap:.15em}
+.tl .when{
+  font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--butter);line-height:1.3;
+}
+.tl .what{font-size:.97rem;line-height:1.45;color:rgba(255,255,255,.92)}
+
+/* The relic — a cited object. One coral rule, nothing else. */
+.relic{margin:1.15em auto 0;padding-left:.85em;border-left:2px solid var(--coral)}
+.relic .obj{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:.8rem;font-weight:600;letter-spacing:-.01em;color:var(--butter);
+}
+.relic .prov{font-size:.81rem;color:rgba(255,255,255,.74);margin:.3em 0 .55em}
+.relic .proves{font-size:.97rem;line-height:1.45;color:rgba(255,255,255,.9)}
+
+/* The honest-caveat line. Quieter than the body, never hidden. */
+.note{
+  margin:1.15em auto 0;
+  font-size:.88rem;line-height:1.5;
+  color:rgba(255,255,255,.78);
+  padding-left:.85em;
+  border-left:2px solid rgba(255,255,255,.22);
+}
+
+/* --------------------------------------------------------------------------
+   The question beat. Buttons on the picture — no white card.
+   -------------------------------------------------------------------------- */
+.q{margin:0 auto}
+.opts{margin:1.35em 0 0;display:flex;flex-direction:column;gap:.6em}
+.opt{
+  appearance:none;font:inherit;text-align:left;cursor:pointer;
+  min-height:var(--tap);
+  display:flex;gap:.75em;align-items:center;
+  padding:.85em 1em;
+  border-radius:16px;
+  border:1.5px solid rgba(255,255,255,.34);
+  background:rgba(255,255,255,.13);
+  -webkit-backdrop-filter:blur(14px) saturate(1.1);
+  backdrop-filter:blur(14px) saturate(1.1);
+  color:#fff;font-size:1rem;font-weight:650;line-height:1.3;
+  text-shadow:0 1px 2px rgba(var(--veil),.5);
+  transition:transform .12s ease, background .25s ease, border-color .25s ease, opacity .25s ease;
+}
+.opt:active{transform:scale(.975)}
+.opt .mark{
+  flex:none;width:22px;height:22px;border-radius:var(--pill);
+  border:2px solid rgba(255,255,255,.55);
+  display:grid;place-items:center;
+  font-size:12px;font-weight:800;color:var(--night);
+  transition:background .25s ease,border-color .25s ease;
+}
+.opts.done .opt{cursor:default}
+.opt.right{background:rgba(143,220,168,.26);border-color:var(--mint)}
+.opt.right .mark{background:var(--mint);border-color:var(--mint)}
+.opt.wrong{opacity:.55}
+.opt.wrong .mark{background:rgba(255,255,255,.4);border-color:rgba(255,255,255,.4)}
+
+.reveal{
+  margin:1.1em 0 0;font-size:.97rem;line-height:1.5;
+  color:rgba(255,255,255,.9);
+  max-height:0;opacity:0;overflow:hidden;
+  transform:translateY(8px);
+  transition:max-height .45s ease,opacity .35s ease .06s,transform .4s ease .06s;
+}
+.reveal.on{max-height:24em;opacity:1;transform:none}
+
+/* --------------------------------------------------------------------------
+   Caption choreography. `.live` is set by the IntersectionObserver and the
+   scenes key their animation off the same class — it is load-bearing for both.
+   Headline rises first, supporting line a beat later, the rest after that.
+   -------------------------------------------------------------------------- */
+.rise{
+  opacity:1;
+  transform:translateY(20px);
+  transition:opacity .2s ease, transform .2s ease;
+}
+html.js .rise{opacity:0}
+html.js .page.live .rise{
+  opacity:1;
+  transform:none;
+  transition:opacity .55s cubic-bezier(.2,.7,.3,1) var(--d,0s),
+             transform .7s cubic-bezier(.2,.7,.3,1) var(--d,0s);
+}
+
+/* --------------------------------------------------------------------------
+   Sources. The whole point of the product, so it survives the redesign — but
+   as an affordance, not a block of chrome. A pill on the picture; tapping it
+   raises a sheet over the scene.
+   -------------------------------------------------------------------------- */
+.srcbtn{
+  /* Top-left, not bottom: the bottom of an in-app webview belongs to
+     Instagram's toolbar, and this is the one thing on a beat a reader taps. */
+  position:absolute;left:14px;top:var(--top-safe);
+  z-index:5;
+  appearance:none;font:inherit;cursor:pointer;
+  min-height:var(--tap);
+  display:inline-flex;align-items:center;gap:.5em;
+  padding:0 .95em;
+  border-radius:var(--pill);
+  border:1px solid rgba(255,255,255,.3);
+  background:rgba(var(--veil),.42);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);
+  backdrop-filter:blur(16px) saturate(1.2);
+  color:rgba(255,255,255,.94);
+  font-size:.8rem;font-weight:700;letter-spacing:.01em;
+  transition:background .2s ease,transform .12s ease;
+}
+.srcbtn:active{transform:scale(.96)}
+.srcbtn .chev{
+  display:inline-block;font-size:.7em;opacity:.8;
+  transition:transform .3s cubic-bezier(.2,.7,.3,1);
+}
+.srcbtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:4;
+  max-height:74%;
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;
+  padding:14px 20px calc(var(--bottom-safe) - 10px);
+  border-radius:22px 22px 0 0;
+  border-top:1px solid rgba(255,255,255,.16);
+  background:rgba(var(--veil),.9);
+  -webkit-backdrop-filter:blur(26px) saturate(1.3);
+  backdrop-filter:blur(26px) saturate(1.3);
+  transform:translateY(102%);
+  visibility:hidden;
+  transition:transform .38s cubic-bezier(.2,.75,.25,1), visibility 0s linear .38s;
+}
+.sheet::-webkit-scrollbar{display:none}
+.sheet.on{transform:none;visibility:visible;transition-delay:0s,0s}
+.sheet .grab{
+  width:38px;height:4px;border-radius:var(--pill);
+  background:rgba(255,255,255,.3);margin:0 auto 14px;
+}
+.sheet h3{
+  margin:0 0 .8em;
+  font-size:.7rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,.5);
+}
+.sheet ol{margin:0;padding:0 0 0 1.15em}
+.sheet li{
+  font-size:.86rem;line-height:1.55;color:rgba(255,255,255,.88);
+  margin-bottom:.7em;
+}
+.sheet li::marker{color:var(--coral);font-weight:700}
+.sheet .credit{
+  margin:0 0 1.1em;padding-left:.85em;
+  border-left:2px solid var(--steel);
+  font-size:.84rem;line-height:1.5;color:rgba(255,255,255,.76);
+}
+
+/* --------------------------------------------------------------------------
+   Scroll affordance. Taught once, then gone. Sits well clear of the toolbar.
+   -------------------------------------------------------------------------- */
+.hint{
+  position:absolute;left:50%;bottom:calc(var(--bottom-safe) + 10px);
+  z-index:3;
+  transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  pointer-events:none;
+  color:rgba(255,255,255,.9);
+  font-size:.78rem;font-weight:700;letter-spacing:.03em;white-space:nowrap;
+  text-shadow:0 1px 8px rgba(var(--veil),.8);
+  animation:bob 2.2s ease-in-out infinite;
+  transition:opacity .3s ease;
+}
+/* Its own little pool of shade, so it survives a near-white scene without
+   becoming a chip of chrome. */
+.hint::before{
+  content:"";position:absolute;inset:-16px -30px;z-index:-1;
+  background:radial-gradient(closest-side,rgba(var(--veil),.5),rgba(var(--veil),0));
+}
+.hint .arrow{
+  width:13px;height:13px;margin-bottom:2px;
+  border-left:2.5px solid currentColor;border-top:2.5px solid currentColor;
+  border-radius:2px;transform:rotate(45deg);
+}
+.hint.out{opacity:0}
+@keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-7px)}}
+
+/* Progress rail. Right edge, thin, low contrast. No like, save or share. */
+.rail{
+  position:fixed;right:7px;top:50%;transform:translateY(-50%);
+  z-index:6;display:flex;flex-direction:column;gap:5px;
+  pointer-events:none;
+}
+.rail i{
+  width:3px;height:12px;border-radius:var(--pill);
+  background:rgba(255,255,255,.28);
+  transition:background .3s ease,height .3s ease;
+}
+.rail i.on{background:#fff;height:24px}
+
+/* --------------------------------------------------------------------------
+   The ending. One ask.
+   -------------------------------------------------------------------------- */
+.page.end .scene{
+  background:
+    radial-gradient(90% 60% at 22% 14%, rgba(255,122,92,.30) 0%, rgba(255,122,92,0) 62%),
+    radial-gradient(80% 55% at 84% 84%, rgba(183,156,237,.26) 0%, rgba(183,156,237,0) 60%),
+    linear-gradient(170deg,#241C2C 0%,#15111B 58%,#0E0B12 100%);
+}
+.page.end .cap{text-align:center}
+.page.end .capwrap{padding-top:calc(var(--top-safe) + 20px)}
+.page.end .cap{background:none}
+.wordmark{
+  font-size:.72rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--coral);margin:0 0 1em;
+}
+.page.end .hl{font-size:clamp(2rem,8.4vw,3.1rem)}
+.page.end .sub{margin-top:.8em;color:rgba(255,255,255,.8)}
+
+form{margin:1.6em auto 0;display:flex;flex-direction:column;gap:.6em;max-width:22rem}
+input[type=email]{
+  font:inherit;
+  font-size:16px;                 /* 16px exactly: anything less and iOS and the
+                                     in-app webviews zoom the page on focus */
+  min-height:52px;
+  width:100%;
+  padding:0 1.05em;
+  border-radius:var(--pill);
+  border:1.5px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.1);
+  color:#fff;
+  text-align:center;
+}
+input[type=email]::placeholder{color:rgba(255,255,255,.45)}
+input[type=email]:focus{outline:none;border-color:var(--coral);background:rgba(255,255,255,.15)}
+button.go{
+  appearance:none;border:0;font:inherit;cursor:pointer;
+  min-height:52px;width:100%;
+  font-size:1rem;font-weight:800;
+  background:var(--coral);color:#2A1109;
+  border-radius:var(--pill);
+  transition:transform .12s ease,background .2s ease;
+}
+button.go:active{transform:scale(.97);background:var(--coral-deep)}
+.thanks{
+  margin:1.2em 0 0;font-size:1rem;font-weight:700;line-height:1.5;
+  color:var(--mint);
+  max-height:0;opacity:0;overflow:hidden;transform:translateY(8px);
+  transition:max-height .4s ease,opacity .35s ease,transform .4s ease;
+}
+.thanks.on{max-height:10em;opacity:1;transform:none}
+.fine{margin:1.2em auto 0;font-size:.8rem;line-height:1.5;color:rgba(255,255,255,.62)}
+
+/* --------------------------------------------------------------------------
+   Desktop is a courtesy. Same layout, centred column, scenes still bleed.
+   -------------------------------------------------------------------------- */
+@media (min-width:720px){
+  :root{--bottom-safe:max(9vh, 72px)}
+  .cap{padding-left:26px;padding-right:26px;
+       -webkit-mask-image:linear-gradient(to right,transparent 0,#000 26%,#000 74%,transparent 100%);
+       mask-image:linear-gradient(to right,transparent 0,#000 26%,#000 74%,transparent 100%)}
+  .srcbtn{left:50%;margin-left:-17rem}
+  .sheet{left:50%;transform:translate(-50%,102%);width:min(40rem,100%);border-radius:22px 22px 0 0}
+  .sheet.on{transform:translate(-50%,0)}
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion. Scenes key off html.no-motion too.
+   -------------------------------------------------------------------------- */
+html.no-motion .deck{scroll-behavior:auto}
+html.no-motion .hint{animation:none}
+html.no-motion .rise{opacity:1;transform:none;transition:none}
+html.no-motion .opt,
+html.no-motion .srcbtn,
+html.no-motion button.go{transition:none}
+html.no-motion .sheet{transition:visibility 0s}
+html.no-motion .reveal,
+html.no-motion .thanks{transition:none}
+html.no-motion *,
+html.no-motion *::before,
+html.no-motion *::after{animation:none !important}
+
+
+/* --------------------------------------------------------------------------
+   The verdict beat.
+
+   Answering used to mark a tick in place, which read as nothing happening.
+   The reader now arrives somewhere: the deck moves them to this beat and the
+   word at the top is written by their answer. Right and wrong differ only in
+   colour and in that word — a wrong answer is not an error state, it is the
+   next thing to read, so nothing here goes red or shakes.
+   -------------------------------------------------------------------------- */
+.verdict{
+  font-size:14px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  margin:0 0 10px;color:var(--mint);
+}
+.page.was-wrong .verdict{color:var(--butter)}
+.page.was-right .verdict::before,
+.page.was-wrong .verdict::before{
+  content:"";display:inline-block;width:9px;height:9px;border-radius:999px;
+  margin-right:9px;vertical-align:1px;background:currentColor;
+}
+
+
+/* --------------------------------------------------------------------------
+   The ending: the rest of the season, and the offer.
+
+   A shelf rather than a list — the covers are the argument. It scrolls
+   sideways inside the caption so the ending stays one screen like every
+   other beat, instead of turning into a page you have to scroll past.
+   -------------------------------------------------------------------------- */
+.shelf{
+  display:flex;gap:10px;
+  /* Centred when the covers fit, flush-left when they do not. Plain
+     `center` clips the start of an overflowing row, which is unreachable —
+     `safe` is the whole reason this works at both sizes. */
+  justify-content:safe center;
+  overflow-x:auto;overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+
+  /* `.cap > *` caps its children at 34rem and centres them with
+     margin-inline:auto. Both are wrong for a row that is meant to run past
+     the text column, and the auto margins were fighting the negative ones —
+     which is why this sat pinned to the left instead of spanning. */
+  max-width:none;
+  margin:18px calc(50% - 50vw) 20px;
+  padding:0 22px 2px;
+  scroll-padding-left:22px;
+
+  /* The caption scroller claims `touch-action:pan-y` for vertical reading, and
+     that inheritance is what stopped this row being draggable at all on a
+     phone. Claiming pan-x back is the fix. */
+  touch-action:pan-x;
+
+  /* A cover sliced by the viewport edge reads as a rendering bug. Fading the
+     last few percent turns the same pixels into "the row continues", which is
+     what they actually mean. */
+  -webkit-mask-image:linear-gradient(to right,
+    transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+  mask-image:linear-gradient(to right,
+    transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+
+  /* Settle on whole covers rather than mid-cover. */
+  scroll-snap-type:x mandatory;
+}
+.shelfcard{scroll-snap-align:center}
+.shelf::-webkit-scrollbar{display:none}
+.shelfcard{flex:none;width:88px;scroll-snap-align:start;
+  text-decoration:none;color:inherit;-webkit-tap-highlight-color:transparent}
+.shelfcard:active{transform:scale(.97)}
+.shelfcard img{
+  width:88px;height:128px;object-fit:cover;display:block;
+  border-radius:9px;background:rgba(255,255,255,.06);
+  box-shadow:0 4px 14px rgba(12,9,15,.45);
+}
+.shelfcard em{
+  display:block;font-style:normal;font-size:11px;line-height:1.3;
+  margin-top:6px;color:rgba(244,238,230,.78);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.go.pay{width:100%;font-size:16.5px}
+.go.pay:disabled{opacity:.6;cursor:default}
+
+/* The quiet second door. Some readers want to see the range before they pay,
+   and sending them to a wall of covers converts better than sending them away. */
+.ghostlink{
+  display:block;margin-top:12px;text-align:center;
+  font-size:13.5px;font-weight:650;padding:10px;min-height:44px;
+  color:rgba(244,238,230,.62);text-decoration:none;
+}
+
+/* Eleven of the twelve covers on this shelf are behind the paywall. Every other
+   cover surface on the site marks that; this one was sending readers into a
+   wall with no warning, from the page all the social traffic lands on. */
+.shelfplate{position:relative;display:block}
+.shelflock{
+  position:absolute;right:5px;top:5px;
+  width:20px;height:20px;border-radius:999px;
+  background:rgba(14,11,18,.74);
+  display:grid;place-items:center;font-size:9px;font-style:normal;
+  box-shadow:inset 0 0 0 1px rgba(255,247,237,.16);
+}
+.shelfcard:not(.isfree) img{opacity:.62;filter:saturate(.7)}
+.endfoot{
+  margin:14px auto 0;text-align:center;font-size:12.5px;line-height:1.6;
+  color:rgba(244,238,230,.62);
+}
+.endfoot a{color:rgba(244,238,230,.72)}
+
+/* Someone returning on a new phone lands on this page, not the shelf. Without
+   a way back in from here, their only route is to pay a second time. */
+.haveacct{
+  margin:14px auto 0;text-align:center;font-size:13.5px;
+  color:rgba(244,238,230,.62);
+}
+.haveacct a{
+  color:#FF7A5C;font-weight:700;text-decoration:none;
+  display:inline-block;padding:8px 4px;min-height:44px;line-height:28px;
+}
