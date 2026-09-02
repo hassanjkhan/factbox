@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox · Sign in</title>
+<meta name="description" content="Sign in to Factbox to read season one on any phone. Google, email or your phone number.">
+<meta name="theme-color" content="#0E0B12">
+<meta name="robots" content="noindex,follow">
+<link rel="canonical" href="https://factbox.app/login.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Factbox">
+<meta property="og:title" content="Factbox · Sign in">
+<meta property="og:description" content="Sign in to read season one on any phone.">
+<meta property="og:image" content="https://factbox.app/img/share.jpg">
+<meta property="og:url" content="https://factbox.app/login.html">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/account.css">
+<link rel="stylesheet" href="/css/auth.css">
+
+<!-- The anti-flip class. See the note at the foot of css/auth.css: this hides
+     the panels so the page cannot render "signed out" and then flip, and the
+     timer removes the class unconditionally so a script that never runs, or
+     throws, still leaves a readable page rather than a hidden one. The timer
+     is shorter than FBU's own 8s ceiling on purpose — four seconds of nothing
+     is already too long, and a form that appears next to "checking…" is a
+     worse page than this one, not a broken one. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "au-js";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)au-js(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+<!-- The header's account control must not flash. This class makes its slot
+     invisible without collapsing it, so the row keeps its height from the
+     first paint and nothing shifts when auth finally answers. The timer
+     removes it unconditionally: a script that never runs, or throws, still
+     leaves a readable header rather than a hidden one. See css/app.css. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+
+<!--
+  SIGN IN.
+
+  Three ways in, in the order they actually convert on this site's traffic:
+
+    1. Google, one tap, biggest thing on the page. Nearly everyone arrives
+       inside the Instagram or TikTok webview already signed into a Google
+       account on the device, and the popup those webviews block is not the
+       only way to ask — js/auth.js falls back to a full redirect without the
+       reader doing anything.
+
+    2. Email and password, because it is the one that always works, including
+       for the reader who does not want Google anywhere near this.
+
+    3. Phone, last, because it costs an SMS and a robot check and is the
+       slowest of the three — but it is the only one that works for a reader
+       with no email on their phone at all.
+
+  UNVERIFIED EMAIL ADDRESSES CAN READ. Signing up sends a verification email
+  and nothing waits for it. The reasoning is written out in AUTH.md; the short
+  version is that access is decided by `customers/{uid}.premium`, which a
+  Stripe webhook writes and a browser cannot, so an unverified address gains
+  nothing by being unverified — while blocking on a mail that Gmail filed
+  under Promotions costs us a reader who has already paid.
+
+  EVERY PANEL BELOW SHIPS ITS REAL COPY IN THE MARKUP. The script hides the
+  ones it is not showing. If the script never runs, this page is a long
+  readable sign-in form with working links out of it, which is a bad page —
+  but it is a page. Blank is not on the menu.
+-->
+
+<main class="lib">
+  <header class="mast">
+    <p class="mark">FACTBOX</p>
+    <nav class="tabs" aria-label="Sections">
+      <a href="/stories">Home</a>
+      <a href="/explore">Explore</a>
+      <a href="/library">Library</a>
+      <!-- Account. Signed out this is two links; signed in it is the reader's
+           name. Never both: the script sets hidden on every branch. -->
+      <span class="acct" id="fb-acct">
+        <a class="acct-in" id="fb-acct-in" href="/login?next=stories.html">Sign in</a>
+        <a class="acct-up" id="fb-acct-up" href="/login?next=stories.html">Sign up</a>
+        <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
+      </span>
+    </nav>
+    <h1 id="au-title">Sign in to Factbox</h1>
+    <p id="au-blurb">Your subscription follows your account, not this phone.
+    Sign in and season one opens wherever you read it.</p>
+  </header>
+
+  <!-- Shown by the script while FBU.ready() is still settling. Hidden in the
+       markup, because a spinner is meaningless to a reader whose JavaScript
+       never ran — the form below is the useful thing for them. -->
+  <div class="au-wait" id="au-wait" role="status" hidden>
+    <span class="au-spin" aria-hidden="true"></span>
+    <span id="au-wait-t">Checking whether you are already signed in…</span>
+  </div>
+
+  <!-- ===== already signed in ============================================ -->
+  <section class="au-panel" id="au-signed" hidden aria-labelledby="au-signed-h">
+    <h2 id="au-signed-h">You are signed in</h2>
+    <p class="au-who" id="au-who">Signed in as <b id="au-who-who">your account</b>.</p>
+    <p class="au-say" id="au-signed-note" hidden role="status"></p>
+    <a class="go" id="au-continue" href="/stories"
+       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Continue reading</a>
+    <a class="au-2nd" href="/account">Account</a>
+    <button class="au-2nd" id="au-resend" type="button" hidden>Resend the verification email</button>
+    <button class="au-2nd" id="au-out" type="button">Sign out</button>
+  </section>
+
+  <!-- ===== the three ways in ============================================ -->
+  <section class="au-panel" id="au-main" aria-labelledby="au-main-h">
+
+    <div class="au-switch" role="tablist" aria-label="Sign in or create an account">
+      <button type="button" id="au-tab-in" role="tab" aria-selected="true"
+              aria-controls="au-form">Sign in</button>
+      <button type="button" id="au-tab-up" role="tab" aria-selected="false"
+              aria-controls="au-form">Create account</button>
+    </div>
+
+    <h2 id="au-main-h" class="jn-vh">Sign in</h2>
+
+    <!-- 1 · Google ---------------------------------------------------- -->
+    <button class="au-prov" id="au-google" type="button">
+      <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.9 2.6 13.8l7.8 6.1C12.3 14 17.6 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.3z"/>
+        <path fill="#FBBC05" d="M10.4 28.4a14.6 14.6 0 010-9.3l-7.8-6.1a24 24 0 000 21.5l7.8-6.1z"/>
+        <path fill="#34A853" d="M24 47.5c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.4 0-11.7-4.5-13.6-10.4l-7.8 6.1C6.5 42.1 14.6 47.5 24 47.5z"/>
+      </svg>
+      <span id="au-google-t">Continue with Google</span>
+    </button>
+    <p class="fine" id="au-google-note" style="margin-top:9px">One tap. Nothing
+    is charged here — signing in is free, and the two free stories stay free.</p>
+    <p class="jn-err" id="au-google-err" hidden role="alert"></p>
+
+    <p class="au-or">or</p>
+
+    <!-- 2 · email and password ---------------------------------------- -->
+    <form id="au-form" action="#" novalidate>
+      <label class="jn-field" for="au-email">
+        <span>Email</span>
+        <input id="au-email" name="email" type="email" inputmode="email"
+               autocomplete="email" autocapitalize="none" autocorrect="off"
+               spellcheck="false" enterkeyhint="next"
+               placeholder="you@example.com">
+      </label>
+      <label class="jn-field" for="au-pass">
+        <span>Password</span>
+        <input id="au-pass" name="password" type="password"
+               autocomplete="current-password" autocapitalize="none"
+               autocorrect="off" spellcheck="false" enterkeyhint="go"
+               placeholder="At least six characters">
+      </label>
+      <p class="jn-err" id="au-err" hidden role="alert"></p>
+      <p class="au-say" id="au-say" hidden role="status"></p>
+      <button class="go" id="au-go" type="submit" style="margin-top:16px">Sign in</button>
+    </form>
+
+    <div class="jn-row">
+      <button class="au-link" id="au-forgot" type="button">Forgot your password?</button>
+      <button class="jn-skip" id="au-swap" type="button">Create an account</button>
+    </div>
+
+    <p class="au-or">or</p>
+
+    <!-- 3 · phone ------------------------------------------------------ -->
+    <div id="au-phone">
+      <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 6px">Use your phone number</h2>
+      <p class="fine" style="text-align:left;margin:0">We text you a six-digit
+      code. Include the country code — a plain ten-digit number is read as
+      North American.</p>
+
+      <form id="au-phone-form" action="#" novalidate>
+        <label class="jn-field" for="au-tel">
+          <span>Phone number</span>
+          <input id="au-tel" name="tel" type="tel" inputmode="tel"
+                 autocomplete="tel" autocorrect="off" spellcheck="false"
+                 enterkeyhint="send" placeholder="+1 555 123 4567">
+        </label>
+        <p class="jn-err" id="au-tel-err" hidden role="alert"></p>
+        <p class="au-say" id="au-tel-say" hidden role="status"></p>
+        <button class="au-2nd" id="au-tel-go" type="submit" style="margin-top:14px">Text me a code</button>
+      </form>
+
+      <form id="au-code-form" action="#" novalidate hidden>
+        <label class="jn-field" for="au-code">
+          <span>The six-digit code</span>
+          <input id="au-code" name="code" type="text" inputmode="numeric"
+                 autocomplete="one-time-code" autocorrect="off" spellcheck="false"
+                 enterkeyhint="go" maxlength="6" placeholder="123456">
+        </label>
+        <p class="jn-err" id="au-code-err" hidden role="alert"></p>
+        <button class="go" id="au-code-go" type="submit" style="margin-top:14px">Confirm code</button>
+      </form>
+    </div>
+
+    <p class="fine" style="margin-top:22px;text-align:left">
+      By signing in you agree to the <a href="/terms">terms</a> and the
+      <a href="/privacy">privacy notice</a>.</p>
+  </section>
+
+  <!-- ===== sign-in could not start ====================================== -->
+  <section class="au-panel" id="au-dead" hidden aria-labelledby="au-dead-h">
+    <h2 id="au-dead-h">Sign-in will not start in this browser</h2>
+    <p>Something between here and Google is blocking it — usually an in-app
+    browser with storage switched off. Opening factbox.app in Safari or Chrome
+    fixes it almost every time.</p>
+    <a class="go" href="/stories"
+       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Read the free stories</a>
+    <a class="au-2nd" href="/support">Tell support</a>
+  </section>
+
+  <noscript>
+    <p class="fine" style="margin-top:24px;text-align:left">
+      <b>Signing in needs JavaScript.</b> The
+      <a href="/stories">two free stories</a> read fine without it.</p>
+  </noscript>
+
+  <!-- The invisible robot check for phone sign-in. It has to be in the
+       document before the first code is requested and has to stay there. -->
+  <div id="au-captcha" class="au-captcha" aria-hidden="true"></div>
+
+  <p class="fine" style="margin-top:34px;text-align:left">
+    <a href="/stories">Season one</a> · <a href="/account">Account</a> ·
+    <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
+    <a href="/support">Support</a>
+  </p>
+</main>
+
+<!-- js/auth.js is a module, so the browser defers it: it runs after the
+     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
+     is in. The inline ES5 script below therefore cannot assume window.FBU
+     exists at the moment it runs, and does not — it uses the whenFBU() bridge,
+     which is the same six lines every other page on this site should use.
+     See AUTH.md. -->
+<script type="module" src="/js/auth.js"></script>
+<script src="/js/progress.js"></script>
+<script src="/js/gate.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var GENERIC = "Something went wrong. Try that again in a moment.";
+
+  /* --- guarded DOM ------------------------------------------------------
+     Every lookup on this page goes through el(). A missing id returns null
+     and the caller shrugs; it never throws on a top-level line. */
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  function show(node, on) { try { if (node) node.hidden = !on; } catch (e) {} }
+  function text(node, s) { try { if (node) node.textContent = s; } catch (e) {} }
+  function on(node, ev, fn) {
+    try { if (node && node.addEventListener) node.addEventListener(ev, fn, false); }
+    catch (e) {}
+  }
+  function val(node) {
+    try { return node && node.value != null ? String(node.value) : ""; } catch (e) { return ""; }
+  }
+  function focus(node) { try { if (node && node.focus) node.focus(); } catch (e) {} }
+
+  /* --- copy safety ------------------------------------------------------
+     js/auth.js already maps codes to sentences and scrubs anything it does
+     not recognise. This is the second wall, on the page that does the
+     printing, so a raw code cannot reach a reader even if a future FBU
+     forgets. Both walls are checked by the render tests. */
+  function safeText(s) {
+    var t;
+    try { t = String(s == null ? "" : s); } catch (e) { return GENERIC; }
+    if (!t) return GENERIC;
+    if (t.indexOf("auth/") !== -1) return GENERIC;
+    if (t.indexOf("Firebase") !== -1 || t.indexOf("firebase") !== -1) return GENERIC;
+    if (t.indexOf("permission-denied") !== -1) return GENERIC;
+    if (t.length > 220) return GENERIC;
+    return t;
+  }
+  function errText(e) {
+    var m = "";
+    try { if (window.FBU && window.FBU.message) m = window.FBU.message(e); } catch (x) {}
+    if (!m) { try { m = (e && e.friendly) ? e.friendly : ""; } catch (x) {} }
+    return safeText(m);
+  }
+
+  function fail(node, msg) { text(node, safeText(msg)); show(node, true); }
+  function clear(node) { text(node, ""); show(node, false); }
+
+  /* --- where to go afterwards ------------------------------------------
+     ?next= is a return address, and a return address a stranger can set is
+     an open redirect unless it is checked. Only a bare page on this site is
+     accepted — no scheme, no host, no leading slash, no "..". Anything else
+     silently becomes the shelf, which is where a reader wanted to be anyway.
+
+     Not URLSearchParams: it is missing on the older in-app webviews this
+     site targets, and this runs on a top-level-reachable path. */
+  var HOME = "/stories";
+  function nextURL() {
+    try {
+      var q = String(location.search || "");
+      var m = q.match(/[?&]next=([^&]*)/);
+      if (!m) return HOME;
+      var raw = decodeURIComponent(m[1] || "");
+      if (!/^[a-z0-9._-]+\.html(\?[A-Za-z0-9_%=&.,+-]*)?$/i.test(raw)) return HOME;
+      if (raw.indexOf("..") !== -1) return HOME;
+      if (/^login\.html/i.test(raw)) return HOME;
+      return raw;
+    } catch (e) { return HOME; }
+  }
+  function leave() {
+    try { location.href = nextURL(); } catch (e) {}
+  }
+
+  /* --- the FBU bridge ---------------------------------------------------
+     js/auth.js is a deferred module, so it has not necessarily run when this
+     inline script does. Three outcomes and all three are handled: FBU is
+     already here, FBU arrives and says so, or FBU never comes at all — an
+     old webview that ignores type="module", a blocked gstatic, a 404. The
+     last one is not an error state to hide behind; it is the "sign-in will
+     not start" panel, which has a way out on it. */
+  function whenFBU(cb) {
+    var done = false;
+    function go() {
+      if (done) return;
+      done = true;
+      try { cb(window.FBU || null); } catch (e) {}
+    }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    /* A module script is deferred: the browser runs it after the document is
+       parsed and BEFORE DOMContentLoaded. So if FBU is not here by then, the
+       file 404'd, failed to parse, or this browser ignores type="module" —
+       and no amount of further waiting changes that. */
+    try {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", go, false);
+      } else {
+        setTimeout(go, 0);
+      }
+    } catch (e) {}
+    /* Belt and braces, for a page that loaded auth.js some other way. */
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  /* --- elements --------------------------------------------------------- */
+  var wait     = el("au-wait");
+  var waitT    = el("au-wait-t");
+  var pSigned  = el("au-signed");
+  var pMain    = el("au-main");
+  var pDead    = el("au-dead");
+  var who      = el("au-who-who");
+  var signedNote = el("au-signed-note");
+  var cont     = el("au-continue");
+  var resend   = el("au-resend");
+  var outBtn   = el("au-out");
+
+  var tabIn    = el("au-tab-in");
+  var tabUp    = el("au-tab-up");
+  var swap     = el("au-swap");
+  var gBtn     = el("au-google");
+  var gT       = el("au-google-t");
+  var gErr     = el("au-google-err");
+  var form     = el("au-form");
+  var mail     = el("au-email");
+  var pass     = el("au-pass");
+  var err      = el("au-err");
+  var say      = el("au-say");
+  var go       = el("au-go");
+  var forgot   = el("au-forgot");
+
+  var telForm  = el("au-phone-form");
+  var tel      = el("au-tel");
+  var telErr   = el("au-tel-err");
+  var telSay   = el("au-tel-say");
+  var telGo    = el("au-tel-go");
+  var codeForm = el("au-code-form");
+  var code     = el("au-code");
+  var codeErr  = el("au-code-err");
+  var codeGo   = el("au-code-go");
+
+  var title    = el("au-title");
+  var blurb    = el("au-blurb");
+
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)au-js(\s|$)/g, " ").replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  /* --- sign in / create account ----------------------------------------- */
+  var mode = "in";
+  function setMode(m) {
+    mode = (m === "up") ? "up" : "in";
+    var up = mode === "up";
+    try { if (tabIn) tabIn.setAttribute("aria-selected", up ? "false" : "true"); } catch (e) {}
+    try { if (tabUp) tabUp.setAttribute("aria-selected", up ? "true" : "false"); } catch (e) {}
+    text(go, up ? "Create my account" : "Sign in");
+    text(swap, up ? "I already have an account" : "Create an account");
+    text(title, up ? "Create your Factbox account" : "Sign in to Factbox");
+    text(blurb, up
+      ? "One account, every phone. It takes about twenty seconds and nothing is charged for it."
+      : "Your subscription follows your account, not this phone. Sign in and season one opens wherever you read it.");
+    text(gT, up ? "Sign up with Google" : "Continue with Google");
+    show(forgot, !up);
+    try { if (pass) pass.setAttribute("autocomplete", up ? "new-password" : "current-password"); } catch (e) {}
+    try { if (pass) pass.setAttribute("placeholder", up ? "At least six characters" : "Your password"); } catch (e) {}
+    clear(err); clear(say);
+  }
+
+  on(tabIn, "click", function () { setMode("in"); focus(mail); });
+  on(tabUp, "click", function () { setMode("up"); focus(mail); });
+  on(swap,  "click", function () { setMode(mode === "up" ? "in" : "up"); focus(mail); });
+
+  /* --- render ----------------------------------------------------------- */
+  var FBU = null;
+
+  function paint() {
+    reveal();
+    show(wait, false);
+    if (!FBU) { show(pMain, false); show(pSigned, false); show(pDead, true); return; }
+    show(pDead, false);
+
+    if (FBU.signedIn && FBU.signedIn()) {
+      show(pMain, false);
+      show(pSigned, true);
+      var label = "";
+      try { label = FBU.email() || FBU.phone() || FBU.name() || "your account"; } catch (e) { label = "your account"; }
+      text(who, label);
+      try { if (cont) cont.setAttribute("href", nextURL()); } catch (e) {}
+      var unverified = false;
+      try {
+        unverified = !!FBU.email() && !FBU.emailVerified();
+      } catch (e) {}
+      show(resend, unverified);
+      if (unverified) {
+        text(signedNote, "");
+        show(signedNote, false);
+      }
+      /* A reader who asked for a specific page and is already signed in
+         wanted that page, not this one. */
+      try {
+        if (/[?&]next=/.test(String(location.search || ""))) { leave(); }
+      } catch (e) {}
+      return;
+    }
+
+    show(pSigned, false);
+    show(pMain, true);
+    /* Google sent them back with nobody attached — say so once, here, rather
+       than leaving them to wonder why the tap did nothing. */
+    try {
+      var re = FBU.redirectError && FBU.redirectError();
+      if (re) fail(gErr, re);
+    } catch (e) {}
+  }
+
+  /* --- email and password ------------------------------------------------ */
+  function busy(node, label) {
+    try { if (node) { node.disabled = true; node.setAttribute("data-was", node.textContent || ""); node.textContent = label; } }
+    catch (e) {}
+  }
+  function idle(node) {
+    try {
+      if (!node) return;
+      node.disabled = false;
+      var w = node.getAttribute("data-was");
+      if (w) node.textContent = w;
+    } catch (e) {}
+  }
+
+  on(form, "submit", function (ev) {
+    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+    clear(err); clear(say);
+    if (!FBU) { fail(err, "Sign-in has not started in this browser. Reload the page."); return; }
+    var m = val(mail), p = val(pass);
+    busy(go, mode === "up" ? "Creating your account…" : "Signing in…");
+
+    function bad(e) {
+      idle(go);
+      /* auth/email-already-in-use is not an error a reader should ever read.
+         It means they have an account and are on the wrong tab, so move them
+         to the right tab and say the useful half of it. */
+      var c = "";
+      try { c = (e && e.code) ? String(e.code) : ""; } catch (x) {}
+      if (c === "auth/email-already-in-use") {
+        setMode("in");
+        text(say, "You already have an account with that email. Enter your password to sign in.");
+        show(say, true);
+        focus(pass);
+        return;
+      }
+      fail(err, errText(e));
+    }
+
+    try {
+      if (mode === "up") {
+        FBU.signUpEmail(m, p).then(function () {
+          idle(go);
+          try { if (window.FB && FB.track) FB.track("signup_email"); } catch (x) {}
+          leave();
+        }, bad);
+      } else {
+        FBU.signInEmail(m, p).then(function () {
+          idle(go);
+          try { if (window.FB && FB.track) FB.track("signin_email"); } catch (x) {}
+          leave();
+        }, bad);
+      }
+    } catch (e) { bad(e); }
+  });
+
+  on(forgot, "click", function () {
+    clear(err); clear(say);
+    if (!FBU) { fail(err, "Sign-in has not started in this browser. Reload the page."); return; }
+    var m = val(mail);
+    if (!m) { fail(err, "Type your email address first, then tap this again."); focus(mail); return; }
+    busy(forgot, "Sending…");
+    try {
+      FBU.resetPassword(m).then(function () {
+        idle(forgot);
+        text(say, "If there is an account for that address, a reset link is on its way. It can take a minute, and it sometimes lands in Promotions.");
+        show(say, true);
+      }, function (e) { idle(forgot); fail(err, errText(e)); });
+    } catch (e) { idle(forgot); fail(err, errText(e)); }
+  });
+
+  /* --- Google ------------------------------------------------------------
+     signInGoogle() resolves with { redirecting:true } when it has given up on
+     the popup and handed the page to Google. That is a success, not a
+     failure: the page is leaving, and the button should say so rather than
+     spring back to life for a tap that will never land. */
+  /* The Google button's label is a <span> next to the mark, so its busy state
+     writes to that span rather than to the button — setting textContent on
+     the button would throw away the logo along with the words, and the reader
+     would watch the one thing they recognise disappear the moment they tap
+     it. */
+  var gWas = "";
+  function gBusy(label) {
+    try {
+      if (!gT) return;
+      if (!gWas) gWas = gT.textContent || "";
+      gT.textContent = label;
+      if (gBtn) gBtn.disabled = true;
+    } catch (e) {}
+  }
+  function gIdle() {
+    try {
+      if (gT && gWas) gT.textContent = gWas;
+      if (gBtn) gBtn.disabled = false;
+    } catch (e) {}
+  }
+
+  on(gBtn, "click", function () {
+    clear(gErr);
+    if (!FBU) { fail(gErr, "Sign-in has not started in this browser. Reload the page."); return; }
+    gBusy("Opening Google…");
+    try {
+      FBU.signInGoogle().then(function (r) {
+        /* { redirecting:true } is a success: js/auth.js gave up on the popup
+           and handed the page to Google. The page is leaving, so the button
+           says so rather than springing back for a tap that never lands. */
+        if (r && r.redirecting) { text(gT, "Taking you to Google…"); return; }
+        gIdle();
+        try { if (window.FB && FB.track) FB.track("signin_google"); } catch (x) {}
+        leave();
+      }, function (e) { gIdle(); fail(gErr, errText(e)); });
+    } catch (e) { gIdle(); fail(gErr, errText(e)); }
+  });
+
+  /* --- phone -------------------------------------------------------------- */
+  var handle = null;
+
+  on(telForm, "submit", function (ev) {
+    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+    clear(telErr); clear(telSay);
+    if (!FBU) { fail(telErr, "Sign-in has not started in this browser. Reload the page."); return; }
+    var n = val(tel);
+    busy(telGo, "Sending the code…");
+    try {
+      FBU.startPhone(n, "au-captcha").then(function (h) {
+        idle(telGo);
+        handle = h;
+        var shown = "";
+        try { shown = (h && h.phone) ? h.phone : n; } catch (x) { shown = n; }
+        text(telSay, "Code sent to " + shown + ". It usually arrives inside a minute.");
+        show(telSay, true);
+        show(codeForm, true);
+        focus(code);
+      }, function (e) { idle(telGo); fail(telErr, errText(e)); });
+    } catch (e) { idle(telGo); fail(telErr, errText(e)); }
+  });
+
+  on(codeForm, "submit", function (ev) {
+    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+    clear(codeErr);
+    if (!FBU) { fail(codeErr, "Sign-in has not started in this browser. Reload the page."); return; }
+    busy(codeGo, "Checking…");
+    try {
+      FBU.confirmPhone(handle, val(code)).then(function () {
+        idle(codeGo);
+        try { if (window.FB && FB.track) FB.track("signin_phone"); } catch (x) {}
+        leave();
+      }, function (e) { idle(codeGo); fail(codeErr, errText(e)); });
+    } catch (e) { idle(codeGo); fail(codeErr, errText(e)); }
+  });
+
+  /* --- signed-in actions --------------------------------------------------- */
+  on(resend, "click", function () {
+    if (!FBU) return;
+    busy(resend, "Sending…");
+    try {
+      FBU.resendVerification().then(function () {
+        idle(resend);
+        text(signedNote, "Verification email sent. Check Promotions if it is not in your inbox.");
+        show(signedNote, true);
+      }, function (e) {
+        idle(resend);
+        text(signedNote, errText(e));
+        show(signedNote, true);
+      });
+    } catch (e) { idle(resend); }
+  });
+
+  on(outBtn, "click", function () {
+    if (!FBU) return;
+    busy(outBtn, "Signing out…");
+    try {
+      FBU.signOut().then(function () { idle(outBtn); paint(); }, function () { idle(outBtn); paint(); });
+    } catch (e) { idle(outBtn); paint(); }
+  });
+
+  /* --- start ---------------------------------------------------------------
+     Show the wait, then let FBU settle. Nothing renders a signed-in or
+     signed-out answer before it knows which one is true. */
+  setMode("in");
+  show(wait, true);
+  text(waitT, "Checking whether you are already signed in…");
+
+  whenFBU(function (api) {
+    FBU = api;
+    if (!FBU) { paint(); return; }
+    try { FBU.onReady(function () { paint(); }); } catch (e) { paint(); }
+    /* The SDK can arrive after the 8-second ceiling, or the reader can sign
+       out in another tab. Either way the page corrects itself rather than
+       lying. */
+    try { FBU.onChange(function () { paint(); }); } catch (e) {}
+    /* Last resort: if ready() somehow never settles, this page still stops
+       spinning and shows the form. */
+    try { setTimeout(function () { if (wait && !wait.hidden) paint(); }, 10000); } catch (e) {}
+  });
+})();
+</script>
+<!-- The header account control. js/auth.js is already loaded above, and it is
+     a module, so it has run by DOMContentLoaded and not necessarily before
+     this: the block below reaches it through the whenFBU() bridge, AUTH.md §2,
+     the same way the page script above does. -->
+<script>
+/* The header account control. ES5, every lookup guarded, and it cannot throw:
+   the worst case is the signed-out pair staying on screen, which is what the
+   markup already says. */
+(function () {
+  "use strict";
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+
+  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
+                                      .replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  /* A display name is text the reader typed, going straight into the header,
+     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
+     rule the rest of the site follows: no error code, ever, on screen. */
+  function label(FBU) {
+    var s = "";
+    try { s = String(FBU.name() || ""); } catch (e) {}
+    if (!s) {
+      var m = "";
+      try { m = String(FBU.email() || ""); } catch (e2) {}
+      var at = m.indexOf("@");
+      s = at > 0 ? m.slice(0, at) : "";
+    }
+    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "Account";
+    if (s.indexOf("auth/") !== -1) return "Account";
+    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
+    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
+  }
+
+  function paint(FBU) {
+    var inNow = false;
+    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
+    if (inNow) {
+      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
+      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+    } else {
+      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+    }
+    reveal();
+  }
+
+  function whenFBU(cb) {
+    var done = false;
+    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    try {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
+      else setTimeout(go, 0);
+    } catch (e) {}
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  whenFBU(function (FBU) {
+    /* No FBU at all — the file 404'd, or this webview ignores type="module".
+       That is the signed-out header, which links to a page that explains it. */
+    if (!FBU) { paint(null); return; }
+    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
+    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
+  });
+})();
+</script>
+<script src="/js/analytics.js"></script>
+</body>
+</html>

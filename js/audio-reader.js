@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Factbox reader (read.html) — ambient sound for all 51 stacks.
+   Factbox reader (/read) — ambient sound for all 51 stacks.
 
    One looping bed per card, crossfaded when the bed changes and HELD — nothing
    touched at all — when consecutive cards resolve to the same bed. Off by
@@ -71,7 +71,7 @@
   var HEAD_TRIM  = 0.05;   /* seconds skipped at the loop head — see play()   */
   var TAIL_TRIM  = 0.10;   /* seconds skipped at the loop tail                */
 
-  var CFG_URL = "data/audio.json";
+  var CFG_URL = "/data/audio.json";
   var K_ON    = "fb-sound";       /* "on" | "off" — shared with story.html    */
   var K_HINT  = "fb-sound-hint";  /* the silent-switch note, shown once ever  */
 
@@ -85,7 +85,7 @@
      than to silence, and so this file is still correct on its own.
      ------------------------------------------------------------------------ */
   var CFG = {
-    base: "audio/",
+    base: "/audio/",
     "default": "scroll",
     beds: {
       "palace":  { file: "palace.mp3",  gain: 0.85 },
@@ -325,7 +325,7 @@
 
   function url(key) {
     var b = CFG.beds[key];
-    return (CFG.base || "audio/") + (b ? b.file : "");
+    return (CFG.base || "/audio/") + (b ? b.file : "");
   }
 
   function load(key) {

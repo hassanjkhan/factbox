@@ -681,8 +681,8 @@ var FBA = (function () {
    js/profile-sync.js copies the record above into Firestore for a signed-in
    reader. It belongs in the markup, next to this file:
 
-       <script src="js/account.js"></script>
-       <script src="js/profile-sync.js"></script>
+       <script src="/js/account.js"></script>
+       <script src="/js/profile-sync.js"></script>
 
    Until that tag is on every page that carries the funnel, this fetches it.
    Doing it from here rather than from js/analytics.js is deliberate: the
@@ -721,8 +721,8 @@ var FBA = (function () {
     }
 
     var url = here ? here.replace(/account\.js(\?.*)?$/, "profile-sync.js")
-                   : "js/profile-sync.js";
-    if (url.indexOf("profile-sync.js") === -1) url = "js/profile-sync.js";
+                   : "/js/profile-sync.js";
+    if (url.indexOf("profile-sync.js") === -1) url = "/js/profile-sync.js";
 
     /* Already in the markup? Then the markup wins and this does nothing. */
     try {

@@ -164,8 +164,8 @@
        its cover points there rather than at the generic reader — same rule as
        the home shelf. A locked cover still points at read.html, which is where
        the paywall lives; it is not this page's job to sell. */
-    if (s.id === "01") return "story.html";
-    return "read.html?s=" + encodeURIComponent(s.id);
+    if (s.id === "01") return "/story";
+    return "/read?s=" + encodeURIComponent(s.id);
   }
 
   /* --- one cover ----------------------------------------------------------
@@ -183,7 +183,7 @@
          ' data-id="' + esc(s.id) + '" href="' + esc(href(s)) + '">' +
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
-               'src="img/thumbs/' + esc(s.img) + '.webp">' +
+               'src="/img/thumbs/' + esc(s.img) + '.webp">' +
           (locked
             ? '<span class="lock" aria-hidden="true">🔒</span>'
             : (s.free ? '<span class="freetag">FREE</span>' : '')) +
@@ -321,8 +321,8 @@
         var cont = FBP.continueReading(STACKS);
         if (cont && cont.stack) {
           out += '<a class="resume" href="' +
-                   esc(cont.id === "01" ? "story.html" : cont.href) + '">' +
-                   '<div class="plate"><img alt="" src="img/thumbs/' +
+                   esc(cont.id === "01" ? "/story" : cont.href) + '">' +
+                   '<div class="plate"><img alt="" src="/img/thumbs/' +
                       esc(cont.stack.img) + '.webp"></div>' +
                    '<div class="t"><b>' + esc(cont.stack.title) + '</b>' +
                    '<span>' + esc(cont.label) + '</span></div></a>';
@@ -457,7 +457,7 @@
         '<b>The story list did not load.</b>' +
         '<p>This usually means the connection dropped. Reload the page, or ' +
         'open the season shelf, which lists all fifty-one.</p>' +
-        '<a class="reset" href="stories.html">All stories</a>' +
+        '<a class="reset" href="/stories">All stories</a>' +
       '</div>';
     if (tally) tally.textContent = "";
   }

@@ -398,7 +398,7 @@
     d.setAttribute("role", "note");
     d.innerHTML =
       '<span>We measure which stories people finish, to make better ones. ' +
-      'No ads, no selling data. <a href="privacy.html">How it works</a>.</span>' +
+      'No ads, no selling data. <a href="/privacy">How it works</a>.</span>' +
       '<button type="button">Got it</button>';
     d.querySelector("button").addEventListener("click", function () {
       ls(NOTICE_KEY, "1");

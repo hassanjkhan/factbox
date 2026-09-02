@@ -67,7 +67,7 @@
     try {
       shelf.innerHTML = '<p class="libfail">' + esc(msg) + '</p>' +
         '<p class="fine" style="text-align:left">' +
-        '<a href="stories.html">All stories</a></p>';
+        '<a href="/stories">All stories</a></p>';
     } catch (e) {}
   }
 
@@ -80,7 +80,7 @@
     /* Stack 01 is the fully illustrated version and lives at the front page,
        so it points there rather than at the generic reader. Same rule as
        stories.html — if it ever changes, it changes in both. */
-    return s.id === "01" ? "story.html" : "read.html?s=" + encodeURIComponent(s.id);
+    return s.id === "01" ? "/story" : "/read?s=" + encodeURIComponent(s.id);
   }
 
   function card(s, note) {
@@ -97,7 +97,7 @@
       '<a class="card is-' + st.status + (locked ? " locked" : "") + '" href="' + href(s) + '">' +
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
-               'src="img/thumbs/' + esc(s.img) + '.webp">' +
+               'src="/img/thumbs/' + esc(s.img) + '.webp">' +
           (locked
             ? '<span class="lock" aria-hidden="true">🔒</span>'
             : (s.free ? '<span class="freetag">FREE</span>' : '')) +
@@ -194,8 +194,8 @@
     if (cont && cont.stack) {
       html += '<div class="sechead"><h2>Continue reading</h2>' +
               '<span>' + esc(cont.pct + "% in") + '</span></div>' +
-              '<a class="resume" href="' + (cont.id === "01" ? "story.html" : cont.href) + '">' +
-                '<div class="plate"><img alt="" src="img/thumbs/' + esc(cont.stack.img) + '.webp"></div>' +
+              '<a class="resume" href="' + (cont.id === "01" ? "/story" : cont.href) + '">' +
+                '<div class="plate"><img alt="" src="/img/thumbs/' + esc(cont.stack.img) + '.webp"></div>' +
                 '<div class="t"><b>' + esc(cont.stack.title) + '</b>' +
                 '<span>' + esc(cont.label) + '</span></div>' +
               '</a>';
@@ -218,8 +218,8 @@
           'finished, and anything you saved for later. Nothing is sent anywhere; ' +
           'it is all kept in this browser.</p>' +
           '<div class="emptygo">' +
-            '<a class="go" href="explore.html">Explore all 51 stories</a>' +
-            '<a class="ghost" href="stories.html">All stories</a>' +
+            '<a class="go" href="/explore">Explore all 51 stories</a>' +
+            '<a class="ghost" href="/stories">All stories</a>' +
           '</div>' +
         '</div>' +
         section("Start with these", "free to read", free);

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Your library · Factbox</title>
+<meta name="description" content="What you have read, what you are part-way through, and what you saved for later.">
+<meta name="theme-color" content="#0E0B12">
+<!-- This page is different for every reader and empty for a crawler, so it is
+     not worth indexing. The stories themselves are. -->
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/library.css">
+<!-- The header's account control must not flash. This class makes its slot
+     invisible without collapsing it, so the row keeps its height from the
+     first paint and nothing shifts when auth finally answers. The timer
+     removes it unconditionally: a script that never runs, or throws, still
+     leaves a readable header rather than a hidden one. See css/app.css. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+
+<main class="lib">
+  <header class="mast">
+    <p class="mark">FACTBOX</p>
+    <nav class="tabs" aria-label="Sections">
+      <a href="/stories">Home</a>
+      <a href="/explore">Explore</a>
+      <a href="/library" aria-current="page">Library</a>
+      <!-- Account. Signed out this is two links; signed in it is the reader's
+           name. Never both: the script sets hidden on every branch. -->
+      <span class="acct" id="fb-acct">
+        <a class="acct-in" id="fb-acct-in" href="/login?next=library.html">Sign in</a>
+        <a class="acct-up" id="fb-acct-up" href="/login?next=library.html">Sign up</a>
+        <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
+      </span>
+    </nav>
+    <h1>Your library</h1>
+    <p>Where you got to, what you finished, and what you put aside. Kept in this browser and nowhere else.</p>
+  </header>
+
+  <div id="shelf" >
+    <!-- Filled by js/library.js. If the season cannot be fetched, that script
+         writes visible copy here — never nothing. -->
+    <p class="fine" style="text-align:left">Loading your library…</p>
+  </div>
+
+  <p class="fine" style="margin-top:34px;text-align:left">
+    <a href="/account">Account</a> · <a href="/credits">Artwork credits</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
+  </p>
+</main>
+
+<!-- Load order matters, and only in one place: progress.js MUST come before
+     gate.js, because gate.js's claim() strips the query string at parse time
+     and progress.js needs Stripe's session_id out of it first. saves.js is
+     independent of both; library.js needs all three and goes last. -->
+<script src="/js/progress.js"></script>
+<script src="/js/gate.js"></script>
+<script src="/js/saves.js"></script>
+<script src="/js/library.js"></script>
+<!-- js/auth.js is a module, so the browser defers it: it runs after the
+     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
+     is in. The ES5 block below therefore cannot read window.FBU at the moment
+     it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
+<script type="module" src="/js/auth.js"></script>
+<script>
+/* The header account control. ES5, every lookup guarded, and it cannot throw:
+   the worst case is the signed-out pair staying on screen, which is what the
+   markup already says. */
+(function () {
+  "use strict";
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+
+  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
+                                      .replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  /* A display name is text the reader typed, going straight into the header,
+     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
+     rule the rest of the site follows: no error code, ever, on screen. */
+  function label(FBU) {
+    var s = "";
+    try { s = String(FBU.name() || ""); } catch (e) {}
+    if (!s) {
+      var m = "";
+      try { m = String(FBU.email() || ""); } catch (e2) {}
+      var at = m.indexOf("@");
+      s = at > 0 ? m.slice(0, at) : "";
+    }
+    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "Account";
+    if (s.indexOf("auth/") !== -1) return "Account";
+    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
+    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
+  }
+
+  function paint(FBU) {
+    var inNow = false;
+    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
+    if (inNow) {
+      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
+      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+    } else {
+      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+    }
+    reveal();
+  }
+
+  function whenFBU(cb) {
+    var done = false;
+    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    try {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
+      else setTimeout(go, 0);
+    } catch (e) {}
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  whenFBU(function (FBU) {
+    /* No FBU at all — the file 404'd, or this webview ignores type="module".
+       That is the signed-out header, which links to a page that explains it. */
+    if (!FBU) { paint(null); return; }
+    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
+    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
+  });
+})();
+</script>
+<script src="/js/analytics.js"></script>
+</body>
+</html>

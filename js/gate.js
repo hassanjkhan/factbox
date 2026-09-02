@@ -29,7 +29,7 @@ var FB = (function () {
      PAY_URL stays exported and empty so anything still reading FB.PAY_URL
      keeps a defined value rather than undefined. Nothing should read it. */
   var PAY_URL  = "";
-  var JOIN_URL = "join.html";
+  var JOIN_URL = "/join";
 
   var KEY = "fb_unlocked_v1";
 
@@ -98,7 +98,7 @@ var FB = (function () {
   var _cache = null;
   function load() {
     if (_cache) return _cache;
-    _cache = fetch("data/stacks.json", { cache: "force-cache" })
+    _cache = fetch("/data/stacks.json", { cache: "force-cache" })
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();

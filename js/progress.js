@@ -393,7 +393,7 @@ var FBP = (function () {
   }
 
   /* mark(stackId, cardIndex, totalCards)
-     cardIndex is 0-based and may point one past the last card (read.html's
+     cardIndex is 0-based and may point one past the last card (/read's
      end card); it is clamped. Monotonic — progress never goes backwards, and
      re-reading a finished story does not un-finish it. */
   function mark(id, cardIndex, totalCards) {
@@ -518,7 +518,7 @@ var FBP = (function () {
         stack: best.s, id: best.s.id, card: best.r.card, total: total,
         pct: pctOf(best.r.card, total), at: best.r.at,
         label: "Continue from card " + (best.r.card + 1),
-        href: "read.html?s=" + encodeURIComponent(best.s.id)
+        href: "/read?s=" + encodeURIComponent(best.s.id)
       };
     } catch (e) { return null; }
   }

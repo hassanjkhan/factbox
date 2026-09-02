@@ -147,8 +147,8 @@ var FBR = (function () {
   /* Stack 01 is the illustrated one-off page; everything else is the reader. */
   function href(s) {
     var id = idOf(s);
-    if (id === "01") return "story.html";
-    return "read.html?s=" + encodeURIComponent(id);
+    if (id === "01") return "/story";
+    return "/read?s=" + encodeURIComponent(id);
   }
 
   /* Deterministic spread. Without it the tail of every ranking is just
@@ -262,10 +262,10 @@ var FBR = (function () {
     img.alt = "";
     img.decoding = "async";
     img.loading = "lazy";
-    img.src = "img/thumbs/" + str(s.img) + ".webp";
+    img.src = "/img/thumbs/" + str(s.img) + ".webp";
     img.onerror = function () {
       this.onerror = null;                                  /* one retry, never a loop */
-      this.src = "img/stacks/" + str(s.img) + ".webp";
+      this.src = "/img/stacks/" + str(s.img) + ".webp";
     };
     plate.appendChild(img);
     if (s.locked) {
@@ -388,16 +388,16 @@ var FBR = (function () {
           try {
             if (window.FB && typeof FB.checkout === "function") { FB.checkout(buy, "endcard"); return; }
           } catch (e) {}
-          location.href = "stories.html";
+          location.href = "/stories";
         });
         sec.appendChild(buy);
         sec.appendChild(el("p", "fine", "Cancel any time."));
       }
 
       var links = el("div", "rec-links");
-      if (opts.explore !== false) links.appendChild(link("explore.html", "Explore by topic"));
-      if (opts.library !== false) links.appendChild(link("library.html", "Your library"));
-      links.appendChild(link("stories.html", "All stories"));
+      if (opts.explore !== false) links.appendChild(link("/explore", "Explore by topic"));
+      if (opts.library !== false) links.appendChild(link("/library", "Your library"));
+      links.appendChild(link("/stories", "All stories"));
       sec.appendChild(links);
 
       track("rec_view", { stack: idOf(current), n: String(picks.length) });
@@ -408,7 +408,7 @@ var FBR = (function () {
         var f = el("section", "pane rec");
         f.appendChild(el("h2", null, "That is the whole story"));
         var l = el("div", "rec-links");
-        l.appendChild(link("stories.html", "All stories"));
+        l.appendChild(link("/stories", "All stories"));
         f.appendChild(l);
         return f;
       } catch (e2) { return sec || null; }
