@@ -213,7 +213,30 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     deck.innerHTML = html;
     if (window.FBR && FBR.endPanel) {
       var panel = FBR.endPanel(s, stacks, { n: 3 });
-      if (panel) deck.appendChild(panel);
+      if (panel) {
+        deck.appendChild(panel);
+
+        /* The action rail belongs to a story card — it is how you save the
+           thing you are reading and mute the bed behind it. The end pane is
+           not a story: it has one button and nothing of its own to save, and
+           the two floating controls landed on the words. So the document is
+           marked once the deck reaches that pane and app.css takes them off.
+
+           The deck's own scrollTop, not an IntersectionObserver: this is a
+           snap deck whose panes are exactly one viewport tall, so the sum is
+           one comparison, it is synchronous, and it is the same answer in a
+           backgrounded webview — where observer callbacks are throttled or
+           suspended and the rail would be left sitting on the end card. */
+        var markEnd = function () {
+          try {
+            document.documentElement.classList.toggle(
+              "is-endcard",
+              deck.scrollTop + deck.clientHeight * 0.45 >= panel.offsetTop);
+          } catch (e) {}
+        };
+        deck.addEventListener("scroll", markEnd, { passive: true });
+        markEnd();
+      }
     }
     FB.track("stack_open", { stack: s.id });
 

@@ -278,68 +278,64 @@ var FBR = (function () {
     return plate;
   }
 
-  /* The same path saves.js draws on the reader's rail: stroked when the story
-     is not saved, filled when it is. Copied rather than imported because
-     saves.js exposes a whole button, not its art, and one bookmark drawn two
-     different ways on two screens is the thing a reader notices. */
-  function mark(fill) {
-    return '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" ' +
-           'fill="' + (fill ? "currentColor" : "none") + '" stroke="currentColor" ' +
-           'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-           '<path d="M6.5 3.75h11a.75.75 0 0 1 .75.75v15.4l-6.25-4.1-6.25 4.1V4.5a.75.75 0 0 1 .75-.75z"/>' +
-           '</svg>';
+  /* How many of this topic are still unread, and what the topic is called
+     mid-sentence. The `lower` form already exists on the taxonomy for exactly
+     this ("More on Cleopatra" / "more on the New Testament") — it is not a new
+     table. Returns null when there is nothing honest to say. */
+  function remaining(current, stacks) {
+    try {
+      var topic = str(current && current.topic);
+      if (!topic || !stacks || !stacks.length) return null;
+      var left = 0, i, s2;
+      for (i = 0; i < stacks.length; i++) {
+        s2 = stacks[i];
+        if (str(s2.topic) !== topic) continue;
+        if (idOf(s2) === idOf(current)) continue;
+        if (progress(s2).status === "done") continue;
+        left++;
+      }
+      if (!left) return null;
+      var table = taxon("TOPICS"), name = null;
+      for (i = 0; i < table.length; i++) if (table[i].key === topic) name = table[i].lower || table[i].name;
+      if (!name) return null;
+      return { n: left, name: name };
+    } catch (e) { return null; }
   }
 
-  function saveBtn(s) {
-    if (!window.FBS || typeof FBS.toggle !== "function") return null;
-    var on = false;
-    try { on = !!(FBS.saved && FBS.saved(str(s.id))); } catch (e) {}
-    var name = str(s.title) ? ": " + str(s.title) : "";
-    var b = el("button", "rec-save");
-    b.innerHTML = mark(on);
-    b.type = "button";
-    b.setAttribute("aria-pressed", on ? "true" : "false");
-    b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
-    b.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      var now = on;
-      try { var r = FBS.toggle(str(s.id)); now = (typeof r === "boolean") ? r : !on; }
-      catch (e) { return; }
-      on = now;
-      b.innerHTML = mark(on);
-      b.setAttribute("aria-pressed", on ? "true" : "false");
-      b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
-      track("rec_save", { stack: str(s.id), on: on ? "1" : "0" });
-    });
-    return b;
-  }
+  /* Numbers under about a dozen read better as words in a sentence. Past that
+     the digit is clearer, and no topic in season one is anywhere near it. */
+  var WORDS = ["no", "One", "Two", "Three", "Four", "Five", "Six", "Seven",
+               "Eight", "Nine", "Ten", "Eleven", "Twelve"];
+  function count(n) { return (n > 0 && n < WORDS.length) ? WORDS[n] : String(n); }
 
-  /* One recommendation. The link and the save button are siblings — a button
-     nested inside an anchor is invalid and swallows the tap on some webviews. */
-  function tile(s, slot) {
-    var wrap = el("div", "rec-tile" + (s.locked ? " is-locked" : ""));
-    var a = el("a", "rec-link");
-    a.href = s.href;
-    a.appendChild(cover(s));
+  /* One story, given the whole width: the plate, the title on it, and how long
+     it takes. 4:3, not wider — every plate in the library is a 3:4 portrait
+     painting, and a 16:10 crop throws the subject out of frame on most of
+     them. The whole tile is the link; there is no second control on it. */
+  function plate(s2) {
+    var a = el("a", "rec-plate" + (s2.locked ? " is-locked" : ""));
+    a.href = s2.href;
 
-    var t = el("div", "t");
-    t.appendChild(el("b", null, str(s.title)));
-    t.appendChild(el("span", "rec-why", str(s.why)));
-    var cards = (s.cards && s.cards.length) ? s.cards.length + " cards · " : "";
-    t.appendChild(el("span", "rec-meta", cards + minutes(s.secs) + (s.locked ? " · locked" : "")));
+    var img = document.createElement("img");
+    img.alt = "";
+    img.decoding = "async";
+    img.src = "/img/thumbs/" + str(s2.img) + ".webp";
+    img.onerror = function () {
+      this.onerror = null;                                  /* one retry, never a loop */
+      this.src = "/img/stacks/" + str(s2.img) + ".webp";
+    };
+    a.appendChild(img);
+    a.appendChild(el("span", "rec-scrim"));
+
+    var t = el("div", "rec-plate-t");
+    t.appendChild(el("b", null, str(s2.title)));
+    t.appendChild(el("span", "rec-meta", minutes(s2.secs) + (s2.locked ? " · locked" : "")));
     a.appendChild(t);
 
     a.addEventListener("click", function () {
-      track("rec_click", { stack: str(s.id), why: str(s.whyKey), slot: String(slot + 1) });
+      track("rec_click", { stack: str(s2.id), why: str(s2.whyKey), slot: "1" });
     });
-
-    wrap.appendChild(a);
-    /* Sibling of the anchor, never a child of it: nesting the two swallows the
-       tap in Instagram's webview. The CSS lifts it onto the cover. */
-    var b = saveBtn(s);
-    if (b) wrap.appendChild(b);
-    return wrap;
+    return a;
   }
 
   /* The story they just finished, with a tick on it. It costs one cover and it
@@ -366,8 +362,11 @@ var FBR = (function () {
         '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" ' +
         'stroke="currentColor" stroke-width="3.4" stroke-linecap="round" ' +
         'stroke-linejoin="round"><path d="M4.5 12.5 10 18 19.5 6.5"/></svg>';
-      plate.appendChild(tick);
       w.appendChild(plate);
+      /* Sibling of the plate, not a child of it: .plate clips to its own
+         rounded corners (overflow:hidden, app.css) and the tick overhangs the
+         top-right corner by 7px, so inside it the badge loses a bite. */
+      w.appendChild(tick);
       return w;
     } catch (e) { return null; }
   }
@@ -410,6 +409,8 @@ var FBR = (function () {
       }
       if (picks.length < want && teaser) picks.push(teaser);
 
+      var pick = picks.length ? picks[0] : null;
+
       var done = doneBadge(current);
       if (done) {
         sec.appendChild(done);
@@ -420,23 +421,35 @@ var FBR = (function () {
         sec.appendChild(thread);
       }
 
-      sec.appendChild(el("h2", null, str(opts.heading) || "That is the whole story"));
+      /* What is left, counted, without claiming an order the data does not
+         have. The topics group eight or eleven stories that were written to
+         stand alone, so "Part 2 of 8" would promise a sequence that is not
+         there; "Seven more on Cleopatra" is the same open loop and true. */
+      var rest = remaining(current, stacks);
+      var head = str(opts.heading) ||
+                 (rest ? count(rest.n) + " more on " + rest.name + "." : "That is the whole story");
+      sec.appendChild(el("h2", null, head));
 
-      var openable = 0;
-      for (var j = 0; j < picks.length; j++) if (!picks[j].locked) openable++;
-      var lede = picks.length
-        ? (open || openable ? "Read another one." : "That was the last free story.")
-        : "That is every story for now.";
+      /* The next story's own hook, in the voice it was written in. It is the
+         most specific sentence available at this moment and it costs nothing
+         — every stack already carries one. Clamped to two lines in CSS; a few
+         run to 400 characters. */
+      var lede = pick ? str(pick.hook) : "";
+      if (!lede) lede = picks.length ? "Read another one." : "That is every story for now.";
       sec.appendChild(el("p", "rec-lede", lede));
 
-      if (picks.length) {
-        var listEl = el("div", "rec-rail");
-        for (var k = 0; k < picks.length; k++) listEl.appendChild(tile(picks[k], k));
-        sec.appendChild(listEl);
-      }
+      if (pick) sec.appendChild(plate(pick));
 
-      /* The route to the rest, stated once, plainly. No countdown, no nag. */
-      if (!open) {
+      /* One button. A reader who still has something they can open is sent to
+         it; the offer waits until they actually run out. */
+      if (pick && !pick.locked) {
+        var go = el("a", "go", "Read it");
+        go.href = pick.href;
+        go.addEventListener("click", function () {
+          track("rec_click", { stack: str(pick.id), why: str(pick.whyKey), slot: "cta" });
+        });
+        sec.appendChild(go);
+      } else {
         var buy = el("button", "go", "Read the rest of season one");
         buy.type = "button";
         buy.addEventListener("click", function () {
@@ -448,12 +461,6 @@ var FBR = (function () {
         sec.appendChild(buy);
         sec.appendChild(el("p", "fine", "Cancel any time."));
       }
-
-      var links = el("div", "rec-links");
-      if (opts.explore !== false) links.appendChild(link("/explore", "Explore by topic"));
-      if (opts.library !== false) links.appendChild(link("/library", "Your library"));
-      links.appendChild(link("/stories", "All stories"));
-      sec.appendChild(links);
 
       track("rec_view", { stack: idOf(current), n: String(picks.length) });
       return sec;

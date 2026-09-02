@@ -1,17 +1,19 @@
 /* ==========================================================================
-   Factbox — the "read another one" panel.
+   Factbox — the end of a story.
 
-   Additive only. It reuses .pane, .plate, .lock, .go, .ghost and .fine from
-   app.css and paints on top; it redefines none of them. Every colour, radius
-   and tap size is a token from app.css — this sheet had its own copies of the
-   palette, so a change to --dimmer moved every other surface and not this one.
-   Single dark theme, colours explicit, phone-first at 390x844 in a webview.
+   Additive only. It reuses .pane, .go and .fine from app.css and paints on
+   top; it redefines none of them. Every colour, radius and tap size is a token
+   from app.css — this sheet had its own copies of the palette, and a change to
+   --dimmer moved every other surface and not this one. Single dark theme,
+   colours explicit, phone-first at 390x844 in a webview.
+
+   ONE ACTION. The pane carries the cover they finished, the sentence for what
+   is left, one story, and one button. It used to carry three story rows with a
+   Save beside each and three links under the offer — nine tappable things on
+   the highest-intent screen on the site, including two different ways back to
+   the shelf that the "← Stories" pill already provides.
    ========================================================================== */
 
-/* .pane centres a short column and clips anything taller. Three covers plus
-   a button is taller, so this pane scrolls inside itself and stays centred
-   only while it fits. `safe center` keeps the top reachable in the browsers
-   that have it; the plain value before it is the fallback. */
 .pane.rec{
   justify-content:center;
   justify-content:safe center;
@@ -24,9 +26,14 @@
    scroll-snap-align, height, or the deck's snap type. */
 
 .pane.rec h2{margin:0 0 2px}
+
+/* The next story's own hook. Two lines, then ellipsis: they are written as
+   social hooks and a few run past 300 characters. */
 .rec-lede{
   margin:0; color:var(--dim);
   font-size:.98rem; line-height:1.5;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;
 }
 
 /* --------------------------------------------------------------------------
@@ -58,123 +65,67 @@
 }
 
 /* --------------------------------------------------------------------------
-   The shelf.
+   The next story.
 
-   Sideways, not downward. Three stacked rows read as a menu to work through;
-   a shelf you push reads as a pile to pick from, and the cut-off third cover
-   is the thing that says there is more. It bleeds the pane's own 22px padding
-   so that cut edge lands on the screen edge rather than floating inside a
-   margin.
+   One plate at full width with the title on it. 4:3 and no wider: every cover
+   in the library is a 3:4 portrait painting, and at 16:10 the subject falls
+   out of frame on most of them — Alma-Tadema's Cleopatra ends up at the edge
+   behind half a curtain. 4:3 still reads as a promo and survives all fifty-one
+   without anyone hand-checking the crop.
+
+   The whole plate is the link, and it is the same destination as the button
+   under it. No save control sits on it: beside a single primary action, a
+   second tappable thing is just a way to not press the button.
    -------------------------------------------------------------------------- */
-.rec-rail{
-  display:flex; gap:10px; width:100%;
-  /* flex:none, or the pane's column shrinks the shelf and overflow-x:auto —
-     which forces overflow-y to clip — slices the last line of the meta. The
-     pane already scrolls itself when the content is taller than the screen. */
-  flex:none; align-items:flex-start;
-  overflow-x:auto; overflow-y:hidden;
-  scroll-snap-type:x proximity;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
-  margin:2px -22px 0; padding:0 22px 2px;
-}
-.rec-rail::-webkit-scrollbar{display:none}
-
-/* Tile = one tappable link plus an optional save button. The button is a
-   sibling, never a child of the anchor: nesting the two swallows the tap in
-   Instagram's webview. It is lifted onto the cover below. */
-.rec-tile{
-  position:relative; flex:0 0 128px; width:128px;
-  scroll-snap-align:start; text-align:left;
-}
-
-.rec-link{
-  display:flex; flex-direction:column; gap:8px;
-  min-width:0;
+.rec-plate{
+  position:relative; display:block; width:100%;
+  aspect-ratio:4/3; overflow:hidden;
+  border-radius:18px; background:var(--raise);
+  box-shadow:0 10px 28px rgba(0,0,0,.5), inset 0 0 0 1px var(--hair);
   text-decoration:none; color:var(--parchment);
+  flex:none;
   transition:transform .16s ease;
 }
-.rec-link:active{transform:scale(.985)}
-
-.rec-link .plate{
-  width:128px; border-radius:12px;
-  box-shadow:0 4px 14px rgba(0,0,0,.45), inset 0 0 0 1px var(--hair);
+.rec-plate:active{transform:scale(.99)}
+.rec-plate img{
+  width:100%; height:100%; object-fit:cover; object-position:center 32%;
 }
 
-.rec-link .t{
-  display:flex; flex-direction:column; gap:2px; min-width:0;
+/* The words sit on a painting, so they get their own ground rather than
+   relying on whatever happens to be behind them. */
+.rec-scrim{
+  position:absolute; inset:0;
+  background:linear-gradient(to top,
+    rgba(10,8,13,.94) 0%, rgba(10,8,13,.6) 44%, rgba(10,8,13,.05) 100%);
 }
-.rec-link .t b{
-  font-size:.85rem; font-weight:780; line-height:1.25; letter-spacing:-.008em;
-  /* Two lines, then ellipsis — an unclamped title makes the shelf ragged. */
+.rec-plate-t{
+  position:absolute; left:0; right:0; bottom:0;
+  padding:0 16px 14px; text-align:left;
+}
+.rec-plate-t b{
+  display:block;
+  font-size:1.18rem; font-weight:850; line-height:1.18; letter-spacing:-.015em;
+  text-shadow:0 2px 14px rgba(0,0,0,.6);
+  /* Two lines, then ellipsis — a four-line title covers the painting. */
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;
 }
-
-/* The reason the row is here, in the reader's words. Coral, because it is the
-   argument for the tap. */
-.rec-why{
-  font-size:.78rem; font-weight:700; color:var(--coral);
-  line-height:1.3;
-}
 .rec-meta{
-  font-size:.74rem; font-weight:600; color:var(--dimmer);
+  display:block; margin-top:3px;
+  font-size:.78rem; font-weight:650; color:rgba(255,247,237,.72);
   font-variant-numeric:tabular-nums;
 }
 
 /* A locked cover still shows — it is the argument for paying — but it is
    never presented as if it will open. */
-.rec-tile.is-locked .plate img{opacity:.5; filter:saturate(.6)}
-.rec-tile.is-locked .rec-link .t b{color:var(--dim)}
-.rec-tile.is-locked .rec-why{color:var(--dim)}
-/* Top-LEFT here, not top-right: the save bookmark now owns the other corner
-   of the same cover, and two badges on one 128px plate is a collision. */
-.rec-link .lock{
-  left:5px; right:auto; top:5px; width:22px; height:22px; font-size:.62rem;
-}
+.rec-plate.is-locked img{opacity:.55; filter:saturate(.65)}
 
-.rec-save{
-  position:absolute; top:7px; right:7px; z-index:1;
-  width:34px; height:34px; padding:0;
-  display:inline-flex; align-items:center; justify-content:center;
-  border:0; border-radius:var(--pill); cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-  background:rgba(14,11,18,.62); color:var(--parchment);
-  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-  box-shadow:inset 0 0 0 1px var(--hair);
-  transition:color .18s ease, box-shadow .18s ease, transform .12s ease;
+/* .go is a button in app.css and an anchor here when it leads to a story. */
+.pane.rec .go{
+  margin-top:2px; width:100%;
+  text-decoration:none; text-align:center;
 }
-.rec-save:active{transform:scale(.94)}
-/* 34px, under the 44px guideline, for the same reason saves.js takes 38px on
-   the reader rail: the control sits on a painting, and a 44px disc on a 128px
-   cover is a button with a picture behind it rather than the other way round.
-   The accessible name carries the whole sentence; see saveBtn in
-   js/recommend.js. */
-.rec-save[aria-pressed="true"]{
-  color:var(--coral);
-  box-shadow:inset 0 0 0 1px rgba(255,122,92,.5);
-}
-
-.pane.rec .go{margin-top:2px; width:100%}
 .pane.rec .fine{margin:0; text-align:center}
-
-/* Onward routes. One line, centred, low-key — they are the way out, not the
-   offer. All of them sit above --bottom-safe because .pane reserves it. */
-.rec-links{
-  display:flex; flex-wrap:wrap; gap:2px 14px;
-  align-items:center; justify-content:center;
-  margin-top:2px;
-}
-/* This pane scrolls inside itself — three covers plus a button is taller than
-   a phone — so the links are not reliably at the bottom, and the action rail
-   is fixed over them wherever they land. They give up the rail's corner
-   instead: the same 62px .deck .copy gives up in app.css. Padding, not margin,
-   so the flex row still centres inside what is left. Above 760px the rail is
-   outside the column and the row centres on the whole pane. */
-@media (max-width:760px){
-  .rec-links{padding-right:62px}
-}
-.rec-links .ghost{margin-top:0}
 
 /* Short phones: 844px minus the webview toolbar is not much. Tighten rather
    than scroll. */
@@ -182,12 +133,11 @@
   .pane.rec{gap:10px}
   .rec-done, .rec-done .plate{width:60px}
   .rec-thread{height:10px}
-  .rec-tile{flex-basis:112px; width:112px}
-  .rec-link .plate{width:112px}
+  .rec-plate-t b{font-size:1.06rem}
 }
 
 @media (prefers-reduced-motion:reduce){
-  .rec-link{transition:none}
-  .rec-link:active{transform:none}
+  .rec-plate{transition:none}
+  .rec-plate:active{transform:none}
   .pane.rec{scroll-behavior:auto}
 }

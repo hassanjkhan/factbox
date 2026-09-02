@@ -290,6 +290,26 @@ img{max-width:100%;display:block}
   z-index:32;
 }
 
+/* read.html marks the document once the deck reaches the end pane. Both rail
+   controls come off there: that pane is the way out of the story, not part of
+   it, and it carries exactly one button by design.
+
+   display, not an opacity fade. A fade would read better, but the hidden
+   state would then depend on a transition running to completion — and a
+   backgrounded webview pauses transitions, which is exactly when the reader
+   comes back to find the rail sitting on the end card. The swipe between
+   panes is the movement; the controls do not need their own.
+
+   !important because saves.js writes `display:inline-flex` INLINE onto the
+   save button, and an inline declaration beats a stylesheet rule at any
+   specificity. This is the same reason the reduced-motion blocks below carry
+   it: the rule has to win outright or it does nothing at all. */
+html.is-endcard .fb-rail-save,
+html.is-endcard .fb-sound,
+html.is-endcard .fb-sound-note{
+  display:none !important;
+}
+
 /* End-of-stack card and the paywall share a centred column. */
 .pane{
   height:100vh; height:100dvh;
