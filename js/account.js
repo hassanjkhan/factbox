@@ -10,23 +10,31 @@
 
    HONEST LIMITATIONS, kept next to the code so they cannot drift:
 
-   1. This is not an account. There is no server, so there is nobody to
-      register with and nothing to authenticate against. "Sign up" here means
-      "this browser now remembers your email and your preferences". That is
-      why there is no password field: a password implies a check we cannot
-      perform, and a login form that accepts anything is worse than no login
-      form at all.
+   1. There is no backend behind this file. "Sign up" means "this browser now
+      remembers your email and your answers", and there is deliberately no
+      credential field, because a credential implies a check nothing here can
+      perform.
 
    2. Because of 1, "log in" cannot move access between devices. The only
       bridge that exists is FBP's restore link, which is a bearer token.
-      join.html says this in plain words rather than implying magic.
+      join.html handles that in product language: it offers the restore link
+      rather than describing the plumbing.
 
    3. The email never leaves this browser except in one place: it is appended
       to the Stripe checkout URL as prefilled_email, so the buyer does not
-      retype it. Nothing else is transmitted anywhere.
+      retype it. Nothing else is transmitted anywhere. Nothing here sends
+      email or push, and no copy anywhere may imply that it does.
 
    4. Storage is per-browser and may fail outright. Every access is wrapped.
       A dead store degrades to "not remembered" — never to a broken page.
+
+   5. READER-FACING COPY RULE. join.html never narrates this file's hosting
+      model to the reader. It is written in the product's voice — five
+      minutes a day, one story, actually remembering it — the same voice the
+      iOS onboarding uses, and its questions are a direct port of that flow.
+      Anything a reader genuinely needs is said about THEM ("this browser
+      will not remember you"), never about our architecture, and never as an
+      apology.
 
    Design rules this file obeys without exception:
    - It must never throw. Every storage read, every write, every cookie
@@ -41,11 +49,10 @@ var FBA = (function () {
   /* ======================================================================
      STRIPE PAYMENT LINKS — the only three values an owner has to fill in.
 
-     A Payment Link is a hosted checkout URL. No server and no API key, which
-     is the only reason a static site can take money at all. They do not
-     exist yet; each one is empty until someone creates it, and every button
-     in this file checks for that and says so in plain words rather than
-     going dead.
+     A Payment Link is a checkout URL hosted by Stripe. It needs no backend
+     and no API key, which is the only reason this site can take money at
+     all. Every button in this file checks that its link is present and says
+     so in plain words rather than going dead.
 
      HOW TO CREATE EACH ONE (Stripe Dashboard, once per link):
 
@@ -80,9 +87,10 @@ var FBA = (function () {
           constant below. Nothing else in the site needs editing.
 
      Note on what these links can and cannot do: possession of a completed
-     checkout is the whole proof of purchase, because there is no server to
-     ask Stripe anything. Anyone who visits the success URL by hand is
-     unlocked too. SPEC.md §9 already says this; these links do not change it.
+     checkout is the whole proof of purchase, because nothing here can ask
+     Stripe anything after the fact. Anyone who visits the success URL by
+     hand is unlocked too. SPEC.md §9 already covers this; these links do not
+     change it.
      ====================================================================== */
 
   var PAY_LINK_MONTHLY   = "https://buy.stripe.com/6oUcN41yFgeLbPF5c63F602";   /* USD 4.99  billed every month     + 3-day trial */
@@ -210,6 +218,37 @@ var FBA = (function () {
   var KEY       = "fb_acct_v1";
   var MAX_BYTES = 700;    /* also the cookie-mirror ceiling; see below */
   var MAX_PICKS = 12;     /* eight topics exist; room to grow, still tiny */
+  var MAX_PLANQ = 3;      /* the plan loader asks exactly three */
+
+  /* ======================================================================
+     The funnel's vocabularies, ported one-for-one from the iOS app's
+     `OnboardingModel.swift`. They live here rather than in join.html so the
+     store can clamp what it accepts, and so a second surface asking the same
+     questions cannot invent a fifth answer.
+
+       DRAWS   ← enum HistoryDraw       (people, turningPoints,
+                                         howWeGotHere, tiktok)
+       RELATES ← enum RelatableStatement (noTime, unfinished, stories)
+       GOALS   ← enum DailyGoal          (5, 10, 20, 45 = "as long as it takes")
+       STREAKS ← enum StreakCommitment   (7, 14, 30, 50)
+
+     The key names are shortened for the byte budget; the mapping is written
+     out in ACCOUNT.md so the two sides stay joinable.
+     ====================================================================== */
+  var DRAWS   = ["people", "turning", "thread", "tiktok"];
+  var RELATES = ["notime", "unfinished", "stories"];
+  var GOALS   = [5, 10, 20, 45];
+  var STREAKS = [7, 14, 30, 50];
+
+  /* Clamp a number to one of a fixed set. 0 means "not answered", which is
+     distinct from every legal value, so a skipped step stays skipped. */
+  function pickFrom(set, v) {
+    try {
+      var n = Math.floor(Number(v));
+      for (var i = 0; i < set.length; i++) { if (set[i] === n) return n; }
+    } catch (e) {}
+    return 0;
+  }
 
   var storeOK = true;     /* false once any write has been refused */
 
@@ -259,17 +298,34 @@ var FBA = (function () {
        a  local account id (for client_reference_id; not a secret)
        e  email
        n  first name
-       i  interests, an array of stacks.json topic keys
-       f  reading frequency key
+       i  interests, an array of stacks.json topic keys   (legacy; see below)
+       f  reading frequency key                           (legacy; see below)
        p  chosen plan key
        o  1 once onboarding was finished or skipped through
        t  created, whole seconds
+
+     Added with the ported iOS funnel — the reader's relationship with
+     reading, learning and history, which is what that flow actually asks
+     about:
+       d  what draws them to history: people | turning | thread | tiktok
+       r  which of the three "sound familiar" statements they ticked
+       g  daily minutes they committed to: 5 | 10 | 20 | 45 (45 = open-ended)
+       s  streak they are aiming for, in days: 7 | 14 | 30 | 50
+       q  the plan-loader's three yes/no answers, as 1s and 0s
+
+     `i` and `f` are LEGACY but permanent. The funnel no longer asks which
+     subjects you like or how often you read — the iOS flow does not, and
+     that is the flow this ports. Other layers already read `interests()`,
+     so the whole accessor pair stays defined, keeps parsing what is stored,
+     and keeps answering "" / [] when nothing was ever set. Do not delete
+     them to tidy up.
   */
 
   var _rec = null;
 
   function blank() {
-    return { v: 1, a: "", e: "", n: "", i: [], f: "", p: "", o: 0, t: 0 };
+    return { v: 1, a: "", e: "", n: "", i: [], f: "", p: "", o: 0, t: 0,
+             d: "", r: [], g: 0, s: 0, q: [] };
   }
 
   function nowSec() { try { return Math.floor(Date.now() / 1000); } catch (e) { return 0; } }
@@ -291,6 +347,24 @@ var FBA = (function () {
         for (var i = 0; i < o.i.length && r.i.length < MAX_PICKS; i++) {
           var k = o.i[i];
           if (typeof k === "string" && k && r.i.indexOf(k) === -1) r.i.push(k.slice(0, 30));
+        }
+      }
+      /* The funnel answers. Each is clamped to the set it came from, so a
+         hand-edited record cannot put an unknown key on screen. */
+      r.d = DRAWS.indexOf(String(o.d)) !== -1 ? String(o.d) : "";
+      r.g = pickFrom(GOALS, o.g);
+      r.s = pickFrom(STREAKS, o.s);
+      if (o.r && o.r.length) {
+        for (var j = 0; j < o.r.length && r.r.length < RELATES.length; j++) {
+          var s = o.r[j];
+          if (typeof s === "string" && RELATES.indexOf(s) !== -1 && r.r.indexOf(s) === -1) {
+            r.r.push(s);
+          }
+        }
+      }
+      if (o.q && o.q.length) {
+        for (var m = 0; m < o.q.length && r.q.length < MAX_PLANQ; m++) {
+          r.q.push(o.q[m] ? 1 : 0);
         }
       }
     } catch (e) { return blank(); }
@@ -339,10 +413,10 @@ var FBA = (function () {
   }
 
   /* --- email --------------------------------------------------------------
-     Deliberately loose. The only thing a static site can honestly check is
-     that a human typed something shaped like an address; anything stricter
-     rejects real addresses and buys nothing, because there is no server to
-     send a confirmation from. */
+     Deliberately loose. The only thing this can honestly check is that a
+     human typed something shaped like an address; anything stricter rejects
+     real addresses and buys nothing, because nothing here sends a
+     confirmation to bounce. */
   function validEmail(s) {
     try {
       var v = String(s == null ? "" : s).replace(/^\s+|\s+$/g, "");

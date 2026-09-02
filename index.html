@@ -527,64 +527,6 @@ html.no-motion *::after{animation:none !important}
   margin-right:9px;vertical-align:1px;background:currentColor;
 }
 
-/* --------------------------------------------------------------------------
-   Inspecting a real image.
-
-   Every other picture in this story is drawn by us and there is nothing to
-   look closer at. The photographs are different: the tapestry carries a
-   snake on her arm, a basket at her knee and a Latin inscription woven into
-   the cartouche, none of which survive being a background at phone size.
-   So a real image is tappable, and opens over the story.
-
-   Pinch is handled here rather than left to the browser: the deck is a
-   fixed, snap-scrolled stack, and native page zoom inside it fights the
-   snap and strands the reader between beats.
-   -------------------------------------------------------------------------- */
-.inspectable{cursor:zoom-in}
-.tapcue{
-  position:absolute;right:14px;bottom:calc(var(--bottom-safe) + 6px);z-index:3;
-  display:inline-flex;align-items:center;gap:7px;
-  padding:8px 13px;border-radius:var(--pill);
-  font-size:12.5px;font-weight:700;letter-spacing:.01em;
-  color:#F4EEE6;background:rgba(20,16,24,.42);
-  border:1px solid rgba(255,255,255,.16);
-  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
-  pointer-events:none;opacity:0;transition:opacity .45s ease;
-}
-.page.live .tapcue{opacity:1;transition-delay:.7s}
-
-.lightbox{
-  position:fixed;inset:0;z-index:60;display:none;
-  background:rgba(12,9,15,.94);
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-  touch-action:none;overscroll-behavior:contain;
-}
-.lightbox.on{display:block}
-.lightbox .stagearea{
-  position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;
-}
-.lightbox img{
-  max-width:100%;max-height:100%;display:block;
-  transform-origin:center center;will-change:transform;
-  -webkit-user-select:none;user-select:none;-webkit-user-drag:none;
-}
-.lightbox .lbclose{
-  position:absolute;top:calc(var(--top-safe) + 4px);right:14px;z-index:2;
-  appearance:none;border:1px solid rgba(255,255,255,.18);cursor:pointer;
-  width:var(--tap);height:var(--tap);border-radius:var(--pill);
-  background:rgba(255,255,255,.10);color:#F4EEE6;font-size:19px;font-weight:700;
-  display:grid;place-items:center;
-}
-.lightbox .lbcap{
-  position:absolute;left:0;right:0;bottom:0;z-index:2;
-  padding:16px 20px calc(var(--bottom-safe) + 6px);
-  background:linear-gradient(to top,rgba(12,9,15,.92),rgba(12,9,15,0));
-  color:#CFC4D6;font-size:12.5px;line-height:1.5;
-  max-height:42%;overflow-y:auto;-webkit-overflow-scrolling:touch;
-}
-.lightbox .lbcap b{color:#F4EEE6;display:block;margin-bottom:4px;font-size:13.5px}
-.lightbox .lbhint{opacity:.7;margin-top:8px;display:block}
-@media (prefers-reduced-motion:reduce){.tapcue{transition:none}}
 
 /* --------------------------------------------------------------------------
    The ending: the rest of the season, and the offer.
@@ -598,6 +540,16 @@ html.no-motion *::after{animation:none !important}
   overflow-x:auto;overscroll-behavior-x:contain;
   scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
   scrollbar-width:none;padding-bottom:2px;
+  /* Break out of the caption's padding so the row runs edge to edge. Boxed
+     inside it the last cover was clipped mid-cell, which reads as broken
+     rather than as "there is more this way". The inset padding keeps the
+     first and last cover clear of the screen edge. */
+  margin-left:-22px; margin-right:-22px;
+  padding-left:22px; padding-right:22px;
+  scroll-padding-left:22px;
+}
+@media (min-width:700px){
+  .shelf{margin-left:-26px;margin-right:-26px;padding-left:26px;padding-right:26px}
 }
 .shelf::-webkit-scrollbar{display:none}
 .shelfcard{flex:none;width:88px;scroll-snap-align:start;
@@ -6969,6 +6921,24 @@ end.innerHTML =
   '</div></div>';
 stage(end.querySelector(".cap"));
 deck.appendChild(end);
+
+/* Park the shelf mid-row. Starting at the left edge reads as a list that
+   happens to be cut off; starting in the middle reads as a row you can push
+   either way, which is what it is. No smooth behaviour — this is the initial
+   position, not a movement the reader should see. */
+(function () {
+  var shelf = end.querySelector(".shelf");
+  if (!shelf) return;
+  var centre = function () {
+    var over = shelf.scrollWidth - shelf.clientWidth;
+    if (over > 0) shelf.scrollLeft = Math.round(over / 2);
+  };
+  centre();
+  /* Covers are lazy, so the row's width is not final on the first frame. */
+  requestAnimationFrame(centre);
+  setTimeout(centre, 400);
+  addEventListener("orientationchange", function () { setTimeout(centre, 250); });
+})();
 rail.appendChild(document.createElement("i"));
 
 document.getElementById("pay").addEventListener("click", () => {
@@ -7136,161 +7106,6 @@ addEventListener("keydown", e => {
   goToBeat(beatIndex() + d);
 });
 
-/* --------------------------------------------------------------------------
-   Inspecting a real image.
-
-   Drawn scenes have nothing to look closer at. Photographs do — the tapestry
-   has the snake on her arm, a basket at her knee and a Latin inscription
-   woven into the cartouche, and at phone size behind a caption none of that
-   is legible. Tap it and it opens over the story.
-
-   Pinch is implemented here rather than handed to the browser. The deck is a
-   fixed, mandatory-snap stack; native page zoom inside it fights the snap and
-   can strand the reader between two beats with no way back.
-   -------------------------------------------------------------------------- */
-(function () {
-  var plate = document.querySelector(".s-painting .plate");
-  if (!plate || !plate.getAttribute("src")) return;
-
-  /* The credit belongs here — this is the one place someone is actually
-     looking at the object rather than reading past it. */
-  var CREDIT = "The Death of Cleopatra, from a set of The Story of Antony and Cleopatra";
-  var DETAIL = "Designed by Justus van Egmont, woven by Geraert van der Strecken. " +
-               "Brussels, designed c. 1650, woven 1650–77. Wool and silk. " +
-               "The Metropolitan Museum of Art, released under CC0.\n\n" +
-               "Woven above her: CLEOPATRA NE IN TRIVMPHVM DVCATVR / ASPIDIS MORSV " +
-               "SIBI MORTEM INFERT — “Cleopatra, lest she be led in triumph, " +
-               "brings death upon herself by the bite of an asp.”";
-
-  document.querySelectorAll(".s-painting").forEach(function (sc) {
-    sc.classList.add("inspectable");
-    sc.setAttribute("tabindex", "0");
-    sc.setAttribute("role", "button");
-    sc.setAttribute("aria-label", "Look closer at this painting");
-    sc.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
-        e.preventDefault();
-        open();
-      }
-    });
-    var page = sc.closest(".page");
-    if (page && !page.querySelector(".tapcue")) {
-      var cue = document.createElement("span");
-      cue.className = "tapcue";
-      cue.textContent = "Tap to look closer";
-      cue.setAttribute("aria-hidden", "true");
-      page.appendChild(cue);
-    }
-  });
-
-  var box = document.createElement("div");
-  box.className = "lightbox";
-  box.setAttribute("role", "dialog");
-  box.setAttribute("aria-modal", "true");
-  box.setAttribute("aria-label", "Full-screen image");
-  box.innerHTML =
-    '<div class="stagearea"><img alt=""></div>' +
-    '<button class="lbclose" type="button" aria-label="Close">✕</button>' +
-    '<div class="lbcap"><b></b><span class="d"></span>' +
-    '<span class="lbhint">Pinch to zoom · tap anywhere to go back</span></div>';
-  document.body.appendChild(box);
-
-  var img = box.querySelector("img");
-  box.querySelector(".lbcap b").textContent = CREDIT;
-  box.querySelector(".lbcap .d").textContent = DETAIL;
-
-  var scale = 1, tx = 0, ty = 0, moved = false;
-  function apply() {
-    img.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + scale + ")";
-  }
-  function reset() { scale = 1; tx = 0; ty = 0; moved = false; apply(); }
-
-  var lastFocus = null;
-
-  function open() {
-    lastFocus = document.activeElement;
-    img.src = plate.getAttribute("src");
-    reset();
-    box.classList.add("on");
-    /* Freeze the deck so a pinch or drag cannot scroll the story underneath. */
-    deck.style.overflow = "hidden";
-    box.querySelector(".lbclose").focus({ preventScroll: true });
-    track("image_open");
-  }
-  function close() {
-    box.classList.remove("on");
-    deck.style.overflow = "";
-    reset();
-    /* Hiding a dialog with display:none while it holds focus loses the caret
-       entirely, so hand it back to whatever opened this. */
-    if (lastFocus && lastFocus.focus) {
-      try { lastFocus.focus({ preventScroll: true }); } catch (e) { }
-    }
-    lastFocus = null;
-  }
-
-  document.addEventListener("click", function (e) {
-    if (e.target.closest(".s-painting")) { open(); }
-  });
-  box.querySelector(".lbclose").addEventListener("click", function (e) {
-    e.stopPropagation(); close();
-  });
-  addEventListener("keydown", function (e) {
-    if (!box.classList.contains("on")) return;
-    if (e.key === "Escape") { close(); return; }
-    /* Keep Tab inside, because aria-modal says it already is. */
-    if (e.key === "Tab") {
-      e.preventDefault();
-      var closer = box.querySelector(".lbclose");
-      if (closer) closer.focus({ preventScroll: true });
-    }
-  });
-
-  /* Pointer maths: two fingers scale, one finger pans once zoomed in.
-     Pinching back below 1 closes, which is the gesture people reach for. */
-  var pts = new Map(), startDist = 0, startScale = 1, lastX = 0, lastY = 0;
-  var dist = function () {
-    var a = [...pts.values()];
-    return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
-  };
-
-  box.addEventListener("pointerdown", function (e) {
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    lastX = e.clientX; lastY = e.clientY;
-    if (pts.size === 2) { startDist = dist(); startScale = scale; moved = true; }
-    if (box.setPointerCapture) { try { box.setPointerCapture(e.pointerId); } catch (err) {} }
-  });
-
-  box.addEventListener("pointermove", function (e) {
-    if (!pts.has(e.pointerId)) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2 && startDist) {
-      scale = Math.min(6, Math.max(0.6, startScale * (dist() / startDist)));
-      moved = true; apply();
-    } else if (pts.size === 1 && scale > 1.02) {
-      tx += e.clientX - lastX; ty += e.clientY - lastY;
-      lastX = e.clientX; lastY = e.clientY;
-      moved = true; apply();
-    }
-  });
-
-  function up(e) {
-    pts.delete(e.pointerId);
-    if (pts.size < 2) startDist = 0;
-    if (pts.size === 0) {
-      if (scale < 0.92) { close(); return; }          /* pinched shut */
-      if (!moved) { close(); return; }                /* a plain tap */
-      if (scale < 1) { reset(); }
-      moved = false;
-    }
-  }
-  box.addEventListener("pointerup", up);
-  box.addEventListener("pointercancel", up);
-
-  box.addEventListener("dblclick", function () {
-    scale = scale > 1.4 ? 1 : 2.4; tx = 0; ty = 0; apply();
-  });
-})();
 
 /* ==========================================================================
    Factbox reader — ambient sound
@@ -7786,7 +7601,7 @@ addEventListener("keydown", e => {
 
   /* One soft pulse on the title beat so the affordance is noticed, and it stops
      the moment the reader moves or touches anything. Never under no-motion. */
-  if (!calm() && recall(K_ON) !== "on") {
+  if (!calm() && recall(K_ON) === "off") {
     btn.classList.add("is-fresh");
     var calmDown = function () { btn.classList.remove("is-fresh"); };
     deck.addEventListener("scroll", calmDown, { passive: true, once: true });
@@ -7794,15 +7609,19 @@ addEventListener("keydown", e => {
   }
 
   /* ------------------------------------------------------------------------
-     Remembered "on".
+     On by default.
 
-     Autoplay is blocked, so a remembered choice cannot start on its own — and
-     nothing is fetched until it can. The control shows the state it will be in
-     and waits, busy, for the first real gesture, which on a scroll deck is the
-     reader's first swipe. A page that tries and fails looks exactly like a page
-     that never tried, because it does not try.
+     The story is written to be heard, so sound is on unless the reader turned
+     it off — `recall(K_ON) !== "off"` rather than `=== "on"`.
+
+     It still cannot start by itself. Every browser blocks audio until the page
+     has had a real gesture, and iOS is strictest; nothing is fetched or decoded
+     until then either. So the control shows the state it is about to be in and
+     waits, busy, for the first touch — which on a deck you scroll is the
+     reader's first swipe, a second in. A page that tried and failed would look
+     exactly like a page that never tried, so it does not try.
      ------------------------------------------------------------------------ */
-  if (recall(K_ON) === "on") {
+  if (recall(K_ON) !== "off") {
     armed = true;
     paint();
     var EVENTS = ["pointerdown", "touchend", "mousedown", "keydown"];
