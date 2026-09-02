@@ -29,9 +29,16 @@
       .replace(/"/g, "&quot;");
   }
 
+  /* Half-minute steps, the same arithmetic as FB.minutes in gate.js. Whole
+     minutes labelled 49 of the 51 stories "2 min", which is the one number a
+     reader wants from that line carrying no information at all. If this and
+     gate.js ever disagree the same story shows two lengths on two pages. */
   function mins(secs) {
     try { if (window.FB && FB.minutes) return FB.minutes(secs); } catch (e) {}
-    return Math.max(1, Math.round((+secs || 0) / 60)) + " min";
+    var halves = Math.max(1, Math.round((Number(secs) || 0) / 30));
+    var whole = Math.floor(halves / 2);
+    if (whole === 0) return "\u00bd min";
+    return whole + (halves % 2 ? "\u00bd" : "") + " min";
   }
 
   /* Always an object. No FBP, no reading memory, every cover unread. */
@@ -66,27 +73,63 @@
      The raw keys are how the data is filed, not how a reader thinks. Every
      name below is what someone would say out loud, and every note under it is
      a plain description of what is actually in that group — never a claim the
-     stories do not make. */
+     stories do not make.
+
+     THIS IS THE ONE COPY. Two tables meant one group had two names, and one of
+     them was wrong ("the medieval world", over a group containing Rasputin,
+     who died in 1916). So each record carries every form the site needs:
+
+       name   the heading form            "Medieval and modern"
+       lower  the mid-sentence form       "More on the medieval and modern world"
+       note   what is in the group        "Joan of Arc to Rasputin"
+       note1  the same note when the group holds exactly one story; omitted
+              where the plural form already reads correctly for one
+
+     KINDS carry `more`, the "read another like this one" form, for the same
+     reason. Published on window.FBTAX at the bottom of this file so the
+     reader page's recommender can read it instead of keeping its own copy. */
 
   var TOPICS = [
-    { key: "cleopatra",      name: "Cleopatra",              note: "her death, her tomb, her reputation" },
-    { key: "new_testament",  name: "The New Testament",      note: "Jesus, Paul, Peter, Mary Magdalene" },
-    { key: "church_history", name: "Devils, saints and heresies", note: "what the early church argued about" },
-    { key: "old_testament",  name: "The Old Testament",      note: "the Ark, the scrolls, the kings" },
-    { key: "us_history",     name: "America",                note: "Lincoln, and the night he was shot" },
-    { key: "ancient_world",  name: "The ancient world",      note: "Rome, Greece, Alexander" },
-    { key: "medieval_modern",name: "Medieval and modern",    note: "Joan of Arc to Rasputin" },
-    { key: "disaster",       name: "When it all went wrong", note: "disasters, hour by hour" }
+    { key: "cleopatra",      name: "Cleopatra",              lower: "Cleopatra",
+      note: "her death, her tomb, her reputation" },
+    { key: "new_testament",  name: "The New Testament",      lower: "the New Testament",
+      note: "Jesus, Paul, Peter, Mary Magdalene" },
+    { key: "church_history", name: "Devils, saints and heresies", lower: "devils, saints and heresies",
+      note: "what the early church argued about" },
+    { key: "old_testament",  name: "The Old Testament",      lower: "the Old Testament",
+      note: "the Ark, the scrolls, the kings" },
+    { key: "us_history",     name: "America",                lower: "America",
+      note: "Lincoln, and the night he was shot" },
+    { key: "ancient_world",  name: "The ancient world",      lower: "the ancient world",
+      note: "Rome, Greece, Alexander" },
+    { key: "medieval_modern",name: "Medieval and modern",    lower: "the medieval and modern world",
+      note: "Joan of Arc to Rasputin" },
+    { key: "disaster",       name: "When it all went wrong", lower: "disasters",
+      note: "disasters, hour by hour", note1: "one disaster, hour by hour" }
   ];
 
   var KINDS = [
-    { key: "unsolved_mystery", name: "Unsolved mysteries",   note: "nobody knows the answer" },
-    { key: "myth_correction",  name: "Things you have wrong", note: "the version everyone repeats, checked" },
-    { key: "violent_death",    name: "Deaths",               note: "how they actually died" },
-    { key: "list_explainer",   name: "The whole thing, explained", note: "laid out in order" },
-    { key: "moral_reversal",   name: "The turn nobody mentions", note: "the part that complicates it" },
-    { key: "hidden_meaning",   name: "Hidden meanings",      note: "what it meant to the people who wrote it" }
+    { key: "unsolved_mystery", name: "Unsolved mysteries",   more: "Another unsolved one",
+      note: "nobody knows the answer" },
+    { key: "myth_correction",  name: "Things you have wrong", more: "Another myth, corrected",
+      note: "the version everyone repeats, checked" },
+    { key: "violent_death",    name: "Deaths",               more: "Another grisly one",
+      note: "how they actually died" },
+    { key: "list_explainer",   name: "The whole thing, explained", more: "Another explainer",
+      note: "laid out in order" },
+    { key: "moral_reversal",   name: "The turn nobody mentions", more: "Another one that flips",
+      note: "the part that complicates it" },
+    { key: "hidden_meaning",   name: "Hidden meanings",      more: "Another hidden meaning",
+      note: "what it meant to the people who wrote it" }
   ];
+
+  /* One story under a plural note reads as a claim the shelf does not keep —
+     "1 story · disasters, hour by hour". Records that need a different
+     sentence for one story carry note1; the rest fall through unchanged. */
+  function noteFor(rec, n) {
+    if (!rec) return "";
+    return (n === 1 && rec.note1) ? rec.note1 : (rec.note || "");
+  }
 
   function nameOf(list, key) {
     for (var i = 0; i < list.length; i++) { if (list[i].key === key) return list[i].name; }
@@ -143,11 +186,11 @@
                'src="img/thumbs/' + esc(s.img) + '.webp">' +
           (locked
             ? '<span class="lock" aria-hidden="true">🔒</span>'
-            : '<span class="freetag">FREE</span>') +
-          (!locked && st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
+            : (s.free ? '<span class="freetag">FREE</span>' : '')) +
+          (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +
-        '<p class="meta">' + (!locked && st.label ? esc(st.label)
+        '<p class="meta">' + (st.label ? esc(st.label)
             : total + ' cards · ' + mins(s.secs)) + '</p>' +
       '</a>';
   }
@@ -325,14 +368,14 @@
                  "Eight subjects. Tap a name above to see one on its own.");
     for (i = 0; i < TOPICS.length; i++) {
       var t = by("topic", TOPICS[i].key);
-      out += shelf(TOPICS[i].name, count(t.length) + " · " + TOPICS[i].note, t);
+      out += shelf(TOPICS[i].name, count(t.length) + " · " + noteFor(TOPICS[i], t.length), t);
     }
 
     out += ghead("Browse by kind of story",
                  "The same fifty-one, sorted by what the story does to you.");
     for (i = 0; i < KINDS.length; i++) {
       var k = by("kind", KINDS[i].key);
-      out += shelf(KINDS[i].name, count(k.length) + " · " + KINDS[i].note, k);
+      out += shelf(KINDS[i].name, count(k.length) + " · " + noteFor(KINDS[i], k.length), k);
     }
     return out;
   }
@@ -414,7 +457,7 @@
         '<b>The story list did not load.</b>' +
         '<p>This usually means the connection dropped. Reload the page, or ' +
         'open the season shelf, which lists all fifty-one.</p>' +
-        '<a class="reset" href="stories.html">Go to season one</a>' +
+        '<a class="reset" href="stories.html">All stories</a>' +
       '</div>';
     if (tally) tally.textContent = "";
   }
@@ -495,6 +538,15 @@
       } catch (e) { fail(); }
     })["catch"](function () { fail(); });
   }
+
+  /* --- the taxonomy, published ---------------------------------------------
+     js/recommend.js needs the same names on the reader page, where this file
+     is not loaded. Rather than a second table that drifts, it reads this one
+     and falls back to its own mirror when explore.js is absent. Additive: it
+     defines a new global and redefines nothing. */
+  try {
+    if (typeof window !== "undefined") window.FBTAX = { TOPICS: TOPICS, KINDS: KINDS };
+  } catch (e) {}
 
   /* The script tag is at the end of the body, so the DOM is already parsed —
      but boot is guarded either way, and the whole thing is wrapped so a

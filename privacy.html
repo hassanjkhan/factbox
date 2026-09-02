@@ -3,433 +3,280 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Factbox Privacy Policy</title>
-
+<title>Privacy Policy · Factbox</title>
+<meta name="description" content="What factbox.app stores in your browser, what leaves it, and how to remove either.">
+<meta name="theme-color" content="#0E0B12">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .doc{max-width:820px;margin:0 auto;padding:var(--top-safe) 18px calc(var(--bottom-safe) + 24px)}
+  .doc h1{font-size:clamp(1.7rem,6vw,2.2rem);font-weight:850;margin:16px 0 12px;letter-spacing:-.015em;text-wrap:balance}
+  .doc h2{font-size:1.02rem;font-weight:800;margin:34px 0 8px;padding-top:18px;border-top:1px solid var(--hair)}
+  .doc h3{font-size:.9rem;font-weight:750;margin:20px 0 4px;color:var(--parchment)}
+  .doc p,.doc li{color:var(--dim);line-height:1.6;font-size:.94rem;max-width:62ch}
+  .doc p{margin:0 0 10px}
+  .doc ul{margin:0 0 12px;padding-left:20px}
+  .doc li{margin:0 0 7px}
+  .doc strong{color:var(--parchment);font-weight:750}
+  .doc a{color:var(--parchment);text-decoration:underline;text-underline-offset:3px}
+  .dateline{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 18px;font-size:.74rem;color:var(--dimmer)}
+  .lead{font-size:1rem}
+  .note{margin:16px 0 6px;padding:14px 16px;border-radius:14px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--hair)}
+  .note p{margin:0;font-size:.88rem}
+  .note p + p{margin-top:8px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em;color:var(--parchment);word-break:break-word}
+  .wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px 0 14px}
+  table{width:100%;min-width:460px;border-collapse:collapse;font-size:.8rem}
+  th,td{text-align:left;vertical-align:top;padding:9px 8px;border-bottom:1px solid var(--hair);color:var(--dim)}
+  th{color:var(--dimmer);font-size:.68rem;letter-spacing:.11em;text-transform:uppercase}
+  td.k{white-space:nowrap;width:1%}
+  caption{caption-side:top;text-align:left;font-size:.72rem;color:var(--dimmer);padding-bottom:6px}
+  .docnav{display:flex;flex-wrap:wrap;gap:2px 20px;margin:38px 0 0;padding-top:12px;border-top:1px solid var(--hair)}
+  .docnav a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 2px;font-size:.9rem;font-weight:700;color:var(--dim);text-decoration:none}
+  .stamp{margin:6px 0 0;font-size:.72rem;color:var(--dimmer);line-height:1.5}
+</style>
 </head>
 <body>
-<style>
-  /* ── Tokens ───────────────────────────────────────────────
-     Light is the default. Dark is redefined twice: once behind
-     prefers-color-scheme (guarded so an explicit light choice
-     still wins), once behind the explicit stamp.
-     Palette is lifted from the app's own Theme.swift — warm
-     parchment, soft-plum ink, coral, and a mint used only for
-     the ledger's affirmatives.
-  ─────────────────────────────────────────────────────────── */
-  :root {
-    --ground:        #FFF7ED;
-    --ground-sunk:   #F7ECDD;
-    --card:          #FFFFFF;
-    --ink:           #3E2F4A;
-    --ink-soft:      #7C6C85;
-    --ink-faint:     #A99BB0;
-    --rule:          #E7D9C6;
-    --accent:        #E85F41;
-    --accent-soft:   #FFDCD1;
-    --good:          #2E7D4F;
-    --good-soft:     #DCF5E4;
-    --shadow:        0 1px 2px rgba(62,47,74,.05), 0 8px 24px rgba(62,47,74,.06);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --ground:      #221B28;
-      --ground-sunk: #1A141F;
-      --card:        #2C2333;
-      --ink:         #F3EAE0;
-      --ink-soft:    #B6A6BE;
-      --ink-faint:   #7E7089;
-      --rule:        #3E3247;
-      --accent:      #FF8E72;
-      --accent-soft: #4A2A24;
-      --good:        #7FD3A2;
-      --good-soft:   #1E3A2A;
-      --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
-    }
-  }
-  :root[data-theme="dark"] {
-    --ground:      #221B28;
-    --ground-sunk: #1A141F;
-    --card:        #2C2333;
-    --ink:         #F3EAE0;
-    --ink-soft:    #B6A6BE;
-    --ink-faint:   #7E7089;
-    --rule:        #3E3247;
-    --accent:      #FF8E72;
-    --accent-soft: #4A2A24;
-    --good:        #7FD3A2;
-    --good-soft:   #1E3A2A;
-    --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
-  }
+<main class="doc">
+  <p class="mark">FACTBOX</p>
+  <h1>Privacy Policy</h1>
+  <p class="dateline">
+    <span>Effective 2 September 2026</span>
+    <span>Applies to: factbox.app, this website</span>
+  </p>
+  <p class="lead">Factbox is a website with no accounts and no server of its own.
+     Almost everything it remembers about you is written into your own browser and
+     stays there. This page lists what it writes, the few things that do leave your
+     browser, and how to get rid of any of it.</p>
 
-  * { box-sizing: border-box; }
-
-  body {
-    background: var(--ground);
-    color: var(--ink);
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, "Times New Roman", serif;
-    font-size: 19px;
-    line-height: 1.65;
-    margin: 0;
-    padding: 0 24px 96px;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .wrap { max-width: 40rem; margin: 0 auto; }
-
-  /* ── Masthead ─────────────────────────────────────────── */
-  header { padding: 72px 0 0; }
-
-  .eyebrow {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0 0 20px;
-  }
-
-  h1 {
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, serif;
-    font-weight: 400;
-    font-size: clamp(2.9rem, 8vw, 4.2rem);
-    line-height: .98;
-    letter-spacing: -.015em;
-    margin: 0 0 20px;
-    text-wrap: balance;
-  }
-
-  .standfirst {
-    font-size: 1.2rem;
-    color: var(--ink-soft);
-    margin: 0 0 32px;
-    text-wrap: pretty;
-  }
-
-  .dateline {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: 12.5px;
-    color: var(--ink-faint);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 18px;
-    padding: 16px 0;
-    border-top: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule);
-    margin-bottom: 44px;
-  }
-
-  /* ── Draft notice ─────────────────────────────────────── */
-  .draft {
-    background: var(--accent-soft);
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin: 0 0 44px;
-    font-size: .95rem;
-    line-height: 1.55;
-    color: var(--ink);
-  }
-  .draft strong { font-weight: 600; }
-
-  /* ── The short version ────────────────────────────────── */
-  .summary {
-    background: var(--card);
-    border: 1px solid var(--rule);
-    border-radius: 14px;
-    padding: 28px 30px;
-    box-shadow: var(--shadow);
-    margin: 0 0 56px;
-  }
-  .summary h2 {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: 12px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    font-weight: 500;
-    margin: 0 0 16px;
-  }
-  .summary ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-  .summary li {
-    display: grid;
-    grid-template-columns: 1.1rem 1fr;
-    gap: 12px;
-    align-items: baseline;
-    font-size: 1.02rem;
-  }
-  .summary li::before {
-    content: "—";
-    color: var(--accent);
-    font-family: ui-monospace,SFMono-Regular,Menlo, monospace;
-  }
-
-  /* ── Sections ─────────────────────────────────────────── */
-  section { margin: 0 0 52px; scroll-margin-top: 24px; }
-
-  h2.sec {
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, serif;
-    font-weight: 400;
-    font-size: 1.9rem;
-    line-height: 1.15;
-    letter-spacing: -.01em;
-    margin: 0 0 6px;
-    display: grid;
-    grid-template-columns: 2.4rem 1fr;
-    gap: 4px;
-    align-items: baseline;
-    text-wrap: balance;
-  }
-  h2.sec .num {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: .72rem;
-    color: var(--ink-faint);
-    letter-spacing: .06em;
-  }
-  h2.sec + p { margin-top: 14px; }
-
-  p { margin: 0 0 16px; }
-  section p, section ul { margin-left: 2.4rem; }
-  @media (max-width: 560px) {
-    h2.sec { grid-template-columns: 1fr; gap: 2px; }
-    section p, section ul { margin-left: 0; }
-  }
-
-  ul.body { padding-left: 1.1rem; display: grid; gap: 8px; margin-bottom: 16px; }
-  ul.body li { padding-left: 4px; }
-
-  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
-
-  code, .mono {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: .87em;
-  }
-
-  /* ── The ledger ───────────────────────────────────────── */
-  .ledger-wrap { margin: 0 0 20px; overflow-x: auto; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: 13.5px;
-    min-width: 30rem;
-  }
-  caption {
-    text-align: left;
-    font-family: ui-monospace,SFMono-Regular,Menlo, monospace;
-    font-size: 12px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    padding-bottom: 12px;
-  }
-  th {
-    text-align: left;
-    font-weight: 500;
-    font-size: 11px;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    padding: 0 12px 10px 0;
-    border-bottom: 1px solid var(--rule);
-  }
-  td {
-    padding: 11px 12px 11px 0;
-    border-bottom: 1px solid var(--rule);
-    vertical-align: top;
-    color: var(--ink-soft);
-  }
-  td:first-child { color: var(--ink); }
-  .verdict {
-    display: inline-block;
-    padding: 2px 9px;
-    border-radius: 999px;
-    font-size: 11px;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-  .no  { background: var(--good-soft); color: var(--good); }
-  .yes { background: var(--accent-soft); color: var(--accent); }
-
-  /* ── Contact ──────────────────────────────────────────── */
-  .contact {
-    background: var(--ground-sunk);
-    border-radius: 14px;
-    padding: 30px;
-    margin-top: 64px;
-  }
-  .contact h2 {
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, serif;
-    font-weight: 400;
-    font-size: 1.6rem;
-    margin: 0 0 10px;
-  }
-  .contact p { margin-left: 0; }
-
-  footer {
-    margin-top: 48px;
-    padding-top: 22px;
-    border-top: 1px solid var(--rule);
-    font-family: ui-monospace,SFMono-Regular,Menlo, monospace;
-    font-size: 12px;
-    color: var(--ink-faint);
-    line-height: 1.7;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    * { animation: none !important; transition: none !important; }
-  }
-</style>
-
-<div class="wrap">
-
-  <header>
-    <p class="eyebrow">Factbox for iOS</p>
-    <h1>Privacy Policy</h1>
-    <p class="standfirst">Factbox keeps everything on your phone. There is no account, no server of ours, and nothing to log in to — so there is very little for this document to be about.</p>
-    <div class="dateline">
-      <span>Effective 1 September 2026</span>
-      <span>Version 0.1.0</span>
-      <span>Applies to: Factbox for iOS</span>
-    </div>
-  </header>
-
-  <div class="draft">
-    <strong>Draft.</strong> This is written to describe what the app genuinely does today, but it has not been reviewed by a lawyer, and the contact address below is a placeholder. Both need settling before Factbox goes beyond TestFlight.
+  <div class="note">
+    <p><strong>Not reviewed by a lawyer.</strong> This is written to describe what the
+       site genuinely does today, checked line by line against the code that does it.
+       It has not been through legal review.</p>
   </div>
 
-  <div class="summary">
-    <h2>The short version</h2>
-    <ul>
-      <li>We don't ask you to make an account, and we never ask for your email.</li>
-      <li>Your reading progress, streak and saved cards live in the app's own storage on your device. We can't see them.</li>
-      <li>There is no analytics, no tracking, no advertising identifier, and no third-party code in the app.</li>
-      <li>The app makes no network requests of its own. Nothing is uploaded anywhere.</li>
-      <li>Delete the app and everything it held goes with it.</li>
-      <li>The one exception is feedback you choose to send us — and you see exactly what's attached before it leaves.</li>
-    </ul>
+  <h2>The short version</h2>
+  <ul>
+    <li>There is no server-side account and no password. Signing up means <strong>this browser</strong> remembers your email address, and your first name if you give one; nothing is registered with us, because there is no us to register with.</li>
+    <li>That email leaves your browser in exactly one place: it is put into the email field of the Stripe checkout page, so you do not have to type it twice.</li>
+    <li>What you have read, how far into each story, and which stories you saved are written to <strong>your browser's storage and are never sent anywhere</strong>.</li>
+    <li>Three small values — whether you have access, your restore token, and where that access came from — are also mirrored into a first-party cookie, because in-app browsers wipe the other store.</li>
+    <li>Payment is handled entirely by Stripe, on Stripe's own pages. Card details never touch this site.</li>
+    <li>Your restore link is a <strong>bearer token</strong>: anyone holding it has access.</li>
+    <li>The pages are wired for Plausible, a cookieless analytics service. No analytics script is currently loaded on any page here, so as things stand nothing is measured at all.</li>
+    <li>Clearing this site's data in your browser deletes everything the site holds. You do not have to ask us, because there is no copy anywhere else.</li>
+  </ul>
+
+  <h2>01 · Who this is from</h2>
+  <p>Factbox is published by <strong>Iris Monet Labs LLC</strong>. In this policy "we"
+     means that company, and "the site" means the pages served from
+     <code>factbox.app</code>. Questions go to
+     <a href="mailto:hello@getdonny.com">hello@getdonny.com</a>.</p>
+  <p>This policy covers this website only. It does not cover Stripe, whose pages take
+     the payment, or the sites you reach by following a link out of
+     <a href="credits.html">the artwork credits</a>.</p>
+
+  <h2>02 · What the site stores in your browser</h2>
+  <p>These are the exact keys, as written by the code. Nothing on this list is
+     transmitted to us or to anyone else; the site has no endpoint to send them to.</p>
+
+  <div class="wrap">
+  <table>
+    <caption>Every localStorage key this site writes</caption>
+    <thead><tr><th scope="col">Key</th><th scope="col">What it holds</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><code>fb_unlocked_v1</code></td><td>Whether this browser has access. The value is the single character <code>1</code>, or nothing at all.</td></tr>
+      <tr><td class="k"><code>fb_pass_v1</code></td><td>Your restore token, so the restore link can be rebuilt on demand. See §05.</td></tr>
+      <tr><td class="k"><code>fb_passsrc_v1</code></td><td>Where access came from: <code>stripe</code>, <code>restore</code> or <code>local</code>.</td></tr>
+      <tr><td class="k"><code>fb_read_v1</code></td><td>Your reading memory, as one small JSON object: per story, the furthest card you reached, how many cards that story had, a whole-second timestamp of when you last touched it, and a finished flag. Capped at 60 stories and about 20&#8239;KB; the oldest entries are dropped first.</td></tr>
+      <tr><td class="k"><code>fb_saved_v1</code></td><td>Stories you saved, as a list of story id and a whole-second timestamp, newest first. Capped at 200 entries and about 8&#8239;KB.</td></tr>
+      <tr><td class="k"><code>fb_saveprobe</code></td><td>Written and immediately deleted once per page load, purely to find out whether this browser will accept a write at all.</td></tr>
+      <tr><td class="k"><code>fb_owner_v1</code></td><td>Set only if someone unlocks the site with the owner passphrase. It exists so the person who makes the site can read it on a new phone without paying.</td></tr>
+      <tr><td class="k"><code>fb_acct_v1</code></td><td>The sign-up record, as one small JSON object: a randomly generated local id, the email address you typed, your first name if you gave one, the topics you picked, how often you said you wanted to read, which plan you chose, whether you finished the onboarding questions, and when the record was made. Capped at 700 bytes; if it ever hit the cap, the topic picks are dropped before the email is.</td></tr>
+      <tr><td class="k"><code>fb-sound</code></td><td>Whether you switched a story’s ambient sound on or off, so it does not have to ask again.</td></tr>
+      <tr><td class="k"><code>fb-sound-hint</code></td><td>Set once, after you have been shown the note about your phone's silent switch, so it is never shown twice.</td></tr>
+    </tbody>
+  </table>
   </div>
 
-  <section id="who">
-    <h2 class="sec"><span class="num">01</span> Who this is from</h2>
-    <p>Factbox is a history app for iPhone, made by an independent developer. In this policy, “we” means that developer and “the app” means Factbox for iOS. This policy covers the app only. It doesn't cover Apple's services, which have <a href="https://www.apple.com/legal/privacy/">their own privacy policy</a>.</p>
-  </section>
+  <p>One further value is kept in <code>sessionStorage</code>, which your browser
+     discards when you close the tab: <code>fb-story</code>, the id of the illustrated
+     story the front page is currently showing.</p>
+  <p>Story ids are strings like <code>07B</code>. With the single exception of
+     <code>fb_acct_v1</code>, no key on this list contains a name, an email address, an
+     identifier for you, or anything that would tell us who you are if we could read
+     it — which we cannot.</p>
 
-  <section id="ledger">
-    <h2 class="sec"><span class="num">02</span> What we collect</h2>
-    <p>Almost nothing. Rather than describe that in the abstract, here is the whole list, including the categories most apps do collect:</p>
+  <h3>The sign-up record</h3>
+  <p>Because there is no server, "sign up" and "log in" cannot mean what they usually
+     mean. There is nobody to register with and nothing to authenticate against, which
+     is why the form has no password field: a password implies a check we are not able
+     to perform.</p>
+  <p>What signing up actually does is write <code>fb_acct_v1</code> above into your own
+     browser. Your email and name sit there and nowhere else. We never receive them, and
+     logging in on a second phone cannot move your access, because there is nothing on
+     our side that knows you — the restore link in §05 is the only bridge that exists,
+     and the sign-up page says so in those words rather than implying magic.</p>
+  <p>The onboarding questions — which topics interest you, how often you want to read —
+     are answered into the same local record. As things stand nothing outside the sign-up
+     page reads them. Every one of them can be skipped, and a skip is stored as a skip
+     rather than filled in with a guess.</p>
 
-    <div class="ledger-wrap">
-      <table>
-        <caption>Every category, and what happens to it</caption>
-        <thead>
-          <tr><th scope="col">Information</th><th scope="col">Collected?</th><th scope="col">Where it lives</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Name you type in onboarding</td><td><span class="verdict no">No</span></td><td>Your device only, to say good morning</td></tr>
-          <tr><td>Email address</td><td><span class="verdict no">No</span></td><td>Never asked for</td></tr>
-          <tr><td>Reading progress and streak</td><td><span class="verdict no">No</span></td><td>Your device only</td></tr>
-          <tr><td>Saved cards</td><td><span class="verdict no">No</span></td><td>Your device only</td></tr>
-          <tr><td>Reminder time and settings</td><td><span class="verdict no">No</span></td><td>Your device only</td></tr>
-          <tr><td>Location</td><td><span class="verdict no">No</span></td><td>Never requested</td></tr>
-          <tr><td>Contacts, photos, microphone, camera</td><td><span class="verdict no">No</span></td><td>Never requested</td></tr>
-          <tr><td>Advertising identifier (IDFA)</td><td><span class="verdict no">No</span></td><td>Never requested</td></tr>
-          <tr><td>Analytics or usage tracking</td><td><span class="verdict no">No</span></td><td>The app contains none</td></tr>
-          <tr><td>Crash reports</td><td><span class="verdict no">No</span></td><td>Only if you opt in with Apple — see §5</td></tr>
-          <tr><td>Payment details</td><td><span class="verdict no">No</span></td><td>Handled entirely by Apple — see §6</td></tr>
-          <tr><td>Feedback you send us</td><td><span class="verdict yes">Yes</span></td><td>Our email inbox — see §4</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>The last row is the only one that reaches us, and only when you decide to send it.</p>
-  </section>
+  <h2>03 · The cookie</h2>
+  <p>The site sets first-party cookies under four names:
+     <code>fb_unlocked_v1</code>, <code>fb_pass_v1</code> and
+     <code>fb_passsrc_v1</code> — the three access values above — and
+     <code>fb_acct_v1</code>, the sign-up record, which is mirrored only while it stays
+     under 700 bytes and is silently skipped if it grows past that. They are set for one
+     year on <code>path=/</code> with <code>SameSite=Lax</code>, and with the
+     <code>Secure</code> flag when the page is served over HTTPS. There are no others.</p>
+  <p>The reason is specific. Most readers arrive from Instagram or TikTok, and those
+     apps open links in an in-app browser that routinely throws away localStorage
+     between sessions while keeping cookies. Without the cookie, a person who paid
+     inside Instagram would be asked to pay again the next day. The site reads
+     whichever of the two stores still has the value, and repairs the other.</p>
+  <p><strong>Your reading memory and your saved stories are never put in a cookie.</strong>
+     They are far too large, and a cookie rides along on every request — which would
+     mean sending your reading history to the web server on every page load. They stay
+     in localStorage, which is sent nowhere.</p>
+  <p>These cookies are strictly functional: they remember a purchase you made. They do
+     not identify you, follow you to other sites, or feed any advertising system.</p>
 
-  <section id="device">
-    <h2 class="sec"><span class="num">03</span> What stays on your phone</h2>
-    <p>The app stores a small amount of information locally so it can work at all: the name you gave (if you gave one), which days you've read and how far into each, your streak and reading history, cards you've saved, your chosen reminder time, and whether reminders are on.</p>
-    <p>This sits in the app's own storage on your device, in the ordinary way iOS apps store settings. We have no way to read it — there is no server to send it to, and the app makes no network requests of its own.</p>
-    <p>It also means the data isn't backed up to us. If you delete the app, all of it goes. We can't restore it, because we never had it.</p>
-  </section>
+  <h2>04 · Analytics</h2>
+  <p>The pages call <a href="https://plausible.io/privacy" rel="noopener" target="_blank">Plausible Analytics</a>
+     if it is present, and do nothing at all if it is not.
+     <strong>No Plausible script is currently included on any page of this site, so as
+     things stand no analytics events leave your browser.</strong> What follows
+     describes what would be sent if it is switched on, so that turning it on does not
+     require you to re-read this page to find out.</p>
+  <p>Plausible is cookieless. It sets no cookie, stores nothing in your browser,
+     assigns you no identifier, and builds no profile that follows you across sites.
+     It counts events. This is the complete list of event names the site would send:</p>
+  <ul>
+    <li><code>library_view</code>, <code>explore_view</code>, <code>library_own_view</code> — a section of the site was opened.</li>
+    <li><code>stack_open</code>, <code>resume_used</code>, <code>stack_complete</code>, <code>stack_dropoff</code> — a story was opened, resumed, finished, or left part-way, carrying the story id and the card number reached.</li>
+    <li><code>save_add</code>, <code>save_remove</code>, <code>library_unsave</code>, <code>rec_save</code> — a story was saved or unsaved, carrying the story id.</li>
+    <li><code>rec_view</code>, <code>rec_click</code> — end-of-story recommendations were shown or followed, carrying the story id and which slot was tapped.</li>
+    <li><code>paywall_view</code>, <code>subscribe_click</code>, <code>join_view</code>, <code>join_step</code>, <code>join_skip</code>, <code>join_interests</code>, <code>checkout_start</code> — the subscribe screen or a step of the sign-up flow was shown, skipped or completed, carrying the step name, the number of topics picked, or the plan chosen. <strong>Not the answers themselves, and never your email address.</strong></li>
+    <li><code>join_signup</code>, <code>join_login_hit</code>, <code>join_login_known</code>, <code>join_login_miss</code>, <code>join_restore_use</code> — someone signed up, tried to log in, or used a restore link. These carry no properties at all.</li>
+    <li><code>owner_unlock</code> — the site was unlocked with the owner's own passphrase.</li>
+  </ul>
+  <p>Every one of those carries at most a story id, a card number, a step name or a
+     plan name. None of them carries your email address, your name, or the content of
+     your answers.</p>
+  <p>The illustrated front-page story contains a second, older counter of its own. Its
+     endpoint is an empty string, so it writes its line to the browser's developer
+     console and sends nothing over the network. It is inert.</p>
+  <h3>Turning it off</h3>
+  <p>There is no per-person switch, because there is no per-person record to switch
+     off. If you would rather the measurement did not run at all, any content blocker
+     that blocks <code>plausible.io</code> stops it, and the site behaves identically
+     without it — every call is wrapped so that a missing analytics script is simply
+     nothing happening.</p>
 
-  <section id="feedback">
-    <h2 class="sec"><span class="num">04</span> Feedback you send us</h2>
-    <p>The app has a feedback form under <span class="mono">You → Help &amp; feedback</span>. It doesn't upload anything. It opens your own mail app with a message drafted for you, which you can read, edit, or throw away before sending.</p>
-    <p>Along with what you write, that draft includes some technical detail so we can make sense of a bug report:</p>
-    <ul class="body">
-      <li>The app version and build number</li>
-      <li>Your iOS version and device model — for example “iPhone 16 Pro”</li>
-      <li>Which season and day you're on, and how many days you've finished</li>
-      <li>Whether reminders are switched on</li>
-    </ul>
-    <p>All of it is shown to you in the app under “What gets sent” before you send anything, and it's all visible in the draft email itself. If you'd rather not send some of it, delete it from the message — it's your email.</p>
-    <p>If your device has no mail account set up, the app copies the same text to your clipboard instead so you can paste it wherever you like. Nothing is sent in that case either.</p>
-    <p>When you do email us, we keep the message so we can reply and fix the thing you told us about. Ask us to delete it and we will.</p>
-  </section>
-
-  <section id="testflight">
-    <h2 class="sec"><span class="num">05</span> TestFlight</h2>
-    <p>While Factbox is in beta, it's distributed through Apple's TestFlight. If you send feedback or a screenshot through TestFlight itself, or if the app crashes and you allow Apple to share diagnostics, Apple passes that to us — including your TestFlight email address and basic device information.</p>
-    <p>That's Apple's channel rather than ours, and it's governed by Apple's privacy policy and your TestFlight settings. We only ever see it because you chose to submit something.</p>
-  </section>
-
-  <section id="purchases">
-    <h2 class="sec"><span class="num">06</span> Subscriptions and payments</h2>
-    <p>Any subscription is bought through Apple's In-App Purchase. Apple handles the payment and tells the app only whether a subscription is active. We never see your card, your billing address, or your Apple Account.</p>
-    <p>Managing or cancelling a subscription happens in your iOS Settings, not in the app.</p>
-  </section>
-
-  <section id="notifications">
-    <h2 class="sec"><span class="num">07</span> Notifications</h2>
-    <p>The daily reminder is scheduled by your phone, on your phone. There is no push server, and no notification token is sent anywhere. The app works out which day you haven't read and asks iOS to show a reminder at the time you chose.</p>
-    <p>You can turn reminders off in the app under <span class="mono">You → Notifications</span>, or revoke permission entirely in iOS Settings.</p>
-  </section>
-
-  <section id="third-parties">
-    <h2 class="sec"><span class="num">08</span> Third parties</h2>
-    <p>There are none inside the app. Factbox ships with no analytics SDK, no advertising SDK, no crash reporter of ours, and no third-party libraries at all. Nothing about your reading is shared with anyone, because nothing about your reading leaves your phone.</p>
-    <p>We don't sell or share personal information, and we never have. There is nothing to sell.</p>
-  </section>
-
-  <section id="children">
-    <h2 class="sec"><span class="num">09</span> Children</h2>
-    <p>Factbox isn't aimed at children under 13 and we don't knowingly collect anything from them. Given that the app collects no personal information from anyone, a child using it would leave no data with us either. If you believe a child has sent us something through feedback, email us and we'll delete it.</p>
-  </section>
-
-  <section id="rights">
-    <h2 class="sec"><span class="num">10</span> Your rights</h2>
-    <p>Depending on where you live — the UK and EU under GDPR, California under the CCPA, and elsewhere — you have rights to see, correct, export or delete the personal information a company holds about you.</p>
-    <p>For Factbox those rights are unusually simple to exercise, because we hold nothing by default:</p>
-    <ul class="body">
-      <li><strong>To see or export your data:</strong> it's on your phone, in the app. There's no copy with us.</li>
-      <li><strong>To delete it:</strong> delete the app, or use <span class="mono">You → Reset onboarding</span> to wipe your profile in place.</li>
-      <li><strong>If you've emailed us feedback:</strong> that message is the one thing we hold. Ask and we'll delete it and confirm.</li>
-    </ul>
-    <p>You never need to ask permission to use the app anonymously — that's the only way it works.</p>
-  </section>
-
-  <section id="security">
-    <h2 class="sec"><span class="num">11</span> Security</h2>
-    <p>The strongest thing we can say about security is that we've reduced the surface: there's no account to breach, no database of readers to leak, and no credentials to steal. Data on your device is protected by iOS and your passcode.</p>
-    <p>Email is not encrypted end to end, so please don't put anything sensitive in a feedback message.</p>
-  </section>
-
-  <section id="changes">
-    <h2 class="sec"><span class="num">12</span> Changes to this policy</h2>
-    <p>If the app starts doing something this document doesn't describe — syncing your progress across devices, say, which would need a server — we'll update this page before that ships, and change the effective date at the top. Substantial changes will be called out in the app's release notes rather than quietly edited in.</p>
-  </section>
-
-  <div class="contact">
-    <h2>Contact</h2>
-    <p>Questions about this policy, or a request to delete something you've sent us:</p>
-    <p><a href="mailto:hello@getdonny.com" class="mono">hello@getdonny.com</a></p>
+  <h2>05 · Payment, and the restore link</h2>
+  <p>Subscriptions are taken through <a href="https://stripe.com/privacy" rel="noopener" target="_blank">Stripe</a>,
+     on a checkout page that Stripe hosts. You leave this site to pay and come back
+     when you are done. <strong>Your card number, your billing address and your name
+     are typed into Stripe's page, not ours. They never touch this site and we never
+     see them.</strong> Stripe is responsible for what you enter there, under its own
+     privacy policy. What comes back to this site is a return address carrying a
+     success flag and a checkout session id, and nothing else.</p>
+  <p>Two things are added to that checkout address when you go to it, and they are the
+     only things about you that this site ever transmits. The first is your email address
+     as Stripe's <code>prefilled_email</code>, so the payment page's email field is
+     already filled in and you do not type it twice; you can change it there. The second
+     is the random local id from your sign-up record as Stripe's
+     <code>client_reference_id</code>, an arbitrary string that comes back on Stripe's
+     side of the payment so that a payment could later be matched to the browser that
+     made it. Neither is sent anywhere else, and nothing else about you goes with them.</p>
+  <p>That session id becomes your <strong>restore token</strong>, stored as
+     <code>fb_pass_v1</code>, and your restore link is that token on the end of a
+     factbox.app address. It is the only way to move access from the browser you paid
+     in to another phone or another browser, because there is no account to log into.</p>
+  <div class="note">
+    <p><strong>The restore link is a bearer token.</strong> There is no server to check
+       it against, so possession is the entire proof. Anyone you forward it to gets
+       access, and so does anyone who reads it over your shoulder or finds it in a
+       screenshot. Treat it like a key, not like a receipt.</p>
+    <p>It contains no personal information: it is a random-looking string plus a
+       four-character check that tells a mistyped link apart from a real one.</p>
   </div>
 
-  <footer>
-    <a href="stories.html">Home</a> · <a href="terms.html">Terms</a> · <a href="support.html">Support</a>
-    Factbox for iOS · Privacy Policy · Effective 1 September 2026<br>
-    Drafted 29 August 2026. Not yet reviewed by a lawyer.
-  </footer>
+  <h2>06 · What never leaves your browser</h2>
+  <p>Your reading progress. Which stories you opened, how far into each you got, which
+     you finished, which you saved, and when. All of it is written to your own browser
+     and to nothing else. We do not have it, cannot request it, and could not produce
+     it if we were asked to, because there is no server holding it and no endpoint the
+     page could send it to.</p>
+  <p>The trade is exact and worth stating: nothing about your reading can leak from us,
+     and equally nothing about your reading can be restored by us. Clear your site data
+     and it is gone for good.</p>
 
-</div>
+  <h2>07 · Hosting, and what a web server sees</h2>
+  <p>The site is static files hosted on <strong>GitHub Pages</strong>. Like every web
+     server on earth, it receives the ordinary request information needed to send you a
+     page: your IP address, the address you asked for, your browser's user agent, and
+     the time. That handling is GitHub's, under its own privacy policy. We do not
+     receive or keep those logs.</p>
+  <p>Every image on the site is served from this domain. Artwork is downloaded from
+     Wikimedia Commons once, in advance, and re-hosted here, so reading a story sends
+     no request to Wikimedia and tells them nothing about you. Following a source or
+     licence link from <a href="credits.html">the credits page</a> is an ordinary
+     outbound link, and that site then sees you the way any site you visit does.</p>
 
+  <h2>08 · Children</h2>
+  <p>Factbox is not aimed at children under 13, and we do not knowingly collect
+     anything from them. Since the site collects nothing personal from anybody, a child
+     reading it leaves nothing with us either. If you have emailed us on a child's
+     behalf and want that message deleted, say so and we will delete it.</p>
+
+  <h2>09 · Your rights, and how to use them</h2>
+  <p>Depending on where you live — the UK and EU under the GDPR, California under the
+     CCPA, and many places besides — you have rights to see, correct, export or delete
+     the personal information a company holds about you. Here those rights are unusually
+     easy to exercise, because in the ordinary course we hold nothing.</p>
+  <ul>
+    <li><strong>To see or export it:</strong> it is in your browser, under the keys listed in §02. Your browser's developer tools will show you every one of them, in full.</li>
+    <li><strong>To delete it:</strong> clear this site's data in your browser. On an iPhone that is Settings → Safari → Advanced → Website Data; Chrome and Firefox have the equivalent. That removes every key in §02 and the cookies in §03 in one action, and nothing survives it, on our side or yours.</li>
+    <li><strong>Note that this deletes your access too</strong>, because access is one of those keys. If you want to keep it, save your restore link somewhere first.</li>
+    <li><strong>Your email address and your onboarding answers</strong> are in <code>fb_acct_v1</code>, in your browser. Clearing site data deletes them, and we hold no copy of either.</li>
+    <li><strong>If you have emailed us:</strong> that email is the one thing we actually hold. Ask and we will delete it and confirm that we have.</li>
+    <li><strong>If you have paid:</strong> Stripe holds a billing record, and has to, for tax and accounting reasons. A request about that data can come to us and we will pass it on, or you can go to Stripe directly.</li>
+  </ul>
+  <p>We do not sell personal information and never have. There is nothing to sell.</p>
+
+  <h2>10 · Security</h2>
+  <p>The strongest thing we can say about security is that there is very little
+     surface: no account to break into, no reader database to leak, and no credentials
+     to steal. What is on your device is protected by your device.</p>
+  <p>Two limits are worth being plain about, because the alternative is you finding out
+     later. The restore link is a bearer token, as §05 says. And the access flag is a
+     value in your own browser rather than a check against a server, so it is something
+     the site remembers rather than something the site enforces; the story text itself
+     is served as a public data file, and a subscription buys the reading experience and
+     supports the work rather than unlocking a vault. That is inherent to a site with no
+     server, and it is the trade we have made for now.</p>
+  <p>Email is not encrypted end to end. Please do not put anything sensitive in a
+     message to us.</p>
+
+  <h2>11 · Changes</h2>
+  <p>If the site starts doing something this page does not describe — switching the
+     analytics on, adding accounts, syncing progress between devices — this page is
+     updated before that ships, and the effective date at the top changes with it. We do
+     not backdate a change or edit one in quietly.</p>
+
+  <h2>12 · Contact</h2>
+  <p>Questions about this policy, or a request to delete something you have sent us:
+     <a href="mailto:hello@getdonny.com">hello@getdonny.com</a>. A person reads it.</p>
+
+  <nav class="docnav" aria-label="Site documents">
+    <a href="stories.html">Home</a>
+    <a href="terms.html">Terms</a>
+    <a href="support.html">Support</a>
+    <a href="credits.html">Artwork credits</a>
+  </nav>
+  <p class="stamp">Factbox · Privacy Policy · Effective 2 September 2026. Describes
+     factbox.app as it stands on that date. Not reviewed by a lawyer.</p>
+</main>
+</body>
 </html>

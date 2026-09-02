@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox · Join</title>
+<meta name="description" content="Sign up to read the rest of season one, tell us what you are here for, then pick a plan. Three days free before anything is charged.">
+<meta name="theme-color" content="#0E0B12">
+<link rel="canonical" href="https://factbox.app/join.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Factbox">
+<meta property="og:title" content="Factbox · Join">
+<meta property="og:description" content="Sign up to read the rest of season one, then pick a plan. Three days free before anything is charged.">
+<meta property="og:image" content="https://factbox.app/img/share.jpg">
+<meta property="og:url" content="https://factbox.app/join.html">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/account.css">
+</head>
+<body>
+
+<!--
+  EVERY PANEL BELOW IS VISIBLE IN THE MARKUP AND CARRIES ITS REAL COPY.
+  The script hides the ones it is not showing, the same way scenes.js arms
+  caption animation from JavaScript rather than from the markup. If the script
+  never runs, or throws, the reader gets one long readable page — the form, the
+  questions, the three prices and the totals — instead of a blank screen. This
+  site has shipped blank twice; it does not get to happen here.
+
+  The plan figures in this markup are a MIRROR of PRICE_PER_MONTH in
+  js/account.js and are replaced by the computed ones as soon as the script
+  runs. The render check asserts the two agree, so the fallback cannot drift.
+-->
+
+<main class="lib">
+  <header class="mast">
+    <p class="mark">FACTBOX</p>
+    <nav class="tabs" aria-label="Sections">
+      <a href="stories.html">Home</a>
+      <a href="explore.html">Explore</a>
+      <a href="library.html">Library</a>
+    </nav>
+    <h1 id="jn-title">Read the rest of season one</h1>
+    <p id="jn-blurb">Two stories are free. The other forty-nine need an account
+    and a plan — three days free first, and nothing is charged until the trial
+    ends.</p>
+  </header>
+
+  <ol class="jn-steps" id="jn-steps" hidden aria-hidden="true">
+    <li></li><li></li><li></li><li></li>
+  </ol>
+  <p class="jn-stepnote" id="jn-stepnote" hidden></p>
+
+  <!-- ===== 1 · who ===================================================== -->
+  <section class="jn-panel" id="jn-you" aria-labelledby="jn-you-h">
+    <h2 id="jn-you-h">Start with your email</h2>
+    <p>No password. This site is static files with no server behind them, so
+    there is nobody to check a password against — a field that pretended
+    otherwise would be a promise we cannot keep.</p>
+
+    <form id="jn-you-form" action="#" novalidate>
+      <label class="jn-field" for="jn-email">
+        <span>Email</span>
+        <input id="jn-email" name="email" type="email" inputmode="email"
+               autocomplete="email" autocapitalize="none" autocorrect="off"
+               spellcheck="false" enterkeyhint="next"
+               placeholder="you@example.com">
+      </label>
+      <label class="jn-field" for="jn-name">
+        <span>First name <i>optional</i></span>
+        <input id="jn-name" name="name" type="text" autocomplete="given-name"
+               autocapitalize="words" enterkeyhint="done" placeholder="Optional">
+      </label>
+      <p class="jn-err" id="jn-you-err" hidden role="alert"></p>
+      <p class="jn-opt-note">Your email is kept in this browser. The only place
+      it is ever sent is Stripe's payment page, filled in for you at
+      checkout.</p>
+      <button class="go" id="jn-you-go" type="submit" style="margin-top:16px">Continue</button>
+    </form>
+
+    <div class="jn-row">
+      <a class="ghost" href="stories.html">Back to the free stories</a>
+      <button class="jn-skip" id="jn-to-login" type="button">I have read here before</button>
+    </div>
+  </section>
+
+  <!-- ===== log in (not a step; reachable from step 1) =================== -->
+  <section class="jn-panel" id="jn-login" hidden aria-labelledby="jn-login-h">
+    <h2 id="jn-login-h">Log in</h2>
+    <p>What this can do: if you already have access <b>in this browser</b>, it
+    opens straight up. What it cannot do: find your account somewhere else.
+    There is no server here, so there is nothing to look you up in.</p>
+
+    <form id="jn-login-form" action="#" novalidate>
+      <label class="jn-field" for="jn-login-email">
+        <span>The email you used</span>
+        <input id="jn-login-email" name="email" type="email" inputmode="email"
+               autocomplete="email" autocapitalize="none" autocorrect="off"
+               spellcheck="false" enterkeyhint="go" placeholder="you@example.com">
+      </label>
+      <p class="jn-err" id="jn-login-err" hidden role="alert"></p>
+      <button class="go" id="jn-login-go" type="submit" style="margin-top:16px">Continue</button>
+    </form>
+
+    <div class="jn-aside" id="jn-restore">
+      <b>Moving from another phone or browser?</b>
+      <p>Paste your restore link. It is the link shown on the home shelf after
+      you paid — the one worth emailing to yourself. Anyone holding it gets in,
+      so keep it to yourself.</p>
+      <label class="jn-vh" for="jn-restore-in">Your restore link</label>
+      <input id="jn-restore-in" type="text" autocapitalize="none" autocorrect="off"
+             spellcheck="false" placeholder="https://factbox.app/stories.html?restore=…">
+      <p class="jn-err" id="jn-restore-err" hidden role="alert"></p>
+      <button class="jn-opt" id="jn-restore-go" type="button">Open my stories</button>
+      <p style="margin-top:10px">No link, and paid already?
+      <a href="support.html">Support can help</a>.</p>
+    </div>
+
+    <div class="jn-row">
+      <button class="jn-back" id="jn-login-back" type="button">← Back</button>
+    </div>
+  </section>
+
+  <!-- ===== 2 · subjects ================================================= -->
+  <section class="jn-panel" id="jn-topics" aria-labelledby="jn-topics-h">
+    <h2 id="jn-topics-h">What are you here for?</h2>
+    <p>Tap as many as you like, or none. Your picks stay in this browser —
+    nothing is emailed and nothing is sent anywhere.</p>
+    <div class="jn-opts" id="jn-topic-opts" role="group" aria-labelledby="jn-topics-h">
+      <button class="jn-opt" type="button" data-k="cleopatra" aria-pressed="false"><b>Cleopatra</b><span>her death, her tomb, her reputation</span></button>
+      <button class="jn-opt" type="button" data-k="new_testament" aria-pressed="false"><b>The New Testament</b><span>Jesus, Paul, Peter, Mary Magdalene</span></button>
+      <button class="jn-opt" type="button" data-k="church_history" aria-pressed="false"><b>Devils, saints and heresies</b><span>what the early church argued about</span></button>
+      <button class="jn-opt" type="button" data-k="old_testament" aria-pressed="false"><b>The Old Testament</b><span>the Ark, the scrolls, the kings</span></button>
+      <button class="jn-opt" type="button" data-k="us_history" aria-pressed="false"><b>America</b><span>Lincoln, and the night he was shot</span></button>
+      <button class="jn-opt" type="button" data-k="ancient_world" aria-pressed="false"><b>The ancient world</b><span>Rome, Greece, Alexander</span></button>
+      <button class="jn-opt" type="button" data-k="medieval_modern" aria-pressed="false"><b>Medieval and modern</b><span>Joan of Arc to Rasputin</span></button>
+      <button class="jn-opt" type="button" data-k="disaster" aria-pressed="false"><b>When it all went wrong</b><span>disasters, hour by hour</span></button>
+    </div>
+    <button class="go" id="jn-topics-go" type="button" style="margin-top:18px">Continue</button>
+    <div class="jn-row">
+      <button class="jn-back" id="jn-topics-back" type="button">← Back</button>
+      <button class="jn-skip" id="jn-topics-skip" type="button">Skip this</button>
+    </div>
+  </section>
+
+  <!-- ===== 3 · pace ==================================================== -->
+  <section class="jn-panel" id="jn-pace" aria-labelledby="jn-pace-h">
+    <h2 id="jn-pace-h">How often do you want to read?</h2>
+    <p>A story runs about two minutes. We do not send email or notifications
+    and have no way to, so there is nothing here to unsubscribe from.</p>
+    <div class="jn-opts is-single" id="jn-pace-opts" role="radiogroup" aria-labelledby="jn-pace-h">
+      <button class="jn-opt" type="button" role="radio" data-k="daily" aria-checked="false"><b>Every day</b><span>one with the coffee</span></button>
+      <button class="jn-opt" type="button" role="radio" data-k="few" aria-checked="false"><b>A few times a week</b><span>the usual answer</span></button>
+      <button class="jn-opt" type="button" role="radio" data-k="weekly" aria-checked="false"><b>Once a week</b><span>a longer sit</span></button>
+      <button class="jn-opt" type="button" role="radio" data-k="binge" aria-checked="false"><b>All at once</b><span>a few in a row, then a gap</span></button>
+    </div>
+    <button class="go" id="jn-pace-go" type="button" style="margin-top:18px">Continue</button>
+    <div class="jn-row">
+      <button class="jn-back" id="jn-pace-back" type="button">← Back</button>
+      <button class="jn-skip" id="jn-pace-skip" type="button">Skip this</button>
+    </div>
+  </section>
+
+  <!-- ===== 4 · plans =================================================== -->
+  <section class="jn-panel" id="jn-plan" aria-labelledby="jn-plan-h">
+    <h2 id="jn-plan-h">Pick a plan</h2>
+    <p>All fifty-one stories, and the ones added through the season. Every plan
+    starts with three days free.</p>
+
+    <div class="jn-plans" id="jn-plan-opts" role="radiogroup" aria-labelledby="jn-plan-h">
+      <button class="jn-plan" type="button" role="radio" data-k="monthly" aria-checked="false">
+        <span class="jn-per">$4.99 <i>a month</i></span>
+        <span class="jn-billed">$4.99 every month</span>
+      </button>
+      <button class="jn-plan" type="button" role="radio" data-k="quarterly" aria-checked="false">
+        <span class="jn-per">$3.99 <i>a month</i></span>
+        <span class="jn-billed">$11.97 every 3 months</span>
+      </button>
+      <button class="jn-plan is-best" type="button" role="radio" data-k="annual" aria-checked="true">
+        <span class="jn-badge">BEST VALUE</span>
+        <span class="jn-per">$2.99 <i>a month</i></span>
+        <span class="jn-billed">$35.88 a year</span>
+      </button>
+    </div>
+
+    <button class="go" id="jn-buy" type="button" style="margin-top:18px">Start 3 days free</button>
+    <p class="jn-terms" id="jn-terms">Three days free. If you do not cancel
+    before the trial ends, the plan you picked starts and renews at that price
+    until you cancel. Cancel any time.</p>
+    <p class="fine" id="jn-buy-note" hidden></p>
+
+    <div class="jn-aside" id="jn-nostore" hidden>
+      <b>This browser will not remember you</b>
+      <p>Storage is switched off or full here, so your answers are not being
+      kept. Checkout still works — but if you buy, save the restore link the
+      home shelf gives you afterwards, because this browser cannot.</p>
+    </div>
+
+    <div class="jn-row">
+      <button class="jn-back" id="jn-plan-back" type="button">← Back</button>
+      <a class="ghost" href="stories.html">Not now</a>
+    </div>
+  </section>
+
+  <!-- ===== already paid ================================================ -->
+  <section class="jn-panel" id="jn-done" hidden aria-labelledby="jn-done-h">
+    <h2 id="jn-done-h">You already have all fifty-one</h2>
+    <p id="jn-done-p">This browser is unlocked. There is nothing to sign up for.</p>
+    <a class="go" href="stories.html" style="text-align:center;text-decoration:none;line-height:1.2">Go to the stories</a>
+  </section>
+
+  <noscript>
+    <p class="fine" style="margin-top:24px;text-align:left">
+      <b>Signing up needs JavaScript.</b> The prices above are the real ones.
+      The <a href="stories.html">two free stories</a> read fine without it.
+    </p>
+  </noscript>
+
+  <p class="fine" style="margin-top:34px;text-align:left">
+    <a href="stories.html">Season one</a> · <a href="privacy.html">Privacy</a> ·
+    <a href="terms.html">Terms</a> · <a href="support.html">Support</a>
+  </p>
+</main>
+
+<script src="js/progress.js"></script>
+<script src="js/gate.js"></script>
+<script src="js/account.js"></script>
+<script>
+/* ==========================================================================
+   join.html — sign up → onboarding → plans → Stripe.
+
+   Money is the LAST screen, not the first. Everything before it either
+   identifies the reader or asks them something that shapes what they get.
+
+   Rules, same as every other script on this site:
+   - Never throw at top level. Every lookup is guarded and every handler is
+     wrapped, because a throw here would leave whichever panel was on screen
+     frozen with dead buttons.
+   - ES5 only: var and function.
+   - FB, FBP and FBA are all optional. FBA missing is the one that costs
+     something real (nothing is remembered), and the page says so rather than
+     failing silently.
+   ========================================================================== */
+(function () {
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  function on(node, ev, fn) {
+    try { if (node && node.addEventListener) node.addEventListener(ev, fn); } catch (e) {}
+  }
+  function show(node, yes) {
+    try { if (node) { if (yes) node.removeAttribute("hidden"); else node.setAttribute("hidden", ""); } }
+    catch (e) {}
+  }
+  function text(node, s) { try { if (node) node.textContent = s; } catch (e) {} }
+  function track(name, extra) {
+    try { if (window.FB && FB.track) FB.track(name, extra); } catch (e) {}
+  }
+
+  /* Storage-dead, script-missing and quota-full all land here. The page keeps
+     working; it just stops remembering. */
+  var A = null;
+  try { if (window.FBA && FBA.plans) A = FBA; } catch (e) { A = null; }
+
+  function unlocked() {
+    try { if (window.FB && FB.unlocked) return !!FB.unlocked(); } catch (e) {}
+    try { if (window.FBP && FBP.unlocked) return !!FBP.unlocked(); } catch (e) {}
+    return false;
+  }
+
+  /* --- panels -------------------------------------------------------------
+     STEPS is the ordered funnel. #jn-login and #jn-done sit outside it: one is
+     a detour, the other is a terminus, and neither has a step number. */
+  var STEPS = ["jn-you", "jn-topics", "jn-pace", "jn-plan"];
+  var ALL   = STEPS.concat(["jn-login", "jn-done"]);
+  var LABEL = { "jn-you": "Your email", "jn-topics": "Subjects",
+                "jn-pace": "How often", "jn-plan": "Plan" };
+
+  var steps = el("jn-steps"), stepnote = el("jn-stepnote");
+  var at = 0, started = false;
+
+  function paintSteps(i) {
+    try {
+      if (!steps) return;
+      var li = steps.getElementsByTagName("li");
+      for (var n = 0; n < li.length; n++) {
+        li[n].className = n < i ? "is-done" : (n === i ? "is-on" : "");
+      }
+      show(steps, true);
+      steps.setAttribute("aria-hidden", "true");   /* the sentence below says it in words */
+      show(stepnote, true);
+      text(stepnote, "Step " + (i + 1) + " of " + STEPS.length + " · " + (LABEL[STEPS[i]] || ""));
+    } catch (e) {}
+  }
+
+  function go(id) {
+    try {
+      for (var i = 0; i < ALL.length; i++) show(el(ALL[i]), ALL[i] === id);
+      var n = -1;
+      for (var j = 0; j < STEPS.length; j++) { if (STEPS[j] === id) n = j; }
+      if (n === -1) { show(steps, false); show(stepnote, false); }
+      else { at = n; paintSteps(n); }
+      track("join_step", { step: id });
+      if (id === "jn-plan") renderPlans();
+      /* The first render is the page loading; moving focus or scrolling there
+         fights the browser rather than helping. Every step after it is a new
+         screen, and gets announced. */
+      if (started) {
+        /* Only scroll if there is something to scroll back from. Calling
+           scrollTo unconditionally is a no-op on a short screen and a jolt on
+           a webview that reports a stale scroll position. */
+        try {
+          var y = window.pageYOffset ||
+                  (document.documentElement && document.documentElement.scrollTop) || 0;
+          if (y > 0) window.scrollTo(0, 0);
+        } catch (e2) {}
+        focusFirst(id);
+      }
+      started = true;
+    } catch (e) {}
+  }
+
+  /* Move focus to the panel's heading so a screen reader announces the new
+     screen. Never to the input: an on-load keyboard on a 390px phone hides
+     the thing the reader was about to read. */
+  function focusFirst(id) {
+    try {
+      var p = el(id); if (!p) return;
+      var h = p.getElementsByTagName("h2")[0];
+      if (!h) return;
+      h.setAttribute("tabindex", "-1");
+      h.focus();
+    } catch (e) {}
+  }
+
+  function next() {
+    if (at < STEPS.length - 1) go(STEPS[at + 1]); else go("jn-plan");
+  }
+  function back() {
+    if (at > 0) go(STEPS[at - 1]); else go("jn-you");
+  }
+
+  /* --- 1 · who ----------------------------------------------------------- */
+
+  var youErr = el("jn-you-err");
+
+  /* Only the form's submit event is listened for, never the button's click as
+     well: a click on a type=submit button fires submit anyway, so listening to
+     both would run this twice and count one sign-up as two. Submit also gets
+     the Enter key for free, which a click listener does not. */
+  function submitYou(e) {
+    try { if (e && e.preventDefault) e.preventDefault(); } catch (e2) {}
+    try {
+      var mail = el("jn-email"), first = el("jn-name");
+      var v = mail && mail.value ? mail.value : "";
+      var ok = false;
+      if (A) ok = A.signUp(v, first && first.value ? first.value : "");
+      else ok = /^[^@\s]+@[^@.\s]+(\.[^@.\s]+)+$/.test(String(v).replace(/^\s+|\s+$/g, ""));
+
+      if (!ok) {
+        show(youErr, true);
+        text(youErr, "That does not look like an email address. Check it and try again.");
+        try { if (mail) mail.focus(); } catch (e3) {}
+        return false;
+      }
+      show(youErr, false);
+      track("join_signup");
+      greet();
+      next();
+    } catch (e4) {}
+    return false;
+  }
+
+  function greet() {
+    try {
+      if (!A) return;
+      var n = A.name();
+      if (n) text(el("jn-blurb"), n + ", four questions and you are reading. " +
+        "Three days free before anything is charged.");
+    } catch (e) {}
+  }
+
+  /* --- log in ------------------------------------------------------------- */
+
+  function submitLogin(e) {
+    try { if (e && e.preventDefault) e.preventDefault(); } catch (e2) {}
+    try {
+      var box = el("jn-login-email");
+      var v = box && box.value ? box.value : "";
+      var err = el("jn-login-err");
+
+      if (A && !A.validEmail(v)) {
+        show(err, true);
+        text(err, "That does not look like an email address.");
+        return false;
+      }
+      if (unlocked()) { track("join_login_hit"); go("jn-done"); return false; }
+
+      show(err, true);
+      if (A && A.knows(v)) {
+        text(err, "This browser remembers that address, but no plan is attached to " +
+                  "it here. Pick one below and the trial starts.");
+        track("join_login_known");
+        setTimeout(function () { try { go("jn-plan"); } catch (e3) {} }, 1400);
+      } else {
+        text(err, "Nothing paid-for is stored in this browser under that address. " +
+                  "Access lives in the browser it was bought in — use your restore " +
+                  "link below, or start a plan here.");
+        track("join_login_miss");
+      }
+    } catch (e4) {}
+    return false;
+  }
+
+  /* Paste a restore link and go. This is the only thing on the site that
+     genuinely moves access between devices, and it works because the token
+     IS the access — see progress.js on why that is inherent, not a bug. */
+  function useRestore() {
+    try {
+      var box = el("jn-restore-in"), err = el("jn-restore-err");
+      var v = String(box && box.value ? box.value : "").replace(/^\s+|\s+$/g, "");
+      var tok = "";
+      var m = /[?&]restore=([^&#\s]+)/.exec(v);
+      if (m) { try { tok = decodeURIComponent(m[1]); } catch (e1) { tok = m[1]; } }
+      else if (/^fb1-[sl]-[A-Za-z0-9_]{8,}-[a-z0-9]{4}$/.test(v)) { tok = v; }
+
+      if (!tok) {
+        show(err, true);
+        text(err, "That does not look like a restore link. It starts with " +
+                  "https://factbox.app/ and contains restore=.");
+        return;
+      }
+      show(err, false);
+      track("join_restore_use");
+      location.href = "stories.html?restore=" + encodeURIComponent(tok);
+    } catch (e) {}
+  }
+
+  /* --- 2 · subjects ------------------------------------------------------- */
+
+  function wireToggles() {
+    try {
+      var wrap = el("jn-topic-opts");
+      if (!wrap) return;
+      var b = wrap.getElementsByTagName("button");
+      for (var i = 0; i < b.length; i++) {
+        (function (btn) {
+          on(btn, "click", function () {
+            try {
+              btn.setAttribute("aria-pressed",
+                btn.getAttribute("aria-pressed") === "true" ? "false" : "true");
+            } catch (e) {}
+          });
+        })(b[i]);
+      }
+    } catch (e) {}
+  }
+
+  function readTopics() {
+    var out = [];
+    try {
+      var wrap = el("jn-topic-opts");
+      if (!wrap) return out;
+      var b = wrap.getElementsByTagName("button");
+      for (var i = 0; i < b.length; i++) {
+        if (b[i].getAttribute("aria-pressed") === "true") {
+          out.push(b[i].getAttribute("data-k") || "");
+        }
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  function paintTopics() {
+    try {
+      if (!A) return;
+      var have = A.interests();
+      if (!have.length) return;
+      var wrap = el("jn-topic-opts");
+      if (!wrap) return;
+      var b = wrap.getElementsByTagName("button");
+      for (var i = 0; i < b.length; i++) {
+        var k = b[i].getAttribute("data-k") || "";
+        b[i].setAttribute("aria-pressed", have.indexOf(k) !== -1 ? "true" : "false");
+      }
+    } catch (e) {}
+  }
+
+  /* How many stories each subject actually has. A nice-to-have on top of copy
+     that already stands on its own: if the fetch fails, the buttons keep the
+     descriptions they shipped with. */
+  function countTopics() {
+    try {
+      if (!window.FB || !FB.load) return;
+      FB.load().then(function (stacks) {
+        try {
+          var wrap = el("jn-topic-opts");
+          if (!wrap || !stacks || !stacks.length) return;
+          var n = {}, i;
+          for (i = 0; i < stacks.length; i++) {
+            var t = stacks[i] && stacks[i].topic;
+            if (t) n[t] = (n[t] || 0) + 1;
+          }
+          var b = wrap.getElementsByTagName("button");
+          for (i = 0; i < b.length; i++) {
+            var k = b[i].getAttribute("data-k") || "";
+            var s = b[i].getElementsByTagName("span")[0];
+            if (s && n[k]) {
+              s.textContent = n[k] + (n[k] === 1 ? " story · " : " stories · ") + s.textContent;
+            }
+          }
+        } catch (e) {}
+      })["catch"](function () {});
+    } catch (e) {}
+  }
+
+  /* --- 3 · pace ----------------------------------------------------------- */
+
+  function wireRadios(wrapId, onPick) {
+    try {
+      var wrap = el(wrapId);
+      if (!wrap) return;
+      var b = wrap.getElementsByTagName("button");
+      for (var i = 0; i < b.length; i++) {
+        (function (btn) {
+          on(btn, "click", function () {
+            try {
+              var all = wrap.getElementsByTagName("button");
+              for (var j = 0; j < all.length; j++) {
+                all[j].setAttribute("aria-checked", all[j] === btn ? "true" : "false");
+              }
+              if (onPick) onPick(btn.getAttribute("data-k") || "");
+            } catch (e) {}
+          });
+        })(b[i]);
+      }
+    } catch (e) {}
+  }
+
+  function readRadio(wrapId) {
+    try {
+      var wrap = el(wrapId);
+      if (!wrap) return "";
+      var b = wrap.getElementsByTagName("button");
+      for (var i = 0; i < b.length; i++) {
+        if (b[i].getAttribute("aria-checked") === "true") return b[i].getAttribute("data-k") || "";
+      }
+    } catch (e) {}
+    return "";
+  }
+
+  function setRadio(wrapId, key) {
+    try {
+      var wrap = el(wrapId);
+      if (!wrap || !key) return;
+      var b = wrap.getElementsByTagName("button");
+      for (var i = 0; i < b.length; i++) {
+        b[i].setAttribute("aria-checked", (b[i].getAttribute("data-k") === key) ? "true" : "false");
+      }
+    } catch (e) {}
+  }
+
+  /* --- 4 · plans ----------------------------------------------------------
+     Every figure on this screen comes out of FBA.plans(): the per-month price,
+     the amount actually billed, the cycle, and the saving against the monthly
+     rate. Nothing is typed twice, so nothing can disagree with itself. */
+
+  var picked = "annual";
+
+  function renderPlans() {
+    try {
+      var wrap = el("jn-plan-opts");
+      if (!wrap || !A) { syncBuy(); return; }
+      var list = A.plans(), html = "", i;
+      for (i = 0; i < list.length; i++) {
+        var p = list[i];
+        html += '<button class="jn-plan' + (p.best ? " is-best" : "") + '" type="button"' +
+                ' role="radio" data-k="' + p.key + '"' +
+                ' aria-checked="' + (p.key === picked ? "true" : "false") + '">' +
+                (p.best ? '<span class="jn-badge">BEST VALUE</span>' : "") +
+                '<span class="jn-per">' + p.perMonthText + ' <i>a month</i></span>' +
+                '<span class="jn-billed">' + p.billedLine + '</span>' +
+                (p.savePct > 0
+                  ? '<span class="jn-save">Save ' + p.savePct + '% on the monthly price</span>'
+                  : '<span class="jn-save">Billed monthly, cancel any time</span>') +
+                '</button>';
+      }
+      wrap.innerHTML = html;
+      wireRadios("jn-plan-opts", function (k) { picked = k || picked; syncBuy(); });
+      syncBuy();
+    } catch (e) { syncBuy(); }
+  }
+
+  function syncBuy() {
+    try {
+      var buy = el("jn-buy"), terms = el("jn-terms"), note = el("jn-buy-note");
+      if (!buy) return;
+      var p = A ? A.planByKey(picked) : null;
+
+      if (p) {
+        text(terms,
+          "Three days free, then " + p.billedText + " " + p.cycle +
+          " (" + p.perMonthText + " a month). Cancel before the trial ends and " +
+          "you are not charged. After that it renews at that price until you cancel.");
+      }
+
+      /* The links do not exist yet. Say so on the button, before the tap, and
+         explain — the same precedent as FB.checkout, moved earlier so the
+         reader never spends a tap on nothing. */
+      if (A && !A.anyLinkReady()) {
+        buy.textContent = "Checkout is not open yet";
+        buy.disabled = true;
+        show(note, true);
+        text(note, "Payments are not switched on for this site yet. Your answers " +
+                   "are saved on this phone, so when they are you will not have to " +
+                   "do this again.");
+        return;
+      }
+      buy.disabled = false;
+      buy.textContent = "Start " + (A ? A.TRIAL_DAYS : 3) + " days free";
+      show(note, false);
+    } catch (e) {}
+  }
+
+  function buy() {
+    try {
+      var btn = el("jn-buy");
+      if (A) { A.setPlan(picked); A.finishOnboarding(); }
+      track("checkout_start", { plan: picked });
+
+      var url = A ? A.checkoutURL(picked) : "";
+      if (!url) {
+        if (btn) { btn.textContent = "Checkout is not open yet"; btn.disabled = true; }
+        show(el("jn-buy-note"), true);
+        text(el("jn-buy-note"), "Payments are not switched on for this site yet. " +
+             "Nothing was charged and nothing was sent.");
+        return;
+      }
+      location.href = url;
+    } catch (e) {}
+  }
+
+  /* --- wiring -------------------------------------------------------------
+     Every handler is attached inside try/catch and every one of them is
+     wrapped, so one missing element cannot take the rest of the page down. */
+
+  try {
+    on(el("jn-you-form"), "submit", submitYou);
+    on(el("jn-to-login"), "click", function () { go("jn-login"); });
+
+    on(el("jn-login-form"), "submit", submitLogin);
+    on(el("jn-login-back"), "click", function () { go("jn-you"); });
+    on(el("jn-restore-go"), "click", useRestore);
+
+    wireToggles();
+    on(el("jn-topics-go"), "click", function () {
+      try { if (A) A.setInterests(readTopics()); } catch (e) {}
+      track("join_interests", { n: String(readTopics().length) });
+      next();
+    });
+    on(el("jn-topics-back"), "click", back);
+    on(el("jn-topics-skip"), "click", function () { track("join_skip", { step: "topics" }); next(); });
+
+    wireRadios("jn-pace-opts", null);
+    on(el("jn-pace-go"), "click", function () {
+      try { if (A) A.setFrequency(readRadio("jn-pace-opts")); } catch (e) {}
+      next();
+    });
+    on(el("jn-pace-back"), "click", back);
+    on(el("jn-pace-skip"), "click", function () { track("join_skip", { step: "pace" }); next(); });
+
+    on(el("jn-plan-back"), "click", back);
+    on(el("jn-buy"), "click", buy);
+  } catch (e) {}
+
+  /* --- start --------------------------------------------------------------
+     Resume where the reader stopped. Somebody who signed up yesterday and came
+     back through a locked cover should land on the plan screen, not retype
+     their email. */
+  try {
+    if (A) {
+      paintTopics();
+      var f = A.frequency();
+      if (f) setRadio("jn-pace-opts", f);
+      var chosen = A.plan();
+      if (chosen && A.planByKey(chosen)) picked = chosen;
+      show(el("jn-nostore"), !A.stored());
+      greet();
+    } else {
+      show(el("jn-nostore"), true);
+    }
+    countTopics();
+
+    if (unlocked()) {
+      go("jn-done");
+      track("join_view", { state: "unlocked" });
+    } else if (A && A.has() && A.onboarded()) {
+      go("jn-plan");
+      track("join_view", { state: "returning" });
+    } else if (A && A.has()) {
+      go("jn-topics");
+      track("join_view", { state: "signed_up" });
+    } else {
+      go("jn-you");
+      track("join_view", { state: "new" });
+    }
+  } catch (e) {
+    /* Even this must not blank the page: leave every panel visible, which is
+       exactly what the markup already is. */
+    try { show(el("jn-login"), false); show(el("jn-done"), false); } catch (e2) {}
+  }
+})();
+</script>
+</body>
+</html>

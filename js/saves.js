@@ -216,18 +216,28 @@ var FBS = (function () {
      with aria-pressed and a 44px target — a save control that is a <div> is
      invisible to a screen reader and unreachable from a keyboard.
 
-     button(id, onChange) -> HTMLButtonElement, or null if there is no DOM.
+     One label pair, one aria pattern and one saved-state paint across the
+     whole site: "Save" / "Saved", "Save to library: <title>" / "Remove from
+     library: <title>", and coral-tinted rather than coral-filled. The reader
+     page and the recommendation rows were showing three vocabularies and two
+     paints for one action. Tint, not fill, because a filled capsule reads as
+     a button not yet pressed — the same rule the nav tabs follow.
+
+     button(id, onChange, title) -> HTMLButtonElement, or null if there is no DOM.
        onChange(isSaved, id) fires after every successful toggle.
+       title      the story's name, for the accessible label. Optional: with
+                  no title the label is the same sentence without it.
        el.refresh()  repaints from the store (call it if you change saves
                      elsewhere on the same screen).
        el.stackId    the id it is bound to.
 
      When storage is dead the button paints "Saving unavailable" and disables
      itself. A button that silently forgets is worse than one that says so. */
-  function button(id, onChange) {
+  function button(id, onChange, title) {
     try {
       if (typeof document === "undefined" || !document || !document.createElement) return null;
       var k = keyOf(id);
+      var name = (typeof title === "string" && title) ? ": " + title : "";
 
       var b = document.createElement("button");
       b.type = "button";
@@ -251,18 +261,20 @@ var FBS = (function () {
             b.title = k
               ? "This browser will not let the site remember anything."
               : "No story to save.";
+            /* .52, matching --dimmer in app.css. .42 did not clear contrast
+               on --raise, and this button paints itself. */
             b.style.cssText = BASE +
-              "background:rgba(255,247,237,.07);color:rgba(255,247,237,.42);" +
+              "background:rgba(255,247,237,.07);color:rgba(255,247,237,.52);" +
               "border:1px solid rgba(255,247,237,.13);cursor:default;";
             return;
           }
           var on = saved(k);
           b.setAttribute("aria-pressed", on ? "true" : "false");
-          b.setAttribute("aria-label", on ? "Saved for later. Tap to remove."
-                                          : "Save this story for later");
-          b.textContent = on ? "✓  Saved" : "＋  Save";
+          b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
+          b.textContent = on ? "Saved" : "Save";
           b.style.cssText = BASE + (on
-            ? "background:#FF7A5C;color:#2A1109;border:1px solid #FF7A5C;"
+            ? "background:rgba(255,122,92,.16);color:#FF7A5C;" +
+              "border:1px solid rgba(255,122,92,.42);"
             : "background:rgba(20,16,26,.86);color:#FFF7ED;" +
               "border:1px solid rgba(255,247,237,.22);");
         } catch (e) {}

@@ -154,7 +154,7 @@ read a story. <a href="stories.html" style="color:#FF7A5C">All stories</a></p></
     if (window.FBS) {
       var save = FBS.button(s.id, function (isSaved) {
         FB.track(isSaved ? "save_add" : "save_remove", { stack: s.id });
-      });
+      }, s.title);
       var topbar = document.querySelector(".topbar");
       if (save && topbar) topbar.appendChild(save);
     }

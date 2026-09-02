@@ -34,9 +34,15 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
   }
+  /* Half-minute steps, the same arithmetic as FB.minutes in gate.js. Whole
+     minutes gave 49 of the 51 stories the same "2 min" label. If this and
+     gate.js disagree, one story shows two lengths on two pages. */
   function mins(secs) {
     try { if (G && G.minutes) return G.minutes(secs); } catch (e) {}
-    return Math.max(1, Math.round((secs || 0) / 60)) + " min";
+    var halves = Math.max(1, Math.round((Number(secs) || 0) / 30));
+    var whole = Math.floor(halves / 2);
+    if (whole === 0) return "\u00bd min";
+    return whole + (halves % 2 ? "\u00bd" : "") + " min";
   }
   function track(n, x) { try { if (G && G.track) G.track(n, x); } catch (e) {} }
   function unlocked() { try { return !!(G && G.unlocked && G.unlocked()); } catch (e) { return false; } }
@@ -61,7 +67,7 @@
     try {
       shelf.innerHTML = '<p class="libfail">' + esc(msg) + '</p>' +
         '<p class="fine" style="text-align:left">' +
-        '<a href="stories.html">Back to the stories</a></p>';
+        '<a href="stories.html">All stories</a></p>';
     } catch (e) {}
   }
 
@@ -80,8 +86,12 @@
   function card(s, note) {
     var locked = !s.free && !unlocked();
     var st = stateOf(s.id, s.cards.length);
+    /* The label and the bar are a record of this reader's own progress, so
+       they are gated on having progress — never on access. A locked story
+       they have read renders under "In progress" with the bar that says so;
+       hiding it there left the heading contradicting the cover under it. */
     var meta = note ? note
-             : (!locked && st.label ? st.label
+             : (st.label ? st.label
                 : s.cards.length + " cards · " + mins(s.secs));
     return '' +
       '<a class="card is-' + st.status + (locked ? " locked" : "") + '" href="' + href(s) + '">' +
@@ -91,7 +101,7 @@
           (locked
             ? '<span class="lock" aria-hidden="true">🔒</span>'
             : (s.free ? '<span class="freetag">FREE</span>' : '')) +
-          (!locked && st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
+          (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +
         '<p class="meta">' + esc(meta) + '</p>' +
@@ -203,13 +213,13 @@
       for (i = 0; i < stacks.length; i++) { if (stacks[i] && stacks[i].free) free.push(stacks[i]); }
       html +=
         '<div class="empty">' +
-          '<h2>Your library is empty.</h2>' +
+          '<h2>Your library is empty</h2>' +
           '<p>Everything you read shows up here — where you got to, what you ' +
           'finished, and anything you saved for later. Nothing is sent anywhere; ' +
           'it is all kept in this browser.</p>' +
           '<div class="emptygo">' +
             '<a class="go" href="explore.html">Explore all 51 stories</a>' +
-            '<a class="ghost" href="stories.html">Season one</a>' +
+            '<a class="ghost" href="stories.html">All stories</a>' +
           '</div>' +
         '</div>' +
         section("Start with these", "free to read", free);

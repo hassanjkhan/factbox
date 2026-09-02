@@ -28,7 +28,7 @@
 .statline small{
   display:block; margin-top:6px; max-width:46ch;
   font-size:.72rem; font-weight:500; line-height:1.45;
-  color:var(--dimmer,rgba(255,247,237,.42));
+  color:var(--dimmer,rgba(255,247,237,.52));
 }
 
 /* --------------------------------------------------------------------------
@@ -74,7 +74,7 @@
   min-height:var(--tap,44px); padding:0 12px;
   border:0; border-radius:var(--pill,999px);
   background:transparent;
-  color:var(--dimmer,rgba(255,247,237,.42));
+  color:var(--dimmer,rgba(255,247,237,.52));
   font-family:var(--ui,system-ui,-apple-system,sans-serif);
   font-size:.78rem; font-weight:700; cursor:pointer;
   transition:color .16s ease, background-color .16s ease;

@@ -3,358 +3,201 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Factbox Terms of Use</title>
-
+<title>Terms of Use · Factbox</title>
+<meta name="description" content="The terms for reading Factbox at factbox.app: what the subscription is, how billing works, and how to stop.">
+<meta name="theme-color" content="#0E0B12">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .doc{max-width:820px;margin:0 auto;padding:var(--top-safe) 18px calc(var(--bottom-safe) + 24px)}
+  .doc h1{font-size:clamp(1.7rem,6vw,2.2rem);font-weight:850;margin:16px 0 12px;letter-spacing:-.015em;text-wrap:balance}
+  .doc h2{font-size:1.02rem;font-weight:800;margin:34px 0 8px;padding-top:18px;border-top:1px solid var(--hair)}
+  .doc p,.doc li{color:var(--dim);line-height:1.6;font-size:.94rem;max-width:62ch}
+  .doc p{margin:0 0 10px}
+  .doc ul{margin:0 0 12px;padding-left:20px}
+  .doc li{margin:0 0 7px}
+  .doc strong{color:var(--parchment);font-weight:750}
+  .doc a{color:var(--parchment);text-decoration:underline;text-underline-offset:3px}
+  .dateline{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 18px;font-size:.74rem;color:var(--dimmer)}
+  .lead{font-size:1rem}
+  .note{margin:16px 0 6px;padding:14px 16px;border-radius:14px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--hair)}
+  .note p{margin:0;font-size:.88rem}
+  .note p + p{margin-top:8px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em;color:var(--parchment);word-break:break-word}
+  .docnav{display:flex;flex-wrap:wrap;gap:2px 20px;margin:38px 0 0;padding-top:12px;border-top:1px solid var(--hair)}
+  .docnav a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 2px;font-size:.9rem;font-weight:700;color:var(--dim);text-decoration:none}
+  .stamp{margin:6px 0 0;font-size:.72rem;color:var(--dimmer);line-height:1.5}
+</style>
 </head>
 <body>
-<style>
-  /* ── Tokens ───────────────────────────────────────────────
-     Light is the default. Dark is redefined twice: once behind
-     prefers-color-scheme (guarded so an explicit light choice
-     still wins), once behind the explicit stamp.
-     Palette is lifted from the app's own Theme.swift — warm
-     parchment, soft-plum ink, coral, and a mint used only for
-     the ledger's affirmatives.
-  ─────────────────────────────────────────────────────────── */
-  :root {
-    --ground:        #FFF7ED;
-    --ground-sunk:   #F7ECDD;
-    --card:          #FFFFFF;
-    --ink:           #3E2F4A;
-    --ink-soft:      #7C6C85;
-    --ink-faint:     #A99BB0;
-    --rule:          #E7D9C6;
-    --accent:        #E85F41;
-    --accent-soft:   #FFDCD1;
-    --good:          #2E7D4F;
-    --good-soft:     #DCF5E4;
-    --shadow:        0 1px 2px rgba(62,47,74,.05), 0 8px 24px rgba(62,47,74,.06);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --ground:      #221B28;
-      --ground-sunk: #1A141F;
-      --card:        #2C2333;
-      --ink:         #F3EAE0;
-      --ink-soft:    #B6A6BE;
-      --ink-faint:   #7E7089;
-      --rule:        #3E3247;
-      --accent:      #FF8E72;
-      --accent-soft: #4A2A24;
-      --good:        #7FD3A2;
-      --good-soft:   #1E3A2A;
-      --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
-    }
-  }
-  :root[data-theme="dark"] {
-    --ground:      #221B28;
-    --ground-sunk: #1A141F;
-    --card:        #2C2333;
-    --ink:         #F3EAE0;
-    --ink-soft:    #B6A6BE;
-    --ink-faint:   #7E7089;
-    --rule:        #3E3247;
-    --accent:      #FF8E72;
-    --accent-soft: #4A2A24;
-    --good:        #7FD3A2;
-    --good-soft:   #1E3A2A;
-    --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
-  }
+<main class="doc">
+  <p class="mark">FACTBOX</p>
+  <h1>Terms of Use</h1>
+  <p class="dateline">
+    <span>Effective 2 September 2026</span>
+    <span>Applies to: factbox.app, this website</span>
+  </p>
+  <p class="lead">Short, because the thing is small. You read history on your phone.
+     Two stories are free; the rest are behind a subscription you can stop at any
+     time. We try to get the history right and to credit the artwork properly. That
+     is most of the relationship.</p>
 
-  * { box-sizing: border-box; }
-
-  body {
-    background: var(--ground);
-    color: var(--ink);
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, "Times New Roman", serif;
-    font-size: 19px;
-    line-height: 1.65;
-    margin: 0;
-    padding: 0 24px 96px;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .wrap { max-width: 40rem; margin: 0 auto; }
-
-  /* ── Masthead ─────────────────────────────────────────── */
-  header { padding: 72px 0 0; }
-
-  .eyebrow {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0 0 20px;
-  }
-
-  h1 {
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, serif;
-    font-weight: 400;
-    font-size: clamp(2.9rem, 8vw, 4.2rem);
-    line-height: .98;
-    letter-spacing: -.015em;
-    margin: 0 0 20px;
-    text-wrap: balance;
-  }
-
-  .standfirst {
-    font-size: 1.2rem;
-    color: var(--ink-soft);
-    margin: 0 0 32px;
-    text-wrap: pretty;
-  }
-
-  .dateline {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: 12.5px;
-    color: var(--ink-faint);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 18px;
-    padding: 16px 0;
-    border-top: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule);
-    margin-bottom: 44px;
-  }
-
-  /* ── Draft notice ─────────────────────────────────────── */
-  .draft {
-    background: var(--accent-soft);
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin: 0 0 44px;
-    font-size: .95rem;
-    line-height: 1.55;
-    color: var(--ink);
-  }
-  .draft strong { font-weight: 600; }
-
-  /* ── The short version ────────────────────────────────── */
-  .summary {
-    background: var(--card);
-    border: 1px solid var(--rule);
-    border-radius: 14px;
-    padding: 28px 30px;
-    box-shadow: var(--shadow);
-    margin: 0 0 56px;
-  }
-  .summary h2 {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: 12px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    font-weight: 500;
-    margin: 0 0 16px;
-  }
-  .summary ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-  .summary li {
-    display: grid;
-    grid-template-columns: 1.1rem 1fr;
-    gap: 12px;
-    align-items: baseline;
-    font-size: 1.02rem;
-  }
-  .summary li::before {
-    content: "—";
-    color: var(--accent);
-    font-family: ui-monospace,SFMono-Regular,Menlo, monospace;
-  }
-
-  /* ── Sections ─────────────────────────────────────────── */
-  section { margin: 0 0 52px; scroll-margin-top: 24px; }
-
-  h2.sec {
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, serif;
-    font-weight: 400;
-    font-size: 1.9rem;
-    line-height: 1.15;
-    letter-spacing: -.01em;
-    margin: 0 0 6px;
-    display: grid;
-    grid-template-columns: 2.4rem 1fr;
-    gap: 4px;
-    align-items: baseline;
-    text-wrap: balance;
-  }
-  h2.sec .num {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: .72rem;
-    color: var(--ink-faint);
-    letter-spacing: .06em;
-  }
-  h2.sec + p { margin-top: 14px; }
-
-  p { margin: 0 0 16px; }
-  section p, section ul { margin-left: 2.4rem; }
-  @media (max-width: 560px) {
-    h2.sec { grid-template-columns: 1fr; gap: 2px; }
-    section p, section ul { margin-left: 0; }
-  }
-
-  ul.body { padding-left: 1.1rem; display: grid; gap: 8px; margin-bottom: 16px; }
-  ul.body li { padding-left: 4px; }
-
-  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
-
-  code, .mono {
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: .87em;
-  }
-
-  /* ── The ledger ───────────────────────────────────────── */
-  .ledger-wrap { margin: 0 0 20px; overflow-x: auto; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: ui-monospace,SFMono-Regular,Menlo, ui-monospace, monospace;
-    font-size: 13.5px;
-    min-width: 30rem;
-  }
-  caption {
-    text-align: left;
-    font-family: ui-monospace,SFMono-Regular,Menlo, monospace;
-    font-size: 12px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    padding-bottom: 12px;
-  }
-  th {
-    text-align: left;
-    font-weight: 500;
-    font-size: 11px;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    padding: 0 12px 10px 0;
-    border-bottom: 1px solid var(--rule);
-  }
-  td {
-    padding: 11px 12px 11px 0;
-    border-bottom: 1px solid var(--rule);
-    vertical-align: top;
-    color: var(--ink-soft);
-  }
-  td:first-child { color: var(--ink); }
-  .verdict {
-    display: inline-block;
-    padding: 2px 9px;
-    border-radius: 999px;
-    font-size: 11px;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-  .no  { background: var(--good-soft); color: var(--good); }
-  .yes { background: var(--accent-soft); color: var(--accent); }
-
-  /* ── Contact ──────────────────────────────────────────── */
-  .contact {
-    background: var(--ground-sunk);
-    border-radius: 14px;
-    padding: 30px;
-    margin-top: 64px;
-  }
-  .contact h2 {
-    font-family: "Iowan Old Style","Palatino Linotype",Palatino, Georgia, serif;
-    font-weight: 400;
-    font-size: 1.6rem;
-    margin: 0 0 10px;
-  }
-  .contact p { margin-left: 0; }
-
-  footer {
-    margin-top: 48px;
-    padding-top: 22px;
-    border-top: 1px solid var(--rule);
-    font-family: ui-monospace,SFMono-Regular,Menlo, monospace;
-    font-size: 12px;
-    color: var(--ink-faint);
-    line-height: 1.7;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    * { animation: none !important; transition: none !important; }
-  }
-</style>
-
-<div class="wrap">
-
-  <header>
-    <p class="eyebrow">Factbox for iOS</p>
-    <h1>Terms of Use</h1>
-    <p class="dateline"><span>Effective 1 September 2026</span></p>
-    <p class="standfirst">
-      Short, because the app is small. You read history on your phone; we try to get it right and
-      tell you where it came from. That's most of the relationship.
-    </p>
-  </header>
-
-  <div class="summary">
-    <h2>The short version</h2>
-    <p>Factbox is free. It's made by Iris Monet Labs LLC. You can use it as much as you like and stop whenever you like. Don't copy the content wholesale or try to break the app. We check our facts and cite them, but we're not a textbook and we're not liable if something turns out to be wrong. Nothing here takes away rights your local law gives you.</p>
+  <div class="note">
+    <p><strong>Not reviewed by a lawyer.</strong> These terms are written to describe
+       the actual offer honestly. They have not been through legal review.</p>
   </div>
 
-  <div class="body">
+  <h2>The short version</h2>
+  <ul>
+    <li>Factbox is a website. There is nothing to install and no password to make.</li>
+    <li>Two stories are free to read. The rest need a subscription.</li>
+    <li>Payment goes through Stripe. The price, the billing period and any free trial are shown at checkout before you pay — those are the terms that apply.</li>
+    <li>Subscriptions renew automatically until you cancel, and you can cancel at any time.</li>
+    <li>Read it, quote it, screenshot a card and send it to a friend. Do not republish the catalogue.</li>
+    <li>We are careful, but we are not a textbook and we do not warrant that every sentence is right.</li>
+    <li>Nothing here removes a right your local consumer law gives you.</li>
+  </ul>
 
-    <h2 class="sec"><span class="num">01</span> Who you're agreeing with</h2>
-    <p>Factbox is published by <span class="mono">Iris Monet Labs LLC</span>, a limited liability company registered in California, United States. In these terms, "we" and "us" mean that company; "you" means the person using the app.</p>
-    <p>By downloading or using Factbox you accept these terms. If you don't accept them, don't use it — that's the whole enforcement mechanism, and it's the right one.</p>
+  <h2>01 · Who you are agreeing with</h2>
+  <p>Factbox is published by <strong>Iris Monet Labs LLC</strong>, a limited liability
+     company registered in California, United States. In these terms "we" and "us" mean
+     that company, and "you" means the person reading the site.</p>
+  <p>By using factbox.app you accept these terms. If you do not accept them, do not use
+     it — that is the whole enforcement mechanism, and it is the right one.</p>
 
-    <h2 class="sec"><span class="num">02</span> What Factbox is</h2>
-    <p>A daily history-reading app. Each day it gives you one story, told as a short stack of cards, followed by a few questions. It's designed to be finished in about three minutes and then closed.</p>
-    <p>It is a general-interest reading app. It is not a textbook, not a qualification, not academic advice, and not a substitute for reading the sources themselves — which is why we name them.</p>
+  <h2>02 · What Factbox is</h2>
+  <p>A history reader for a phone. Season one is fifty-one stories, told across 450
+     cards, each card set on a painting or a photograph from Wikimedia Commons. A story
+     runs about a minute and a half to two and a half minutes, and can carry a quiet
+     ambient sound bed, which is off unless you turn it on.</p>
+  <p>It is general-interest reading. It is not a textbook, not a qualification, not
+     academic advice, and not a substitute for reading the sources themselves.</p>
 
-    <h2 class="sec"><span class="num">03</span> What it costs</h2>
-    <p><strong>Factbox is free.</strong> There is no subscription, no in-app purchase, and no advertising. There is nothing to cancel.</p>
-    <p>If that ever changes we will say so in the app's release notes and on this page before it takes effect, and anything you already had access to stays available. We will not quietly put a wall around something you were already reading.</p>
+  <h2>03 · What it costs</h2>
+  <p>Two stories are free and need no payment or subscription. The rest of season one
+     is behind a subscription to this website.</p>
+  <p><strong>The price, the billing period, and any free trial are the ones shown on
+     the checkout page for the plan you pick, immediately before you pay.</strong> More
+     than one plan is offered, they differ in billing period and price, and they change
+     from time to time. Deliberately, this page does not restate them: a number written
+     here would eventually contradict the number you were actually charged, and the
+     number you were actually charged is the one that governs.</p>
+  <p>Payment is taken by <a href="https://stripe.com" rel="noopener" target="_blank">Stripe</a>
+     on a page Stripe hosts. We never see or hold your card details — see the
+     <a href="privacy.html">Privacy Policy</a>.</p>
+  <p>If the plan you choose includes a free trial, you are not charged until the trial
+     ends, and cancelling before it ends means you are not charged at all. After that,
+     a subscription renews automatically at the end of each billing period, at the
+     current price for that plan, until you cancel it.</p>
+  <p>If we change the price of a plan, the change takes effect from a renewal, never
+     part-way through a period you have already paid for.</p>
 
-    <h2 class="sec"><span class="num">04</span> Your account</h2>
-    <p>There isn't one. Factbox has no sign-up, no login, and no password. Your reading progress lives on your device and nowhere else — see the <a href="privacy.html">Privacy Policy</a>.</p>
-    <p>The consequence is worth stating plainly: <strong>delete the app and your progress is gone.</strong> There is no backup on our side because there is no our side. We would rather you knew that than discovered it.</p>
-
-    <h2 class="sec"><span class="num">05</span> What you can and can't do</h2>
-    <p>Read it, quote it, tell people about it, screenshot a card and send it to a friend. All fine, and the point.</p>
-    <p>What we ask you not to do: republish the card content wholesale as your own; scrape it in bulk; reverse-engineer, decompile or tamper with the app; or use it to build a competing product out of our text. Ordinary quoting with attribution is welcome. Lifting the catalogue is not.</p>
-
-    <h2 class="sec"><span class="num">06</span> Who owns what</h2>
-    <p>The card text, the illustrations, the mascot and the app itself are ours. The <em>history</em> is nobody's — the facts belong to everyone, and the sources we cite belong to their own authors and publishers, credited on each card.</p>
-    <p>Some cards show artworks that are old enough to be out of copyright. Where we could not confirm who holds rights in a particular photograph of such a work, we say so on the card rather than claiming a provenance we haven't verified. If you believe something here infringes your rights, write to us and we'll take it down while we look into it.</p>
-
-    <h2 class="sec"><span class="num">07</span> Getting things wrong</h2>
-    <p>Every card cites at least two independent sources, and anything historians actively dispute is flagged as contested rather than smoothed into a confident sentence. That is the standard we hold ourselves to and the reason the app exists.</p>
-    <p>It is not a guarantee. History is argued about, sources conflict, and we will occasionally be wrong. <strong>Factbox is provided "as is", without warranty of any kind.</strong> If you spot an error, the feedback form in the You tab reaches a real person, and corrections ship in the next release.</p>
-
-    <h2 class="sec"><span class="num">08</span> Liability</h2>
-    <p>To the fullest extent the law allows, Iris Monet Labs LLC is not liable for any indirect or consequential loss arising from your use of Factbox. The app is free, it stores nothing about you, and it makes no decisions on your behalf, so the realistic exposure here is close to nil — but the sentence has to be in the document.</p>
-    <p>Nothing in these terms limits liability for anything that cannot lawfully be limited, and nothing here removes consumer rights your local law gives you.</p>
-
-    <h2 class="sec"><span class="num">09</span> Stopping</h2>
-    <p>You can stop using Factbox at any time by deleting it. We may stop offering it, or remove particular content, at any time. If we ever discontinue the app we will say so in the release notes rather than letting it quietly rot.</p>
-
-    <h2 class="sec"><span class="num">10</span> Apple</h2>
-    <p>Factbox is distributed through the App Store. Apple is not a party to these terms and has no obligation to provide support for the app. Apple is, however, entitled to enforce these terms against you as a third-party beneficiary — that is Apple's standard requirement, and it is genuinely their rule rather than ours.</p>
-    <p>Apple's own terms also apply to your use of the App Store, and where our terms conflict with Apple's for App Store distribution, Apple's win.</p>
-
-    <h2 class="sec"><span class="num">11</span> Changes to these terms</h2>
-    <p>If we change anything substantive, we will update this page, change the effective date at the top, and note it in the app's release notes. We will not backdate a change or edit one in quietly.</p>
-
-    <h2 class="sec"><span class="num">12</span> Law</h2>
-    <p>These terms are governed by the laws of the State of California, United States, without regard to conflict-of-laws rules. If a court finds any part unenforceable, the rest still stands.</p>
-
-    <h2>Contact</h2>
-    <p class="contact">Iris Monet Labs LLC<br><a href="mailto:hello@getdonny.com">hello@getdonny.com</a></p>
-    <p>Questions about these terms, a correction to a card, or a rights complaint — all to the same address, and a person reads it.</p>
-
+  <h2>04 · Cancelling</h2>
+  <p>You can cancel at any time, for any reason, without explaining yourself. Email
+     <a href="mailto:hello@getdonny.com">hello@getdonny.com</a> and we will cancel it
+     and confirm; if your Stripe receipt carries a link for managing the subscription,
+     that does the same thing.</p>
+  <p>Cancelling stops the next charge. It does not refund a period already paid for,
+     except where your local law says otherwise or where we agree otherwise.</p>
+  <div class="note">
+    <p><strong>One honest mechanical note.</strong> This site has no server. Access is a
+       value stored in your own browser, so cancelling stops the billing but does not
+       automatically re-lock a browser that was already unlocked — there is nothing here
+       checking. We would rather tell you that than have you assume a lock that is not
+       there.</p>
   </div>
 
-  <footer>
-    Factbox for iOS · Terms of Use · Effective 1 September 2026<br>
-    <a href="stories.html">Home</a> · <a href="privacy.html">Privacy</a> · <a href="support.html">Support</a>
-  </footer>
-</div>
+  <h2>05 · Access, and the restore link</h2>
+  <p>There is no server-side account and no password. Signing up means this browser
+     remembers your email address and your preferences; nothing is registered with us,
+     and logging in on a second phone therefore cannot bring your access with it.
+     Access lives in the browser you bought it in. To carry it to another phone or
+     another browser, you use the <strong>restore link</strong> the site shows you after
+     you subscribe.</p>
+  <p>That link is a bearer token: whoever holds it has access. Keep it to yourself.
+     Publishing it, or handing it around so that people who have not subscribed can
+     read the season, is a breach of these terms, and it is the one thing here we would
+     actually mind.</p>
+  <p>Clearing your browser's site data erases your access along with everything else the
+     site stored — so save the restore link somewhere before you do that. Your reading
+     progress and your saved stories are stored the same way, and cannot be recovered by
+     us, because we never had them.</p>
 
+  <h2>06 · Getting the history right</h2>
+  <p>The stories are written by hand and checked before they ship. Where a card rests on
+     a specific document, a named authority or a disputed reading, the card says so.
+     <strong>Not every card carries a citation, and we do not claim that every one
+     does.</strong> Where historians genuinely do not know, the card says that rather
+     than picking a confident answer.</p>
+  <p>That is a standard we hold ourselves to, not a guarantee we can give.
+     <strong>The site is provided "as is", without warranty of any kind.</strong>
+     History is argued about, sources conflict, and we will occasionally be wrong. If you
+     find an error, write to <a href="mailto:hello@getdonny.com">hello@getdonny.com</a>
+     with the story and the card; corrections go in as soon as we have checked them.
+     A correction is a gift, not a complaint.</p>
+
+  <h2>07 · What you may and may not do</h2>
+  <p>Read it, quote it, tell people about it, screenshot a card and send it to a friend.
+     All fine, and the point.</p>
+  <p>What we ask you not to do: republish the card text wholesale as your own; scrape the
+     catalogue in bulk; share your restore link so that others read the season without
+     subscribing; or use our text to build a competing product. Ordinary quoting with
+     attribution is welcome. Lifting the catalogue is not.</p>
+
+  <h2>08 · Who owns what</h2>
+  <p>The card text, the sequencing, the design and the site itself are ours. The
+     <em>history</em> is nobody's — facts belong to everyone.</p>
+  <p>The artwork is not ours. Every plate comes from Wikimedia Commons: most are public
+     domain, and the rest are used under Creative Commons licences that require the
+     photographer and the licence to be named and linked. They are named and linked on
+     the card and again on the <a href="credits.html">artwork credits page</a>. Files are
+     reproduced at reduced size and are not cropped, recoloured or otherwise adapted.</p>
+  <p>If you believe something here infringes your rights, write to us with the detail and
+     we will take it down while we look into it.</p>
+
+  <h2>09 · Availability</h2>
+  <p>We will keep the site up and keep adding to the season, but we do not promise
+     uninterrupted service, and a static site on shared hosting can go down. We may change
+     or remove particular stories. If we ever discontinue Factbox we will say so on this
+     page rather than letting it quietly rot.</p>
+
+  <h2>10 · Liability</h2>
+  <p>To the fullest extent the law allows, Iris Monet Labs LLC is not liable for indirect
+     or consequential loss arising from your use of Factbox. The site stores nothing about
+     you and makes no decisions on your behalf, so the realistic exposure is close to nil
+     — but the sentence has to be in the document.</p>
+  <p>Nothing in these terms limits liability for anything that cannot lawfully be limited,
+     and nothing here removes a consumer right your local law gives you — including, where
+     it applies to you, a statutory right to cancel a distance purchase within a set period.</p>
+
+  <h2>11 · Ending it</h2>
+  <p>You can stop using Factbox whenever you like; if you are subscribed, cancel as
+     described in §04. We may end your access if you republish the catalogue or hand your
+     restore link around, and in that case we will refund the unused part of the period you
+     had paid for.</p>
+
+  <h2>12 · Changes to these terms</h2>
+  <p>If we change anything substantive we will update this page and change the effective
+     date at the top. We will not backdate a change or edit one in quietly.</p>
+
+  <h2>13 · Law</h2>
+  <p>These terms are governed by the laws of the State of California, United States,
+     without regard to conflict-of-laws rules. If a court finds any part unenforceable, the
+     rest still stands.</p>
+
+  <h2>14 · Contact</h2>
+  <p>Iris Monet Labs LLC —
+     <a href="mailto:hello@getdonny.com">hello@getdonny.com</a>.
+     Questions about these terms, a correction to a card, a cancellation or a rights
+     complaint all go to the same address, and a person reads it.</p>
+
+  <nav class="docnav" aria-label="Site documents">
+    <a href="stories.html">Home</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="support.html">Support</a>
+    <a href="credits.html">Artwork credits</a>
+  </nav>
+  <p class="stamp">Factbox · Terms of Use · Effective 2 September 2026. Not reviewed by a
+     lawyer.</p>
+</main>
+</body>
 </html>

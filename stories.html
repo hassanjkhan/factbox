@@ -69,7 +69,7 @@
                'src="img/thumbs/' + FB.esc(s.img) + '.webp">' +
           (locked
             ? '<span class="lock" aria-hidden="true">🔒</span>'
-            : '<span class="freetag">FREE</span>') +
+            : (s.free ? '<span class="freetag">FREE</span>' : '')) +
           (!locked && st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + FB.esc(s.title) + '</h3>' +

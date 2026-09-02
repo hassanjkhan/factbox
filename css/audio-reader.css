@@ -103,7 +103,7 @@
   color:var(--dim, rgba(255,247,237,.62));
   box-shadow:inset 0 0 0 1px rgba(255,247,237,.10);
 }
-.fb-sound.is-dead .ico{color:var(--dimmer, rgba(255,247,237,.42))}
+.fb-sound.is-dead .ico{color:var(--dimmer, rgba(255,247,237,.52))}
 .fb-sound.is-gone{opacity:0;transform:translateY(-4px)}
 
 /* --------------------------------------------------------------------------

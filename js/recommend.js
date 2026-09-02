@@ -30,25 +30,62 @@ var FBR = (function () {
     shut:     -1200  /* locked to this reader — last resort only, and marked */
   };
 
-  var TOPICS = {
-    cleopatra:       "Cleopatra",
-    church_history:  "the church",
-    old_testament:   "the Old Testament",
-    new_testament:   "the New Testament",
-    us_history:      "American history",
-    disaster:        "disasters",
-    ancient_world:   "the ancient world",
-    medieval_modern: "the medieval world"
+  /* ---- the taxonomy ------------------------------------------------------
+     js/explore.js owns the group names and publishes them on window.FBTAX.
+     A second table here is how "the medieval world" ended up over a group
+     that contains Rasputin, who died in 1916 — so this is a mirror used only
+     when explore.js is not on the page (which is every reader page), and the
+     lookups below always prefer the published copy.
+
+     `lower` is the mid-sentence form of a TOPIC ("More on the ancient world");
+     `more` is the "one more like this" form of a KIND. Both live on the same
+     record as the heading name, so there is one table, not two. */
+  var FALLBACK = {
+    TOPICS: [
+      { key: "cleopatra",       name: "Cleopatra",                   lower: "Cleopatra" },
+      { key: "new_testament",   name: "The New Testament",           lower: "the New Testament" },
+      { key: "church_history",  name: "Devils, saints and heresies", lower: "devils, saints and heresies" },
+      { key: "old_testament",   name: "The Old Testament",           lower: "the Old Testament" },
+      { key: "us_history",      name: "America",                     lower: "America" },
+      { key: "ancient_world",   name: "The ancient world",           lower: "the ancient world" },
+      { key: "medieval_modern", name: "Medieval and modern",         lower: "the medieval and modern world" },
+      { key: "disaster",        name: "When it all went wrong",      lower: "disasters" }
+    ],
+    KINDS: [
+      { key: "unsolved_mystery", name: "Unsolved mysteries",          more: "Another unsolved one" },
+      { key: "myth_correction",  name: "Things you have wrong",       more: "Another myth, corrected" },
+      { key: "violent_death",    name: "Deaths",                      more: "Another grisly one" },
+      { key: "list_explainer",   name: "The whole thing, explained",  more: "Another explainer" },
+      { key: "moral_reversal",   name: "The turn nobody mentions",    more: "Another one that flips" },
+      { key: "hidden_meaning",   name: "Hidden meanings",             more: "Another hidden meaning" }
+    ]
   };
 
-  var KINDS = {
-    unsolved_mystery: "Another unsolved one",
-    myth_correction:  "Another myth, corrected",
-    list_explainer:   "Another explainer",
-    moral_reversal:   "Another one that flips",
-    violent_death:    "Another grisly one",
-    hidden_meaning:   "Another hidden meaning"
-  };
+  /* Read at call time, not at load: explore.js may define FBTAX after this
+     file parses, and a table that is missing or malformed must never throw. */
+  function taxon(which) {
+    try {
+      var t = window.FBTAX && window.FBTAX[which];
+      /* Records, not just something with a length — a string has one too. */
+      if (t && t.length && t[0] && t[0].key) return t;
+    } catch (e) {}
+    return FALLBACK[which];
+  }
+
+  function form(which, key, field) {
+    try {
+      var t = taxon(which), i;
+      for (i = 0; i < t.length; i++) {
+        if (t[i] && t[i].key === key) return str(t[i][field] || t[i].name);
+      }
+    } catch (e) {}
+    return "";
+  }
+
+  /* "More on the ancient world" */
+  function topicPhrase(key) { return form("TOPICS", key, "lower"); }
+  /* "Another myth, corrected" */
+  function kindPhrase(key)  { return form("KINDS",  key, "more"); }
 
   /* ---- tiny helpers ---------------------------------------------------- */
 
@@ -94,11 +131,17 @@ var FBR = (function () {
     } catch (e) { return blank; }
   }
 
+  /* Half-minute steps, the same arithmetic as FB.minutes in gate.js. A row
+     that says "2 min" beside a reader page saying "1½ min" is the same story
+     with two lengths. */
   function minutes(secs) {
     try {
       if (window.FB && typeof FB.minutes === "function") return FB.minutes(secs);
     } catch (e) {}
-    return Math.max(1, Math.round((+secs || 0) / 60)) + " min";
+    var halves = Math.max(1, Math.round((Number(secs) || 0) / 30));
+    var whole = Math.floor(halves / 2);
+    if (whole === 0) return "\u00bd min";
+    return whole + (halves % 2 ? "\u00bd" : "") + " min";
   }
 
   /* Stack 01 is the illustrated one-off page; everything else is the reader. */
@@ -125,12 +168,13 @@ var FBR = (function () {
     if (p.status === "reading" && p.card > 0) return { key: "resume", text: "You started this one" };
     if (p.status === "done")                  return { key: "done",   text: "Worth a second read" };
     if (topic && str(s.topic) === topic) {
-      var name = TOPICS[s.topic] || str(s.topic).replace(/_/g, " ");
+      var name = topicPhrase(s.topic) || str(s.topic).replace(/_/g, " ");
       return { key: "topic", text: "More on " + name };
     }
     if (readerLocked && s.free)               return { key: "free",   text: "Free to read now" };
-    if (kind && str(s.kind) === kind)         return { key: "kind",   text: KINDS[s.kind] || "Another one like it" };
-    if (s.topic && TOPICS[s.topic])           return { key: "browse", text: "More on " + TOPICS[s.topic] };
+    if (kind && str(s.kind) === kind)         return { key: "kind",   text: kindPhrase(s.kind) || "Another one like it" };
+    var browse = s.topic ? topicPhrase(str(s.topic)) : "";
+    if (browse)                               return { key: "browse", text: "More on " + browse };
     return { key: "next", text: "Next up" };
   }
 
@@ -225,7 +269,7 @@ var FBR = (function () {
     };
     plate.appendChild(img);
     if (s.locked) {
-      /* The glyph is decoration: the meta line already says "· Locked", so
+      /* The glyph is decoration: the meta line already says "· locked", so
          without this the link's accessible name ends in "lock". */
       var lk = el("span", "lock", "\ud83d\udd12");
       lk.setAttribute("aria-hidden", "true");
@@ -238,10 +282,11 @@ var FBR = (function () {
     if (!window.FBS || typeof FBS.toggle !== "function") return null;
     var on = false;
     try { on = !!(FBS.saved && FBS.saved(str(s.id))); } catch (e) {}
+    var name = str(s.title) ? ": " + str(s.title) : "";
     var b = el("button", "rec-save", on ? "Saved" : "Save");
     b.type = "button";
     b.setAttribute("aria-pressed", on ? "true" : "false");
-    b.setAttribute("aria-label", (on ? "Remove from library: " : "Save to library: ") + str(s.title));
+    b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
     b.addEventListener("click", function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
@@ -251,6 +296,7 @@ var FBR = (function () {
       on = now;
       b.textContent = on ? "Saved" : "Save";
       b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
       track("rec_save", { stack: str(s.id), on: on ? "1" : "0" });
     });
     return b;
@@ -268,7 +314,7 @@ var FBR = (function () {
     t.appendChild(el("b", null, str(s.title)));
     t.appendChild(el("span", "rec-why", str(s.why)));
     var cards = (s.cards && s.cards.length) ? s.cards.length + " cards · " : "";
-    t.appendChild(el("span", "rec-meta", cards + minutes(s.secs) + (s.locked ? " · Locked" : "")));
+    t.appendChild(el("span", "rec-meta", cards + minutes(s.secs) + (s.locked ? " · locked" : "")));
     a.appendChild(t);
 
     a.addEventListener("click", function () {
@@ -319,7 +365,7 @@ var FBR = (function () {
       }
       if (picks.length < want && teaser) picks.push(teaser);
 
-      sec.appendChild(el("h2", null, str(opts.heading) || "That is the whole story."));
+      sec.appendChild(el("h2", null, str(opts.heading) || "That is the whole story"));
 
       var openable = 0;
       for (var j = 0; j < picks.length; j++) if (!picks[j].locked) openable++;
@@ -360,7 +406,7 @@ var FBR = (function () {
       /* Last resort: a pane with a way out is still a working end of story. */
       try {
         var f = el("section", "pane rec");
-        f.appendChild(el("h2", null, "That is the whole story."));
+        f.appendChild(el("h2", null, "That is the whole story"));
         var l = el("div", "rec-links");
         l.appendChild(link("stories.html", "All stories"));
         f.appendChild(l);
