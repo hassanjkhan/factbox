@@ -1,0 +1,2860 @@
+{
+ "version": 1,
+ "note": "Per-card bed map for read.html. Resolution, most specific first: stacks[stack].cards[data-card] -> stacks[stack].beats[beat] -> stacks[stack].bed -> topics[topic].beats[beat] -> topics[topic].bed -> default. Card keys are the 0-based value read.html writes into data-card; `n` inside each entry is the 1-based card number in data/stacks.json. An unresolved card HOLDS whatever is already playing. See AUDIO-CARDS.md.",
+ "base": "audio/",
+ "default": "scroll",
+ "beds": {
+  "basket": {
+   "file": "basket.mp3",
+   "gain": 0.85,
+   "status": "existing",
+   "note": "Close, dry, small. A rustle inside a container."
+  },
+  "bath": {
+   "file": "bath.mp3",
+   "gain": 0.8,
+   "status": "existing",
+   "note": "Poured water in a hard, reverberant room."
+  },
+  "battle": {
+   "file": "battle.mp3",
+   "gain": 0.85,
+   "status": "new",
+   "note": "An army at middle distance. Mass, metal, low ground rumble. No voices."
+  },
+  "coil": {
+   "file": "coil.mp3",
+   "gain": 0.95,
+   "status": "existing",
+   "note": "ACCENT. A low drone under a question."
+  },
+  "copies": {
+   "file": "copies.mp3",
+   "gain": 0.85,
+   "status": "existing",
+   "note": "A scriptorium. Dry, papery, patient. A document being examined."
+  },
+  "court": {
+   "file": "court.mp3",
+   "gain": 0.82,
+   "status": "new",
+   "note": "An indoor throne room. Hard marble, a low human murmur that never resolves into words."
+  },
+  "crypt": {
+   "file": "crypt.mp3",
+   "gain": 0.78,
+   "status": "new",
+   "note": "Small, dead, underground. No outside at all, a slow drip, a floor rumble. Tomb, cave, cell."
+  },
+  "dig": {
+   "file": "dig.mp3",
+   "gain": 0.8,
+   "status": "new",
+   "note": "An excavation outdoors. Loose grit and soil, thin wind, sparse tool contact."
+  },
+  "door": {
+   "file": "door.mp3",
+   "gain": 0.95,
+   "status": "existing",
+   "note": "ACCENT. A shut door in near-dark. The room going quiet."
+  },
+  "field": {
+   "file": "field.mp3",
+   "gain": 0.8,
+   "status": "new",
+   "note": "Open warm countryside. Grass, insects, a bird or two. Galilee, Kentucky, a garden."
+  },
+  "fire": {
+   "file": "fire.mp3",
+   "gain": 0.88,
+   "status": "new",
+   "note": "A large fire close by. Broad roar with irregular crackle over it."
+  },
+  "gallery": {
+   "file": "gallery.mp3",
+   "gain": 0.8,
+   "status": "existing",
+   "note": "A big cool room with a long tail. The room where the paintings are."
+  },
+  "hall": {
+   "file": "hall.mp3",
+   "gain": 0.82,
+   "status": "new",
+   "note": "A 19th-century wooden interior with people in it. Theatre, courthouse, meeting house."
+  },
+  "harbour": {
+   "file": "harbour.mp3",
+   "gain": 1.0,
+   "status": "existing",
+   "note": "Sea and gulls at dusk. Alexandria from the quay."
+  },
+  "harbour-arrival": {
+   "file": "harbour-arrival.mp3",
+   "gain": 0.86,
+   "status": "existing",
+   "note": "Water on hulls, mass, a crowd a quarter-mile off. A ship coming in."
+  },
+  "letter": {
+   "file": "letter.mp3",
+   "gain": 0.8,
+   "status": "existing",
+   "note": "A still room, a writing hand, a tread somewhere beyond the door."
+  },
+  "night": {
+   "file": "night.mp3",
+   "gain": 0.78,
+   "status": "new",
+   "note": "Outdoors after dark. Crickets, cool still air, one far-off dog."
+  },
+  "palace": {
+   "file": "palace.mp3",
+   "gain": 0.85,
+   "status": "existing",
+   "note": "A fountain in a courtyard, cicadas beyond it. Mediterranean, hot, outdoors-but-enclosed. The Ptolemaic court."
+  },
+  "reactor": {
+   "file": "reactor.mp3",
+   "gain": 0.85,
+   "status": "existing",
+   "note": "A machine room. Cold, continuous, mechanical, no century."
+  },
+  "river": {
+   "file": "river.mp3",
+   "gain": 0.85,
+   "status": "new",
+   "note": "Moving fresh water close by, reeds on the bank."
+  },
+  "road": {
+   "file": "road.mp3",
+   "gain": 0.82,
+   "status": "new",
+   "note": "Travel on foot outdoors. Grit underfoot, wide dry air."
+  },
+  "scroll": {
+   "file": "scroll.mp3",
+   "gain": 0.85,
+   "status": "existing",
+   "note": "A still small interior. Nowhere in particular, which is the point."
+  },
+  "sea": {
+   "file": "sea.mp3",
+   "gain": 1.0,
+   "status": "existing",
+   "note": "Open sea, no land."
+  },
+  "search": {
+   "file": "search.mp3",
+   "gain": 0.72,
+   "status": "existing",
+   "note": "ACCENT. The room after it was searched. The deliberate near-silence of the set."
+  },
+  "storm": {
+   "file": "storm.mp3",
+   "gain": 0.85,
+   "status": "new",
+   "note": "Rain on hard ground with distant thunder. The sky closing over."
+  },
+  "temple": {
+   "file": "temple.mp3",
+   "gain": 0.85,
+   "status": "new",
+   "note": "An enormous sacred stone interior. Vast slow air, a brazier hiss, a deep held tone."
+  },
+  "triumph": {
+   "file": "triumph.mp3",
+   "gain": 0.95,
+   "status": "existing",
+   "note": "A crowd in the street. The busiest bed in the set."
+  },
+  "vault": {
+   "file": "vault.mp3",
+   "gain": 0.85,
+   "status": "existing",
+   "note": "A large dark stone interior with a long tail. Council chamber, cathedral, trial hall."
+  },
+  "vials": {
+   "file": "vials.mp3",
+   "gain": 0.75,
+   "status": "existing",
+   "note": "A physician's table. Small glass, a pestle, careful handling."
+  },
+  "void": {
+   "file": "void.mp3",
+   "gain": 0.8,
+   "status": "new",
+   "note": "Vast and airless. A very low sustained tone with a slow shimmer far above it. Heaven, the sky, the cosmos."
+  },
+  "wind": {
+   "file": "wind.mp3",
+   "gain": 0.85,
+   "status": "existing",
+   "note": "Open, dry, outdoors, no water. Desert, steppe, hillside."
+  }
+ },
+ "topics": {
+  "cleopatra": {
+   "bed": "palace"
+  },
+  "ancient_world": {
+   "bed": "palace"
+  },
+  "old_testament": {
+   "bed": "wind"
+  },
+  "new_testament": {
+   "bed": "copies"
+  },
+  "church_history": {
+   "bed": "vault"
+  },
+  "us_history": {
+   "bed": "letter"
+  },
+  "medieval_modern": {
+   "bed": "vault"
+  },
+  "disaster": {
+   "bed": "reactor"
+  }
+ },
+ "stacks": {
+  "01": {
+   "title": "How did Cleopatra die? (the snake)",
+   "topic": "cleopatra",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "palace",
+     "why": "Octavian invades Alexandria; Antony and Cleopatra barricaded inside the royal palace; she refuses to be paraded in Rome."
+    },
+    "1": {
+     "n": 2,
+     "bed": "palace",
+     "why": "Octavian invades Alexandria; Antony and Cleopatra barricaded inside the royal palace; she refuses to be paraded in Rome."
+    },
+    "2": {
+     "n": 3,
+     "bed": "palace",
+     "why": "Octavian invades Alexandria; Antony and Cleopatra barricaded inside the royal palace; she refuses to be paraded in Rome."
+    },
+    "3": {
+     "n": 4,
+     "bed": "bath",
+     "why": "'She took a bath, dressed in royal attire and ate a final meal' - poured water in a hard room."
+    },
+    "4": {
+     "n": 5,
+     "bed": "basket",
+     "why": "Plutarch's asp, smuggled into the mausoleum hidden beneath figs in a basket."
+    },
+    "5": {
+     "n": 6,
+     "bed": "basket",
+     "why": "Plutarch's asp, smuggled into the mausoleum hidden beneath figs in a basket."
+    },
+    "6": {
+     "n": 7,
+     "bed": "basket",
+     "why": "Plutarch's asp, smuggled into the mausoleum hidden beneath figs in a basket."
+    },
+    "7": {
+     "n": 8,
+     "bed": "search",
+     "why": "'No snake was ever found in the room.' Egypt becomes a province; the room after it was searched."
+    },
+    "8": {
+     "n": 9,
+     "bed": "search",
+     "why": "'No snake was ever found in the room.' Egypt becomes a province; the room after it was searched."
+    },
+    "9": {
+     "n": 10,
+     "bed": "search",
+     "why": "'No snake was ever found in the room.' Egypt becomes a province; the room after it was searched."
+    }
+   }
+  },
+  "02": {
+   "title": "Cleopatra the seductress",
+   "topic": "cleopatra",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "palace",
+     "why": "The 'siren' charge, made about a queen in her own court."
+    },
+    "1": {
+     "n": 2,
+     "bed": "palace",
+     "why": "The 'siren' charge, made about a queen in her own court."
+    },
+    "2": {
+     "n": 3,
+     "bed": "harbour-arrival",
+     "why": "Summoned to Tarsus in 41 BCE she arrives on a golden ship, dressed as Aphrodite, with music and attendants."
+    },
+    "3": {
+     "n": 4,
+     "bed": "harbour-arrival",
+     "why": "Summoned to Tarsus in 41 BCE she arrives on a golden ship, dressed as Aphrodite, with music and attendants."
+    },
+    "4": {
+     "n": 5,
+     "bed": "palace",
+     "why": "Caesar then Antony; Octavian's war messaging against her - court politics."
+    },
+    "5": {
+     "n": 6,
+     "bed": "palace",
+     "why": "Caesar then Antony; Octavian's war messaging against her - court politics."
+    },
+    "6": {
+     "n": 7,
+     "bed": "palace",
+     "why": "Caesar then Antony; Octavian's war messaging against her - court politics."
+    },
+    "7": {
+     "n": 8,
+     "bed": "basket",
+     "why": "Carried in to Caesar bundled inside a bed-sack by her servant Apollodorus. Close, dry, small."
+    },
+    "8": {
+     "n": 9,
+     "bed": "basket",
+     "why": "Carried in to Caesar bundled inside a bed-sack by her servant Apollodorus. Close, dry, small."
+    },
+    "9": {
+     "n": 10,
+     "bed": "basket",
+     "why": "Carried in to Caesar bundled inside a bed-sack by her servant Apollodorus. Close, dry, small."
+    },
+    "10": {
+     "n": 11,
+     "bed": "copies",
+     "why": "Of her own writing, one word survives on a papyrus."
+    }
+   }
+  },
+  "03": {
+   "title": "Cleopatra's body has never been found",
+   "topic": "cleopatra",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "harbour",
+     "why": "Alexandria: her tomb and the quarter it stood in."
+    },
+    "1": {
+     "n": 2,
+     "bed": "harbour",
+     "why": "Alexandria: her tomb and the quarter it stood in."
+    },
+    "2": {
+     "n": 3,
+     "bed": "sea",
+     "why": "The 365 AD earthquake and tsunami submerged the royal quarter under the Mediterranean; theories point to sunken sites."
+    },
+    "3": {
+     "n": 4,
+     "bed": "sea",
+     "why": "The 365 AD earthquake and tsunami submerged the royal quarter under the Mediterranean; theories point to sunken sites."
+    },
+    "4": {
+     "n": 5,
+     "bed": "dig",
+     "why": "Martinez's excavation: underground chambers, coins, mummies, a 1,305 metre tunnel to a sunken port."
+    },
+    "5": {
+     "n": 6,
+     "bed": "dig",
+     "why": "Martinez's excavation: underground chambers, coins, mummies, a 1,305 metre tunnel to a sunken port."
+    },
+    "6": {
+     "n": 7,
+     "bed": "temple",
+     "why": "Taposiris Magna, the temple of Osiris, and why the search is aimed at it."
+    },
+    "7": {
+     "n": 8,
+     "bed": "temple",
+     "why": "Taposiris Magna, the temple of Osiris, and why the search is aimed at it."
+    }
+   }
+  },
+  "04": {
+   "title": "7 Deadly Sins Explained",
+   "topic": "church_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "vault",
+     "why": "Bosch's panel and the church that built the list. No place on the card - church ambient.",
+     "fb": true
+    },
+    "1": {
+     "n": 2,
+     "bed": "vault",
+     "why": "Bosch's panel and the church that built the list. No place on the card - church ambient.",
+     "fb": true
+    },
+    "2": {
+     "n": 3,
+     "bed": "wind",
+     "why": "'Evagrius Ponticus lived alone in the Egyptian desert trying to pray.' Open, dry, no water."
+    },
+    "3": {
+     "n": 4,
+     "bed": "wind",
+     "why": "'Evagrius Ponticus lived alone in the Egyptian desert trying to pray.' Open, dry, no water."
+    },
+    "4": {
+     "n": 5,
+     "bed": "wind",
+     "why": "'Evagrius Ponticus lived alone in the Egyptian desert trying to pray.' Open, dry, no water."
+    },
+    "5": {
+     "n": 6,
+     "bed": "field",
+     "why": "The Sermon on the Mount - Jesus teaching outdoors on a hillside (Carl Bloch, Giotto)."
+    },
+    "6": {
+     "n": 7,
+     "bed": "field",
+     "why": "The Sermon on the Mount - Jesus teaching outdoors on a hillside (Carl Bloch, Giotto)."
+    },
+    "7": {
+     "n": 8,
+     "bed": "scroll",
+     "why": "Pure list: the seven, their opposing virtues, how to live them. No room at all - the neutral bed.",
+     "fb": true
+    },
+    "8": {
+     "n": 9,
+     "bed": "scroll",
+     "why": "Pure list: the seven, their opposing virtues, how to live them. No room at all - the neutral bed.",
+     "fb": true
+    },
+    "9": {
+     "n": 10,
+     "bed": "scroll",
+     "why": "Pure list: the seven, their opposing virtues, how to live them. No room at all - the neutral bed.",
+     "fb": true
+    },
+    "10": {
+     "n": 11,
+     "bed": "scroll",
+     "why": "Pure list: the seven, their opposing virtues, how to live them. No room at all - the neutral bed.",
+     "fb": true
+    }
+   }
+  },
+  "05": {
+   "title": "The Ark of the Covenant",
+   "topic": "old_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "temple",
+     "why": "A gold-covered chest treated as a throne, the Holy of Holies, Uzzah struck dead for touching it."
+    },
+    "1": {
+     "n": 2,
+     "bed": "temple",
+     "why": "A gold-covered chest treated as a throne, the Holy of Holies, Uzzah struck dead for touching it."
+    },
+    "2": {
+     "n": 3,
+     "bed": "temple",
+     "why": "A gold-covered chest treated as a throne, the Holy of Holies, Uzzah struck dead for touching it."
+    },
+    "3": {
+     "n": 4,
+     "bed": "temple",
+     "why": "A gold-covered chest treated as a throne, the Holy of Holies, Uzzah struck dead for touching it."
+    },
+    "4": {
+     "n": 5,
+     "bed": "temple",
+     "why": "A gold-covered chest treated as a throne, the Holy of Holies, Uzzah struck dead for touching it."
+    },
+    "5": {
+     "n": 6,
+     "bed": "battle",
+     "why": "The Ark carried into war and Jericho; the Philistines capture it; Babylon destroys Solomon's Temple in 586 BCE."
+    },
+    "6": {
+     "n": 7,
+     "bed": "battle",
+     "why": "The Ark carried into war and Jericho; the Philistines capture it; Babylon destroys Solomon's Temple in 586 BCE."
+    },
+    "7": {
+     "n": 8,
+     "bed": "reactor",
+     "why": "1988: the Sun Streak remote-viewing programme, a Cold War intelligence lab. Cold, continuous, mechanical."
+    },
+    "8": {
+     "n": 9,
+     "bed": "reactor",
+     "why": "1988: the Sun Streak remote-viewing programme, a Cold War intelligence lab. Cold, continuous, mechanical."
+    },
+    "9": {
+     "n": 10,
+     "bed": "dig",
+     "why": "Destroyed, Babylon, Jerusalem or Ethiopia - no proposed location archaeologically verified."
+    },
+    "10": {
+     "n": 11,
+     "bed": "dig",
+     "why": "Destroyed, Babylon, Jerusalem or Ethiopia - no proposed location archaeologically verified."
+    },
+    "11": {
+     "n": 12,
+     "bed": "dig",
+     "why": "Destroyed, Babylon, Jerusalem or Ethiopia - no proposed location archaeologically verified."
+    }
+   }
+  },
+  "06": {
+   "title": "The secret gospel of Mary Magdalene",
+   "topic": "new_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "night",
+     "why": "Georges de La Tour's Magdalen of the Night Light; Mary healed of seven demons."
+    },
+    "1": {
+     "n": 2,
+     "bed": "night",
+     "why": "Georges de La Tour's Magdalen of the Night Light; Mary healed of seven demons."
+    },
+    "2": {
+     "n": 3,
+     "bed": "crypt",
+     "why": "She witnesses the death, sees where the body was buried, returns and finds the tomb empty."
+    },
+    "3": {
+     "n": 4,
+     "bed": "crypt",
+     "why": "She witnesses the death, sees where the body was buried, returns and finds the tomb empty."
+    },
+    "4": {
+     "n": 5,
+     "bed": "field",
+     "why": "She mistakes the risen Jesus for a gardener; he says her name. A garden at first light."
+    },
+    "5": {
+     "n": 6,
+     "bed": "field",
+     "why": "She mistakes the risen Jesus for a gardener; he says her name. A garden at first light."
+    },
+    "6": {
+     "n": 7,
+     "bed": "copies",
+     "why": "The Gospel of Mary: an incomplete surviving manuscript, private teachings, and Gregory's 591 sermon."
+    },
+    "7": {
+     "n": 8,
+     "bed": "copies",
+     "why": "The Gospel of Mary: an incomplete surviving manuscript, private teachings, and Gregory's 591 sermon."
+    },
+    "8": {
+     "n": 9,
+     "bed": "copies",
+     "why": "The Gospel of Mary: an incomplete surviving manuscript, private teachings, and Gregory's 591 sermon."
+    },
+    "9": {
+     "n": 10,
+     "bed": "copies",
+     "why": "The Gospel of Mary: an incomplete surviving manuscript, private teachings, and Gregory's 591 sermon."
+    },
+    "10": {
+     "n": 11,
+     "bed": "copies",
+     "why": "The Gospel of Mary: an incomplete surviving manuscript, private teachings, and Gregory's 591 sermon."
+    }
+   }
+  },
+  "07": {
+   "title": "Lincoln's looks / the slavery debates",
+   "topic": "us_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "letter",
+     "why": "A Gardner portrait and the words people used about his face. Still room - the topic's ambient.",
+     "fb": true
+    },
+    "1": {
+     "n": 2,
+     "bed": "triumph",
+     "why": "Seven enormous public debates with Douglas, held outdoors in front of crowds."
+    },
+    "2": {
+     "n": 3,
+     "bed": "triumph",
+     "why": "Seven enormous public debates with Douglas, held outdoors in front of crowds."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "Secession, the Confederacy, the Civil War, the Emancipation Proclamation."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Secession, the Confederacy, the Civil War, the Emancipation Proclamation."
+    },
+    "5": {
+     "n": 6,
+     "bed": "hall",
+     "why": "Congress passes the 13th Amendment; Lee surrenders; Ford's Theatre, Booth in the box."
+    },
+    "6": {
+     "n": 7,
+     "bed": "hall",
+     "why": "Congress passes the 13th Amendment; Lee surrenders; Ford's Theatre, Booth in the box."
+    },
+    "7": {
+     "n": 8,
+     "bed": "hall",
+     "why": "Congress passes the 13th Amendment; Lee surrenders; Ford's Theatre, Booth in the box."
+    },
+    "8": {
+     "n": 9,
+     "bed": "hall",
+     "why": "Congress passes the 13th Amendment; Lee surrenders; Ford's Theatre, Booth in the box."
+    }
+   }
+  },
+  "07B": {
+   "title": "King David and Bathsheba",
+   "topic": "old_testament",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "bath",
+     "why": "Rembrandt's Bathsheba. The hook is the bathing that starts it."
+    },
+    "1": {
+     "n": 2,
+     "bed": "field",
+     "why": "A shepherd boy in the youngest son's job, then Goliath. Open country."
+    },
+    "2": {
+     "n": 3,
+     "bed": "field",
+     "why": "A shepherd boy in the youngest son's job, then Goliath. Open country."
+    },
+    "3": {
+     "n": 4,
+     "bed": "bath",
+     "why": "'One evening he saw a woman named Bathsheba bathing.'"
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Uriah refuses to leave the war; David puts him at the front of the fiercest fighting and pulls the line back."
+    },
+    "5": {
+     "n": 6,
+     "bed": "battle",
+     "why": "Uriah refuses to leave the war; David puts him at the front of the fiercest fighting and pulls the line back."
+    },
+    "6": {
+     "n": 7,
+     "bed": "court",
+     "why": "Nathan sent to the king; 'You are the man'; the consequences inside David's own house; Absalom's revolt."
+    },
+    "7": {
+     "n": 8,
+     "bed": "court",
+     "why": "Nathan sent to the king; 'You are the man'; the consequences inside David's own house; Absalom's revolt."
+    },
+    "8": {
+     "n": 9,
+     "bed": "court",
+     "why": "Nathan sent to the king; 'You are the man'; the consequences inside David's own house; Absalom's revolt."
+    },
+    "9": {
+     "n": 10,
+     "bed": "court",
+     "why": "Nathan sent to the king; 'You are the man'; the consequences inside David's own house; Absalom's revolt."
+    },
+    "10": {
+     "n": 11,
+     "bed": "court",
+     "why": "Nathan sent to the king; 'You are the man'; the consequences inside David's own house; Absalom's revolt."
+    },
+    "11": {
+     "n": 12,
+     "bed": "court",
+     "why": "Nathan sent to the king; 'You are the man'; the consequences inside David's own house; Absalom's revolt."
+    },
+    "12": {
+     "n": 13,
+     "bed": "court",
+     "why": "Nathan sent to the king; 'You are the man'; the consequences inside David's own house; Absalom's revolt."
+    }
+   }
+  },
+  "08": {
+   "title": "How did Lincoln not have security?",
+   "topic": "us_history",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "hall",
+     "why": "Ford's Theatre, an 1865 wooden auditorium with an audience in it."
+    },
+    "1": {
+     "n": 2,
+     "bed": "hall",
+     "why": "Ford's Theatre, an 1865 wooden auditorium with an audience in it."
+    },
+    "2": {
+     "n": 3,
+     "bed": "door",
+     "why": "'Then Parker disappeared' - the officer steps away from the door outside the box."
+    },
+    "3": {
+     "n": 4,
+     "bed": "hall",
+     "why": "Booth is a familiar face in the building; he fires during a laugh from the audience."
+    },
+    "4": {
+     "n": 5,
+     "bed": "hall",
+     "why": "Booth is a familiar face in the building; he fires during a laugh from the audience."
+    },
+    "5": {
+     "n": 6,
+     "bed": "road",
+     "why": "He jumps to the stage, escapes Washington on horseback and is on the run for 12 days."
+    },
+    "6": {
+     "n": 7,
+     "bed": "letter",
+     "why": "Legislation signed on 14 April 1865; the ordinary paperwork around the death."
+    },
+    "7": {
+     "n": 8,
+     "bed": "letter",
+     "why": "Legislation signed on 14 April 1865; the ordinary paperwork around the death."
+    }
+   }
+  },
+  "09": {
+   "title": "Chernobyl",
+   "topic": "disaster",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "reactor",
+     "why": "Reactor 4, a turbine, cooling pumps, a safety test at low power, the surge. A machine room."
+    },
+    "1": {
+     "n": 2,
+     "bed": "reactor",
+     "why": "Reactor 4, a turbine, cooling pumps, a safety test at low power, the surge. A machine room."
+    },
+    "2": {
+     "n": 3,
+     "bed": "reactor",
+     "why": "Reactor 4, a turbine, cooling pumps, a safety test at low power, the surge. A machine room."
+    },
+    "3": {
+     "n": 4,
+     "bed": "reactor",
+     "why": "Reactor 4, a turbine, cooling pumps, a safety test at low power, the surge. A machine room."
+    },
+    "4": {
+     "n": 5,
+     "bed": "reactor",
+     "why": "Reactor 4, a turbine, cooling pumps, a safety test at low power, the surge. A machine room."
+    },
+    "5": {
+     "n": 6,
+     "bed": "reactor",
+     "why": "Reactor 4, a turbine, cooling pumps, a safety test at low power, the surge. A machine room."
+    },
+    "6": {
+     "n": 7,
+     "bed": "reactor",
+     "why": "Reactor 4, a turbine, cooling pumps, a safety test at low power, the surge. A machine room."
+    },
+    "7": {
+     "n": 8,
+     "bed": "fire",
+     "why": "Firefighters sent toward burning debris without being told what it was."
+    },
+    "8": {
+     "n": 9,
+     "bed": "reactor",
+     "why": "Pripyat unevacuated for 36 hours while the destroyed reactor kept releasing; the fire ran 10 days."
+    },
+    "9": {
+     "n": 10,
+     "bed": "reactor",
+     "why": "Pripyat unevacuated for 36 hours while the destroyed reactor kept releasing; the fire ran 10 days."
+    },
+    "10": {
+     "n": 11,
+     "bed": "wind",
+     "why": "A permanent exclusion zone and an abandoned city. Open, dry, nobody there."
+    },
+    "11": {
+     "n": 12,
+     "bed": "wind",
+     "why": "A permanent exclusion zone and an abandoned city. Open, dry, nobody there."
+    }
+   }
+  },
+  "10": {
+   "title": "The death of the Apostle Paul",
+   "topic": "new_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "crypt",
+     "why": "'Imprisoned in Rome... about to get his head chopped off.' A small dead stone room."
+    },
+    "1": {
+     "n": 2,
+     "bed": "road",
+     "why": "Damascus road; four journeys, Antioch to Corinth to Ephesus; flogged, stoned and shipwrecked."
+    },
+    "2": {
+     "n": 3,
+     "bed": "road",
+     "why": "Damascus road; four journeys, Antioch to Corinth to Ephesus; flogged, stoned and shipwrecked."
+    },
+    "3": {
+     "n": 4,
+     "bed": "road",
+     "why": "Damascus road; four journeys, Antioch to Corinth to Ephesus; flogged, stoned and shipwrecked."
+    },
+    "4": {
+     "n": 5,
+     "bed": "crypt",
+     "why": "Arrest, appeal, house arrest in Rome, Nero's persecution, the beheading. Back in the cell."
+    },
+    "5": {
+     "n": 6,
+     "bed": "crypt",
+     "why": "Arrest, appeal, house arrest in Rome, Nero's persecution, the beheading. Back in the cell."
+    },
+    "6": {
+     "n": 7,
+     "bed": "crypt",
+     "why": "Arrest, appeal, house arrest in Rome, Nero's persecution, the beheading. Back in the cell."
+    },
+    "7": {
+     "n": 8,
+     "bed": "crypt",
+     "why": "Arrest, appeal, house arrest in Rome, Nero's persecution, the beheading. Back in the cell."
+    },
+    "8": {
+     "n": 9,
+     "bed": "copies",
+     "why": "He wrote most of the New Testament without having met Jesus."
+    }
+   }
+  },
+  "11": {
+   "title": "Saint Peter, the first pope",
+   "topic": "new_testament",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "sea",
+     "why": "'Before any of that, he was a fisherman named Simon.'"
+    },
+    "1": {
+     "n": 2,
+     "bed": "field",
+     "why": "Renamed the rock; the inner circle; the Transfiguration. The Galilee years, outdoors."
+    },
+    "2": {
+     "n": 3,
+     "bed": "field",
+     "why": "Renamed the rock; the inner circle; the Transfiguration. The Galilee years, outdoors."
+    },
+    "3": {
+     "n": 4,
+     "bed": "field",
+     "why": "Renamed the rock; the inner circle; the Transfiguration. The Galilee years, outdoors."
+    },
+    "4": {
+     "n": 5,
+     "bed": "night",
+     "why": "Three denials in a courtyard at night, and a rooster crowing at dawn."
+    },
+    "5": {
+     "n": 6,
+     "bed": "night",
+     "why": "Three denials in a courtyard at night, and a rooster crowing at dawn."
+    },
+    "6": {
+     "n": 7,
+     "bed": "triumph",
+     "why": "Preaching publicly, healings, leading the earliest community; then Rome under Nero."
+    },
+    "7": {
+     "n": 8,
+     "bed": "triumph",
+     "why": "Preaching publicly, healings, leading the earliest community; then Rome under Nero."
+    },
+    "8": {
+     "n": 9,
+     "bed": "vault",
+     "why": "St Peter's Basilica raised over the traditional site of his grave; 266 successors."
+    },
+    "9": {
+     "n": 10,
+     "bed": "vault",
+     "why": "St Peter's Basilica raised over the traditional site of his grave; 266 successors."
+    },
+    "10": {
+     "n": 11,
+     "bed": "vault",
+     "why": "St Peter's Basilica raised over the traditional site of his grave; 266 successors."
+    }
+   }
+  },
+  "12": {
+   "title": "Three facts about Saint Peter",
+   "topic": "new_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "field",
+     "why": "A married man whose mother-in-law Jesus heals of a fever. Domestic Galilee."
+    },
+    "1": {
+     "n": 2,
+     "bed": "field",
+     "why": "A married man whose mother-in-law Jesus heals of a fever. Domestic Galilee."
+    },
+    "2": {
+     "n": 3,
+     "bed": "night",
+     "why": "The arrest: a drawn sword, Malchus's ear, three denials before the rooster."
+    },
+    "3": {
+     "n": 4,
+     "bed": "night",
+     "why": "The arrest: a drawn sword, Malchus's ear, three denials before the rooster."
+    },
+    "4": {
+     "n": 5,
+     "bed": "night",
+     "why": "The arrest: a drawn sword, Malchus's ear, three denials before the rooster."
+    },
+    "5": {
+     "n": 6,
+     "bed": "triumph",
+     "why": "Despite the failures he becomes the central leader of the movement."
+    },
+    "6": {
+     "n": 7,
+     "bed": "vault",
+     "why": "Crucified in Rome under Nero; the institution built on him."
+    },
+    "7": {
+     "n": 8,
+     "bed": "vault",
+     "why": "Crucified in Rome under Nero; the institution built on him."
+    }
+   }
+  },
+  "13": {
+   "title": "Satan isn't God's rival",
+   "topic": "church_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "coil",
+     "why": "'Satan isn't God's rival' - Brueghel's Fall of the Rebel Angels. A low drone under the question."
+    },
+    "1": {
+     "n": 2,
+     "bed": "vault",
+     "why": "Doctrine: created being, adversary in Job, permitted boundaries. No place on the card - church ambient.",
+     "fb": true
+    },
+    "2": {
+     "n": 3,
+     "bed": "vault",
+     "why": "Doctrine: created being, adversary in Job, permitted boundaries. No place on the card - church ambient.",
+     "fb": true
+    },
+    "3": {
+     "n": 4,
+     "bed": "vault",
+     "why": "Doctrine: created being, adversary in Job, permitted boundaries. No place on the card - church ambient.",
+     "fb": true
+    },
+    "4": {
+     "n": 5,
+     "bed": "vault",
+     "why": "Doctrine: created being, adversary in Job, permitted boundaries. No place on the card - church ambient.",
+     "fb": true
+    },
+    "5": {
+     "n": 6,
+     "bed": "fire",
+     "why": "Revelation's dragon and the lake of fire; a rebel thrown into it."
+    },
+    "6": {
+     "n": 7,
+     "bed": "fire",
+     "why": "Revelation's dragon and the lake of fire; a rebel thrown into it."
+    },
+    "7": {
+     "n": 8,
+     "bed": "vault",
+     "why": "Why we prefer the rivalry. No place - church ambient.",
+     "fb": true
+    }
+   }
+  },
+  "14": {
+   "title": "Timeline of the Book of Revelation",
+   "topic": "church_history",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "void",
+     "why": "A man shown visions of what happens before the end. Vast and airless."
+    },
+    "1": {
+     "n": 2,
+     "bed": "sea",
+     "why": "'Writing from Patmos, a small Greek island Rome used to hold prisoners.'"
+    },
+    "2": {
+     "n": 3,
+     "bed": "void",
+     "why": "God's throne, strange heavenly creatures, a scroll sealed with seven seals."
+    },
+    "3": {
+     "n": 4,
+     "bed": "void",
+     "why": "God's throne, strange heavenly creatures, a scroll sealed with seven seals."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Four Horsemen bringing conquest, war, famine and death; trumpets, enormous armies, Har Megiddo - a hill that guarded a trade route and was a battlefield for centuries."
+    },
+    "5": {
+     "n": 6,
+     "bed": "battle",
+     "why": "Four Horsemen bringing conquest, war, famine and death; trumpets, enormous armies, Har Megiddo - a hill that guarded a trade route and was a battlefield for centuries."
+    },
+    "6": {
+     "n": 7,
+     "bed": "battle",
+     "why": "Four Horsemen bringing conquest, war, famine and death; trumpets, enormous armies, Har Megiddo - a hill that guarded a trade route and was a battlefield for centuries."
+    },
+    "7": {
+     "n": 8,
+     "bed": "battle",
+     "why": "Four Horsemen bringing conquest, war, famine and death; trumpets, enormous armies, Har Megiddo - a hill that guarded a trade route and was a battlefield for centuries."
+    },
+    "8": {
+     "n": 9,
+     "bed": "battle",
+     "why": "Four Horsemen bringing conquest, war, famine and death; trumpets, enormous armies, Har Megiddo - a hill that guarded a trade route and was a battlefield for centuries."
+    },
+    "9": {
+     "n": 10,
+     "bed": "void",
+     "why": "The rider on the white horse, the lake of fire, a new heaven and a new earth."
+    },
+    "10": {
+     "n": 11,
+     "bed": "void",
+     "why": "The rider on the white horse, the lake of fire, a new heaven and a new earth."
+    },
+    "11": {
+     "n": 12,
+     "bed": "void",
+     "why": "The rider on the white horse, the lake of fire, a new heaven and a new earth."
+    }
+   }
+  },
+  "15": {
+   "title": "Cyrus the Great",
+   "topic": "old_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "court",
+     "why": "A cuneiform tablet and the founding of the Achaemenid empire. An imperial room."
+    },
+    "1": {
+     "n": 2,
+     "bed": "court",
+     "why": "A cuneiform tablet and the founding of the Achaemenid empire. An imperial room."
+    },
+    "2": {
+     "n": 3,
+     "bed": "battle",
+     "why": "Babylon captured in 539 BCE; the Cylinder describing what he did with the sanctuaries after."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "Babylon captured in 539 BCE; the Cylinder describing what he did with the sanctuaries after."
+    },
+    "4": {
+     "n": 5,
+     "bed": "temple",
+     "why": "Exiles allowed back to Jerusalem to rebuild the Temple; Isaiah 45 calls him anointed."
+    },
+    "5": {
+     "n": 6,
+     "bed": "temple",
+     "why": "Exiles allowed back to Jerusalem to rebuild the Temple; Isaiah 45 calls him anointed."
+    },
+    "6": {
+     "n": 7,
+     "bed": "court",
+     "why": "A vast multicultural empire governed by accommodation; his standing in Iranian history."
+    },
+    "7": {
+     "n": 8,
+     "bed": "court",
+     "why": "A vast multicultural empire governed by accommodation; his standing in Iranian history."
+    },
+    "8": {
+     "n": 9,
+     "bed": "court",
+     "why": "A vast multicultural empire governed by accommodation; his standing in Iranian history."
+    }
+   }
+  },
+  "16": {
+   "title": "The Dead Sea Scrolls",
+   "topic": "old_testament",
+   "changes": 1,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "crypt",
+     "why": "1947: manuscripts found in caves near the Dead Sea; roughly 900 from the caves around Qumran."
+    },
+    "1": {
+     "n": 2,
+     "bed": "crypt",
+     "why": "1947: manuscripts found in caves near the Dead Sea; roughly 900 from the caves around Qumran."
+    },
+    "2": {
+     "n": 3,
+     "bed": "copies",
+     "why": "The Great Isaiah Scroll, the Masoretic text, scribal variants - manuscripts on a table being compared."
+    },
+    "3": {
+     "n": 4,
+     "bed": "copies",
+     "why": "The Great Isaiah Scroll, the Masoretic text, scribal variants - manuscripts on a table being compared."
+    },
+    "4": {
+     "n": 5,
+     "bed": "copies",
+     "why": "The Great Isaiah Scroll, the Masoretic text, scribal variants - manuscripts on a table being compared."
+    },
+    "5": {
+     "n": 6,
+     "bed": "copies",
+     "why": "The Great Isaiah Scroll, the Masoretic text, scribal variants - manuscripts on a table being compared."
+    },
+    "6": {
+     "n": 7,
+     "bed": "copies",
+     "why": "The Great Isaiah Scroll, the Masoretic text, scribal variants - manuscripts on a table being compared."
+    },
+    "7": {
+     "n": 8,
+     "bed": "copies",
+     "why": "The Great Isaiah Scroll, the Masoretic text, scribal variants - manuscripts on a table being compared."
+    },
+    "8": {
+     "n": 9,
+     "bed": "copies",
+     "why": "The Great Isaiah Scroll, the Masoretic text, scribal variants - manuscripts on a table being compared."
+    }
+   }
+  },
+  "17": {
+   "title": "Cleopatra's tomb",
+   "topic": "cleopatra",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "crypt",
+     "why": "A queen's tomb nobody has found, and Antony probably in it with her."
+    },
+    "1": {
+     "n": 2,
+     "bed": "crypt",
+     "why": "A queen's tomb nobody has found, and Antony probably in it with her."
+    },
+    "2": {
+     "n": 3,
+     "bed": "harbour",
+     "why": "'The problem is Alexandria' - earthquakes and rising seas have left parts of it underwater."
+    },
+    "3": {
+     "n": 4,
+     "bed": "temple",
+     "why": "Taposiris Magna, a temple to Osiris; tunnels and Cleopatra coins; her identification with Isis."
+    },
+    "4": {
+     "n": 5,
+     "bed": "temple",
+     "why": "Taposiris Magna, a temple to Osiris; tunnels and Cleopatra coins; her identification with Isis."
+    },
+    "5": {
+     "n": 6,
+     "bed": "temple",
+     "why": "Taposiris Magna, a temple to Osiris; tunnels and Cleopatra coins; her identification with Isis."
+    },
+    "6": {
+     "n": 7,
+     "bed": "dig",
+     "why": "2,000 years of earthquakes, flooding, construction and looting; the search that outlives the evidence."
+    },
+    "7": {
+     "n": 8,
+     "bed": "dig",
+     "why": "2,000 years of earthquakes, flooding, construction and looting; the search that outlives the evidence."
+    },
+    "8": {
+     "n": 9,
+     "bed": "dig",
+     "why": "2,000 years of earthquakes, flooding, construction and looting; the search that outlives the evidence."
+    }
+   }
+  },
+  "18": {
+   "title": "How Cleopatra died",
+   "topic": "cleopatra",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "palace",
+     "why": "12 August 30 BCE, Octavian in control of Alexandria, the queen in her own quarters."
+    },
+    "1": {
+     "n": 2,
+     "bed": "palace",
+     "why": "12 August 30 BCE, Octavian in control of Alexandria, the queen in her own quarters."
+    },
+    "2": {
+     "n": 3,
+     "bed": "bath",
+     "why": "'Cleopatra bathed, ate a final meal and sent Octavian a message.' Octavian's men arrive too late."
+    },
+    "3": {
+     "n": 4,
+     "bed": "bath",
+     "why": "'Cleopatra bathed, ate a final meal and sent Octavian a message.' Octavian's men arrive too late."
+    },
+    "4": {
+     "n": 5,
+     "bed": "basket",
+     "why": "The asp smuggled in inside a basket of figs; a country man carrying fruit past the guards; or a hollow hairpin."
+    },
+    "5": {
+     "n": 6,
+     "bed": "basket",
+     "why": "The asp smuggled in inside a basket of figs; a country man carrying fruit past the guards; or a hollow hairpin."
+    },
+    "6": {
+     "n": 7,
+     "bed": "basket",
+     "why": "The asp smuggled in inside a basket of figs; a country man carrying fruit past the guards; or a hollow hairpin."
+    },
+    "7": {
+     "n": 8,
+     "bed": "gallery",
+     "why": "'Two thousand years of painters picked the image, and the image is what survived.'"
+    },
+    "8": {
+     "n": 9,
+     "bed": "gallery",
+     "why": "'Two thousand years of painters picked the image, and the image is what survived.'"
+    }
+   }
+  },
+  "19": {
+   "title": "Cleopatra's situationships",
+   "topic": "cleopatra",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "palace",
+     "why": "Two relationships that became the power struggle that ended the Republic."
+    },
+    "1": {
+     "n": 2,
+     "bed": "palace",
+     "why": "Two relationships that became the power struggle that ended the Republic."
+    },
+    "2": {
+     "n": 3,
+     "bed": "court",
+     "why": "Carried in to Caesar in a bedding sack past her brother's guards; Caesar stabbed to death by senators in 44 BCE."
+    },
+    "3": {
+     "n": 4,
+     "bed": "court",
+     "why": "Carried in to Caesar in a bedding sack past her brother's guards; Caesar stabbed to death by senators in 44 BCE."
+    },
+    "4": {
+     "n": 5,
+     "bed": "harbour-arrival",
+     "why": "Summoned to Tarsus in 41 BCE, she arrives staged as a goddess on a gilded barge."
+    },
+    "5": {
+     "n": 6,
+     "bed": "harbour-arrival",
+     "why": "Summoned to Tarsus in 41 BCE, she arrives staged as a goddess on a gilded barge."
+    },
+    "6": {
+     "n": 7,
+     "bed": "sea",
+     "why": "War declared in 32 BCE and the devastating defeat at Actium; Egypt annexed."
+    },
+    "7": {
+     "n": 8,
+     "bed": "sea",
+     "why": "War declared in 32 BCE and the devastating defeat at Actium; Egypt annexed."
+    },
+    "8": {
+     "n": 9,
+     "bed": "sea",
+     "why": "War declared in 32 BCE and the devastating defeat at Actium; Egypt annexed."
+    }
+   }
+  },
+  "20": {
+   "title": "The woman who made two powerful men fall",
+   "topic": "cleopatra",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "palace",
+     "why": "A queen in her own court who did not need either man; fighting her brother for Egypt."
+    },
+    "1": {
+     "n": 2,
+     "bed": "palace",
+     "why": "A queen in her own court who did not need either man; fighting her brother for Egypt."
+    },
+    "2": {
+     "n": 3,
+     "bed": "palace",
+     "why": "A queen in her own court who did not need either man; fighting her brother for Egypt."
+    },
+    "3": {
+     "n": 4,
+     "bed": "palace",
+     "why": "A queen in her own court who did not need either man; fighting her brother for Egypt."
+    },
+    "4": {
+     "n": 5,
+     "bed": "basket",
+     "why": "Concealed inside a sack used for bedding and carried into Caesar's quarters."
+    },
+    "5": {
+     "n": 6,
+     "bed": "basket",
+     "why": "Concealed inside a sack used for bedding and carried into Caesar's quarters."
+    },
+    "6": {
+     "n": 7,
+     "bed": "palace",
+     "why": "Then came Mark Antony - another alliance made from the same throne."
+    },
+    "7": {
+     "n": 8,
+     "bed": "triumph",
+     "why": "Octavian's victory, the annexation of Egypt, and Rome's version of her."
+    },
+    "8": {
+     "n": 9,
+     "bed": "triumph",
+     "why": "Octavian's victory, the annexation of Egypt, and Rome's version of her."
+    }
+   }
+  },
+  "21": {
+   "title": "Lincoln kept losing",
+   "topic": "us_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "field",
+     "why": "Born in a one-room log cabin in Kentucky in 1809, largely self-educated. Frontier country."
+    },
+    "1": {
+     "n": 2,
+     "bed": "field",
+     "why": "Born in a one-room log cabin in Kentucky in 1809, largely self-educated. Frontier country."
+    },
+    "2": {
+     "n": 3,
+     "bed": "hall",
+     "why": "Ran for the Illinois legislature and lost; four terms; the 1858 Senate race; the 1860 win."
+    },
+    "3": {
+     "n": 4,
+     "bed": "hall",
+     "why": "Ran for the Illinois legislature and lost; four terms; the 1858 Senate race; the 1860 win."
+    },
+    "4": {
+     "n": 5,
+     "bed": "hall",
+     "why": "Ran for the Illinois legislature and lost; four terms; the 1858 Senate race; the 1860 win."
+    },
+    "5": {
+     "n": 6,
+     "bed": "hall",
+     "why": "Ran for the Illinois legislature and lost; four terms; the 1858 Senate race; the 1860 win."
+    },
+    "6": {
+     "n": 7,
+     "bed": "battle",
+     "why": "Weeks after he took office the Civil War began."
+    },
+    "7": {
+     "n": 8,
+     "bed": "letter",
+     "why": "Why the failure list gets shared. No place on the card - the topic's ambient.",
+     "fb": true
+    }
+   }
+  },
+  "22": {
+   "title": "Galatians 5: the fruit test",
+   "topic": "new_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "basket",
+     "why": "'Someone at your front doorstep with a basket of fruit, and the fruit is rotten.'"
+    },
+    "1": {
+     "n": 2,
+     "bed": "copies",
+     "why": "Unpacking Galatians 5 - a letter being read."
+    },
+    "2": {
+     "n": 3,
+     "bed": "field",
+     "why": "Two kinds of fruit; nine qualities; 'fruit grows naturally from what a plant is rooted in'; the fruit reveals the tree."
+    },
+    "3": {
+     "n": 4,
+     "bed": "field",
+     "why": "Two kinds of fruit; nine qualities; 'fruit grows naturally from what a plant is rooted in'; the fruit reveals the tree."
+    },
+    "4": {
+     "n": 5,
+     "bed": "field",
+     "why": "Two kinds of fruit; nine qualities; 'fruit grows naturally from what a plant is rooted in'; the fruit reveals the tree."
+    },
+    "5": {
+     "n": 6,
+     "bed": "field",
+     "why": "Two kinds of fruit; nine qualities; 'fruit grows naturally from what a plant is rooted in'; the fruit reveals the tree."
+    },
+    "6": {
+     "n": 7,
+     "bed": "field",
+     "why": "Two kinds of fruit; nine qualities; 'fruit grows naturally from what a plant is rooted in'; the fruit reveals the tree."
+    },
+    "7": {
+     "n": 8,
+     "bed": "field",
+     "why": "Two kinds of fruit; nine qualities; 'fruit grows naturally from what a plant is rooted in'; the fruit reveals the tree."
+    },
+    "8": {
+     "n": 9,
+     "bed": "copies",
+     "why": "Why this test outlasted the letter it was written in."
+    }
+   }
+  },
+  "23": {
+   "title": "Mary Magdalene wasn't a prostitute",
+   "topic": "new_testament",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "night",
+     "why": "La Tour's night-light Magdalen; the 591 sermon that made her a prostitute."
+    },
+    "1": {
+     "n": 2,
+     "bed": "night",
+     "why": "La Tour's night-light Magdalen; the 591 sermon that made her a prostitute."
+    },
+    "2": {
+     "n": 3,
+     "bed": "road",
+     "why": "'Mary actually travelled with Jesus' and the women who funded the ministry."
+    },
+    "3": {
+     "n": 4,
+     "bed": "crypt",
+     "why": "At the crucifixion and the burial; she returns to the tomb and finds it empty."
+    },
+    "4": {
+     "n": 5,
+     "bed": "crypt",
+     "why": "At the crucifixion and the burial; she returns to the tomb and finds it empty."
+    },
+    "5": {
+     "n": 6,
+     "bed": "copies",
+     "why": "The Gospel of Mary, a noncanonical text in which Peter challenges her authority."
+    },
+    "6": {
+     "n": 7,
+     "bed": "copies",
+     "why": "The Gospel of Mary, a noncanonical text in which Peter challenges her authority."
+    },
+    "7": {
+     "n": 8,
+     "bed": "gallery",
+     "why": "'Centuries of paintings, sermons and plays had already fixed her, and art does not issue retractions.'"
+    }
+   }
+  },
+  "24": {
+   "title": "Why did they actually kill Jesus?",
+   "topic": "new_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "triumph",
+     "why": "Jerusalem packed with Passover pilgrims; large crowds; Rome nervous about unrest."
+    },
+    "1": {
+     "n": 2,
+     "bed": "triumph",
+     "why": "Jerusalem packed with Passover pilgrims; large crowds; Rome nervous about unrest."
+    },
+    "2": {
+     "n": 3,
+     "bed": "temple",
+     "why": "Overturning tables and disrupting commerce in the Jerusalem Temple; the authorities there want him stopped."
+    },
+    "3": {
+     "n": 4,
+     "bed": "temple",
+     "why": "Overturning tables and disrupting commerce in the Jerusalem Temple; the authorities there want him stopped."
+    },
+    "4": {
+     "n": 5,
+     "bed": "court",
+     "why": "Accused before Pilate of presenting himself as King of the Jews."
+    },
+    "5": {
+     "n": 6,
+     "bed": "storm",
+     "why": "The sign over his head at the execution; crucifixion as Roman public punishment."
+    },
+    "6": {
+     "n": 7,
+     "bed": "storm",
+     "why": "The sign over his head at the execution; crucifixion as Roman public punishment."
+    },
+    "7": {
+     "n": 8,
+     "bed": "storm",
+     "why": "The sign over his head at the execution; crucifixion as Roman public punishment."
+    }
+   }
+  },
+  "25": {
+   "title": "NASA and the darkness at the crucifixion",
+   "topic": "new_testament",
+   "changes": 2,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "void",
+     "why": "Astronomical calculation applied to an ancient date. Vast and airless."
+    },
+    "1": {
+     "n": 2,
+     "bed": "storm",
+     "why": "'Darkness covered the land for roughly three hours'; why a solar eclipse cannot do that."
+    },
+    "2": {
+     "n": 3,
+     "bed": "storm",
+     "why": "'Darkness covered the land for roughly three hours'; why a solar eclipse cannot do that."
+    },
+    "3": {
+     "n": 4,
+     "bed": "void",
+     "why": "A partial lunar eclipse on 3 April 33 CE, the moon reddened by Earth's shadow, visible from Jerusalem at moonrise."
+    },
+    "4": {
+     "n": 5,
+     "bed": "void",
+     "why": "A partial lunar eclipse on 3 April 33 CE, the moon reddened by Earth's shadow, visible from Jerusalem at moonrise."
+    },
+    "5": {
+     "n": 6,
+     "bed": "void",
+     "why": "A partial lunar eclipse on 3 April 33 CE, the moon reddened by Earth's shadow, visible from Jerusalem at moonrise."
+    },
+    "6": {
+     "n": 7,
+     "bed": "void",
+     "why": "A partial lunar eclipse on 3 April 33 CE, the moon reddened by Earth's shadow, visible from Jerusalem at moonrise."
+    },
+    "7": {
+     "n": 8,
+     "bed": "void",
+     "why": "A partial lunar eclipse on 3 April 33 CE, the moon reddened by Earth's shadow, visible from Jerusalem at moonrise."
+    }
+   }
+  },
+  "26": {
+   "title": "The Gnostics",
+   "topic": "church_history",
+   "changes": 5,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "coil",
+     "why": "'Why did some early Christians believe the Christian God was evil?' A low drone under the question."
+    },
+    "1": {
+     "n": 2,
+     "bed": "void",
+     "why": "A perfect unknowable God beyond the material universe, and the Demiurge who made ours."
+    },
+    "2": {
+     "n": 3,
+     "bed": "void",
+     "why": "A perfect unknowable God beyond the material universe, and the Demiurge who made ours."
+    },
+    "3": {
+     "n": 4,
+     "bed": "vault",
+     "why": "Identifying that lesser being with the creator of the Hebrew Bible. No place - church ambient.",
+     "fb": true
+    },
+    "4": {
+     "n": 5,
+     "bed": "vault",
+     "why": "Identifying that lesser being with the creator of the Hebrew Bible. No place - church ambient.",
+     "fb": true
+    },
+    "5": {
+     "n": 6,
+     "bed": "field",
+     "why": "The Garden of Eden reread: the serpent helping humanity to knowledge."
+    },
+    "6": {
+     "n": 7,
+     "bed": "void",
+     "why": "Jesus arriving from the higher realm; gnosis waking the divine spark; the side that lost."
+    },
+    "7": {
+     "n": 8,
+     "bed": "void",
+     "why": "Jesus arriving from the higher realm; gnosis waking the divine spark; the side that lost."
+    },
+    "8": {
+     "n": 10,
+     "bed": "copies",
+     "why": "'A jar turned up in 1945 and they finally spoke in their own voice.' Nag Hammadi."
+    }
+   }
+  },
+  "27": {
+   "title": "Cleopatra's four children",
+   "topic": "cleopatra",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "palace",
+     "why": "Four children born into the Ptolemaic court; Caesarion, then Antony's twins."
+    },
+    "1": {
+     "n": 2,
+     "bed": "palace",
+     "why": "Four children born into the Ptolemaic court; Caesarion, then Antony's twins."
+    },
+    "2": {
+     "n": 3,
+     "bed": "palace",
+     "why": "Four children born into the Ptolemaic court; Caesarion, then Antony's twins."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "Octavian invades Egypt and captures Alexandria; the teenage Caesarion is executed."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Octavian invades Egypt and captures Alexandria; the teenage Caesarion is executed."
+    },
+    "5": {
+     "n": 6,
+     "bed": "triumph",
+     "why": "The three surviving children displayed in Octavian's triumph through Rome."
+    },
+    "6": {
+     "n": 7,
+     "bed": "triumph",
+     "why": "The three surviving children displayed in Octavian's triumph through Rome."
+    },
+    "7": {
+     "n": 8,
+     "bed": "search",
+     "why": "'They walk into a Roman triumph and then out of the record entirely. The silence is louder than an ending.'"
+    }
+   }
+  },
+  "28": {
+   "title": "Lincoln wasn't the only target",
+   "topic": "us_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "hall",
+     "why": "Ford's Theatre again: Booth takes the president and escapes on horseback."
+    },
+    "1": {
+     "n": 2,
+     "bed": "hall",
+     "why": "Ford's Theatre again: Booth takes the president and escapes on horseback."
+    },
+    "2": {
+     "n": 3,
+     "bed": "hall",
+     "why": "Ford's Theatre again: Booth takes the president and escapes on horseback."
+    },
+    "3": {
+     "n": 4,
+     "bed": "letter",
+     "why": "Powell forces his way into Seward's house and stabs him in his bed; Atzerodt loses his nerve at the hotel. A private house at night."
+    },
+    "4": {
+     "n": 5,
+     "bed": "letter",
+     "why": "Powell forces his way into Seward's house and stabs him in his bed; Atzerodt loses his nerve at the hotel. A private house at night."
+    },
+    "5": {
+     "n": 6,
+     "bed": "letter",
+     "why": "Powell forces his way into Seward's house and stabs him in his bed; Atzerodt loses his nerve at the hotel. A private house at night."
+    },
+    "6": {
+     "n": 7,
+     "bed": "road",
+     "why": "A 12-day manhunt ending at a Virginia farm."
+    },
+    "7": {
+     "n": 8,
+     "bed": "letter",
+     "why": "Why the full plot is forgotten. No place on the card - the topic's ambient.",
+     "fb": true
+    }
+   }
+  },
+  "29": {
+   "title": "Why did Jesus need to be betrayed?",
+   "topic": "new_testament",
+   "changes": 2,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "temple",
+     "why": "He had taught at the Temple in front of crowds; the authorities want him taken quietly during Passover."
+    },
+    "1": {
+     "n": 2,
+     "bed": "temple",
+     "why": "He had taught at the Temple in front of crowds; the authorities want him taken quietly during Passover."
+    },
+    "2": {
+     "n": 3,
+     "bed": "night",
+     "why": "'He agreed to lead an armed group to Jesus at night, away from the crowds.' The kiss in Gethsemane."
+    },
+    "3": {
+     "n": 4,
+     "bed": "night",
+     "why": "'He agreed to lead an armed group to Jesus at night, away from the crowds.' The kiss in Gethsemane."
+    },
+    "4": {
+     "n": 5,
+     "bed": "temple",
+     "why": "Thirty pieces of silver from the chief priests, thrown back into the Temple."
+    },
+    "5": {
+     "n": 6,
+     "bed": "temple",
+     "why": "Thirty pieces of silver from the chief priests, thrown back into the Temple."
+    },
+    "6": {
+     "n": 7,
+     "bed": "temple",
+     "why": "Thirty pieces of silver from the chief priests, thrown back into the Temple."
+    },
+    "7": {
+     "n": 8,
+     "bed": "temple",
+     "why": "Thirty pieces of silver from the chief priests, thrown back into the Temple."
+    }
+   }
+  },
+  "30": {
+   "title": "Who decided which books got into the Bible?",
+   "topic": "church_history",
+   "changes": 2,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "copies",
+     "why": "Gospels, Paul's letters, Thomas, the Shepherd of Hermas - different churches holding different collections."
+    },
+    "1": {
+     "n": 2,
+     "bed": "copies",
+     "why": "Gospels, Paul's letters, Thomas, the Shepherd of Hermas - different churches holding different collections."
+    },
+    "2": {
+     "n": 3,
+     "bed": "copies",
+     "why": "Gospels, Paul's letters, Thomas, the Shepherd of Hermas - different churches holding different collections."
+    },
+    "3": {
+     "n": 4,
+     "bed": "copies",
+     "why": "Gospels, Paul's letters, Thomas, the Shepherd of Hermas - different churches holding different collections."
+    },
+    "4": {
+     "n": 5,
+     "bed": "vault",
+     "why": "The Council of Nicaea in 325, and what its surviving records actually show."
+    },
+    "5": {
+     "n": 6,
+     "bed": "copies",
+     "why": "Athanasius's 367 Easter letter listing 27 books; centuries of use and argument."
+    },
+    "6": {
+     "n": 7,
+     "bed": "copies",
+     "why": "Athanasius's 367 Easter letter listing 27 books; centuries of use and argument."
+    },
+    "7": {
+     "n": 8,
+     "bed": "copies",
+     "why": "Athanasius's 367 Easter letter listing 27 books; centuries of use and argument."
+    }
+   }
+  },
+  "31": {
+   "title": "Alexander the Great's missing tomb",
+   "topic": "ancient_world",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "battle",
+     "why": "An empire taken by 32: Macedonia, the invasion of Persia, Darius III defeated."
+    },
+    "1": {
+     "n": 2,
+     "bed": "battle",
+     "why": "An empire taken by 32: Macedonia, the invasion of Persia, Darius III defeated."
+    },
+    "2": {
+     "n": 3,
+     "bed": "battle",
+     "why": "An empire taken by 32: Macedonia, the invasion of Persia, Darius III defeated."
+    },
+    "3": {
+     "n": 4,
+     "bed": "court",
+     "why": "Ill in Babylon and dead in days; his generals left fighting over the succession."
+    },
+    "4": {
+     "n": 5,
+     "bed": "court",
+     "why": "Ill in Babylon and dead in days; his generals left fighting over the succession."
+    },
+    "5": {
+     "n": 6,
+     "bed": "crypt",
+     "why": "The body taken to Egypt and placed in an elaborate tomb in Alexandria."
+    },
+    "6": {
+     "n": 7,
+     "bed": "dig",
+     "why": "The tomb vanishes from the record; more than 140 official attempts to find it, all failed."
+    },
+    "7": {
+     "n": 8,
+     "bed": "dig",
+     "why": "The tomb vanishes from the record; more than 140 official attempts to find it, all failed."
+    }
+   }
+  },
+  "32": {
+   "title": "Joan of Arc",
+   "topic": "medieval_modern",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "field",
+     "why": "A teenage peasant in a village who says saints spoke to her."
+    },
+    "1": {
+     "n": 2,
+     "bed": "field",
+     "why": "A teenage peasant in a village who says saints spoke to her."
+    },
+    "2": {
+     "n": 3,
+     "bed": "court",
+     "why": "At 17 she travels to Charles and convinces his court to take her seriously."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "The siege of Orleans lifted in 1429, the coronation at Reims, then capture by Burgundian forces in 1430."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "The siege of Orleans lifted in 1429, the coronation at Reims, then capture by Burgundian forces in 1430."
+    },
+    "5": {
+     "n": 6,
+     "bed": "fire",
+     "why": "'Convicted and burned at the stake in Rouen in 1431.'"
+    },
+    "6": {
+     "n": 7,
+     "bed": "vault",
+     "why": "A second church proceeding overturns the judgment; canonisation."
+    },
+    "7": {
+     "n": 8,
+     "bed": "vault",
+     "why": "A second church proceeding overturns the judgment; canonisation."
+    }
+   }
+  },
+  "33": {
+   "title": "Satan does not rule Hell",
+   "topic": "church_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "fire",
+     "why": "Blake's Satan enthroned in Hell - the image the card is there to correct."
+    },
+    "1": {
+     "n": 2,
+     "bed": "vault",
+     "why": "Created being, not a king; a roaring lion on Earth; permitted limits in Job. No place - church ambient.",
+     "fb": true
+    },
+    "2": {
+     "n": 3,
+     "bed": "vault",
+     "why": "Created being, not a king; a roaring lion on Earth; permitted limits in Job. No place - church ambient.",
+     "fb": true
+    },
+    "3": {
+     "n": 4,
+     "bed": "vault",
+     "why": "Created being, not a king; a roaring lion on Earth; permitted limits in Job. No place - church ambient.",
+     "fb": true
+    },
+    "4": {
+     "n": 5,
+     "bed": "vault",
+     "why": "Created being, not a king; a roaring lion on Earth; permitted limits in Job. No place - church ambient.",
+     "fb": true
+    },
+    "5": {
+     "n": 6,
+     "bed": "fire",
+     "why": "'Satan is thrown into the lake of fire, where he is tormented. He isn't running the place.'"
+    },
+    "6": {
+     "n": 7,
+     "bed": "fire",
+     "why": "'Satan is thrown into the lake of fire, where he is tormented. He isn't running the place.'"
+    },
+    "7": {
+     "n": 8,
+     "bed": "gallery",
+     "why": "'The throne, the pitchfork and the underworld kingdom come from Dante and Milton.'"
+    }
+   }
+  },
+  "34": {
+   "title": "Biblical creatures look nothing like paintings",
+   "topic": "old_testament",
+   "changes": 2,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "gallery",
+     "why": "'Creatures that look nothing like the angels you see in paintings.'"
+    },
+    "1": {
+     "n": 2,
+     "bed": "void",
+     "why": "Ezekiel's four faces, seraphim with six wings around a throne, intersecting wheels full of eyes."
+    },
+    "2": {
+     "n": 3,
+     "bed": "void",
+     "why": "Ezekiel's four faces, seraphim with six wings around a throne, intersecting wheels full of eyes."
+    },
+    "3": {
+     "n": 4,
+     "bed": "void",
+     "why": "Ezekiel's four faces, seraphim with six wings around a throne, intersecting wheels full of eyes."
+    },
+    "4": {
+     "n": 5,
+     "bed": "void",
+     "why": "Ezekiel's four faces, seraphim with six wings around a throne, intersecting wheels full of eyes."
+    },
+    "5": {
+     "n": 6,
+     "bed": "void",
+     "why": "Ezekiel's four faces, seraphim with six wings around a throne, intersecting wheels full of eyes."
+    },
+    "6": {
+     "n": 7,
+     "bed": "void",
+     "why": "Ezekiel's four faces, seraphim with six wings around a throne, intersecting wheels full of eyes."
+    },
+    "7": {
+     "n": 8,
+     "bed": "gallery",
+     "why": "'Most people meet angels through Renaissance painting first and the text second.'"
+    }
+   }
+  },
+  "35": {
+   "title": "Jesus's brothers and sisters",
+   "topic": "new_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "copies",
+     "why": "What the Gospels say and what the word means. A text being read."
+    },
+    "1": {
+     "n": 2,
+     "bed": "field",
+     "why": "Mark 6: people in his hometown name four brothers; his family are not convinced."
+    },
+    "2": {
+     "n": 3,
+     "bed": "field",
+     "why": "Mark 6: people in his hometown name four brothers; his family are not convinced."
+    },
+    "3": {
+     "n": 4,
+     "bed": "vault",
+     "why": "James emerges as a leader of the Jerusalem Christian community."
+    },
+    "4": {
+     "n": 5,
+     "bed": "copies",
+     "why": "Interpretive dispute between traditions with no place attached - the topic's ambient.",
+     "fb": true
+    },
+    "5": {
+     "n": 6,
+     "bed": "copies",
+     "why": "Interpretive dispute between traditions with no place attached - the topic's ambient.",
+     "fb": true
+    },
+    "6": {
+     "n": 7,
+     "bed": "copies",
+     "why": "Interpretive dispute between traditions with no place attached - the topic's ambient.",
+     "fb": true
+    },
+    "7": {
+     "n": 8,
+     "bed": "copies",
+     "why": "Interpretive dispute between traditions with no place attached - the topic's ambient.",
+     "fb": true
+    }
+   }
+  },
+  "36": {
+   "title": "What happened to Pontius Pilate?",
+   "topic": "church_history",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "court",
+     "why": "Governor of Judea under Tiberius from about 26 to 36 CE."
+    },
+    "1": {
+     "n": 2,
+     "bed": "court",
+     "why": "Governor of Judea under Tiberius from about 26 to 36 CE."
+    },
+    "2": {
+     "n": 3,
+     "bed": "storm",
+     "why": "All four Gospels place Jesus before him; Roman authority imposes the crucifixion."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "Roman standards, Temple funds and violence; his forces attack a Samaritan gathering at Mount Gerizim."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Roman standards, Temple funds and violence; his forces attack a Samaritan gathering at Mount Gerizim."
+    },
+    "5": {
+     "n": 6,
+     "bed": "search",
+     "why": "Ordered home to answer for his conduct; Tiberius already dead; then the record loses him entirely."
+    },
+    "6": {
+     "n": 7,
+     "bed": "search",
+     "why": "Ordered home to answer for his conduct; Tiberius already dead; then the record loses him entirely."
+    },
+    "7": {
+     "n": 8,
+     "bed": "vault",
+     "why": "'Named in the creed millions recite weekly.' A stone from Caesarea is the only contemporary proof."
+    }
+   }
+  },
+  "37": {
+   "title": "The Book of Enoch",
+   "topic": "old_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "copies",
+     "why": "A book quoted by Jude and left out of most Bibles; Genesis's sons of God and the Nephilim."
+    },
+    "1": {
+     "n": 2,
+     "bed": "copies",
+     "why": "A book quoted by Jude and left out of most Bibles; Genesis's sons of God and the Nephilim."
+    },
+    "2": {
+     "n": 3,
+     "bed": "storm",
+     "why": "Watchers descending to Earth, teaching weapons and magic; violent giants; the wickedness before the flood."
+    },
+    "3": {
+     "n": 4,
+     "bed": "storm",
+     "why": "Watchers descending to Earth, teaching weapons and magic; violent giants; the wickedness before the flood."
+    },
+    "4": {
+     "n": 5,
+     "bed": "crypt",
+     "why": "'The rebellious angels are bound and await judgment.'"
+    },
+    "5": {
+     "n": 6,
+     "bed": "copies",
+     "why": "Jude quotes it; the Ethiopian Orthodox Tewahedo Church preserved the complete work as Scripture."
+    },
+    "6": {
+     "n": 7,
+     "bed": "copies",
+     "why": "Jude quotes it; the Ethiopian Orthodox Tewahedo Church preserved the complete work as Scripture."
+    },
+    "7": {
+     "n": 8,
+     "bed": "copies",
+     "why": "Jude quotes it; the Ethiopian Orthodox Tewahedo Church preserved the complete work as Scripture."
+    }
+   }
+  },
+  "38": {
+   "title": "What killed Alexander the Great?",
+   "topic": "ancient_world",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "court",
+     "why": "Back in Babylon planning campaigns; his soldiers file past his bed as he lies unable to speak."
+    },
+    "1": {
+     "n": 2,
+     "bed": "court",
+     "why": "Back in Babylon planning campaigns; his soldiers file past his bed as he lies unable to speak."
+    },
+    "2": {
+     "n": 3,
+     "bed": "court",
+     "why": "Back in Babylon planning campaigns; his soldiers file past his bed as he lies unable to speak."
+    },
+    "3": {
+     "n": 4,
+     "bed": "vials",
+     "why": "Typhoid and other infections; the poisoning traditions; the body that reportedly did not decompose."
+    },
+    "4": {
+     "n": 5,
+     "bed": "vials",
+     "why": "Typhoid and other infections; the poisoning traditions; the body that reportedly did not decompose."
+    },
+    "5": {
+     "n": 6,
+     "bed": "vials",
+     "why": "Typhoid and other infections; the poisoning traditions; the body that reportedly did not decompose."
+    },
+    "6": {
+     "n": 7,
+     "bed": "battle",
+     "why": "His commanders tear the territories apart fighting over them."
+    },
+    "7": {
+     "n": 8,
+     "bed": "search",
+     "why": "'No body exists to test.' A question that cannot be closed."
+    }
+   }
+  },
+  "39": {
+   "title": "Napoleon wasn't short",
+   "topic": "medieval_modern",
+   "changes": 2,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "court",
+     "why": "Ingres's enthroned emperor, and the height recorded after his death in French inches."
+    },
+    "1": {
+     "n": 2,
+     "bed": "court",
+     "why": "Ingres's enthroned emperor, and the height recorded after his death in French inches."
+    },
+    "2": {
+     "n": 3,
+     "bed": "battle",
+     "why": "Britain's caricature war; 'Le Petit Caporal' and his relationship with his soldiers; Imperial Guards with height requirements."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "Britain's caricature war; 'Le Petit Caporal' and his relationship with his soldiers; Imperial Guards with height requirements."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Britain's caricature war; 'Le Petit Caporal' and his relationship with his soldiers; Imperial Guards with height requirements."
+    },
+    "5": {
+     "n": 6,
+     "bed": "gallery",
+     "why": "Gillray's prints did the work; the image outlived the man and became a psychological term."
+    },
+    "6": {
+     "n": 7,
+     "bed": "gallery",
+     "why": "Gillray's prints did the work; the image outlived the man and became a psychological term."
+    },
+    "7": {
+     "n": 8,
+     "bed": "gallery",
+     "why": "Gillray's prints did the work; the image outlived the man and became a psychological term."
+    }
+   }
+  },
+  "40": {
+   "title": "Joan of Arc's trial reversed",
+   "topic": "medieval_modern",
+   "changes": 4,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "fire",
+     "why": "'Joan of Arc was burned alive for heresy.'"
+    },
+    "1": {
+     "n": 2,
+     "bed": "vault",
+     "why": "An ecclesiastical court under English influence; accusations about visions, authority and men's clothing."
+    },
+    "2": {
+     "n": 3,
+     "bed": "vault",
+     "why": "An ecclesiastical court under English influence; accusations about visions, authority and men's clothing."
+    },
+    "3": {
+     "n": 4,
+     "bed": "fire",
+     "why": "'On 30 May 1431 she was burned at the stake in Rouen.'"
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "The Hundred Years' War continues; England loses nearly all its French territories."
+    },
+    "5": {
+     "n": 6,
+     "bed": "vault",
+     "why": "The 1456 annulment and the 1920 canonisation - the same kind of room, reversing itself."
+    },
+    "6": {
+     "n": 7,
+     "bed": "vault",
+     "why": "The 1456 annulment and the 1920 canonisation - the same kind of room, reversing itself."
+    },
+    "7": {
+     "n": 8,
+     "bed": "vault",
+     "why": "The 1456 annulment and the 1920 canonisation - the same kind of room, reversing itself."
+    }
+   }
+  },
+  "41": {
+   "title": "Nero didn't fiddle while Rome burned",
+   "topic": "ancient_world",
+   "changes": 2,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "palace",
+     "why": "An emperor at a window while a city burns - the image the card is correcting."
+    },
+    "1": {
+     "n": 2,
+     "bed": "fire",
+     "why": "A catastrophic fire in July 64 CE burning for days; large sections of Rome destroyed; the rumoured song about Troy."
+    },
+    "2": {
+     "n": 3,
+     "bed": "fire",
+     "why": "A catastrophic fire in July 64 CE burning for days; large sections of Rome destroyed; the rumoured song about Troy."
+    },
+    "3": {
+     "n": 4,
+     "bed": "fire",
+     "why": "A catastrophic fire in July 64 CE burning for days; large sections of Rome destroyed; the rumoured song about Troy."
+    },
+    "4": {
+     "n": 5,
+     "bed": "palace",
+     "why": "The Domus Aurea built across Rome afterwards, and the blame handed to Christians from it."
+    },
+    "5": {
+     "n": 6,
+     "bed": "palace",
+     "why": "The Domus Aurea built across Rome afterwards, and the blame handed to Christians from it."
+    },
+    "6": {
+     "n": 7,
+     "bed": "palace",
+     "why": "The Domus Aurea built across Rome afterwards, and the blame handed to Christians from it."
+    },
+    "7": {
+     "n": 8,
+     "bed": "palace",
+     "why": "The Domus Aurea built across Rome afterwards, and the blame handed to Christians from it."
+    }
+   }
+  },
+  "42": {
+   "title": "The emperor who converted",
+   "topic": "church_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "vault",
+     "why": "Diocletian's edicts from 303: churches destroyed and Scriptures surrendered."
+    },
+    "1": {
+     "n": 2,
+     "bed": "vault",
+     "why": "Diocletian's edicts from 303: churches destroyed and Scriptures surrendered."
+    },
+    "2": {
+     "n": 3,
+     "bed": "battle",
+     "why": "Constantine against Maxentius at the Milvian Bridge in 312; a sign put on the soldiers' equipment; Maxentius drowned."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "Constantine against Maxentius at the Milvian Bridge in 312; a sign put on the soldiers' equipment; Maxentius drowned."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Constantine against Maxentius at the Milvian Bridge in 312; a sign put on the soldiers' equipment; Maxentius drowned."
+    },
+    "5": {
+     "n": 6,
+     "bed": "court",
+     "why": "The 313 agreement granting toleration and restoring confiscated property."
+    },
+    "6": {
+     "n": 7,
+     "bed": "vault",
+     "why": "Imperial patronage of churches; Theodosius; a persecuted movement moved to the centre."
+    },
+    "7": {
+     "n": 8,
+     "bed": "vault",
+     "why": "Imperial patronage of churches; Theodosius; a persecuted movement moved to the centre."
+    }
+   }
+  },
+  "43": {
+   "title": "Rasputin wouldn't die",
+   "topic": "medieval_modern",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "river",
+     "why": "'Poisoned, shot, beaten, thrown into a freezing river.'"
+    },
+    "1": {
+     "n": 2,
+     "bed": "court",
+     "why": "Access to the imperial family; lured to the Moika Palace in Petrograd in December 1916."
+    },
+    "2": {
+     "n": 3,
+     "bed": "court",
+     "why": "Access to the imperial family; lured to the Moika Palace in Petrograd in December 1916."
+    },
+    "3": {
+     "n": 4,
+     "bed": "vials",
+     "why": "Cakes and wine laced with cyanide; then shot several times. A poisoner's table."
+    },
+    "4": {
+     "n": 5,
+     "bed": "vials",
+     "why": "Cakes and wine laced with cyanide; then shot several times. A poisoner's table."
+    },
+    "5": {
+     "n": 6,
+     "bed": "river",
+     "why": "The body thrown into the Malaya Nevka and recovered days later; the autopsy found no water in his lungs."
+    },
+    "6": {
+     "n": 7,
+     "bed": "river",
+     "why": "The body thrown into the Malaya Nevka and recovered days later; the autopsy found no water in his lungs."
+    },
+    "7": {
+     "n": 8,
+     "bed": "river",
+     "why": "The body thrown into the Malaya Nevka and recovered days later; the autopsy found no water in his lungs."
+    }
+   }
+  },
+  "44": {
+   "title": "Genghis Khan's hidden grave",
+   "topic": "medieval_modern",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "wind",
+     "why": "Temujin born into the politics of the Mongolian steppe; the steppe unified by 1206."
+    },
+    "1": {
+     "n": 2,
+     "bed": "wind",
+     "why": "Temujin born into the politics of the Mongolian steppe; the steppe unified by 1206."
+    },
+    "2": {
+     "n": 3,
+     "bed": "wind",
+     "why": "Temujin born into the politics of the Mongolian steppe; the steppe unified by 1206."
+    },
+    "3": {
+     "n": 4,
+     "bed": "battle",
+     "why": "Mongol armies across northern China and Central Asia; he dies on campaign against the Western Xia."
+    },
+    "4": {
+     "n": 5,
+     "bed": "battle",
+     "why": "Mongol armies across northern China and Central Asia; he dies on campaign against the Western Xia."
+    },
+    "5": {
+     "n": 6,
+     "bed": "door",
+     "why": "'He wanted an unmarked or concealed burial'; everyone who met the funeral procession killed. The room going quiet."
+    },
+    "6": {
+     "n": 7,
+     "bed": "dig",
+     "why": "Searches around Burkhan Khaldun; no tomb conclusively identified in 800 years."
+    },
+    "7": {
+     "n": 8,
+     "bed": "dig",
+     "why": "Searches around Burkhan Khaldun; no tomb conclusively identified in 800 years."
+    }
+   }
+  },
+  "45": {
+   "title": "Jesus's lost years",
+   "topic": "new_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "temple",
+     "why": "Twelve-year-old Jesus discussing Scripture with the teachers at the Temple."
+    },
+    "1": {
+     "n": 2,
+     "bed": "temple",
+     "why": "Twelve-year-old Jesus discussing Scripture with the teachers at the Temple."
+    },
+    "2": {
+     "n": 3,
+     "bed": "field",
+     "why": "Eighteen years missing; a tekton - a craftsman or builder - living and working in Galilee."
+    },
+    "3": {
+     "n": 4,
+     "bed": "field",
+     "why": "Eighteen years missing; a tekton - a craftsman or builder - living and working in Galilee."
+    },
+    "4": {
+     "n": 5,
+     "bed": "road",
+     "why": "Invented childhood miracles, then the much later claims of journeys to India and Tibet."
+    },
+    "5": {
+     "n": 6,
+     "bed": "road",
+     "why": "Invented childhood miracles, then the much later claims of journeys to India and Tibet."
+    },
+    "6": {
+     "n": 7,
+     "bed": "search",
+     "why": "'Eighteen years of silence in the most examined life in history.'"
+    },
+    "7": {
+     "n": 8,
+     "bed": "search",
+     "why": "'Eighteen years of silence in the most examined life in history.'"
+    }
+   }
+  },
+  "46": {
+   "title": "Where was the Garden of Eden?",
+   "topic": "old_testament",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "field",
+     "why": "'The Garden of Eden supposedly had an address.'"
+    },
+    "1": {
+     "n": 2,
+     "bed": "river",
+     "why": "A river flowing from Eden and dividing into four: Pishon, Gihon, Tigris and Euphrates."
+    },
+    "2": {
+     "n": 3,
+     "bed": "river",
+     "why": "A river flowing from Eden and dividing into four: Pishon, Gihon, Tigris and Euphrates."
+    },
+    "3": {
+     "n": 4,
+     "bed": "river",
+     "why": "A river flowing from Eden and dividing into four: Pishon, Gihon, Tigris and Euphrates."
+    },
+    "4": {
+     "n": 5,
+     "bed": "river",
+     "why": "A river flowing from Eden and dividing into four: Pishon, Gihon, Tigris and Euphrates."
+    },
+    "5": {
+     "n": 6,
+     "bed": "dig",
+     "why": "Mesopotamia, Armenia, the Persian Gulf - none archaeologically demonstrated."
+    },
+    "6": {
+     "n": 7,
+     "bed": "field",
+     "why": "Eden as a garden and a sacred landscape rather than a place on a map."
+    },
+    "7": {
+     "n": 8,
+     "bed": "field",
+     "why": "Eden as a garden and a sacred landscape rather than a place on a map."
+    }
+   }
+  },
+  "47": {
+   "title": "Christians who said Jesus didn't suffer",
+   "topic": "church_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "storm",
+     "why": "Grunewald's crucifixion, and the claim that the suffering in it did not happen."
+    },
+    "1": {
+     "n": 2,
+     "bed": "vault",
+     "why": "Docetism: a divine being and corruptible matter. No place on the card - church ambient.",
+     "fb": true
+    },
+    "2": {
+     "n": 3,
+     "bed": "vault",
+     "why": "Docetism: a divine being and corruptible matter. No place on the card - church ambient.",
+     "fb": true
+    },
+    "3": {
+     "n": 4,
+     "bed": "vault",
+     "why": "Docetism: a divine being and corruptible matter. No place on the card - church ambient.",
+     "fb": true
+    },
+    "4": {
+     "n": 5,
+     "bed": "copies",
+     "why": "The letters of John insisting Jesus came 'in the flesh', written against these disputes."
+    },
+    "5": {
+     "n": 6,
+     "bed": "copies",
+     "why": "The letters of John insisting Jesus came 'in the flesh', written against these disputes."
+    },
+    "6": {
+     "n": 7,
+     "bed": "vault",
+     "why": "The doctrine written to close the question, and the position still rejected by name.",
+     "fb": true
+    },
+    "7": {
+     "n": 8,
+     "bed": "vault",
+     "why": "The doctrine written to close the question, and the position still rejected by name.",
+     "fb": true
+    }
+   }
+  },
+  "48": {
+   "title": "666 and the Roman emperor",
+   "topic": "church_history",
+   "changes": 2,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "copies",
+     "why": "'Let the reader with wisdom calculate it'; Greek and Hebrew letters carrying numerical values."
+    },
+    "1": {
+     "n": 2,
+     "bed": "copies",
+     "why": "'Let the reader with wisdom calculate it'; Greek and Hebrew letters carrying numerical values."
+    },
+    "2": {
+     "n": 3,
+     "bed": "fire",
+     "why": "Nero Caesar in Hebrew letters totals 666 - and Nero was infamous for burning Christians in Rome."
+    },
+    "3": {
+     "n": 4,
+     "bed": "copies",
+     "why": "Manuscripts giving 616 instead; centuries of people recalculating the number onto new enemies."
+    },
+    "4": {
+     "n": 5,
+     "bed": "copies",
+     "why": "Manuscripts giving 616 instead; centuries of people recalculating the number onto new enemies."
+    },
+    "5": {
+     "n": 6,
+     "bed": "copies",
+     "why": "Manuscripts giving 616 instead; centuries of people recalculating the number onto new enemies."
+    },
+    "6": {
+     "n": 7,
+     "bed": "copies",
+     "why": "Manuscripts giving 616 instead; centuries of people recalculating the number onto new enemies."
+    },
+    "7": {
+     "n": 8,
+     "bed": "copies",
+     "why": "Manuscripts giving 616 instead; centuries of people recalculating the number onto new enemies."
+    }
+   }
+  },
+  "49": {
+   "title": "The Antichrist",
+   "topic": "church_history",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "void",
+     "why": "Signorelli's end-times fresco, and a word that never appears in Revelation."
+    },
+    "1": {
+     "n": 2,
+     "bed": "copies",
+     "why": "1 and 2 John, Revelation's beast, 2 Thessalonians' man of lawlessness - three texts, not one figure."
+    },
+    "2": {
+     "n": 3,
+     "bed": "copies",
+     "why": "1 and 2 John, Revelation's beast, 2 Thessalonians' man of lawlessness - three texts, not one figure."
+    },
+    "3": {
+     "n": 4,
+     "bed": "copies",
+     "why": "1 and 2 John, Revelation's beast, 2 Thessalonians' man of lawlessness - three texts, not one figure."
+    },
+    "4": {
+     "n": 5,
+     "bed": "copies",
+     "why": "1 and 2 John, Revelation's beast, 2 Thessalonians' man of lawlessness - three texts, not one figure."
+    },
+    "5": {
+     "n": 6,
+     "bed": "vault",
+     "why": "Centuries of interpretation merging the characters. No place - church ambient.",
+     "fb": true
+    },
+    "6": {
+     "n": 7,
+     "bed": "vault",
+     "why": "Centuries of interpretation merging the characters. No place - church ambient.",
+     "fb": true
+    },
+    "7": {
+     "n": 8,
+     "bed": "gallery",
+     "why": "'One terrifying end-times figure is more filmable than a category of people.'"
+    }
+   }
+  },
+  "50": {
+   "title": "The Ides of March",
+   "topic": "ancient_world",
+   "changes": 3,
+   "cards": {
+    "0": {
+     "n": 1,
+     "bed": "court",
+     "why": "Warned about the Ides and walking into the Senate anyway; Spurinna's warning."
+    },
+    "1": {
+     "n": 2,
+     "bed": "court",
+     "why": "Warned about the Ides and walking into the Senate anyway; Spurinna's warning."
+    },
+    "2": {
+     "n": 3,
+     "bed": "night",
+     "why": "Calpurnia's disturbing dreams the night before."
+    },
+    "3": {
+     "n": 4,
+     "bed": "court",
+     "why": "Decimus Brutus talks him into going; Artemidorus's written warning; the senators close in and stab him 23 times."
+    },
+    "4": {
+     "n": 5,
+     "bed": "court",
+     "why": "Decimus Brutus talks him into going; Artemidorus's written warning; the senators close in and stab him 23 times."
+    },
+    "5": {
+     "n": 6,
+     "bed": "court",
+     "why": "Decimus Brutus talks him into going; Artemidorus's written warning; the senators close in and stab him 23 times."
+    },
+    "6": {
+     "n": 7,
+     "bed": "court",
+     "why": "Decimus Brutus talks him into going; Artemidorus's written warning; the senators close in and stab him 23 times."
+    },
+    "7": {
+     "n": 8,
+     "bed": "court",
+     "why": "Decimus Brutus talks him into going; Artemidorus's written warning; the senators close in and stab him 23 times."
+    },
+    "8": {
+     "n": 9,
+     "bed": "gallery",
+     "why": "'Shakespeare gave it a line, and the line gave the date an afterlife.'"
+    }
+   }
+  }
+ }
+}

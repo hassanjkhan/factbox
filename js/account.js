@@ -385,10 +385,16 @@ var FBA = (function () {
       if (!r.t) r.t = nowSec();
       var s = JSON.stringify(r);
       if (s.length > MAX_BYTES) {
-        /* Only the picks can grow. Drop them before dropping the email. */
+        /* Shed in order of what costs least to lose, and never the email:
+           legacy topic picks first, then the loader's three yes/nos (theatre,
+           and already spent), then the ticked statements. The draw, the daily
+           goal and the streak are what the plan screen reads back, so they
+           stay. */
         r.i = r.i.slice(0, 4);
         s = JSON.stringify(r);
       }
+      if (s.length > MAX_BYTES) { r.q = []; s = JSON.stringify(r); }
+      if (s.length > MAX_BYTES) { r.r = []; s = JSON.stringify(r); }
       var ok = lsSet(KEY, s);
       ckSet(KEY, s);
       return ok;
@@ -484,6 +490,84 @@ var FBA = (function () {
     } catch (e) { return false; }
   }
 
+  /* --- the ported iOS answers --------------------------------------------
+     Five setters, all the same shape: they clamp to the vocabulary above,
+     they save, and they return true only when the value was legal. Passing
+     an empty value clears the answer, which is exactly what Skip does — a
+     skipped step must be indistinguishable from one never reached, or the
+     plan screen reads back something the reader never said. */
+
+  function draw() { try { return rec().d || ""; } catch (e) { return ""; } }
+  function setDraw(k) {
+    try {
+      var r = rec();
+      var v = String(k == null ? "" : k);
+      if (v && DRAWS.indexOf(v) === -1) return false;
+      r.d = v;
+      save();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function relates() { try { return rec().r.slice(0); } catch (e) { return []; } }
+  function setRelates(list) {
+    try {
+      var r = rec(), out = [], i;
+      if (list && list.length) {
+        for (i = 0; i < list.length; i++) {
+          var k = list[i];
+          if (typeof k === "string" && RELATES.indexOf(k) !== -1 && out.indexOf(k) === -1) {
+            out.push(k);
+          }
+        }
+      }
+      r.r = out;
+      save();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* 0 means unanswered. goalMinutes() is the raw answer; the caller decides
+     what to show when it is 0, because "five minutes" as a DEFAULT and
+     "five minutes" as a CHOICE are different sentences. */
+  function goal() { try { return rec().g || 0; } catch (e) { return 0; } }
+  function setGoal(n) {
+    try {
+      var v = pickFrom(GOALS, n);
+      if (!v && n !== 0 && n !== "" && n != null) return false;
+      var r = rec();
+      r.g = v;
+      save();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function streak() { try { return rec().s || 0; } catch (e) { return 0; } }
+  function setStreak(n) {
+    try {
+      var v = pickFrom(STREAKS, n);
+      if (!v && n !== 0 && n !== "" && n != null) return false;
+      var r = rec();
+      r.s = v;
+      save();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* The plan loader's three yes/nos. Both answers lead to the same place —
+     they are theatre, and the iOS file says so — but they are the reader's,
+     so they are kept rather than discarded. */
+  function planAnswers() { try { return rec().q.slice(0); } catch (e) { return []; } }
+  function addPlanAnswer(yes) {
+    try {
+      var r = rec();
+      if (r.q.length >= MAX_PLANQ) return false;
+      r.q.push(yes ? 1 : 0);
+      save();
+      return true;
+    } catch (e) { return false; }
+  }
+
   function frequency() { try { return rec().f || ""; } catch (e) { return ""; } }
   function setFrequency(k) {
     try {
@@ -528,10 +612,13 @@ var FBA = (function () {
     try {
       var r = rec();
       return { accountId: r.a, email: r.e, name: r.n, interests: r.i.slice(0),
-               frequency: r.f, plan: r.p, onboarded: r.o === 1, at: r.t * 1000 };
+               frequency: r.f, plan: r.p, onboarded: r.o === 1, at: r.t * 1000,
+               draw: r.d, relates: r.r.slice(0), goal: r.g, streak: r.s,
+               planAnswers: r.q.slice(0) };
     } catch (e) {
       return { accountId: "", email: "", name: "", interests: [], frequency: "",
-               plan: "", onboarded: false, at: 0 };
+               plan: "", onboarded: false, at: 0,
+               draw: "", relates: [], goal: 0, streak: 0, planAnswers: [] };
     }
   }
 
@@ -539,7 +626,14 @@ var FBA = (function () {
     /* who */
     signUp: signUp, has: has, knows: knows, email: email, name: name,
     accountId: accountId, validEmail: validEmail, get: get, forget: forget,
-    /* onboarding */
+    /* onboarding — the ported iOS questions */
+    draw: draw, setDraw: setDraw,
+    relates: relates, setRelates: setRelates,
+    goal: goal, setGoal: setGoal,
+    streak: streak, setStreak: setStreak,
+    planAnswers: planAnswers, addPlanAnswer: addPlanAnswer,
+    DRAWS: DRAWS, RELATES: RELATES, GOALS: GOALS, STREAKS: STREAKS,
+    /* onboarding — legacy, still read by other layers. Keep defined. */
     interests: interests, setInterests: setInterests,
     frequency: frequency, setFrequency: setFrequency,
     onboarded: onboarded, finishOnboarding: finishOnboarding,

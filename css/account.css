@@ -59,9 +59,9 @@ body{background:var(--ground); color:var(--parchment)}
 }
 
 /* --------------------------------------------------------------------------
-   The email field. One input, no password: there is no server to check a
-   password against, and a field that implies a check we cannot perform is
-   worse than no field at all.
+   The email field. One input and an optional first name, asked late — the
+   funnel earns the answer before it asks for the address, which is the whole
+   point of putting the questions first.
    -------------------------------------------------------------------------- */
 .jn-field{display:block; margin:16px 0 0}
 .jn-field > span{
@@ -91,9 +91,10 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-err[hidden]{display:none}
 
 /* --------------------------------------------------------------------------
-   Choice buttons — subjects, and how often. Big enough to hit, wrapped so a
-   390px screen never scrolls sideways, and the chosen state is a filled
-   outline rather than a colour swap, so it survives a forced-colours mode.
+   Choice buttons — what draws you, what sounds familiar, how much time, how
+   long a streak. Big enough to hit, wrapped so a 390px screen never scrolls
+   sideways, and the chosen state is a filled outline rather than a colour
+   swap, so it survives a forced-colours mode.
    -------------------------------------------------------------------------- */
 .jn-opts{
   display:grid; gap:9px; margin:18px 0 0;
@@ -202,10 +203,10 @@ body{background:var(--ground); color:var(--parchment)}
   text-decoration:underline; text-underline-offset:3px;
 }
 
-/* A boxed aside for the things this site genuinely cannot do — restoring
-   access to a browser that never had it, and remembering you when storage is
-   dead. Same shell as .keep on the home shelf, so it reads as the same kind
-   of message rather than as an error. */
+/* A boxed aside for the two things a reader has to act on themselves: moving
+   access to a new phone, and a browser that is not keeping their answers.
+   Same shell as .keep on the home shelf, so it reads as the same kind of
+   message rather than as an error. */
 .jn-aside{
   margin:18px 0 0; padding:14px 15px;
   border-radius:16px; background:var(--raise);
@@ -230,3 +231,157 @@ body{background:var(--ground); color:var(--parchment)}
 /* "First name optional" — the qualifier reads as a qualifier, not as part of
    the label. */
 .jn-field > span i{font-style:normal; font-weight:600; color:var(--dimmer)}
+
+/* ==========================================================================
+   THE PORTED FUNNEL
+   Everything below serves the iOS onboarding's shape, brought to the web:
+   ask something easy, echo it back warmly, build to a commitment, then
+   assemble a plan in front of the reader. Colours, radii, tap size and type
+   all come from app.css — this adds arrangement, not a second palette.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Reinforcement. The one line that says the last answer was heard, and what
+   it bought. It appears one step AFTER the question it echoes, which is the
+   whole trick — the reader sees their own answer paying off on a screen they
+   did not expect it on.
+   -------------------------------------------------------------------------- */
+.jn-reinf{
+  margin:16px 0 0; padding:12px 14px;
+  border-radius:14px; background:rgba(255,122,92,.10);
+  box-shadow:inset 0 0 0 1px rgba(255,122,92,.26);
+  font-size:.9rem; font-weight:700; line-height:1.45; color:var(--parchment);
+}
+.jn-reinf[hidden]{display:none}
+
+/* --------------------------------------------------------------------------
+   The echo screen. A whole screen that asks nothing — it repeats the answer
+   back, then names the thing that answer just bought. In the iOS flow this
+   is the step people remember, so it gets the biggest type on the funnel and
+   no competing controls.
+   -------------------------------------------------------------------------- */
+.jn-echo{
+  margin:20px 0 0; padding:24px 20px;
+  border-radius:22px; background:rgba(255,122,92,.11);
+  box-shadow:inset 0 0 0 1px rgba(255,122,92,.24);
+  text-align:center;
+}
+.jn-echo .jn-eyebrow{
+  margin:0 0 12px; font-size:.68rem; font-weight:900; letter-spacing:.2em;
+  color:var(--coral); text-transform:uppercase;
+}
+.jn-echo h2{
+  font-size:clamp(1.5rem,6.2vw,2rem); font-weight:850; margin:0 0 12px;
+  line-height:1.12; letter-spacing:-.018em; text-wrap:balance;
+}
+.jn-echo p{
+  margin:0 0 12px; max-width:34ch; margin-left:auto; margin-right:auto;
+  font-size:1rem; line-height:1.5; color:var(--dim);
+}
+/* The benefit, not the compliment, is the sentence that converts. */
+.jn-echo p.jn-benefit{
+  margin-bottom:0; color:var(--parchment); font-weight:750;
+}
+
+/* --------------------------------------------------------------------------
+   The "sound familiar?" replies. The statement is always readable; the small
+   nod under it is a REPLY to a tap, so it arrives with the tap. Nothing that
+   is content hides here — only the response to an action not yet taken.
+   -------------------------------------------------------------------------- */
+.jn-opt .reply{display:none}
+.jn-opt[aria-pressed="true"] .reply{display:block; color:var(--coral)}
+
+/* --------------------------------------------------------------------------
+   Streak rows. A day count in a badge, then the adjective the reader is
+   buying. The numeral is the point, so it is the biggest thing in the row.
+   -------------------------------------------------------------------------- */
+.jn-opt.is-streak{display:flex; align-items:center; gap:12px}
+.jn-opt .jn-t{
+  display:block; margin:0; min-width:0;
+  font-size:inherit; font-weight:inherit; color:inherit;
+}
+.jn-day{
+  flex:0 0 46px; height:46px; border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:rgba(255,247,237,.08); color:var(--parchment);
+  font-style:normal; font-size:1.04rem; font-weight:850; line-height:1;
+  font-variant-numeric:tabular-nums;
+  transition:background .15s ease, color .15s ease;
+}
+.jn-day u{
+  text-decoration:none; margin-top:3px;
+  font-size:.55rem; font-weight:800; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--dimmer);
+}
+.jn-opt[aria-checked="true"] .jn-day{background:rgba(255,122,92,.24); color:var(--coral)}
+.jn-opt[aria-checked="true"] .jn-day u{color:var(--coral)}
+
+/* --------------------------------------------------------------------------
+   The plan loader. Three bars that fill, stall, ask one thing, then finish.
+
+   It is theatre and the code says so — but it is the beat that converts,
+   because it shows work being done on the reader's behalf using the answers
+   they just gave. The bars are `%` widths set from script; if the script
+   never runs, the markup already has them full and the phases read as a
+   plain list of what the plan is made of.
+   -------------------------------------------------------------------------- */
+.jn-phases{
+  list-style:none; margin:18px 0 0; padding:15px 16px;
+  border-radius:18px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.jn-phase + .jn-phase{margin-top:16px}
+.jn-phase.is-waiting{opacity:.45}
+.jn-phase-top{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  margin:0 0 7px;
+}
+.jn-phase-top b{font-size:.92rem; font-weight:800; line-height:1.3}
+.jn-phase-top i{
+  flex:none; font-style:normal;
+  font-size:.8rem; font-weight:750; color:var(--dimmer);
+  font-variant-numeric:tabular-nums;
+}
+.jn-phase.is-done .jn-phase-top i{color:var(--teal)}
+.jn-bar{
+  height:6px; border-radius:3px; overflow:hidden;
+  background:rgba(255,247,237,.13);
+}
+.jn-bar > i{
+  display:block; height:100%; width:100%;
+  background:var(--coral); border-radius:3px;
+  transition:width .18s linear;
+}
+.jn-phase.is-done .jn-bar > i{background:var(--teal)}
+
+/* The question that floats up out of the stalled bar. Tethered to it, so it
+   reads as the reason the bar stopped rather than as a new screen. */
+.jn-q{
+  margin:12px 0 2px; padding:14px 15px;
+  border-radius:14px; background:rgba(255,247,237,.05);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.jn-q[hidden]{display:none}
+.jn-q .jn-q-eyebrow{
+  margin:0 0 6px; font-size:.64rem; font-weight:900; letter-spacing:.18em;
+  color:var(--coral); text-transform:uppercase;
+}
+.jn-q .jn-q-t{
+  margin:0 0 12px; font-size:1rem; font-weight:800; line-height:1.35;
+  color:var(--parchment);
+}
+.jn-q-row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.jn-yn{
+  min-height:var(--tap); padding:12px 10px;
+  border:0; border-radius:12px; cursor:pointer;
+  background:rgba(255,247,237,.07); color:var(--parchment);
+  font-family:var(--ui); font-size:.95rem; font-weight:800;
+  box-shadow:inset 0 0 0 1px var(--hair);
+  transition:transform .15s ease, background .15s ease;
+}
+.jn-yn:active{transform:scale(.985)}
+.jn-yn.is-yes{background:rgba(79,195,184,.15); box-shadow:inset 0 0 0 1px rgba(79,195,184,.4)}
+
+@media (prefers-reduced-motion:reduce){
+  .jn-bar > i, .jn-day, .jn-yn{transition:none}
+}
