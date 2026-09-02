@@ -44,11 +44,26 @@ in the markup. `scenes.js` removes it permanently if nothing goes live within
 A page that catches its own failure and renders nothing reports zero script
 errors while showing the reader nothing. Always render a real message.
 
-### 2.4 Verification runs the page
+### 2.4 Never ship a page that has nothing on it
+No stubs. No "Moved to /login". No placeholder that exists only to be replaced
+later. If a route resolves, it renders something a reader can use — the real
+thing, or a real message with a way out.
+
+This cost a live sign-in. A redirect stub at `login.html` shadowed the real
+page (GitHub Pages resolves `/login` to `login.html` before
+`login/index.html`), and the stub redirected to itself, so every clean URL on
+the site served a white page reading "Moved to /login". The stub was a
+deliberate, temporary-looking thing that turned out to be neither.
+
+Where an empty shell is genuinely unavoidable, it ships with real copy that
+JavaScript replaces — never blank, never a placeholder. That is the same rule
+as §2.3, applied to routing instead of to errors.
+
+### 2.5 Verification runs the page
 HTML validity, `node --check`, and HTTP 200s are all equally true of a page
 with no text on it. Every check must execute the script in a real DOM. See §7.
 
-### 2.5 Degrade downward, never to blank
+### 2.6 Degrade downward, never to blank
 No IntersectionObserver → mark everything live (costs battery, keeps words).
 No storage → no memory, page fine. No Web Audio → control removes itself.
 Missing plate → fall back to the stack hero. Missing `FBP`/`FBS` → feature off.
