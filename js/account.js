@@ -90,7 +90,7 @@ var FBA = (function () {
           (API equivalent: subscription_data.trial_period_days = 3.)
 
        4. After payment → Redirect customers to:
-            https://factbox.app/stories.html?unlocked=1&session_id={CHECKOUT_SESSION_ID}
+            https://factbox.app/stories?unlocked=1&session_id={CHECKOUT_SESSION_ID}
           Paste that literally, braces included. Stripe substitutes the real
           session id; progress.js mints the buyer's restore link from it, and
           gate.js's claim() flips the unlock flag on arrival. A success URL

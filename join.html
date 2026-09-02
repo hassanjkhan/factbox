@@ -6,13 +6,13 @@
 <title>Factbox · Join</title>
 <meta name="description" content="Five minutes a day, one story, and you actually remember it. Four quick questions, then pick a plan. Three days free before anything is charged.">
 <meta name="theme-color" content="#0E0B12">
-<link rel="canonical" href="https://factbox.app/join.html">
+<link rel="canonical" href="https://factbox.app/join">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Join">
 <meta property="og:description" content="Five minutes a day, one story, and you actually remember it. Three days free before anything is charged.">
 <meta property="og:image" content="https://factbox.app/img/share.jpg">
-<meta property="og:url" content="https://factbox.app/join.html">
+<meta property="og:url" content="https://factbox.app/join">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/app.css">
 <link rel="stylesheet" href="/css/account.css">
@@ -75,8 +75,8 @@
       <!-- Account. Signed out this is two links; signed in it is the reader's
            name. Never both: the script sets hidden on every branch. -->
       <span class="acct" id="fb-acct">
-        <a class="acct-in" id="fb-acct-in" href="/login?next=join.html">Sign in</a>
-        <a class="acct-up" id="fb-acct-up" href="/login?next=join.html">Sign up</a>
+        <a class="acct-in" id="fb-acct-in" href="/login?next=join">Sign in</a>
+        <a class="acct-up" id="fb-acct-up" href="/login?next=join">Sign up</a>
         <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
       </span>
     </nav>
@@ -92,7 +92,7 @@
   <p class="jn-stepnote" id="jn-stepnote" hidden></p>
 
   <p class="jn-haveacct" id="jn-signin-always">Already have an account?
-    <a href="/login?next=%2Fstories.html">Sign in</a></p>
+    <a href="/login?next=%2Fstories">Sign in</a></p>
 
   <!-- ===== 1 · what draws you ==========================================
        Ported from OnboardingDrawStep / enum HistoryDraw. The first screen
@@ -397,7 +397,7 @@
       so keep it to yourself.</p>
       <label class="jn-vh" for="jn-restore-in">Your restore link</label>
       <input id="jn-restore-in" type="text" autocapitalize="none" autocorrect="off"
-             spellcheck="false" placeholder="https://factbox.app/stories.html?restore=…">
+             spellcheck="false" placeholder="https://factbox.app/stories?restore=…">
       <p class="jn-err" id="jn-restore-err" hidden role="alert"></p>
       <button class="jn-opt" id="jn-restore-go" type="button">Open my stories</button>
       <p style="margin-top:10px">No link, and paid already?
