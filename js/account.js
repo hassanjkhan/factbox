@@ -85,9 +85,9 @@ var FBA = (function () {
      unlocked too. SPEC.md §9 already says this; these links do not change it.
      ====================================================================== */
 
-  var PAY_LINK_MONTHLY   = "";   /* USD 4.99  billed every month     + 3-day trial */
-  var PAY_LINK_QUARTERLY = "";   /* USD 11.97 billed every 3 months  + 3-day trial */
-  var PAY_LINK_ANNUAL    = "";   /* USD 35.88 billed every 12 months + 3-day trial */
+  var PAY_LINK_MONTHLY   = "https://buy.stripe.com/6oUcN41yFgeLbPF5c63F602";   /* USD 4.99  billed every month     + 3-day trial */
+  var PAY_LINK_QUARTERLY = "https://buy.stripe.com/4gM6oGfpv7If1b16ga3F603";   /* USD 11.97 billed every 3 months  + 3-day trial */
+  var PAY_LINK_ANNUAL    = "https://buy.stripe.com/28E7sKa5b8Mj8DtgUO3F604";   /* USD 35.88 billed every 12 months + 3-day trial */
 
   /* Stripe's documented Payment Link URL parameters. prefilled_email fills in
      the email field on the payment page (the buyer can still change it);
