@@ -1,1 +1,364 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Redirecting</title><link rel="canonical" href="https://factbox.app/read"><meta http-equiv="refresh" content="0; url=/read"><meta name="robots" content="noindex"></head><body><p>Moved to <a href="/read">/read</a>.</p><script>location.replace("/read"+location.search+location.hash)</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox</title>
+<meta name="theme-color" content="#0E0B12">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/recommend.css">
+<link rel="stylesheet" href="/css/scenes.css">
+<link rel="stylesheet" href="/css/audio-reader.css">
+<!-- The header's account control must not flash. This class makes its slot
+     invisible without collapsing it, so the row keeps its height from the
+     first paint and nothing shifts when auth finally answers. The timer
+     removes it unconditionally: a script that never runs, or throws, still
+     leaves a readable header rather than a hidden one. See css/app.css. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+
+<div class="prog" aria-hidden="true"><i id="bar"></i></div>
+<div class="topbar"><a class="back" href="/stories">← Stories</a></div>
+<!-- Account, mirroring the back button on the other side. read.html has no
+     .tabs row — it is a full-bleed deck — so the control takes the same
+     floating pill the back button already uses, and carries one link rather
+     than two: the back button, the save button and this all share a 390px
+     line, and sign-up is one tap further on the page this points at. -->
+<div class="topbar-r">
+  <span class="acct is-float" id="fb-acct">
+    <a class="acct-in" id="fb-acct-in" href="/login?next=stories.html">Sign in</a>
+    <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
+  </span>
+</div>
+
+<main class="deck" id="deck" tabindex="-1">
+  <section class="pane">
+    <h1>Loading this story…</h1>
+    <p>If nothing appears, the story list did not load.</p>
+    <a class="ghost" href="/stories">All stories</a>
+  </section>
+</main>
+<noscript><p style="padding:24px;color:#FFF7ED">Factbox needs JavaScript to
+read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></noscript>
+
+<script src="/js/progress.js"></script>
+<script src="/js/gate.js"></script>
+<script src="/js/saves.js"></script>
+<script src="/js/recommend.js"></script>
+<script src="/js/scenes.js" defer></script>
+<script>
+(function () {
+  var deck = document.getElementById("deck");
+  var bar  = document.getElementById("bar");
+
+  /* Reading memory is a nice-to-have; the story is not. Losing progress.js must
+     not cost the reader the words. */
+  var P = window.FBP && FBP.mark ? FBP : null;
+
+  /* Not URLSearchParams: it is absent on the older in-app webviews this site
+     targets, and it sat on a top-level line, so its absence emptied the page. */
+  var m = /[?&]s=([^&#]*)/.exec(location.search);
+  var id = m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
+
+  /* Which cards carry the second artwork. Nearly every card in a stack shares
+     the hero plate, which is why a stack costs one image to read; the
+     supplementary plates are spread across the interior so the middle of a
+     long stack is not the same painting eight times. */
+  function beat(c, plate, cap, cr, n, stack) {
+    var cls = "beat is-" + (c.beat || "card").replace(/[^a-z]/gi, "")
+            + (c.long ? " is-long" : "");
+    var body = c.body
+      ? "<p>" + FB.esc(c.body) + "</p>" : "";
+    var cite = c.src
+      ? '<p class="cite">' + FB.esc(c.src) + "</p>" : "";
+    /* Six camera variants, cycled by card index, so consecutive cards never
+       share a move — a stack of nine identical slow pushes reads as a stall
+       rather than as motion. Deterministic, so it is the same on every reload. */
+    return '' +
+      '<section class="' + cls + '"' +
+        ' data-stack="' + FB.esc(stack.id) + '"' +
+        ' data-topic="' + FB.esc(stack.topic || "") + '"' +
+        ' data-beat="' + FB.esc(c.beat || "") + '"' +
+        ' data-card="' + n + '"' +
+        ' data-cam="' + (n % 6) + '">' +
+        '<div class="art">' +
+          '<img alt="" decoding="async"' +
+            (n === 0 ? ' fetchpriority="high"' : ' loading="lazy"') +
+            ' src="/img/cards/' + FB.esc(plate) + '.webp"' +
+            ' onerror="this.onerror=null;this.src=\'/img/stacks/' + FB.esc(stack.img) + '.webp\'">' +
+        '</div>' +
+        '<div class="copy">' +
+          '<h2>' + FB.esc(c.head) + '</h2>' + body + cite +
+        '</div>' +
+        '<p class="plate-credit">' + FB.creditLine(cap, cr) + '</p>' +
+      '</section>';
+  }
+
+  /* ScrollToOptions on an element is iOS 14+. Below that the dictionary form
+     resolves to NaN and scrolls to the top instead. */
+  var SMOOTH = "scrollBehavior" in document.documentElement.style;
+  function goTo(top) {
+    var d = document.getElementById("deck");
+    if (SMOOTH && d.scrollTo) d.scrollTo({ top: top, behavior: "smooth" });
+    else d.scrollTop = top;
+  }
+
+  function paywall(s) {
+    return '' +
+      '<section class="pane paywall">' +
+        '<div class="plate"><img alt="" src="/img/thumbs/' + FB.esc(s.img) + '.webp"></div>' +
+        '<h2>' + FB.esc(s.title) + '</h2>' +
+        '<p>' + FB.esc(s.hook) + '</p>' +
+        '<button class="go" id="pay" type="button">Read the rest of this story</button>' +
+        '<p class="fine">Two stories are free. The rest needs an account — three days free first.</p>' +
+        '<a class="ghost" href="/stories">Back to stories</a>' +
+      '</section>';
+  }
+
+  FB.load().then(function (stacks) {
+    var want = String(id == null ? "" : id).toUpperCase();
+    var i = -1;
+    for (var q = 0; q < stacks.length; q++) {
+      if (String(stacks[q].id).toUpperCase() === want) { i = q; break; }
+    }
+    /* A wrong id used to replace() straight to the shelf, which also ate the
+       back entry, so the reader could not undo their own typo. */
+    if (i === -1) {
+      deck.innerHTML =
+        '<section class="pane"><h1>That story is not in this season.</h1>' +
+        '<p>The link may be mistyped.</p>' +
+        '<a class="ghost" href="/stories">All stories</a></section>';
+      return;
+    }
+    var s = stacks[i];
+    document.title = s.title + " · Factbox";
+
+    if (!s.free && !FB.unlocked()) {
+      deck.innerHTML = paywall(s);
+      document.getElementById("pay").addEventListener("click", function () {
+        FB.checkout(this, "paywall");
+      });
+      FB.track("paywall_view", { stack: s.id });
+      return;
+    }
+
+    /* One plate per card. The stack hero is only the fallback for a card the
+       manifest did not cover, so a missing row degrades to the old behaviour
+       rather than to an empty frame. */
+    var html = s.cards.map(function (c, n) {
+      return c.img ? beat(c, c.img, c.cap, c.cr, n, s)
+                   : beat(c, s.img, s.cap, s.cr, n, s);
+    }).join("");
+
+    /* The end of a story is the highest-intent moment on the site, so it is
+       a real panel of recommendations rather than one arbitrary next story. */
+    var h1 = document.createElement("h1");
+    h1.className = "sr-title";
+    h1.textContent = s.title;
+    document.body.insertBefore(h1, document.body.firstChild);
+
+    deck.innerHTML = html;
+    if (window.FBR && FBR.endPanel) {
+      var panel = FBR.endPanel(s, stacks, { n: 3 });
+      if (panel) deck.appendChild(panel);
+    }
+    FB.track("stack_open", { stack: s.id });
+
+    /* Saving lives beside the back button: the two things you do to a story
+       from outside the story itself. */
+    if (window.FBS) {
+      var save = FBS.button(s.id, function (isSaved) {
+        FB.track(isSaved ? "save_add" : "save_remove", { stack: s.id });
+      }, s.title);
+      var topbar = document.querySelector(".topbar");
+      if (save && topbar) topbar.appendChild(save);
+    }
+
+    /* Offer to pick up where they stopped rather than jumping there. A silent
+       jump into the middle of a story is disorienting; an offer is not. */
+    var chip = P && P.resumeChip && P.resumeChip(s.id, s.cards.length, function (card) {
+      goTo(card * deck.clientHeight);
+      FB.track("resume_used", { stack: s.id, card: String(card + 1) });
+    });
+    if (chip) {
+      document.body.appendChild(chip);
+      deck.addEventListener("scroll", function once() {
+        deck.removeEventListener("scroll", once);
+        setTimeout(function () { try { chip.dismiss(); } catch (e) {} }, 2500);
+      }, { passive: true });
+    }
+
+    /* Progress, and the drop-off card index — the number the CTO README says
+       actually pays. Reported once per stack, at the deepest card reached. */
+    /* `live` marks the card on screen. The motion, atmosphere and sound layers
+       all key off it, and at most one card is ever animating or audible.
+
+       The first card gets it on the next frame rather than waiting for the
+       observer's first tick, and — the lesson from shipping a wordless page —
+       nothing that can throw runs before this point. */
+    var beats = [].slice.call(deck.querySelectorAll(".beat, .pane"));
+    if (window.IntersectionObserver) {
+      var io = new IntersectionObserver(function (es) {
+        for (var k = 0; k < es.length; k++) {
+          es[k].target.classList.toggle("live", es[k].isIntersecting);
+        }
+      }, { threshold: 0.55 });
+      for (var b = 0; b < beats.length; b++) io.observe(beats[b]);
+    } else {
+      /* No observer: mark them all live rather than none. Everything degrades
+         to "always on", which is worse for battery and correct for reading. */
+      for (var b2 = 0; b2 < beats.length; b2++) beats[b2].classList.add("live");
+    }
+    if (beats[0]) {
+      requestAnimationFrame(function () { beats[0].classList.add("live"); });
+    }
+
+    var total = s.cards.length + 1, deepest = 0, reported = false;
+    function onScroll() {
+      var h = deck.clientHeight || 1;
+      var n = Math.round(deck.scrollTop / h);
+      bar.style.width = Math.min(100, (n + 1) / total * 100) + "%";
+      if (n > deepest) deepest = n;
+      if (P) P.mark(s.id, deepest, s.cards.length);
+    }
+    deck.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    function report() {
+      if (reported) return;
+      reported = true;
+      FB.track(deepest >= s.cards.length ? "stack_complete" : "stack_dropoff",
+               { stack: s.id, card: String(deepest + 1) });
+      if (P && deepest >= s.cards.length) P.complete(s.id, s.cards.length);
+    }
+    addEventListener("pagehide", report);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") report();
+    });
+
+    /* Desktop: arrow keys move a card at a time. Phones swipe; nothing here
+       overrides native scrolling, which is what broke the first build. */
+    addEventListener("keydown", function (e) {
+      /* Space activates whatever control has focus. Claiming it globally left
+         every button on the page dead to the keyboard. */
+      var t = e.target, tag = t && t.tagName ? t.tagName.toLowerCase() : "";
+      if (tag === "button" || tag === "a" || tag === "input" || tag === "select" ||
+          tag === "textarea" || (t && t.isContentEditable)) return;
+      var d = e.key === "ArrowDown" || e.key === "PageDown" || e.key === " " ? 1
+            : e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 0;
+      if (!d) return;
+      e.preventDefault();
+      goTo(deck.scrollTop + d * deck.clientHeight);
+    });
+  }).catch(function () {
+    deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +
+      '<p>Check your connection and reload.</p>' +
+      '<a class="ghost" href="/stories">All stories</a></section>';
+  });
+})();
+</script>
+<script src="/js/audio-reader.js"></script>
+<!-- js/auth.js is a module, so the browser defers it: it runs after the
+     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
+     is in. The ES5 block below therefore cannot read window.FBU at the moment
+     it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
+<script type="module" src="/js/auth.js"></script>
+<script>
+/* The header account control. ES5, every lookup guarded, and it cannot throw:
+   the worst case is the signed-out pair staying on screen, which is what the
+   markup already says. */
+(function () {
+  "use strict";
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+
+  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
+                                      .replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  /* A display name is text the reader typed, going straight into the header,
+     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
+     rule the rest of the site follows: no error code, ever, on screen. */
+  function label(FBU) {
+    var s = "";
+    try { s = String(FBU.name() || ""); } catch (e) {}
+    if (!s) {
+      var m = "";
+      try { m = String(FBU.email() || ""); } catch (e2) {}
+      var at = m.indexOf("@");
+      s = at > 0 ? m.slice(0, at) : "";
+    }
+    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "Account";
+    if (s.indexOf("auth/") !== -1) return "Account";
+    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
+    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
+  }
+
+  function paint(FBU) {
+    var inNow = false;
+    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
+    if (inNow) {
+      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
+      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+    } else {
+      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+    }
+    reveal();
+  }
+
+  function whenFBU(cb) {
+    var done = false;
+    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    try {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
+      else setTimeout(go, 0);
+    } catch (e) {}
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  whenFBU(function (FBU) {
+    /* No FBU at all — the file 404'd, or this webview ignores type="module".
+       That is the signed-out header, which links to a page that explains it. */
+    if (!FBU) { paint(null); return; }
+    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
+    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
+  });
+})();
+</script>
+<script>
+/* Back to the story, not to the shelf. Only a plain stack id is accepted into
+   the return address; anything else leaves the link exactly as it shipped. */
+(function () {
+  try {
+    var m = /^\?s=([A-Za-z0-9_-]{1,24})$/.exec(String(location.search || ""));
+    if (!m) return;
+    var a = document.getElementById("fb-acct-in");
+    if (a) a.setAttribute("href", "/login?next=" + encodeURIComponent("/read?s=" + m[1]));
+  } catch (e) {}
+})();
+</script>
+<script src="/js/analytics.js"></script>
+</body>
+</html>
