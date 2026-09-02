@@ -285,6 +285,7 @@
   var timedOut = false;
 
   var premiumFlag = false;
+  var adminFlag   = false;
   var subNow = null;
   var billingKnown = false;
 
@@ -464,6 +465,10 @@
         sdk.doc(db, "customers", uid),
         function (snap) {
           var d = snapData(snap);
+          /* Admin comes off the same document as premium — one read, one
+             snapshot, one source of truth. Only the webhook and the console
+             can write here; the rules deny every client write. */
+          adminFlag = !!(d && (d.admin === true || d.role === "admin"));
           setPremium(!!(d && d.premium === true));
           settleBilling();
         },
@@ -514,6 +519,7 @@
       billingKnown = false;
       billingD = defer();
       premiumFlag = false;
+      adminFlag = false;
       subNow = null;
       watchBilling(now);
     }
@@ -960,6 +966,7 @@
 
     /* money — one flag, live */
     premium: function () { return premiumFlag; },
+    admin: function () { return adminFlag; },
     onPremium: onPremium,
     subscription: function () { return subNow; },
     onSubscription: onSubscription,

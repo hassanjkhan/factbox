@@ -155,6 +155,7 @@ Load order matters: `progress.js` → `gate.js` → everything else.
 
 | Global | File | Owns |
 |---|---|---|
+| `FBX` | `js/access.js` | **the only answer to "may this person read?"** — admin, subscriber, legacy, or none, and when that answer is knowable |
 | `FB` | `js/gate.js` | access flag, `load()`, `esc()`, `minutes()`, `creditLine()`, `track()` |
 | `FBP` | `js/progress.js` | reading memory, resume, restore link |
 | `FBS` | `js/saves.js` | bookmarks |

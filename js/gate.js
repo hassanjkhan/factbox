@@ -50,86 +50,15 @@ var FB = (function () {
   }
   claim();
 
-  /* Access is whatever the account says, falling back to the local flag.
-
-     This bridge is the whole point: `premium` lives in Firestore and only the
-     Stripe webhook writes it, so it is the truth. The local flag predates
-     accounts and still matters — it is what a restore link sets, and what
-     anyone who subscribed before accounts existed is holding. Either one opens
-     the site; neither one alone is enough to close it. */
-  var FIREBASE_SET = "fb_unlocked_src_fb";
-
-  function firebasePremium() {
-    try { return !!(window.FBU && FBU.premium && FBU.premium()); }
-    catch (e) { return false; }
-  }
-
-  function unlocked() { return store(KEY) === "1" || firebasePremium(); }
-
-  /* Firebase answers after the page has already drawn itself, so a reader who
-     is signed in and premium would otherwise see a shelf of padlocks until
-     they reloaded. Mirror the answer into storage, then re-render.
-
-     Reload rather than a re-render hook: every page computes `open` once at
-     load and there is no single place to re-run. Guarded by a session marker
-     so a mismatch can never loop. */
-  function mirrorPremium() {
+  /* Access is decided in one place: js/access.js. This used to answer the
+     question itself, which is how the site ended up with four answers and
+     three bugs. FBX is guarded because a page may not load it. */
+  function unlocked() {
     try {
-      var prem = firebasePremium();
-      var flag = store(KEY) === "1";
-
-      if (prem && !flag) {
-        store(KEY, "1");
-        store(FIREBASE_SET, "1");
-        try {
-          /* Once per page, not once per session. The guard used to be
-             session-wide, so the first page to sync spent it and every later
-             page was left showing padlocks with no correction coming. */
-          var mark = "fb_sync_" + location.pathname;
-          if (!sessionStorage.getItem(mark)) {
-            sessionStorage.setItem(mark, "1");
-            location.reload();
-          }
-        } catch (e) {}
-        return;
-      }
-
-      /* Cancelled. Only take back what this bridge granted — a restore link or
-         a pre-account purchase is not ours to revoke. */
-      if (!prem && flag && store(FIREBASE_SET) === "1" &&
-          window.FBU && FBU.signedIn && FBU.signedIn()) {
-        try {
-          localStorage.removeItem(KEY);
-          localStorage.removeItem(FIREBASE_SET);
-        } catch (e) {}
-      }
+      if (window.FBX && FBX.can) return FBX.can();
     } catch (e) {}
+    return store(KEY) === "1";
   }
-
-  /* auth.js is a deferred module, so it lands after this file runs. Watch for
-     it rather than assuming either order. */
-  (function watchFBU() {
-    try {
-      if (window.FBU && FBU.onPremium) {
-        FBU.onPremium(mirrorPremium);
-        mirrorPremium();
-        return;
-      }
-    } catch (e) {}
-    var tries = 0;
-    var t = setInterval(function () {
-      tries++;
-      try {
-        if (window.FBU && FBU.onPremium) {
-          clearInterval(t);
-          FBU.onPremium(mirrorPremium);
-          mirrorPremium();
-        } else if (tries > 40) {          /* ~8s; no auth on this page */
-          clearInterval(t);
-        }
-      } catch (e) { clearInterval(t); }
-    }, 200);
-  })();
 
   /* joinURL(from) — the funnel entrance, with a note of where the reader was
      when they asked. Relative, so it works on factbox.app, on a preview

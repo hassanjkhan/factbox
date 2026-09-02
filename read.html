@@ -55,6 +55,7 @@
 read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></noscript>
 
 <script src="/js/progress.js"></script>
+<script src="/js/access.js"></script>
 <script src="/js/gate.js"></script>
 <script src="/js/saves.js"></script>
 <script src="/js/recommend.js"></script>
@@ -139,35 +140,19 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
      it offers a way in; a blank screen offers nothing. */
   var shown = false;
 
+  /* One module owns both the answer and when it is knowable. */
   function accessSettled() {
+    try {
+      if (window.FBX && FBX.ready) return FBX.ready();
+    } catch (e) {}
     return new Promise(function (done) {
-      var finished = false;
-      function go() { if (!finished) { finished = true; done(); } }
-      /* auth.js settles billingReady() at its own 6s fallback. Capping below
-         that does not make the page faster, it makes the answer wrong — the
-         timeout fires, premium is still false, and a subscriber is shown the
-         paywall. Sit just past it. */
-      setTimeout(go, 6800);
-
-      function hook() {
-        try {
-          if (!window.FBU) return false;
-          /* billingReady, not ready. ready() settles when the *identity* is
-             known; the subscription arrives later, on a Firestore snapshot.
-             Waiting on the wrong one is why a signed-in subscriber still saw
-             the paywall — the header already said their name while the answer
-             that matters had not landed. */
-          if (FBU.billingReady) { FBU.billingReady().then(go, go); return true; }
-          if (FBU.ready) { FBU.ready().then(go, go); return true; }
-        } catch (e) {}
-        return false;
-      }
-
-      if (hook()) return;
-      var tries = 0;
+      var n = 0;
       var t = setInterval(function () {
-        tries++;
-        if (hook() || tries > 15) { clearInterval(t); if (tries > 15) go(); }
+        n++;
+        try {
+          if (window.FBX && FBX.ready) { clearInterval(t); FBX.ready().then(done, done); }
+          else if (n > 35) { clearInterval(t); done(); }
+        } catch (e) { clearInterval(t); done(); }
       }, 200);
     });
   }
@@ -205,9 +190,9 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
          looking at a wall they have already paid to pass. Redraw rather than
          make them find the reload button. */
       try {
-        if (window.FBU && FBU.onPremium) {
-          FBU.onPremium(function (isPrem) {
-            if (isPrem && !shown) { shown = true; location.reload(); }
+        if (window.FBX && FBX.onChange) {
+          FBX.onChange(function (allowed) {
+            if (allowed && !shown) { shown = true; location.reload(); }
           });
         }
       } catch (e) {}
