@@ -1,0 +1,114 @@
+/* ==========================================================================
+   Factbox — Library.  Loads AFTER css/app.css and adds only what is new.
+
+   The shelf itself is app.css's: .card, .plate, .grid, .meta, .readbar,
+   .resume, .lock, .sechead, .tabs, .is-done / .is-reading are all reused
+   unchanged, so a cover looks identical here and on Home. Everything below
+   exists because the Library has something Home does not — a stats line, a
+   real empty state, a remove control, and a storage-is-dead notice.
+
+   Same committed dark ground as the rest of the site. Colours are declared
+   with fallbacks so this file still paints if app.css ever fails to load.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   The stats line. Three numbers the site can actually derive, and one line of
+   small print saying where the minutes come from — a number a reader cannot
+   check is a number they are right to distrust.
+   -------------------------------------------------------------------------- */
+.statline{
+  margin:16px 2px 2px;
+  font-size:.86rem; line-height:1.5; font-weight:600;
+  color:var(--dim,rgba(255,247,237,.62));
+  font-variant-numeric:tabular-nums;
+}
+.statline b{
+  color:var(--parchment,#FFF7ED); font-weight:800;
+}
+.statline small{
+  display:block; margin-top:6px; max-width:46ch;
+  font-size:.72rem; font-weight:500; line-height:1.45;
+  color:var(--dimmer,rgba(255,247,237,.42));
+}
+
+/* --------------------------------------------------------------------------
+   Empty state. A first-time reader has no library, and a blank page reads as
+   a broken one — so this says what the shelf is for and hands them the two
+   doors out: everything, or the free stories.
+   -------------------------------------------------------------------------- */
+.empty{
+  margin:26px 0 4px; padding:22px 18px;
+  border-radius:18px;
+  background:var(--raise,#181320);
+  box-shadow:inset 0 0 0 1px var(--hair,rgba(255,247,237,.13));
+}
+.empty h2{
+  margin:0 0 9px; font-size:1.2rem; font-weight:850; letter-spacing:-.015em;
+  color:var(--parchment,#FFF7ED);
+}
+.empty p{
+  margin:0; font-size:.94rem; line-height:1.55; max-width:44ch;
+  color:var(--dim,rgba(255,247,237,.62));
+}
+.emptygo{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  margin-top:18px;
+}
+/* .go is a <button> everywhere else on the site; here it is a link, so it
+   needs the two properties a button gets for free. */
+.emptygo .go{ text-decoration:none; text-align:center; }
+.emptygo .ghost{ text-decoration:none; }
+
+/* --------------------------------------------------------------------------
+   A saved cover carries a remove control. It cannot sit inside the <a> — a
+   button nested in a link is invalid markup and unreliable to tap on iOS — so
+   the cell stacks the cover and the control.
+
+   The control is quiet on purpose: undoing a save should be findable, never
+   the loudest thing in a grid of covers.
+   -------------------------------------------------------------------------- */
+.savecell{ display:flex; flex-direction:column; gap:8px; }
+.savecell .card{ flex:1 1 auto; }
+.unsave{
+  align-self:start;
+  min-height:var(--tap,44px); padding:0 12px;
+  border:0; border-radius:var(--pill,999px);
+  background:transparent;
+  color:var(--dimmer,rgba(255,247,237,.42));
+  font-family:var(--ui,system-ui,-apple-system,sans-serif);
+  font-size:.78rem; font-weight:700; cursor:pointer;
+  transition:color .16s ease, background-color .16s ease;
+}
+.unsave:hover,.unsave:active{
+  color:var(--parchment,#FFF7ED);
+  background:rgba(255,247,237,.08);
+}
+
+/* --------------------------------------------------------------------------
+   Storage refused everything. The library will be empty on every visit, and
+   the reader deserves to know that before they save something into a void.
+   -------------------------------------------------------------------------- */
+.libnote{
+  margin:26px 0 0; padding:14px 16px;
+  border-radius:14px;
+  background:rgba(255,211,110,.08);
+  box-shadow:inset 0 0 0 1px rgba(255,211,110,.24);
+  color:var(--dim,rgba(255,247,237,.62));
+  font-size:.84rem; line-height:1.5;
+}
+.libnote b{ display:block; margin-bottom:4px; color:var(--butter,#FFD36E); font-weight:800; }
+
+/* The one thing that shows when the season itself could not be fetched. It is
+   copy, not a blank page — that distinction is the whole point. */
+.libfail{
+  margin:30px 0 0; font-size:.95rem; line-height:1.55;
+  color:var(--dim,rgba(255,247,237,.62));
+}
+
+/* The save button (FBS.button) is styled inline in js/saves.js so no
+   stylesheet can break it. It only needs room to breathe wherever it lands. */
+.fbs-save{ margin:0; }
+
+@media (prefers-reduced-motion:reduce){
+  .unsave{ transition:none; }
+}

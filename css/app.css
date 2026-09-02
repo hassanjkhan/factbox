@@ -360,3 +360,36 @@ img{max-width:100%;display:block}
   font-family:var(--ui); font-size:.94rem; font-weight:800;
 }
 .keep .fine{margin:9px 0 0; text-align:left}
+
+/* --------------------------------------------------------------------------
+   Section nav. Three places: Home, Explore, Library.
+
+   The selected tab is NOT a filled pill — it is the word, brighter, with a
+   hairline under it. A coloured capsule reads as a button you have not pressed
+   yet, which is the opposite of what a current-section marker should say.
+
+   It sits at the top, not the bottom: the bottom 44-60pt of an in-app webview
+   belongs to Instagram's toolbar.
+   -------------------------------------------------------------------------- */
+.tabs{
+  display:flex; gap:22px; align-items:center;
+  padding:2px 2px 0; margin:0 0 4px;
+}
+.tabs a{
+  position:relative; text-decoration:none;
+  padding:10px 0; min-height:var(--tap);
+  display:inline-flex; align-items:center;
+  font-size:.95rem; font-weight:700; letter-spacing:-.01em;
+  color:var(--dimmer);
+  transition:color .16s ease;
+}
+.tabs a:hover{color:var(--dim)}
+.tabs a[aria-current="page"]{color:var(--parchment); font-weight:800}
+.tabs a[aria-current="page"]::after{
+  content:""; position:absolute; left:0; right:0; bottom:4px; height:2px;
+  border-radius:2px; background:var(--coral);
+}
+.tabs .count{
+  margin-left:auto; font-size:.76rem; font-weight:650; color:var(--dimmer);
+  font-variant-numeric:tabular-nums;
+}

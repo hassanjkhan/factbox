@@ -1,0 +1,381 @@
+/* ==========================================================================
+   Factbox — "read another one".
+
+   One global, FBR. It owns the moment a story ends: the single highest-intent
+   second on the site. It does not own the reader page, does not fetch, does
+   not write storage, and defines nothing else.
+
+   Hard rule, learned the expensive way: this file must never throw. Every
+   public function is wrapped, every dependency is optional. If FBP (reading
+   memory) is missing, ranking simply loses one signal. If FBS (saves) is
+   missing, the rows lose one button. If the data is empty or malformed, the
+   panel still renders and still points somewhere.
+   ========================================================================== */
+
+var FBR = (function () {
+  "use strict";
+
+  /* ---- scoring weights ---------------------------------------------------
+     Ordered so the two penalties dominate: a finished story can never
+     outrank an unread one, and a story the reader cannot open can never
+     outrank one they can. Both stay in the list rather than vanishing, so
+     the panel is never empty. */
+  var W = {
+    topic:    120,   /* same subject as the story just finished — strongest */
+    kind:     45,    /* same shape of story — weaker, but real */
+    resume:   90,    /* they started it and walked away */
+    freeOpen: 60,    /* locked-out reader: a story they can actually read */
+    unread:   12,    /* mild nudge toward something new */
+    done:     -400,  /* already finished — hard deprioritise, not hidden */
+    shut:     -1200  /* locked to this reader — last resort only, and marked */
+  };
+
+  var TOPICS = {
+    cleopatra:       "Cleopatra",
+    church_history:  "the church",
+    old_testament:   "the Old Testament",
+    new_testament:   "the New Testament",
+    us_history:      "American history",
+    disaster:        "disasters",
+    ancient_world:   "the ancient world",
+    medieval_modern: "the medieval world"
+  };
+
+  var KINDS = {
+    unsolved_mystery: "Another unsolved one",
+    myth_correction:  "Another myth, corrected",
+    list_explainer:   "Another explainer",
+    moral_reversal:   "Another one that flips",
+    violent_death:    "Another grisly one",
+    hidden_meaning:   "Another hidden meaning"
+  };
+
+  /* ---- tiny helpers ---------------------------------------------------- */
+
+  function isArr(x) { return Object.prototype.toString.call(x) === "[object Array]"; }
+
+  function str(x) { return x == null ? "" : String(x); }
+
+  /* stacks may arrive as the array, or as the raw {stacks:[...]} payload. */
+  function listOf(stacks) {
+    if (isArr(stacks)) return stacks;
+    if (stacks && isArr(stacks.stacks)) return stacks.stacks;
+    return [];
+  }
+
+  /* current may be the stack object, its id, or nothing. */
+  function idOf(current) {
+    if (current == null) return "";
+    if (typeof current === "string" || typeof current === "number") return String(current);
+    return str(current.id);
+  }
+
+  function find(list, id) {
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && str(list[i].id) === id) return list[i];
+    }
+    return null;
+  }
+
+  function unlocked() {
+    try { if (window.FB && typeof FB.unlocked === "function") return !!FB.unlocked(); } catch (e) {}
+    try { if (window.FBP && typeof FBP.unlocked === "function") return !!FBP.unlocked(); } catch (e) {}
+    return false;
+  }
+
+  /* Reading memory is optional. Absent, everything is "unread", which is a
+     correct answer for a reader whose memory we do not have. */
+  function progress(s) {
+    var blank = { status: "unread", card: 0, pct: 0 };
+    try {
+      if (!window.FBP || typeof FBP.state !== "function") return blank;
+      var st = FBP.state(str(s.id), s.cards && s.cards.length ? s.cards.length : 0);
+      return st && st.status ? st : blank;
+    } catch (e) { return blank; }
+  }
+
+  function minutes(secs) {
+    try {
+      if (window.FB && typeof FB.minutes === "function") return FB.minutes(secs);
+    } catch (e) {}
+    return Math.max(1, Math.round((+secs || 0) / 60)) + " min";
+  }
+
+  /* Stack 01 is the illustrated one-off page; everything else is the reader. */
+  function href(s) {
+    var id = idOf(s);
+    if (id === "01") return "story.html";
+    return "read.html?s=" + encodeURIComponent(id);
+  }
+
+  /* Deterministic spread. Without it the tail of every ranking is just
+     catalogue order, so the same three covers follow every story in a topic.
+     With it the order is varied but identical on every reload, forever. */
+  function hash(a, b) {
+    var s = str(a) + "|" + str(b), h = 5381, i;
+    for (i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+    return h % 17;   /* 0..16 — smaller than any real signal weight */
+  }
+
+  /* ---- why is this here, in the reader's language ---------------------- */
+
+  function reason(cur, s, p, readerLocked) {
+    var topic = cur ? str(cur.topic) : "";
+    var kind  = cur ? str(cur.kind)  : "";
+    if (p.status === "reading" && p.card > 0) return { key: "resume", text: "You started this one" };
+    if (p.status === "done")                  return { key: "done",   text: "Worth a second read" };
+    if (topic && str(s.topic) === topic) {
+      var name = TOPICS[s.topic] || str(s.topic).replace(/_/g, " ");
+      return { key: "topic", text: "More on " + name };
+    }
+    if (readerLocked && s.free)               return { key: "free",   text: "Free to read now" };
+    if (kind && str(s.kind) === kind)         return { key: "kind",   text: KINDS[s.kind] || "Another one like it" };
+    if (s.topic && TOPICS[s.topic])           return { key: "browse", text: "More on " + TOPICS[s.topic] };
+    return { key: "next", text: "Next up" };
+  }
+
+  /* ---- ranking ---------------------------------------------------------- */
+
+  /* next(current, stacks, n) -> array of up to n rows.
+     Each row is a shallow copy of the stack with four fields added:
+       why    reader-facing sentence  ("More on Cleopatra")
+       whyKey machine tag             ("topic" | "kind" | "resume" | "done" | "free" | "browse" | "next")
+       locked true when this reader cannot open it — the caller MUST mark it
+       href   where to send them
+     Deterministic: same inputs, same output, every reload. */
+  function next(current, stacks, n) {
+    try {
+      var list = listOf(stacks);
+      var want = Math.max(1, Math.min(list.length, Math.floor(+n) || 3));
+      if (!list.length) return [];
+
+      var curId = idOf(current);
+      var cur = (current && typeof current === "object" && current.id != null)
+        ? current : find(list, curId);
+      var open = unlocked();
+      var rows = [], i, s, p, sc, shut;
+
+      for (i = 0; i < list.length; i++) {
+        s = list[i];
+        if (!s || s.id == null) continue;
+        if (str(s.id) === curId) continue;           /* never the story they are on */
+
+        p = progress(s);
+        shut = !s.free && !open;
+        sc = 0;
+
+        if (cur && s.topic && str(s.topic) === str(cur.topic)) sc += W.topic;
+        if (cur && s.kind  && str(s.kind)  === str(cur.kind))  sc += W.kind;
+        if (p.status === "reading" && p.card > 0) sc += W.resume;
+        else if (p.status === "done") sc += W.done;
+        else sc += W.unread;
+        if (!open && s.free) sc += W.freeOpen;
+        if (shut) sc += W.shut;
+        sc += hash(curId, s.id);
+
+        var r = shallow(s);
+        var why = reason(cur, s, p, !open);
+        r.why = why.text;
+        r.whyKey = why.key;
+        r.locked = shut;
+        r.href = href(s);
+        r.score = sc;
+        rows.push(r);
+      }
+
+      /* Total order — score, then id — so sort stability is never relied on. */
+      rows.sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        return str(a.id) < str(b.id) ? -1 : (str(a.id) > str(b.id) ? 1 : 0);
+      });
+
+      return rows.slice(0, want);
+    } catch (e) { return []; }
+  }
+
+  function shallow(s) {
+    var o = {}, k;
+    for (k in s) { if (Object.prototype.hasOwnProperty.call(s, k)) o[k] = s[k]; }
+    return o;
+  }
+
+  /* ---- DOM -------------------------------------------------------------- */
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function track(name, props) {
+    try { if (window.FB && typeof FB.track === "function") FB.track(name, props); } catch (e) {}
+  }
+
+  function cover(s) {
+    var plate = el("div", "plate");
+    var img = document.createElement("img");
+    img.alt = "";
+    img.decoding = "async";
+    img.loading = "lazy";
+    img.src = "img/thumbs/" + str(s.img) + ".webp";
+    img.onerror = function () {
+      this.onerror = null;                                  /* one retry, never a loop */
+      this.src = "img/stacks/" + str(s.img) + ".webp";
+    };
+    plate.appendChild(img);
+    if (s.locked) plate.appendChild(el("span", "lock", "🔒"));
+    return plate;
+  }
+
+  function saveBtn(s) {
+    if (!window.FBS || typeof FBS.toggle !== "function") return null;
+    var on = false;
+    try { on = !!(FBS.saved && FBS.saved(str(s.id))); } catch (e) {}
+    var b = el("button", "rec-save", on ? "Saved" : "Save");
+    b.type = "button";
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.setAttribute("aria-label", (on ? "Remove from library: " : "Save to library: ") + str(s.title));
+    b.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var now = on;
+      try { var r = FBS.toggle(str(s.id)); now = (typeof r === "boolean") ? r : !on; }
+      catch (e) { return; }
+      on = now;
+      b.textContent = on ? "Saved" : "Save";
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      track("rec_save", { stack: str(s.id), on: on ? "1" : "0" });
+    });
+    return b;
+  }
+
+  /* One recommendation. The link and the save button are siblings — a button
+     nested inside an anchor is invalid and swallows the tap on some webviews. */
+  function row(s, slot) {
+    var wrap = el("div", "rec-row" + (s.locked ? " is-locked" : ""));
+    var a = el("a", "rec-link");
+    a.href = s.href;
+    a.appendChild(cover(s));
+
+    var t = el("div", "t");
+    t.appendChild(el("b", null, str(s.title)));
+    t.appendChild(el("span", "rec-why", str(s.why)));
+    var cards = (s.cards && s.cards.length) ? s.cards.length + " cards · " : "";
+    t.appendChild(el("span", "rec-meta", cards + minutes(s.secs) + (s.locked ? " · Locked" : "")));
+    a.appendChild(t);
+
+    a.addEventListener("click", function () {
+      track("rec_click", { stack: str(s.id), why: str(s.whyKey), slot: String(slot + 1) });
+    });
+
+    wrap.appendChild(a);
+    var b = saveBtn(s);
+    if (b) wrap.appendChild(b);
+    return wrap;
+  }
+
+  /* endPanel(current, stacks, opts) -> a .pane element for the end of a story.
+     opts: { n:3, heading:"...", explore:true, library:true }
+     Always returns an element. Never throws. */
+  function endPanel(current, stacks, opts) {
+    var sec;
+    try {
+      opts = opts || {};
+      sec = el("section", "pane rec");
+      var open = unlocked();
+      var want = Math.max(2, Math.min(4, Math.floor(+opts.n) || 3));
+      var ranked = next(current, stacks, 999), i;
+
+      /* A locked reader gets everything they can open, plus at most one
+         locked cover as a marked teaser. Six padlocks in a row is a nag. */
+      var pool = ranked, teaser = null;
+      if (!open) {
+        var canOpen = [], shut = [];
+        for (i = 0; i < ranked.length; i++) (ranked[i].locked ? shut : canOpen).push(ranked[i]);
+        pool = canOpen;
+        teaser = shut.length ? shut[0] : null;
+      }
+      var picks = pool.slice(0, want);
+
+      /* Three rows reading "More on Cleopatra, More on Cleopatra, More on
+         Cleopatra" is one door, printed three times. When every pick shares a
+         reason, the last slot goes to the best candidate with a different one
+         — still ranked, still deterministic, but it offers a second way out. */
+      if (picks.length === want && want >= 3) {
+        var same = true;
+        for (i = 1; i < picks.length; i++) if (picks[i].whyKey !== picks[0].whyKey) same = false;
+        if (same) {
+          for (i = want; i < pool.length; i++) {
+            if (pool[i].whyKey !== picks[0].whyKey) { picks[want - 1] = pool[i]; break; }
+          }
+        }
+      }
+      if (picks.length < want && teaser) picks.push(teaser);
+
+      sec.appendChild(el("h2", null, str(opts.heading) || "That is the whole story."));
+
+      var openable = 0;
+      for (var j = 0; j < picks.length; j++) if (!picks[j].locked) openable++;
+      var lede = picks.length
+        ? (open || openable ? "Read another one." : "That was the last free story.")
+        : "That is every story for now.";
+      sec.appendChild(el("p", "rec-lede", lede));
+
+      if (picks.length) {
+        var listEl = el("div", "rec-list");
+        for (var k = 0; k < picks.length; k++) listEl.appendChild(row(picks[k], k));
+        sec.appendChild(listEl);
+      }
+
+      /* The route to the rest, stated once, plainly. No countdown, no nag. */
+      if (!open) {
+        var buy = el("button", "go", "Read all 51 stories · $3.99/mo");
+        buy.type = "button";
+        buy.addEventListener("click", function () {
+          try {
+            if (window.FB && typeof FB.checkout === "function") { FB.checkout(buy); return; }
+          } catch (e) {}
+          location.href = "stories.html";
+        });
+        sec.appendChild(buy);
+        sec.appendChild(el("p", "fine", "Cancel any time."));
+      }
+
+      var links = el("div", "rec-links");
+      if (opts.explore !== false) links.appendChild(link("explore.html", "Explore by topic"));
+      if (opts.library !== false) links.appendChild(link("library.html", "Your library"));
+      links.appendChild(link("stories.html", "All stories"));
+      sec.appendChild(links);
+
+      track("rec_view", { stack: idOf(current), n: String(picks.length) });
+      return sec;
+    } catch (e) {
+      /* Last resort: a pane with a way out is still a working end of story. */
+      try {
+        var f = el("section", "pane rec");
+        f.appendChild(el("h2", null, "That is the whole story."));
+        var l = el("div", "rec-links");
+        l.appendChild(link("stories.html", "All stories"));
+        f.appendChild(l);
+        return f;
+      } catch (e2) { return sec || null; }
+    }
+  }
+
+  function link(h, text) {
+    var a = el("a", "ghost", text);
+    a.href = h;
+    return a;
+  }
+
+  return {
+    version: 1,
+    next: next,
+    endPanel: endPanel,
+    href: href,
+    reasonFor: function (cur, s) {
+      try { return reason(cur, s, progress(s), !unlocked()).text; } catch (e) { return "Next up"; }
+    }
+  };
+})();

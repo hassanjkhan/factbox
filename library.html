@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Your library · Factbox</title>
+<meta name="description" content="What you have read, what you are part-way through, and what you saved for later.">
+<meta name="theme-color" content="#0E0B12">
+<!-- This page is different for every reader and empty for a crawler, so it is
+     not worth indexing. The stories themselves are. -->
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/library.css">
+</head>
+<body>
+
+<main class="lib">
+  <header class="mast">
+    <p class="mark">FACTBOX</p>
+    <nav class="tabs" aria-label="Sections">
+      <a href="stories.html">Home</a>
+      <a href="explore.html">Explore</a>
+      <a href="library.html" aria-current="page">Library</a>
+    </nav>
+    <h1>Your library</h1>
+    <p>Where you got to, what you finished, and what you put aside. Kept in this browser and nowhere else.</p>
+  </header>
+
+  <div id="shelf" aria-live="polite">
+    <!-- Filled by js/library.js. If the season cannot be fetched, that script
+         writes visible copy here — never nothing. -->
+    <p class="fine" style="text-align:left">Loading your library…</p>
+  </div>
+
+  <p class="fine" style="margin-top:34px;text-align:left">
+    <a href="credits.html">Artwork credits</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="support.html">Support</a>
+  </p>
+</main>
+
+<!-- Load order matters, and only in one place: progress.js MUST come before
+     gate.js, because gate.js's claim() strips the query string at parse time
+     and progress.js needs Stripe's session_id out of it first. saves.js is
+     independent of both; library.js needs all three and goes last. -->
+<script src="js/progress.js"></script>
+<script src="js/gate.js"></script>
+<script src="js/saves.js"></script>
+<script src="js/library.js"></script>
+</body>
+</html>

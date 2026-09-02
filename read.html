@@ -19,6 +19,7 @@
 
 <script src="js/progress.js"></script>
 <script src="js/gate.js"></script>
+<script src="js/saves.js"></script>
 <script src="js/scenes.js" defer></script>
 <script>
 (function () {
@@ -134,6 +135,16 @@
 
     deck.innerHTML = html + endcard(next);
     FB.track("stack_open", { stack: s.id });
+
+    /* Saving lives beside the back button: the two things you do to a story
+       from outside the story itself. */
+    if (window.FBS) {
+      var save = FBS.button(s.id, function (isSaved) {
+        FB.track(isSaved ? "save_add" : "save_remove", { stack: s.id });
+      });
+      var topbar = document.querySelector(".topbar");
+      if (save && topbar) topbar.appendChild(save);
+    }
 
     /* Offer to pick up where they stopped rather than jumping there. A silent
        jump into the middle of a story is disorienting; an offer is not. */
