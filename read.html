@@ -16,7 +16,15 @@
 <div class="prog" aria-hidden="true"><i id="bar"></i></div>
 <div class="topbar"><a class="back" href="stories.html">← Stories</a></div>
 
-<main class="deck" id="deck" tabindex="-1"></main>
+<main class="deck" id="deck" tabindex="-1">
+  <section class="pane">
+    <h1>Loading this story…</h1>
+    <p>If nothing appears, the story list did not load.</p>
+    <a class="ghost" href="stories.html">All stories</a>
+  </section>
+</main>
+<noscript><p style="padding:24px;color:#FFF7ED">Factbox needs JavaScript to
+read a story. <a href="stories.html" style="color:#FF7A5C">All stories</a></p></noscript>
 
 <script src="js/progress.js"></script>
 <script src="js/gate.js"></script>
@@ -28,23 +36,19 @@
   var deck = document.getElementById("deck");
   var bar  = document.getElementById("bar");
 
-  var id = new URLSearchParams(location.search).get("s");
+  /* Reading memory is a nice-to-have; the story is not. Losing progress.js must
+     not cost the reader the words. */
+  var P = window.FBP && FBP.mark ? FBP : null;
+
+  /* Not URLSearchParams: it is absent on the older in-app webviews this site
+     targets, and it sat on a top-level line, so its absence emptied the page. */
+  var m = /[?&]s=([^&#]*)/.exec(location.search);
+  var id = m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
 
   /* Which cards carry the second artwork. Nearly every card in a stack shares
      the hero plate, which is why a stack costs one image to read; the
      supplementary plates are spread across the interior so the middle of a
      long stack is not the same painting eight times. */
-  function placeSupp(nCards, nSupp) {
-    var at = {};
-    for (var i = 0; i < nSupp; i++) {
-      var pos = Math.round((nCards - 1) * (i + 1) / (nSupp + 1));
-      pos = Math.min(nCards - 2, Math.max(1, pos));   // never the hook, never the last
-      while (at[pos] !== undefined && pos < nCards - 2) pos++;
-      at[pos] = i;
-    }
-    return at;
-  }
-
   function beat(c, plate, cap, cr, n, stack) {
     var cls = "beat is-" + (c.beat || "card").replace(/[^a-z]/gi, "")
             + (c.long ? " is-long" : "");
@@ -66,13 +70,22 @@
           '<img alt="" decoding="async"' +
             (n === 0 ? ' fetchpriority="high"' : ' loading="lazy"') +
             ' src="img/cards/' + FB.esc(plate) + '.webp"' +
-            ' onerror="this.src=\'img/stacks/' + FB.esc(stack.img) + '.webp\'">' +
+            ' onerror="this.onerror=null;this.src=\'img/stacks/' + FB.esc(stack.img) + '.webp\'">' +
         '</div>' +
         '<div class="copy">' +
           '<h2>' + FB.esc(c.head) + '</h2>' + body + cite +
         '</div>' +
         '<p class="plate-credit">' + FB.creditLine(cap, cr) + '</p>' +
       '</section>';
+  }
+
+  /* ScrollToOptions on an element is iOS 14+. Below that the dictionary form
+     resolves to NaN and scrolls to the top instead. */
+  var SMOOTH = "scrollBehavior" in document.documentElement.style;
+  function goTo(top) {
+    var d = document.getElementById("deck");
+    if (SMOOTH && d.scrollTo) d.scrollTo({ top: top, behavior: "smooth" });
+    else d.scrollTop = top;
   }
 
   function paywall(s) {
@@ -88,8 +101,20 @@
   }
 
   FB.load().then(function (stacks) {
-    var i = stacks.findIndex(function (s) { return s.id === id; });
-    if (i === -1) { location.replace("stories.html"); return; }
+    var want = String(id == null ? "" : id).toUpperCase();
+    var i = -1;
+    for (var q = 0; q < stacks.length; q++) {
+      if (String(stacks[q].id).toUpperCase() === want) { i = q; break; }
+    }
+    /* A wrong id used to replace() straight to the shelf, which also ate the
+       back entry, so the reader could not undo their own typo. */
+    if (i === -1) {
+      deck.innerHTML =
+        '<section class="pane"><h1>That story is not in this season.</h1>' +
+        '<p>The link may be mistyped.</p>' +
+        '<a class="ghost" href="stories.html">All stories</a></section>';
+      return;
+    }
     var s = stacks[i];
     document.title = s.title + " · Factbox";
 
@@ -112,8 +137,16 @@
 
     /* The end of a story is the highest-intent moment on the site, so it is
        a real panel of recommendations rather than one arbitrary next story. */
+    var h1 = document.createElement("h1");
+    h1.className = "sr-title";
+    h1.textContent = s.title;
+    document.body.insertBefore(h1, document.body.firstChild);
+
     deck.innerHTML = html;
-    deck.appendChild(FBR.endPanel(s, stacks, { n: 3 }));
+    if (window.FBR && FBR.endPanel) {
+      var panel = FBR.endPanel(s, stacks, { n: 3 });
+      if (panel) deck.appendChild(panel);
+    }
     FB.track("stack_open", { stack: s.id });
 
     /* Saving lives beside the back button: the two things you do to a story
@@ -128,8 +161,8 @@
 
     /* Offer to pick up where they stopped rather than jumping there. A silent
        jump into the middle of a story is disorienting; an offer is not. */
-    var chip = FBP.resumeChip(s.id, s.cards.length, function (card) {
-      deck.scrollTo({ top: card * deck.clientHeight, behavior: "smooth" });
+    var chip = P && P.resumeChip && P.resumeChip(s.id, s.cards.length, function (card) {
+      goTo(card * deck.clientHeight);
       FB.track("resume_used", { stack: s.id, card: String(card + 1) });
     });
     if (chip) {
@@ -171,7 +204,7 @@
       var n = Math.round(deck.scrollTop / h);
       bar.style.width = Math.min(100, (n + 1) / total * 100) + "%";
       if (n > deepest) deepest = n;
-      FBP.mark(s.id, deepest, s.cards.length);
+      if (P) P.mark(s.id, deepest, s.cards.length);
     }
     deck.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -181,7 +214,7 @@
       reported = true;
       FB.track(deepest >= s.cards.length ? "stack_complete" : "stack_dropoff",
                { stack: s.id, card: String(deepest + 1) });
-      if (deepest >= s.cards.length) FBP.complete(s.id, s.cards.length);
+      if (P && deepest >= s.cards.length) P.complete(s.id, s.cards.length);
     }
     addEventListener("pagehide", report);
     document.addEventListener("visibilitychange", function () {
@@ -191,11 +224,16 @@
     /* Desktop: arrow keys move a card at a time. Phones swipe; nothing here
        overrides native scrolling, which is what broke the first build. */
     addEventListener("keydown", function (e) {
+      /* Space activates whatever control has focus. Claiming it globally left
+         every button on the page dead to the keyboard. */
+      var t = e.target, tag = t && t.tagName ? t.tagName.toLowerCase() : "";
+      if (tag === "button" || tag === "a" || tag === "input" || tag === "select" ||
+          tag === "textarea" || (t && t.isContentEditable)) return;
       var d = e.key === "ArrowDown" || e.key === "PageDown" || e.key === " " ? 1
             : e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 0;
       if (!d) return;
       e.preventDefault();
-      deck.scrollBy({ top: d * deck.clientHeight, behavior: "smooth" });
+      goTo(deck.scrollTop + d * deck.clientHeight);
     });
   }).catch(function () {
     deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +

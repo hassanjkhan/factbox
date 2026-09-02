@@ -103,7 +103,7 @@
      sits under the cover in its own cell instead. */
   function savedCell(s) {
     return '<div class="savecell">' + card(s) +
-      '<button class="unsave" type="button" data-unsave="' + esc(s.id) + '">Remove</button></div>';
+      '<button class="unsave" type="button" data-unsave="' + esc(s.id) + '" aria-label="Remove ' + esc(s.title) + ' from your library">Remove</button></div>';
   }
 
   function section(title, note, items, render) {

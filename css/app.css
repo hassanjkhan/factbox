@@ -22,7 +22,7 @@
   --raise:#181320;
   --hair:rgba(255,247,237,.13);
   --dim:rgba(255,247,237,.62);
-  --dimmer:rgba(255,247,237,.42);
+  --dimmer:rgba(255,247,237,.52);
 
   --ui:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
 
@@ -186,8 +186,8 @@ img{max-width:100%;display:block}
 .beat .art::after{
   content:""; position:absolute; inset:0;
   background:
-    linear-gradient(to top, rgba(10,8,13,.94) 0%, rgba(10,8,13,.72) 26%,
-                    rgba(10,8,13,.20) 56%, rgba(10,8,13,.34) 100%);
+    linear-gradient(to top, rgba(10,8,13,.94) 0%, rgba(10,8,13,.78) 38%,
+                    rgba(10,8,13,.34) 62%, rgba(10,8,13,.38) 100%);
 }
 
 .copy{
@@ -227,10 +227,10 @@ img{max-width:100%;display:block}
 .plate-credit{
   position:absolute; left:20px; right:20px;
   bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
-  font-size:.63rem; line-height:1.4; color:rgba(255,247,237,.34);
+  font-size:.66rem; line-height:1.4; color:rgba(255,247,237,.56);
   text-align:left;
 }
-.plate-credit a{color:rgba(255,247,237,.44)}
+.plate-credit a{color:rgba(255,247,237,.72)}
 
 /* Progress. One hair-thin bar; 12 dots on a phone is confetti. */
 .prog{
@@ -392,4 +392,11 @@ img{max-width:100%;display:block}
 .tabs .count{
   margin-left:auto; font-size:.76rem; font-weight:650; color:var(--dimmer);
   font-variant-numeric:tabular-nums;
+}
+
+/* The story's title as the page's one h1. Visible to assistive tech and to
+   search, out of the way of a full-bleed reader that has no room for a header. */
+.sr-title{
+  position:absolute; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
 }

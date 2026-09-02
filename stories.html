@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Season one</title>
-<meta name="description" content="Fifty-one history stories, each one sourced. Read them one card at a time.">
+<meta name="description" content="Fifty-one history stories on paintings from the world's museums, one card at a time.">
 <meta name="theme-color" content="#0E0B12">
 <link rel="canonical" href="https://factbox.app/stories.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Season one">
-<meta property="og:description" content="Fifty-one history stories, each one sourced. Read them one card at a time.">
+<meta property="og:description" content="Fifty-one history stories on paintings from the world's museums, one card at a time.">
 <meta property="og:image" content="https://factbox.app/img/share.jpg">
 <meta property="og:url" content="https://factbox.app/stories.html">
 <meta name="twitter:card" content="summary_large_image">
@@ -27,10 +27,15 @@
       <a href="library.html">Library</a>
     </nav>
     <h1>Season one</h1>
-    <p id="blurb">Fifty-one stories. Every card cites where it came from, and says so when nobody actually knows.</p>
+    <p id="blurb">Fifty-one stories, told one card at a time, on paintings from the world's museums. Every card says when nobody actually knows.</p>
   </header>
 
-  <div id="shelf" aria-live="polite"></div>
+  <div id="shelf">
+    <p class="fine" style="margin-top:24px">Loading the season… if nothing
+    appears, reload the page.</p>
+  </div>
+  <noscript><p class="fine" style="margin-top:24px">Factbox needs JavaScript to
+  show the stories.</p></noscript>
 
   <p class="fine" style="margin-top:34px;text-align:left">
     <a href="credits.html">Artwork credits</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="support.html">Support</a>
@@ -114,7 +119,7 @@
         box.innerHTML =
           '<b>Keep this link</b>' +
           '<p>It re-opens your stories on any phone or browser. Email it to yourself.</p>' +
-          '<input readonly value="' + FB.esc(url) + '">' +
+          '<input readonly aria-label="Your restore link" value="' + FB.esc(url) + '">' +
           '<button type="button" id="cp">Copy link</button>' +
           '<p class="fine">' + FB.esc(FBP.RESTORE_NOTE) + '</p>';
         shelf.parentNode.insertBefore(box, shelf);

@@ -224,7 +224,13 @@ var FBR = (function () {
       this.src = "img/stacks/" + str(s.img) + ".webp";
     };
     plate.appendChild(img);
-    if (s.locked) plate.appendChild(el("span", "lock", "🔒"));
+    if (s.locked) {
+      /* The glyph is decoration: the meta line already says "· Locked", so
+         without this the link's accessible name ends in "lock". */
+      var lk = el("span", "lock", "\ud83d\udd12");
+      lk.setAttribute("aria-hidden", "true");
+      plate.appendChild(lk);
+    }
     return plate;
   }
 

@@ -624,6 +624,24 @@ html.no-motion *::after{animation:none !important}
   color:rgba(244,238,230,.62);text-decoration:none;
 }
 
+/* Eleven of the twelve covers on this shelf are behind the paywall. Every other
+   cover surface on the site marks that; this one was sending readers into a
+   wall with no warning, from the page all the social traffic lands on. */
+.shelfplate{position:relative;display:block}
+.shelflock{
+  position:absolute;right:5px;top:5px;
+  width:20px;height:20px;border-radius:999px;
+  background:rgba(14,11,18,.74);
+  display:grid;place-items:center;font-size:9px;font-style:normal;
+  box-shadow:inset 0 0 0 1px rgba(255,247,237,.16);
+}
+.shelfcard:not(.isfree) img{opacity:.62;filter:saturate(.7)}
+.endfoot{
+  margin:14px 0 0;text-align:center;font-size:12.5px;line-height:1.6;
+  color:rgba(244,238,230,.62);
+}
+.endfoot a{color:rgba(244,238,230,.72)}
+
 /* ═══════════════════════════════════════════════════════════════════
    SCENES A — door · painting · fleet · afternoon
    Composed for 390×844 portrait first; desktop checked second. The
@@ -6939,11 +6957,15 @@ end.innerHTML =
     '<h2 class="hl">Come read more stories.</h2>' +
     '<p class="sub">Fifty more, sourced the same way. Cleopatra, the Bible, ' +
       'Rome, and the people we have flattened into statues.</p>' +
-    '<div class="shelf"><a class=\'shelfcard\' href=\'read.html?s=02\'><img src=\'img/thumbs/s02.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Cleopatra the seductress</em></a><a class=\'shelfcard\' href=\'read.html?s=05\'><img src=\'img/thumbs/s05.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Ark of the Covenant</em></a><a class=\'shelfcard\' href=\'read.html?s=09\'><img src=\'img/thumbs/s09.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Chernobyl</em></a><a class=\'shelfcard\' href=\'read.html?s=14\'><img src=\'img/thumbs/s14.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Timeline of the Book of Revelation</em></a><a class=\'shelfcard\' href=\'read.html?s=22\'><img src=\'img/thumbs/s22.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Galatians 5: the fruit test</em></a><a class=\'shelfcard\' href=\'read.html?s=26\'><img src=\'img/thumbs/s26.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Gnostics</em></a><a class=\'shelfcard\' href=\'read.html?s=31\'><img src=\'img/thumbs/s31.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Alexander the Great&#39;s missing tomb</em></a><a class=\'shelfcard\' href=\'read.html?s=32\'><img src=\'img/thumbs/s32.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Joan of Arc</em></a><a class=\'shelfcard\' href=\'read.html?s=39\'><img src=\'img/thumbs/s39.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Napoleon wasn&#39;t short</em></a><a class=\'shelfcard\' href=\'read.html?s=43\'><img src=\'img/thumbs/s43.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Rasputin wouldn&#39;t die</em></a><a class=\'shelfcard\' href=\'read.html?s=44\'><img src=\'img/thumbs/s44.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>Genghis Khan&#39;s hidden grave</em></a><a class=\'shelfcard\' href=\'read.html?s=50\'><img src=\'img/thumbs/s50.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><em>The Ides of March</em></a></div>' +
+    '<div class="shelf"><a class=\'shelfcard isfree\' href=\'read.html?s=02\'><span class=\'shelfplate\'><img src=\'img/thumbs/s02.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'></span><em>Cleopatra the seductress</em></a><a class=\'shelfcard\' href=\'read.html?s=05\'><span class=\'shelfplate\'><img src=\'img/thumbs/s05.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>The Ark of the Covenant</em></a><a class=\'shelfcard\' href=\'read.html?s=09\'><span class=\'shelfplate\'><img src=\'img/thumbs/s09.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Chernobyl</em></a><a class=\'shelfcard\' href=\'read.html?s=14\'><span class=\'shelfplate\'><img src=\'img/thumbs/s14.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Timeline of the Book of Revelation</em></a><a class=\'shelfcard\' href=\'read.html?s=22\'><span class=\'shelfplate\'><img src=\'img/thumbs/s22.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Galatians 5: the fruit test</em></a><a class=\'shelfcard\' href=\'read.html?s=26\'><span class=\'shelfplate\'><img src=\'img/thumbs/s26.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>The Gnostics</em></a><a class=\'shelfcard\' href=\'read.html?s=31\'><span class=\'shelfplate\'><img src=\'img/thumbs/s31.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Alexander the Great&#39;s missing tomb</em></a><a class=\'shelfcard\' href=\'read.html?s=32\'><span class=\'shelfplate\'><img src=\'img/thumbs/s32.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Joan of Arc</em></a><a class=\'shelfcard\' href=\'read.html?s=39\'><span class=\'shelfplate\'><img src=\'img/thumbs/s39.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Napoleon wasn&#39;t short</em></a><a class=\'shelfcard\' href=\'read.html?s=43\'><span class=\'shelfplate\'><img src=\'img/thumbs/s43.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Rasputin wouldn&#39;t die</em></a><a class=\'shelfcard\' href=\'read.html?s=44\'><span class=\'shelfplate\'><img src=\'img/thumbs/s44.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>Genghis Khan&#39;s hidden grave</em></a><a class=\'shelfcard\' href=\'read.html?s=50\'><span class=\'shelfplate\'><img src=\'img/thumbs/s50.webp\' alt=\'\' loading=\'lazy\' decoding=\'async\'><i class=\'shelflock\' aria-hidden=\'true\'>&#128274;</i></span><em>The Ides of March</em></a></div>' +
     '<button class="go pay" id="pay" type="button">Read all 51 stories &middot; $3.99/mo</button>' +
     '<p class="fine">Cancel any time. Every card says where it came from, ' +
       'and says so when nobody actually knows.</p>' +
     '<a class="ghostlink" href="stories.html">See what is inside first</a>' +
+    '<p class="endfoot">' +
+      '<a href="explore.html">Explore</a> &middot; <a href="library.html">Library</a> &middot; ' +
+      '<a href="credits.html">Artwork credits</a> &middot; <a href="support.html">Support</a>' +
+    '</p>' +
   '</div></div>';
 stage(end.querySelector(".cap"));
 deck.appendChild(end);
@@ -7102,7 +7124,8 @@ deck.tabIndex = 0;
 addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = (e.target.tagName || "").toLowerCase();
-  if (tag === "input" || tag === "textarea") return;   // never steal the email field
+  if (tag === "input" || tag === "textarea" || tag === "button" ||
+      tag === "a" || tag === "select" || e.target.isContentEditable) return;
 
   const k = e.key;
   let d = 0;
@@ -7144,11 +7167,21 @@ addEventListener("keydown", e => {
 
   document.querySelectorAll(".s-painting").forEach(function (sc) {
     sc.classList.add("inspectable");
+    sc.setAttribute("tabindex", "0");
+    sc.setAttribute("role", "button");
+    sc.setAttribute("aria-label", "Look closer at this painting");
+    sc.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+        e.preventDefault();
+        open();
+      }
+    });
     var page = sc.closest(".page");
     if (page && !page.querySelector(".tapcue")) {
       var cue = document.createElement("span");
       cue.className = "tapcue";
       cue.textContent = "Tap to look closer";
+      cue.setAttribute("aria-hidden", "true");
       page.appendChild(cue);
     }
   });
@@ -7175,7 +7208,10 @@ addEventListener("keydown", e => {
   }
   function reset() { scale = 1; tx = 0; ty = 0; moved = false; apply(); }
 
+  var lastFocus = null;
+
   function open() {
+    lastFocus = document.activeElement;
     img.src = plate.getAttribute("src");
     reset();
     box.classList.add("on");
@@ -7188,6 +7224,12 @@ addEventListener("keydown", e => {
     box.classList.remove("on");
     deck.style.overflow = "";
     reset();
+    /* Hiding a dialog with display:none while it holds focus loses the caret
+       entirely, so hand it back to whatever opened this. */
+    if (lastFocus && lastFocus.focus) {
+      try { lastFocus.focus({ preventScroll: true }); } catch (e) { }
+    }
+    lastFocus = null;
   }
 
   document.addEventListener("click", function (e) {
@@ -7197,7 +7239,14 @@ addEventListener("keydown", e => {
     e.stopPropagation(); close();
   });
   addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && box.classList.contains("on")) close();
+    if (!box.classList.contains("on")) return;
+    if (e.key === "Escape") { close(); return; }
+    /* Keep Tab inside, because aria-modal says it already is. */
+    if (e.key === "Tab") {
+      e.preventDefault();
+      var closer = box.querySelector(".lbclose");
+      if (closer) closer.focus({ preventScroll: true });
+    }
   });
 
   /* Pointer maths: two fingers scale, one finger pans once zoomed in.
