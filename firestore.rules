@@ -62,9 +62,46 @@ service cloud.firestore {
       }
     }
 
+    // --- The story text ---------------------------------------------------
+    // The point of the whole exercise. Nobody reads this from a browser: not
+    // a stranger, not a signed-in reader, not a paying subscriber. The only
+    // reader is the `story` function, which runs with admin credentials and
+    // therefore does not pass through these rules at all — and which will not
+    // return a paid story until it has verified an ID token and read the
+    // `premium` flag below for itself.
+    //
+    // Written closed rather than "allow read: if premium" on purpose. A rule
+    // like that would work, but it would also mean a client holding the
+    // Firestore SDK could pull all 49 paid stories in one query the moment
+    // it went premium, and could enumerate document ids either way. Making
+    // the function the only door means the door can be watched.
+    match /stories/{id} {
+      allow read, write: if false;
+    }
+
+    // --- The catalogue ----------------------------------------------------
+    // Covers, titles, hooks, lengths, topics and artwork credits for all 51
+    // stories — and not one card of body text. SPEC.md §4: "covers are the
+    // pitch", so a locked story still has to show its artwork to a signed-out
+    // stranger. There is nothing here that is not already on the marketing
+    // pages, which is why it is public.
+    //
+    // One document, so a whole library screen costs one read. Public here as
+    // well as through the function so the client may take either route.
+    match /catalogue/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // --- Seed metadata ----------------------------------------------------
+    // Corpus version and counts, so a client can bust its own cache without
+    // downloading the catalogue to find out whether it changed.
+    match /meta/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // --- Everything else --------------------------------------------------
-    // Including the story text, when it moves here. Only a function running
-    // with admin credentials will read it; a browser never should.
     match /{document=**} {
       allow read, write: if false;
     }

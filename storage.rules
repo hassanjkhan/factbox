@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// ==========================================================================
+// Factbox — Cloud Storage security rules.
+//
+// This file says no to everything, and that is the whole design. Read it
+// alongside BACKEND.md §4, which explains the part these rules cannot do.
+//
+// The bucket holds the 31 ambience beds the reader plays under a story. An
+// <audio> element cannot send an Authorization header — it is a browser
+// fetching a URL, not a caller with a credential — so "gated audio" can never
+// mean "the SDK checks these rules before playing". It has to mean "the URL
+// itself is the credential, and only an entitled reader is ever told it".
+//
+// So: no client may read, list, or write anything here. It cannot enumerate
+// the bucket, cannot guess its way to a file, and cannot mint a download URL
+// of its own. Beds reach a reader exactly one way — the `story` function
+// verifies their ID token, reads `customers/{uid}.premium` from Firestore, and
+// only then returns the tokenised download URLs stored in that story document.
+//
+// The honest limit, stated here rather than buried: a Firebase download token
+// bypasses these rules by design (that is what makes getDownloadURL() work),
+// and it does not expire. A subscriber who copies a URL out of dev tools has
+// something they can pass on until the token is rotated. Rotation is
+// `node tools/seed-firebase.js --rotate-tokens`, which mints new tokens and
+// rewrites every story document to match. The stronger primitive is a V4
+// signed URL, which expires; it needs an IAM grant this project does not yet
+// have. BACKEND.md §4 gives the command.
+//
+// Uploads happen from tools/seed-firebase.js with an owner's OAuth token,
+// which does not pass through these rules at all. Nothing legitimate writes
+// here from a browser, so nothing is allowed to.
+// ==========================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

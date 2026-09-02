@@ -210,3 +210,12 @@ function stripeWithKey(event) {
   }
   return new Stripe(key, { apiVersion: "2024-11-20.acacia" });
 }
+
+/* --------------------------------------------------------------------------
+   The gated read path lives in its own file. Kept out of this one on purpose:
+   the webhook above is deployed, working and load-bearing for revenue, and the
+   cheapest way to keep it that way is to not edit it. `admin.initializeApp()`
+   has already run by the time this line executes, which is why story.js only
+   guards against a double init rather than performing one.
+   -------------------------------------------------------------------------- */
+exports.story = require("./story").story;
