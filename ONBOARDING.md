@@ -169,7 +169,10 @@ differently from inside `/explore/` than from `/`.
   Secret Accessor role — that is the Stripe webhook signing secret. Seeding
   stories does not touch it.
 
-`BACKEND.md` and `AUTH.md` are the long versions. Node 20 is end-of-life for
+`STRIPE.md` is the whole money path — the plan ladder, why the webhook verifies
+against `req.rawBody`, why `trialing` and `past_due` count as active, and how to
+test without spending anything. Read it before touching `js/account.js` or
+`functions/`. `BACKEND.md` and `AUTH.md` are the long versions of the rest. Node 20 is end-of-life for
 Cloud Functions on **30 October 2026**; moving to Node 22 is outstanding.
 
 
@@ -183,5 +186,21 @@ Cloud Functions on **30 October 2026**; moving to Node 22 is outstanding.
 - Audio is served with long-lived download tokens rather than signed URLs; the
   IAM grant needed for signing was blocked.
 
-Ask Hassan before changing pricing, the paywall's free-story count, or anything
-in `LEGAL.md`.
+## 9. Secrets
+
+This repo is public. Nothing in it is a secret, and nothing in it may become
+one — no Stripe key, no webhook signing secret, no service-account JSON, in any
+file, commit message or comment.
+
+You should not need any of them. Firebase access comes from your own
+`firebase login`; the two Stripe secrets already live in Secret Manager and the
+functions runtime, and deploying does not require you to see their values.
+
+If something genuinely needs one, ask Hassan directly and keep it out of the
+repo and out of anything that gets logged.
+
+
+## 10. Ask before
+
+Pricing, the number of free stories, anything in `LEGAL.md`, and anything that
+changes what an existing subscriber is charged.
