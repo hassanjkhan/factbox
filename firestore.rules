@@ -1,0 +1,72 @@
+rules_version = '2';
+
+// ==========================================================================
+// Factbox — Firestore security rules.
+//
+// The site is static and its JavaScript is public, so these rules are not a
+// second opinion on what the client asks for; they are the only thing standing
+// between a reader and everyone else's data. Written closed: the last rule
+// denies everything not explicitly allowed above it.
+//
+// Collection names match the Stripe extension's defaults on purpose. Renaming
+// them means renaming them here, in the extension config, and in the client.
+// ==========================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // --- The reader's own record -----------------------------------------
+    // Written by the Stripe extension from a webhook, never by the browser.
+    // A reader may look at their own row and nothing else; nobody may write,
+    // because a client that could write here could grant itself a
+    // subscription.
+    match /customers/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if false;
+
+      match /checkout_sessions/{id} {
+        // The one place the client legitimately writes: asking the extension
+        // to start a checkout. It may read back the session it created.
+        allow read, create: if isSelf(uid);
+        allow update, delete: if false;
+      }
+      match /subscriptions/{id} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+      match /payments/{id} {
+        allow read: if isSelf(uid);
+        allow write: if false;
+      }
+    }
+
+    // --- The catalogue ----------------------------------------------------
+    // Plans and prices are on the page already; there is nothing to hide.
+    match /products/{id} {
+      allow read: if true;
+      allow write: if false;
+      match /prices/{price} {
+        allow read: if true;
+        allow write: if false;
+      }
+      match /tax_rates/{rate} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+
+    // --- Everything else --------------------------------------------------
+    // Including the story text, when it moves here. Only a function running
+    // with admin credentials will read it; a browser never should.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "factbox-functions",
+  "description": "Stripe webhook: turns a payment into an account that stays paid.",
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0",
+    "stripe": "^17.4.0"
+  },
+  "private": true
+}
