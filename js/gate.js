@@ -82,7 +82,8 @@ var FB = (function () {
     /* Only the plates that actually carry terms name their photographer.
        CC0 and "No restrictions" are public-domain-equivalent, so the tier
        decides this, never the licence string. */
-    if (cr && cr.credit && cr.tier && cr.tier !== "public_domain") {
+    if (cr && cr.credit && cr.tier && cr.tier !== "public_domain"
+        && String(cap || "").indexOf(cr.credit) === -1) {
       bits.push(esc(cr.credit));
     }
     var out = bits.join(" · ");

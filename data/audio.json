@@ -1,0 +1,532 @@
+{
+ "version": 1,
+ "note": "Bed map for read.html. Resolution, most specific first: stacks[stack].beats[beat] -> stacks[stack].bed -> topics[topic].beats[beat] -> topics[topic].bed -> default. An unresolved beat HOLDS whatever is already playing; it never cuts to silence. See AUDIO-READER.md.",
+ "base": "audio/",
+ "default": "scroll",
+ "beds": {
+  "palace": {
+   "file": "palace.mp3",
+   "gain": 0.85,
+   "note": "A fountain in a courtyard, cicadas beyond it. Mediterranean, hot, outdoors-but-enclosed."
+  },
+  "harbour": {
+   "file": "harbour.mp3",
+   "gain": 1.0,
+   "note": "Sea and gulls at dusk. Alexandria."
+  },
+  "harbour-arrival": {
+   "file": "harbour-arrival.mp3",
+   "gain": 0.86,
+   "note": "Water on hulls, mass, a crowd a quarter-mile off."
+  },
+  "sea": {
+   "file": "sea.mp3",
+   "gain": 1.0,
+   "note": "Open sea."
+  },
+  "triumph": {
+   "file": "triumph.mp3",
+   "gain": 0.95,
+   "note": "A crowd in the street. The busiest bed in the set and the one a phone speaker reproduces best."
+  },
+  "bath": {
+   "file": "bath.mp3",
+   "gain": 0.8,
+   "note": "Poured water in a hard, reverberant room."
+  },
+  "letter": {
+   "file": "letter.mp3",
+   "gain": 0.8,
+   "note": "A still room, a writing hand, a tread somewhere beyond the door."
+  },
+  "copies": {
+   "file": "copies.mp3",
+   "gain": 0.85,
+   "note": "A scriptorium. Dry, papery, patient. The sound of a document being examined."
+  },
+  "scroll": {
+   "file": "scroll.mp3",
+   "gain": 0.85,
+   "note": "A still small interior. The neutral fallback: it is nowhere in particular, which is the point."
+  },
+  "basket": {
+   "file": "basket.mp3",
+   "gain": 0.85,
+   "note": "Close, dry, small. A rustle in a container."
+  },
+  "vials": {
+   "file": "vials.mp3",
+   "gain": 0.75,
+   "note": "A physician's table. Small glass, a pestle, careful handling."
+  },
+  "gallery": {
+   "file": "gallery.mp3",
+   "gain": 0.8,
+   "note": "A big cool room with a long tail. A museum hall; the room where the paintings are."
+  },
+  "vault": {
+   "file": "vault.mp3",
+   "gain": 0.85,
+   "note": "A large dark stone interior with a long tail. Council chamber, cathedral, trial hall, cellar. Synthesised - see build-reader-beds.py."
+  },
+  "wind": {
+   "file": "wind.mp3",
+   "gain": 0.85,
+   "note": "Open, dry, outdoors, no water. Desert, steppe, hillside. Synthesised - see build-reader-beds.py."
+  },
+  "reactor": {
+   "file": "reactor.mp3",
+   "gain": 0.85,
+   "note": "A machine room. Cold, continuous, mechanical, no century. Synthesised - see build-reader-beds.py."
+  },
+  "door": {
+   "file": "door.mp3",
+   "gain": 0.95,
+   "note": "ACCENT. A shut door in near-dark. Almost nothing above 500 Hz, so on a phone this reads as the room going quiet."
+  },
+  "coil": {
+   "file": "coil.mp3",
+   "gain": 0.95,
+   "note": "ACCENT. A low drone under a question. Almost nothing above 500 Hz."
+  },
+  "search": {
+   "file": "search.mp3",
+   "gain": 0.72,
+   "note": "ACCENT. The room after it was searched. The deliberate near-silence of the set."
+  }
+ },
+ "topics": {
+  "cleopatra": {
+   "bed": "palace",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "ancient_world": {
+   "bed": "palace",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "old_testament": {
+   "bed": "wind"
+  },
+  "new_testament": {
+   "bed": "copies"
+  },
+  "church_history": {
+   "bed": "vault"
+  },
+  "us_history": {
+   "bed": "letter"
+  },
+  "medieval_modern": {
+   "bed": "vault"
+  },
+  "disaster": {
+   "bed": "reactor"
+  }
+ },
+ "stacks": {
+  "01": {
+   "bed": "palace",
+   "title": "How did Cleopatra die? (the snake)",
+   "topic": "cleopatra",
+   "beats": {
+    "question": "coil",
+    "turn": "basket"
+   }
+  },
+  "02": {
+   "bed": "palace",
+   "title": "Cleopatra the seductress",
+   "topic": "cleopatra",
+   "beats": {
+    "turn": "gallery"
+   }
+  },
+  "03": {
+   "bed": "harbour",
+   "title": "Cleopatra's body has never been found",
+   "topic": "cleopatra",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "04": {
+   "bed": "vault",
+   "title": "7 Deadly Sins Explained",
+   "topic": "church_history"
+  },
+  "05": {
+   "bed": "vault",
+   "title": "The Ark of the Covenant",
+   "topic": "old_testament",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "06": {
+   "bed": "copies",
+   "title": "The secret gospel of Mary Magdalene",
+   "topic": "new_testament",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "07": {
+   "bed": "letter",
+   "title": "Lincoln's looks / the slavery debates",
+   "topic": "us_history",
+   "beats": {
+    "turn": "triumph"
+   }
+  },
+  "07B": {
+   "bed": "bath",
+   "title": "King David and Bathsheba",
+   "topic": "old_testament",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "08": {
+   "bed": "letter",
+   "title": "How did Lincoln not have security?",
+   "topic": "us_history",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "09": {
+   "bed": "reactor",
+   "title": "Chernobyl",
+   "topic": "disaster",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "10": {
+   "bed": "vault",
+   "title": "The death of the Apostle Paul",
+   "topic": "new_testament",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "11": {
+   "bed": "vault",
+   "title": "Saint Peter, the first pope",
+   "topic": "new_testament",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "12": {
+   "bed": "sea",
+   "title": "Three facts about Saint Peter",
+   "topic": "new_testament",
+   "beats": {
+    "turn": "vault"
+   }
+  },
+  "13": {
+   "bed": "vault",
+   "title": "Satan isn't God's rival",
+   "topic": "church_history",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "14": {
+   "bed": "vault",
+   "title": "Timeline of the Book of Revelation",
+   "topic": "church_history",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "15": {
+   "bed": "wind",
+   "title": "Cyrus the Great",
+   "topic": "old_testament",
+   "beats": {
+    "turn": "triumph"
+   }
+  },
+  "16": {
+   "bed": "copies",
+   "title": "The Dead Sea Scrolls",
+   "topic": "old_testament",
+   "beats": {
+    "hook": "wind"
+   }
+  },
+  "17": {
+   "bed": "harbour-arrival",
+   "title": "Cleopatra's tomb",
+   "topic": "cleopatra",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "18": {
+   "bed": "palace",
+   "title": "How Cleopatra died",
+   "topic": "cleopatra",
+   "beats": {
+    "question": "coil",
+    "turn": "vials"
+   }
+  },
+  "19": {
+   "bed": "palace",
+   "title": "Cleopatra's situationships",
+   "topic": "cleopatra"
+  },
+  "20": {
+   "bed": "palace",
+   "title": "The woman who made two powerful men fall",
+   "topic": "cleopatra",
+   "beats": {
+    "turn": "triumph"
+   }
+  },
+  "21": {
+   "bed": "letter",
+   "title": "Lincoln kept losing",
+   "topic": "us_history"
+  },
+  "22": {
+   "bed": "copies",
+   "title": "Galatians 5: the fruit test",
+   "topic": "new_testament"
+  },
+  "23": {
+   "bed": "copies",
+   "title": "Mary Magdalene wasn't a prostitute",
+   "topic": "new_testament"
+  },
+  "24": {
+   "bed": "wind",
+   "title": "Why did they actually kill Jesus?",
+   "topic": "new_testament",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "25": {
+   "bed": "wind",
+   "title": "NASA and the darkness at the crucifixion",
+   "topic": "new_testament",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "26": {
+   "bed": "copies",
+   "title": "The Gnostics",
+   "topic": "church_history",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "27": {
+   "bed": "palace",
+   "title": "Cleopatra's four children",
+   "topic": "cleopatra",
+   "beats": {
+    "landing": "triumph"
+   }
+  },
+  "28": {
+   "bed": "letter",
+   "title": "Lincoln wasn't the only target",
+   "topic": "us_history",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "29": {
+   "bed": "wind",
+   "title": "Why did Jesus need to be betrayed?",
+   "topic": "new_testament",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "30": {
+   "bed": "copies",
+   "title": "Who decided which books got into the Bible?",
+   "topic": "church_history"
+  },
+  "31": {
+   "bed": "gallery",
+   "title": "Alexander the Great's missing tomb",
+   "topic": "ancient_world",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "32": {
+   "bed": "vault",
+   "title": "Joan of Arc",
+   "topic": "medieval_modern",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "33": {
+   "bed": "vault",
+   "title": "Satan does not rule Hell",
+   "topic": "church_history",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "34": {
+   "bed": "gallery",
+   "title": "Biblical creatures look nothing like paintings",
+   "topic": "old_testament"
+  },
+  "35": {
+   "bed": "copies",
+   "title": "Jesus's brothers and sisters",
+   "topic": "new_testament"
+  },
+  "36": {
+   "bed": "vault",
+   "title": "What happened to Pontius Pilate?",
+   "topic": "church_history",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "37": {
+   "bed": "copies",
+   "title": "The Book of Enoch",
+   "topic": "old_testament",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "38": {
+   "bed": "palace",
+   "title": "What killed Alexander the Great?",
+   "topic": "ancient_world",
+   "beats": {
+    "question": "coil",
+    "turn": "vials"
+   }
+  },
+  "39": {
+   "bed": "gallery",
+   "title": "Napoleon wasn't short",
+   "topic": "medieval_modern",
+   "beats": {
+    "turn": "triumph"
+   }
+  },
+  "40": {
+   "bed": "vault",
+   "title": "Joan of Arc's trial reversed",
+   "topic": "medieval_modern",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "41": {
+   "bed": "triumph",
+   "title": "Nero didn't fiddle while Rome burned",
+   "topic": "ancient_world",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "42": {
+   "bed": "vault",
+   "title": "The emperor who converted",
+   "topic": "church_history",
+   "beats": {
+    "turn": "triumph"
+   }
+  },
+  "43": {
+   "bed": "vault",
+   "title": "Rasputin wouldn't die",
+   "topic": "medieval_modern",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "44": {
+   "bed": "wind",
+   "title": "Genghis Khan's hidden grave",
+   "topic": "medieval_modern",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "45": {
+   "bed": "wind",
+   "title": "Jesus's lost years",
+   "topic": "new_testament",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  },
+  "46": {
+   "bed": "wind",
+   "title": "Where was the Garden of Eden?",
+   "topic": "old_testament",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "47": {
+   "bed": "vault",
+   "title": "Christians who said Jesus didn't suffer",
+   "topic": "church_history"
+  },
+  "48": {
+   "bed": "vault",
+   "title": "666 and the Roman emperor",
+   "topic": "church_history",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "49": {
+   "bed": "vault",
+   "title": "The Antichrist",
+   "topic": "church_history",
+   "beats": {
+    "question": "coil"
+   }
+  },
+  "50": {
+   "bed": "triumph",
+   "title": "The Ides of March",
+   "topic": "ancient_world",
+   "beats": {
+    "question": "coil",
+    "landing": "search"
+   }
+  }
+ }
+}

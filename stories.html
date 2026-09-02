@@ -37,6 +37,7 @@
   <p class="fine">Cancel any time. New stories added through the season.</p>
 </div>
 
+<script src="js/progress.js"></script>
 <script src="js/gate.js"></script>
 <script>
 (function () {
@@ -46,21 +47,24 @@
 
   function card(s) {
     var locked = !s.free && !open;
+    var st = FBP.state(s.id, s.cards.length);
     var href = "read.html?s=" + encodeURIComponent(s.id);
     /* Stack 01 is the fully illustrated version and lives at the front page,
        so its cover points there rather than at the generic reader. */
     if (s.id === "01") href = "story.html";
     return '' +
-      '<a class="card' + (locked ? " locked" : "") + '" href="' + href + '">' +
+      '<a class="card is-' + st.status + (locked ? " locked" : "") + '" href="' + href + '">' +
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
                'src="img/thumbs/' + FB.esc(s.img) + '.webp">' +
           (locked
             ? '<span class="lock" aria-hidden="true">🔒</span>'
             : '<span class="freetag">FREE</span>') +
+          (!locked && st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + FB.esc(s.title) + '</h3>' +
-        '<p class="meta">' + s.cards.length + ' cards · ' + FB.minutes(s.secs) + '</p>' +
+        '<p class="meta">' + (!locked && st.label ? FB.esc(st.label)
+            : s.cards.length + ' cards · ' + FB.minutes(s.secs)) + '</p>' +
       '</a>';
   }
 
@@ -75,13 +79,52 @@
     var free   = stacks.filter(function (s) { return s.free; });
     var rest   = stacks.filter(function (s) { return !s.free; });
 
+    /* One answer to "where was I". continueReading already filters locked
+       stacks, so this can never offer something the reader cannot open. */
+    var cont = FBP.continueReading(stacks);
+    var resume = "";
+    if (cont) {
+      var href = cont.id === "01" ? "story.html" : cont.href;
+      resume =
+        '<a class="resume" href="' + href + '">' +
+          '<div class="plate"><img alt="" src="img/thumbs/' + FB.esc(cont.stack.img) + '.webp"></div>' +
+          '<div class="t"><b>' + FB.esc(cont.stack.title) + '</b>' +
+          '<span>' + FB.esc(cont.label) + '</span></div>' +
+        '</a>';
+    }
+
     if (open) {
-      shelf.innerHTML = section("All stories", stacks.length + " in season one", stacks);
+      shelf.innerHTML = resume + section("All stories", stacks.length + " in season one", stacks);
       bar.hidden = true;
       document.getElementById("blurb").textContent =
         "You have all fifty-one. New stories are added through the season.";
+
+      /* The buyer's only bridge to another browser. Access lives in this
+         browser's storage, so without this link a reader who paid in the
+         Instagram browser and later opens Safari has lost it. */
+      var url = FBP.restoreURL();
+      if (url) {
+        var box = document.createElement("div");
+        box.className = "keep";
+        box.innerHTML =
+          '<b>Keep this link</b>' +
+          '<p>It re-opens your stories on any phone or browser. Email it to yourself.</p>' +
+          '<input readonly value="' + FB.esc(url) + '">' +
+          '<button type="button" id="cp">Copy link</button>' +
+          '<p class="fine">' + FB.esc(FBP.RESTORE_NOTE) + '</p>';
+        shelf.parentNode.insertBefore(box, shelf);
+        box.querySelector("#cp").addEventListener("click", function () {
+          var self = this, inp = box.querySelector("input");
+          try {
+            inp.select();
+            if (navigator.clipboard) navigator.clipboard.writeText(url);
+            else document.execCommand("copy");
+            self.textContent = "Copied";
+          } catch (e) { self.textContent = "Select and copy the link above"; }
+        });
+      }
     } else {
-      shelf.innerHTML =
+      shelf.innerHTML = resume +
         section("Start here", "free", free) +
         section("The rest of season one", rest.length + " stories", rest);
       bar.hidden = false;

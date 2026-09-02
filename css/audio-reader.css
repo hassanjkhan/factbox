@@ -1,0 +1,162 @@
+/* ==========================================================================
+   Factbox reader (read.html) — the ambient-sound control, and nothing else.
+
+   No layout is owned here. Every rule below is position:fixed, so this file
+   can be added to or removed from the build without moving a single pixel of
+   the deck. It defines only .fb-sound and .fb-sound-note, both of which are
+   created by js/audio-reader.js and exist nowhere else in the site.
+
+   WHERE IT SITS, and why it is not negotiable
+   -------------------------------------------
+   * TOP-RIGHT. The reader's "← Stories" pill is fixed top-LEFT (.topbar, z 31
+     in app.css). This is its mirror: same rail (--top-safe), same glass, same
+     pill radius, same press. Two affordances, one visual family, no collision
+     at any width — .topbar is left-anchored and auto-width, this is
+     right-anchored and about 8em wide, and the two only meet below ~320px,
+     where the label drops (see the narrow-viewport rule at the bottom).
+   * NOT the bottom. --bottom-safe in app.css is max(13vh, toolbar + inset) for
+     one reason: the Instagram and TikTok in-app browsers draw their own
+     toolbar over the bottom of the viewport, and ~all of our traffic is in
+     one of them. A control down there is a control that cannot be tapped.
+   * z-index 32 — one above .topbar (31) and the progress bar (30), so a card's
+     own stacking context can never bury it. It is the only element on the page
+     above the back button, and it is 44px from the top of it.
+   ========================================================================== */
+
+.fb-sound{
+  position:fixed;
+  right:12px;
+  /* Same rail as the back pill. The fallback repeats app.css's own definition
+     so this file is also correct if loaded standalone. */
+  top:var(--top-safe, calc(env(safe-area-inset-top, 0px) + 12px));
+  z-index:32;
+
+  appearance:none;-webkit-appearance:none;
+  font:inherit;cursor:pointer;
+  min-height:38px;                 /* matches .back in app.css                */
+  display:inline-flex;align-items:center;gap:.45em;
+  padding:0 .85em 0 .7em;
+  border-radius:var(--pill, 999px);
+  border:0;
+  box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13));
+  background:rgba(24,19,32,.72);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);
+  backdrop-filter:blur(16px) saturate(1.2);
+  color:var(--parchment, #FFF7ED);
+  font-family:var(--ui, inherit);
+  font-size:.8rem;font-weight:700;letter-spacing:.01em;line-height:1;
+  transition:background .2s ease, box-shadow .2s ease,
+             transform .12s ease, opacity .3s ease;
+}
+.fb-sound:active{transform:scale(.96)}
+.fb-sound:focus-visible{outline:2px solid var(--coral,#FF7A5C);outline-offset:3px}
+
+.fb-sound .ico{
+  width:17px;height:17px;flex:none;display:block;
+  color:var(--dim, rgba(255,247,237,.62));
+  transition:color .25s ease;
+}
+.fb-sound .ico svg{width:100%;height:100%;display:block;overflow:visible}
+.fb-sound .ico .wav,
+.fb-sound .ico .cut{transition:opacity .22s ease}
+.fb-sound .ico .wav{opacity:0}
+.fb-sound .ico .cut{opacity:1}
+
+.fb-sound .txt{
+  white-space:nowrap;
+  /* "on" and "off" are different widths and the pill is right-anchored, so
+     without a fixed box the whole control would jump left on every toggle. */
+  min-width:4.9em;text-align:left;
+}
+
+/* ---- on ---------------------------------------------------------------- */
+.fb-sound.is-on{
+  box-shadow:inset 0 0 0 1px rgba(255,122,92,.55);
+  background:rgba(28,20,26,.78);
+}
+.fb-sound.is-on .ico{color:var(--coral,#FF7A5C)}
+.fb-sound.is-on .ico .wav{opacity:1}
+.fb-sound.is-on .ico .cut{opacity:0}
+
+/* ---- loading ------------------------------------------------------------
+   Between the tap and the first sound there is a JSON fetch and a bed fetch.
+   On cellular that can be a second or two of nothing, which is exactly the
+   moment a reader decides the page is broken — so the waves breathe while it
+   is in flight, and stop the instant something decodes. */
+.fb-sound.is-busy .ico .wav{animation:fb-breathe 1.15s ease-in-out infinite}
+@keyframes fb-breathe{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ---- one gentle look at me, on the first card only, then never again ---- */
+.fb-sound.is-fresh{animation:fb-notice 2.4s ease-in-out 1.2s 2}
+@keyframes fb-notice{
+  0%,100%{box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13)),
+                     0 0 0 0 rgba(255,211,110,0)}
+  45%    {box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13)),
+                     0 0 0 5px rgba(255,211,110,.16)}
+}
+
+/* ---- dead: no beds on the server, or every fetch failed -----------------
+   It says so once, then takes itself off the page rather than sitting there as
+   a button that does nothing. */
+.fb-sound.is-dead{
+  pointer-events:none;
+  color:var(--dim, rgba(255,247,237,.62));
+  box-shadow:inset 0 0 0 1px rgba(255,247,237,.10);
+}
+.fb-sound.is-dead .ico{color:var(--dimmer, rgba(255,247,237,.42))}
+.fb-sound.is-gone{opacity:0;transform:translateY(-4px)}
+
+/* --------------------------------------------------------------------------
+   The note.
+
+   One line of glass under the pill, for one job: iOS mutes web audio when the
+   hardware silent switch is on, there is no API that can detect it, and a
+   reader who taps Sound and hears nothing concludes the page is broken. So the
+   moment sound actually starts we say where to look. Once per device, ever.
+   -------------------------------------------------------------------------- */
+.fb-sound-note{
+  position:fixed;
+  right:12px;
+  top:calc(var(--top-safe, calc(env(safe-area-inset-top, 0px) + 12px)) + 46px);
+  z-index:32;
+  max-width:min(17em, calc(100vw - 24px));
+  padding:.6em .85em;
+  border-radius:14px;
+  box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13));
+  background:rgba(20,16,26,.86);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2);
+  backdrop-filter:blur(18px) saturate(1.2);
+  color:var(--parchment, #FFF7ED);
+  font-family:var(--ui, inherit);
+  font-size:.74rem;font-weight:600;line-height:1.4;letter-spacing:.005em;
+  text-align:right;
+  pointer-events:none;
+  opacity:0;transform:translateY(-6px);
+  transition:opacity .3s ease, transform .3s cubic-bezier(.2,.75,.25,1);
+}
+.fb-sound-note.on{opacity:1;transform:none}
+
+/* --------------------------------------------------------------------------
+   Reduced motion. app.css reads it as "no animation"; this file reads it as a
+   hint about this reader in general — the control stops drawing attention to
+   itself, and the beds play at LEVEL_CALM (that part lives in the JS).
+   Sound stays available: an explicit tap is still an explicit tap.
+   -------------------------------------------------------------------------- */
+html.no-motion .fb-sound,
+html.no-motion .fb-sound .ico .wav{animation:none}
+html.no-motion .fb-sound.is-busy{opacity:.72}
+html.no-motion .fb-sound-note{transition:opacity .01s linear;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .fb-sound,.fb-sound .ico .wav{animation:none}
+  .fb-sound.is-busy{opacity:.72}
+  .fb-sound-note{transition:opacity .01s linear;transform:none}
+}
+
+/* Very short viewports (a phone in landscape) and very narrow ones (the only
+   place the back pill could ever reach this): the label goes, the 44px-ish
+   target stays. */
+@media (max-height:420px), (max-width:340px){
+  .fb-sound .txt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .fb-sound{padding:0;width:38px;justify-content:center}
+  .fb-sound-note{font-size:.7rem}
+}

@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#0E0B12">
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/scenes.css">
+<link rel="stylesheet" href="css/audio-reader.css">
 </head>
 <body>
 
@@ -15,7 +17,9 @@
 
 <main class="deck" id="deck" tabindex="-1"></main>
 
+<script src="js/progress.js"></script>
 <script src="js/gate.js"></script>
+<script src="js/scenes.js" defer></script>
 <script>
 (function () {
   var deck = document.getElementById("deck");
@@ -56,7 +60,10 @@
         ' data-card="' + n + '"' +
         ' data-cam="' + (n % 6) + '">' +
         '<div class="art">' +
-          '<img alt="" decoding="async" src="img/stacks/' + FB.esc(plate) + '.webp">' +
+          '<img alt="" decoding="async"' +
+            (n === 0 ? ' fetchpriority="high"' : ' loading="lazy"') +
+            ' src="img/cards/' + FB.esc(plate) + '.webp"' +
+            ' onerror="this.src=\'img/stacks/' + FB.esc(stack.img) + '.webp\'">' +
         '</div>' +
         '<div class="copy">' +
           '<h2>' + FB.esc(c.head) + '</h2>' + body + cite +
@@ -109,12 +116,12 @@
       return;
     }
 
-    var at = placeSupp(s.cards.length, s.supp.length);
+    /* One plate per card. The stack hero is only the fallback for a card the
+       manifest did not cover, so a missing row degrades to the old behaviour
+       rather than to an empty frame. */
     var html = s.cards.map(function (c, n) {
-      var k = at[n];
-      var sup = (k !== undefined) ? s.supp[k] : null;
-      return sup ? beat(c, sup.img, sup.cap, sup.cr, n, s)
-                 : beat(c, s.img, s.cap, s.cr, n, s);
+      return c.img ? beat(c, c.img, c.cap, c.cr, n, s)
+                   : beat(c, s.img, s.cap, s.cr, n, s);
     }).join("");
 
     /* The next stack the reader can actually open, so the end card never
@@ -127,6 +134,20 @@
 
     deck.innerHTML = html + endcard(next);
     FB.track("stack_open", { stack: s.id });
+
+    /* Offer to pick up where they stopped rather than jumping there. A silent
+       jump into the middle of a story is disorienting; an offer is not. */
+    var chip = FBP.resumeChip(s.id, s.cards.length, function (card) {
+      deck.scrollTo({ top: card * deck.clientHeight, behavior: "smooth" });
+      FB.track("resume_used", { stack: s.id, card: String(card + 1) });
+    });
+    if (chip) {
+      document.body.appendChild(chip);
+      deck.addEventListener("scroll", function once() {
+        deck.removeEventListener("scroll", once);
+        setTimeout(function () { try { chip.dismiss(); } catch (e) {} }, 2500);
+      }, { passive: true });
+    }
 
     /* Progress, and the drop-off card index — the number the CTO README says
        actually pays. Reported once per stack, at the deepest card reached. */
@@ -159,6 +180,7 @@
       var n = Math.round(deck.scrollTop / h);
       bar.style.width = Math.min(100, (n + 1) / total * 100) + "%";
       if (n > deepest) deepest = n;
+      FBP.mark(s.id, deepest, s.cards.length);
     }
     deck.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -168,6 +190,7 @@
       reported = true;
       FB.track(deepest >= s.cards.length ? "stack_complete" : "stack_dropoff",
                { stack: s.id, card: String(deepest + 1) });
+      if (deepest >= s.cards.length) FBP.complete(s.id, s.cards.length);
     }
     addEventListener("pagehide", report);
     document.addEventListener("visibilitychange", function () {
@@ -190,5 +213,6 @@
   });
 })();
 </script>
+<script src="js/audio-reader.js"></script>
 </body>
 </html>

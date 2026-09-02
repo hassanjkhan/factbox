@@ -306,6 +306,12 @@ var FBP = (function () {
   var _dirty = false;
   var _timer = null;
 
+  /* Timestamps are whole seconds, so two stories read in the same second tie.
+     This session-only counter breaks the tie toward whichever was actually
+     touched last. It is never persisted — across page loads a tie falls back
+     to library order, which is arbitrary but harmless. */
+  var _seq = {}, _seqN = 0;
+
   function nowSec() { try { return Math.floor(Date.now() / 1000); } catch (e) { return 0; } }
 
   function mem() {
@@ -406,6 +412,7 @@ var FBP = (function () {
       r[2] = nowSec();
       if (r[1] > 0 && r[0] >= r[1] - 1) r[3] = 1;
       m[k] = r;
+      _seq[k] = ++_seqN;
       schedule();
       return true;
     } catch (e) { return false; }
@@ -424,6 +431,7 @@ var FBP = (function () {
       r[2] = nowSec();
       r[3] = 1;
       m[k] = r;
+      _seq[k] = ++_seqN;
       flush();
       return true;
     } catch (e) { return false; }
@@ -491,7 +499,7 @@ var FBP = (function () {
   function continueReading(stacks) {
     try {
       if (!stacks || !stacks.length) return null;
-      var open = unlocked(), best = null, bestAt = -1;
+      var open = unlocked(), best = null, bestAt = -1, bestSeq = -1;
       for (var i = 0; i < stacks.length; i++) {
         var s = stacks[i];
         if (!s || !s.id) continue;
@@ -499,7 +507,10 @@ var FBP = (function () {
         var r = get(s.id);
         if (!r || r.done) continue;
         if (r.card < MIN_RESUME) continue;
-        if (r.at > bestAt) { bestAt = r.at; best = { s: s, r: r }; }
+        var seq = _seq[s.id] || 0;
+        if (r.at > bestAt || (r.at === bestAt && seq >= bestSeq)) {
+          bestAt = r.at; bestSeq = seq; best = { s: s, r: r };
+        }
       }
       if (!best) return null;
       var total = best.r.total || (best.s.cards ? best.s.cards.length : 0);
