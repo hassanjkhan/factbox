@@ -8,22 +8,36 @@
    question: who is this reader, what did they tell us they wanted, and which
    plan did they pick.
 
+   THIS FILE IS STILL THE LOCAL COPY. There is now a backend beside it —
+   js/auth.js signs a reader into Firebase, and js/profile-sync.js mirrors
+   the record below into `customers/{uid}/profile/onboarding` so it survives
+   losing the browser. That is a MIRROR, not a move. Everything here still
+   works signed out, still answers from localStorage, still never waits on a
+   network, and nothing on the site reads the Firestore copy to decide
+   anything. If the sync never happens, this file behaves exactly as it did
+   before it existed.
+
    HONEST LIMITATIONS, kept next to the code so they cannot drift:
 
-   1. There is no backend behind this file. "Sign up" means "this browser now
-      remembers your email and your answers", and there is deliberately no
-      credential field, because a credential implies a check nothing here can
-      perform.
+   1. This file has no credential field and never will. "Sign up" here means
+      "this browser now remembers your email and your answers". A real
+      account, with a real password and a real check, is js/auth.js and
+      login.html; join.html should be sending readers there before checkout,
+      because a payment with no uid attached cannot be honoured on a second
+      device.
 
-   2. Because of 1, "log in" cannot move access between devices. The only
-      bridge that exists is FBP's restore link, which is a bearer token.
-      join.html handles that in product language: it offers the restore link
-      rather than describing the plumbing.
+   2. Because of 1, THIS file's "log in" — knows() — still cannot move
+      access between devices; it can only answer "has this browser been told
+      that address". The two things that genuinely cross devices are a
+      Firebase sign-in and FBP's restore link, which is a bearer token.
 
-   3. The email never leaves this browser except in one place: it is appended
-      to the Stripe checkout URL as prefilled_email, so the buyer does not
-      retype it. Nothing else is transmitted anywhere. Nothing here sends
-      email or push, and no copy anywhere may imply that it does.
+   3. Two things leave this browser, both of them deliberate, and nothing
+      else does. The email is appended to the Stripe checkout URL as
+      prefilled_email so the buyer does not retype it. And, ONLY when a
+      reader is signed in, js/profile-sync.js copies the answers below into
+      that reader's own Firestore document. Nothing here sends email or push,
+      and no copy anywhere may imply that it does. privacy.html has to say
+      both of these out loud; see FIREBASE-ANALYTICS.md.
 
    4. Storage is per-browser and may fail outright. Every access is wrapped.
       A dead store degrades to "not remembered" — never to a broken page.
@@ -198,18 +212,33 @@ var FBA = (function () {
 
   /* checkoutURL(key) — "" means no link is configured for that plan, which is
      the caller's cue to say so rather than to navigate nowhere. */
-  function checkoutURL(k) {
-    try {
-      var p = planByKey(k);
-      if (!p || !p.link) return "";
-      var url = p.link, sep = url.indexOf("?") === -1 ? "?" : "&";
-      var e = email();
-      if (e) { url += sep + P_EMAIL + "=" + encodeURIComponent(e); sep = "&"; }
-      var a = accountId();
-      if (a) { url += sep + P_REF + "=" + encodeURIComponent(a); }
-      return url;
-    } catch (e2) { return ""; }
+  function checkoutURL(key) {
+    /* Named `dest`, not `link`. A `var link` here shadows the link()
+       function above for the whole body — it was calling a `linkFor` that
+       does not exist, so every checkout button threw a ReferenceError and
+       went nowhere. One identifier, the entire funnel. */
+    var dest = link(key);
+    if (!dest) return "";
+    var parts = [];
+
+    /* The Firebase uid, not our local one. This is the entire link between a
+       payment and an account: the webhook reads client_reference_id to know
+       which customers/{uid} to write, and without it `premium` can never
+       become true for anybody. Falls back to the local id only so a signed-out
+       checkout still records something traceable. */
+    var ref = "";
+    try { if (window.FBU && FBU.uid && FBU.uid()) ref = FBU.uid(); } catch (e) {}
+    if (!ref) ref = accountId();
+
+    var mail = "";
+    try { if (window.FBU && FBU.email && FBU.email()) mail = FBU.email(); } catch (e) {}
+    if (!mail) mail = email();
+
+    if (mail) parts.push(P_EMAIL + "=" + encodeURIComponent(mail));
+    if (ref) parts.push(P_REF + "=" + encodeURIComponent(ref));
+    return parts.length ? dest + "?" + parts.join("&") : dest;
   }
+
 
   /* ======================================================================
      Storage. One compact key, same discipline as progress.js.
@@ -644,4 +673,84 @@ var FBA = (function () {
     /* meta */
     stored: stored, KEY: KEY
   };
+})();
+
+/* ==========================================================================
+   Loading the mirror.
+
+   js/profile-sync.js copies the record above into Firestore for a signed-in
+   reader. It belongs in the markup, next to this file:
+
+       <script src="js/account.js"></script>
+       <script src="js/profile-sync.js"></script>
+
+   Until that tag is on every page that carries the funnel, this fetches it.
+   Doing it from here rather than from js/analytics.js is deliberate: the
+   sync has nothing to mirror on a page with no FBA, and analytics.js loads
+   on all fifty-one story pages where there is none.
+
+   The whole thing is optional in every direction. If the file is missing, if
+   the injection fails, if the reader is signed out, if the rules deny the
+   write — nothing about this page changes and no reader sees a thing.
+   profile-sync.js refuses to install twice, so having the tag AND this is
+   safe; the tag is still the better answer, because a <script> the parser
+   sees is one the browser can prioritise.
+   ========================================================================== */
+(function () {
+  "use strict";
+  try {
+    if (typeof window === "undefined" || !window.document) return;
+    if (window.FBPS && window.FBPS.__factbox) return;   /* already installed */
+
+    var d = window.document;
+    var here = "";
+    try {
+      var me = d.currentScript;
+      if (me && me.src) here = String(me.src);
+    } catch (e) {}
+    if (!here) {
+      /* No currentScript (an old browser, or this file was inlined). Find the
+         tag by name rather than guessing a path that may not be ours. */
+      try {
+        var all = d.getElementsByTagName("script");
+        for (var i = 0; i < all.length; i++) {
+          var sv = all[i].getAttribute("src") || "";
+          if (sv && sv.indexOf("account.js") !== -1) { here = sv; break; }
+        }
+      } catch (e2) {}
+    }
+
+    var url = here ? here.replace(/account\.js(\?.*)?$/, "profile-sync.js")
+                   : "js/profile-sync.js";
+    if (url.indexOf("profile-sync.js") === -1) url = "js/profile-sync.js";
+
+    /* Already in the markup? Then the markup wins and this does nothing. */
+    try {
+      var have = d.getElementsByTagName("script");
+      for (var j = 0; j < have.length; j++) {
+        if ((have[j].getAttribute("src") || "").indexOf("profile-sync.js") !== -1) return;
+      }
+    } catch (e3) {}
+
+    var add = function () {
+      try {
+        if (window.FBPS && window.FBPS.__factbox) return;
+        var t = d.createElement("script");
+        t.src = url;
+        t.async = true;
+        t.onerror = function () {};        /* a 404 here is not an event */
+        var parent = d.head || d.body || d.documentElement;
+        if (parent) parent.appendChild(t);
+      } catch (e4) {}
+    };
+
+    /* After the page has painted. Nothing on screen waits for this. */
+    if (d.readyState === "loading") {
+      try { d.addEventListener("DOMContentLoaded", function () {
+        try { window.setTimeout(add, 0); } catch (e5) { add(); }
+      }, false); } catch (e6) { add(); }
+    } else {
+      try { window.setTimeout(add, 0); } catch (e7) { add(); }
+    }
+  } catch (e) {}
 })();

@@ -1,0 +1,254 @@
+/* ==========================================================================
+   Factbox — sign in, and the account screen.
+
+   Loaded AFTER css/app.css and css/account.css. It adds four things those two
+   do not already have: a provider button that has to out-rank the form under
+   it, a rule that says "or", a labelled row for a fact about your account,
+   and a state chip. Everything else — the page frame, the nav tabs, the
+   primary button, the text field, the choice button, the error sentence, the
+   boxed aside, every colour token and every radius — comes from those files
+   unchanged. A sign-in page that looks like a different site is a sign-in
+   page people abandon halfway.
+
+   Everything here is prefixed .au- so it cannot collide with .jn- (the
+   funnel), .fbq- (the analytics notice) or anything the core owns.
+
+   Same commitments as the rest of the site: one committed dark theme painted
+   explicitly rather than inherited, 44px targets, and nothing tappable below
+   --bottom-safe, where the Instagram and TikTok toolbar sits. Both pages lay
+   their actions out in normal flow inside .lib, which already reserves that
+   height in its padding, so no control on either page can end up under the
+   toolbar at any viewport height.
+   ========================================================================== */
+
+body{background:var(--ground); color:var(--parchment)}
+
+/* --------------------------------------------------------------------------
+   Waiting for auth state.
+
+   A page that renders "signed out" and then flips to "signed in" is worse
+   than a page that waits, so both pages start here and stay here until
+   FBU.ready() settles. It is a real sentence, not a bare spinner: on a slow
+   webview this can be on screen for several seconds, and a spinner with no
+   words is indistinguishable from a hang.
+   -------------------------------------------------------------------------- */
+.au-wait{
+  display:flex; align-items:center; gap:12px;
+  margin:26px 0 0; padding:16px 16px;
+  border-radius:16px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  font-size:.92rem; font-weight:700; color:var(--dim); line-height:1.4;
+}
+.au-wait[hidden]{display:none}
+.au-spin{
+  flex:0 0 18px; width:18px; height:18px; border-radius:50%;
+  border:2px solid rgba(255,247,237,.18); border-top-color:var(--coral);
+  animation:au-turn .8s linear infinite;
+}
+@keyframes au-turn{to{transform:rotate(360deg)}}
+
+/* --------------------------------------------------------------------------
+   Google. The one tap that works for most people, so it is the biggest thing
+   on the page and it sits above everything it competes with.
+
+   It is parchment on dark rather than coral, because coral is this site's
+   "the thing you came to do" colour and is already spent on Continue further
+   down. A white-on-dark provider button is also the shape people have learned
+   to look for, and looking for it is the whole job it has.
+   -------------------------------------------------------------------------- */
+.au-prov{
+  display:flex; align-items:center; justify-content:center; gap:11px;
+  width:100%; max-width:520px; margin:18px auto 0;
+  min-height:52px; padding:14px 18px;
+  border:0; border-radius:var(--pill); cursor:pointer;
+  background:var(--parchment); color:#221A2A;
+  font-family:var(--ui); font-size:1.02rem; font-weight:800;
+  box-shadow:0 8px 26px rgba(0,0,0,.42);
+  transition:transform .15s ease, filter .15s ease;
+}
+.au-prov:active{transform:translateY(1px) scale(.99)}
+.au-prov[disabled]{
+  background:var(--raise); color:var(--dim); box-shadow:none; cursor:default;
+}
+.au-prov svg{flex:0 0 20px; width:20px; height:20px; display:block}
+.au-prov[disabled] svg{opacity:.4}
+
+/* The "or" rule. A line with a word in it, not a heading — it separates, it
+   does not announce. */
+.au-or{
+  display:flex; align-items:center; gap:12px;
+  margin:22px 2px 4px;
+  font-size:.76rem; font-weight:800; letter-spacing:.14em;
+  color:var(--dimmer); text-transform:uppercase;
+}
+.au-or::before, .au-or::after{
+  content:""; flex:1 1 auto; height:1px; background:var(--hair);
+}
+
+/* --------------------------------------------------------------------------
+   Sign in / create account. Two words, and the underline says which one you
+   are on — the same rule the section tabs use, for the same reason: a filled
+   capsule reads as a button you have not pressed yet.
+   -------------------------------------------------------------------------- */
+.au-switch{
+  display:flex; gap:22px; align-items:center;
+  margin:6px 2px 2px; padding:0;
+}
+.au-switch button{
+  position:relative; background:none; border:0; cursor:pointer;
+  padding:10px 0; min-height:var(--tap);
+  font-family:var(--ui); font-size:.98rem; font-weight:700;
+  letter-spacing:-.01em; color:var(--dimmer);
+  transition:color .16s ease;
+}
+.au-switch button[aria-selected="true"]{color:var(--parchment); font-weight:850}
+.au-switch button[aria-selected="true"]::after{
+  content:""; position:absolute; left:0; right:0; bottom:4px; height:2px;
+  border-radius:2px; background:var(--coral);
+}
+
+/* A note that is information rather than a failure: "check your email", "we
+   sent a code". Same shell as .jn-err so the two read as the same kind of
+   line, in the colour that means "this worked". */
+.au-say{
+  margin:10px 2px 0; font-size:.86rem; font-weight:700; line-height:1.45;
+  color:var(--teal);
+}
+.au-say[hidden]{display:none}
+
+/* The inline "Forgot your password?" / "Resend it" actions. Underlined text
+   at a full tap target — a 12px link is a dark pattern with extra steps. */
+.au-link{
+  display:inline-flex; align-items:center;
+  min-height:var(--tap); padding:10px 2px;
+  background:none; border:0; cursor:pointer;
+  font-family:var(--ui); font-size:.88rem; font-weight:700; color:var(--dim);
+  text-decoration:underline; text-underline-offset:3px;
+}
+.au-link[disabled]{color:var(--dimmer); text-decoration:none; cursor:default}
+
+/* The invisible reCAPTCHA host. It must be in the document and must survive
+   the page's re-renders; it is never seen. */
+.au-captcha{
+  position:absolute; width:1px; height:1px;
+  overflow:hidden; clip:rect(0 0 0 0);
+}
+
+/* --------------------------------------------------------------------------
+   The account screen. One fact per row: label above, answer below, at reading
+   size. A definition list, because that is what it is.
+   -------------------------------------------------------------------------- */
+.au-rows{
+  margin:18px 0 0; padding:4px 16px;
+  border-radius:18px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.au-row{padding:14px 0}
+.au-row + .au-row{border-top:1px solid var(--hair)}
+.au-row dt{
+  margin:0 0 5px; font-size:.76rem; font-weight:800; letter-spacing:.1em;
+  color:var(--dimmer); text-transform:uppercase;
+}
+.au-row dd{
+  margin:0; font-size:1rem; font-weight:700; line-height:1.4;
+  color:var(--parchment); word-break:break-word;
+}
+.au-row dd small{
+  display:block; margin-top:5px;
+  font-size:.84rem; font-weight:650; color:var(--dim); line-height:1.45;
+}
+
+/* The state chip. Three states and each has to read at a glance: reading
+   everything, on a trial, or on the free two. */
+.au-pill{
+  display:inline-block; vertical-align:middle;
+  padding:4px 11px; border-radius:var(--pill);
+  font-size:.72rem; font-weight:900; letter-spacing:.08em;
+  background:rgba(255,247,237,.09); color:var(--parchment);
+}
+.au-pill.is-on{background:var(--coral); color:#2A1109}
+.au-pill.is-trial{background:rgba(79,195,184,.2); color:var(--teal)}
+.au-pill.is-off{background:rgba(255,247,237,.09); color:var(--dim)}
+
+/* Secondary actions at the foot of the account screen: manage billing, sign
+   out. Outlined, full width, real targets — they are not the point of the
+   page, but a reader who came here came for one of them. */
+.au-2nd{
+  display:flex; align-items:center; justify-content:center;
+  width:100%; max-width:520px; margin:11px auto 0;
+  min-height:var(--tap); padding:14px 18px;
+  border:0; border-radius:var(--pill); cursor:pointer;
+  background:var(--raise); color:var(--parchment);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  font-family:var(--ui); font-size:.98rem; font-weight:780;
+  text-decoration:none; text-align:center; line-height:1.2;
+  transition:transform .15s ease;
+}
+.au-2nd:active{transform:scale(.99)}
+.au-2nd[disabled]{color:var(--dimmer); cursor:default}
+
+/* --------------------------------------------------------------------------
+   Panels. Same contract as .jn-panel: every one of them ships in the markup
+   carrying its real copy, and the script hides the ones it is not showing. If
+   the script never runs, or throws, the reader gets one long readable page
+   with a working link out of it — never a blank screen. This site has shipped
+   blank twice; it does not get to happen here.
+   -------------------------------------------------------------------------- */
+.au-panel{margin-top:14px}
+.au-panel[hidden]{display:none}
+.au-panel h2{
+  font-size:clamp(1.35rem,5.4vw,1.7rem); font-weight:850; margin:0 0 8px;
+  line-height:1.14; letter-spacing:-.015em; text-wrap:balance;
+}
+.au-panel > p{
+  margin:0 0 4px; color:var(--dim); font-size:1rem; line-height:1.5;
+  max-width:44ch;
+}
+
+/* A row of two small facts under a heading — "Signed in as …" on the account
+   screen — where a whole .au-rows block would be too much furniture. */
+.au-who{
+  margin:14px 0 0; font-size:.94rem; line-height:1.5; color:var(--dim);
+}
+.au-who b{color:var(--parchment); font-weight:800; word-break:break-word}
+
+@media (prefers-reduced-motion:reduce){
+  .au-spin{animation:none; border-top-color:var(--coral)}
+  .au-prov, .au-2nd{transition:none}
+}
+
+/* --------------------------------------------------------------------------
+   The anti-flip class, and its failsafe.
+
+   Both pages must never render "signed out" and then flip to "signed in" a
+   second later — that is worse than a wait. So an inline script in <head>
+   puts `au-js` on <html>, which hides every panel; the page script removes it
+   once FBU.ready() has settled and it knows what to show.
+
+   The same inline script removes `au-js` on a timer no matter what happens.
+   That is the whole point of it being there: if the page script throws, or
+   never loads, or the SDK hangs, the reader gets the real markup — the form,
+   the copy, the links out — instead of a hidden page. This site has shipped
+   blank twice, both times from a script that threw before it could reveal
+   anything. A hiding class with no unconditional timer is that bug waiting.
+   -------------------------------------------------------------------------- */
+html.au-js .au-panel{display:none}
+
+/* --------------------------------------------------------------------------
+   Privacy, Terms and Support on the account screen.
+
+   This is the one row here a reader taps in a hurry — usually on the way to
+   working out what they agreed to, or to cancelling something — so it gets
+   real 44px targets rather than fine print they have to aim at. The row still
+   reads as fine print; only the hit areas grow.
+   -------------------------------------------------------------------------- */
+#ac-legal{
+  display:flex; flex-wrap:wrap; align-items:center;
+  gap:0 2px; margin-top:18px;
+}
+#ac-legal a{
+  display:inline-flex; align-items:center;
+  min-height:var(--tap); padding:0 6px;
+  color:var(--parchment); text-decoration:underline;
+  text-underline-offset:3px;
+}

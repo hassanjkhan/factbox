@@ -22,6 +22,24 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // --- Shape helpers for the one client-written document ---------------
+    // Each is "absent, or the right type and small enough". Absent is legal
+    // because a question the reader skipped must produce no field at all.
+    function shortStr(k, n) {
+      return !(k in request.resource.data)
+        || (request.resource.data[k] is string && request.resource.data[k].size() <= n);
+    }
+    function smallList(k, n) {
+      return !(k in request.resource.data)
+        || (request.resource.data[k] is list && request.resource.data[k].size() <= n);
+    }
+    function smallInt(k, n) {
+      return !(k in request.resource.data)
+        || (request.resource.data[k] is int
+            && request.resource.data[k] >= 0
+            && request.resource.data[k] <= n);
+    }
+
     // --- The reader's own record -----------------------------------------
     // Written by the Stripe extension from a webhook, never by the browser.
     // A reader may look at their own row and nothing else; nobody may write,
@@ -30,6 +48,49 @@ service cloud.firestore {
     match /customers/{uid} {
       allow read: if isSelf(uid);
       allow write: if false;
+
+      // --- The reader's own onboarding answers -------------------------
+      // js/profile-sync.js mirrors js/account.js's record here so it
+      // survives losing the browser. This is the ONLY document on the site
+      // a reader writes to about themselves, and it is deliberately a
+      // subdocument: `customers/{uid}` itself belongs to the Stripe webhook,
+      // and a client write racing that would clobber a subscription state
+      // nothing here can rebuild.
+      //
+      // Nothing decides access from this. `premium` is still the one flag.
+      // The worst a reader can do with a forged write is lie to us about
+      // how many minutes a day they meant to read.
+      //
+      // The key list is closed, so a future field has to be added here on
+      // purpose. Sizes are capped because this document is client-written
+      // and an uncapped string is a free hosting bill.
+      match /profile/{docId} {
+        allow read: if isSelf(uid);
+        allow delete: if isSelf(uid);
+        allow create, update: if isSelf(uid)
+          && docId == "onboarding"
+          && request.resource.data.keys().hasOnly([
+               "schema", "updatedAt", "draw", "relates", "goalMinutes",
+               "streakDays", "planAnswers", "interests", "frequency",
+               "plan", "name", "email", "localAccountId", "onboardingComplete"
+             ])
+          && request.resource.data.schema is int
+          && (!("updatedAt" in request.resource.data)
+              || request.resource.data.updatedAt == request.time)
+          && shortStr("draw", 30)
+          && shortStr("frequency", 20)
+          && shortStr("plan", 20)
+          && shortStr("name", 40)
+          && shortStr("email", 120)
+          && shortStr("localAccountId", 40)
+          && smallList("relates", 8)
+          && smallList("planAnswers", 3)
+          && smallList("interests", 12)
+          && smallInt("goalMinutes", 1440)
+          && smallInt("streakDays", 3650)
+          && (!("onboardingComplete" in request.resource.data)
+              || request.resource.data.onboardingComplete is bool);
+      }
 
       match /checkout_sessions/{id} {
         // The one place the client legitimately writes: asking the extension

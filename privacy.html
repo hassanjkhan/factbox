@@ -43,7 +43,7 @@
     <span>Effective 2 September 2026</span>
     <span>Applies to: factbox.app, this website</span>
   </p>
-  <p class="lead">Factbox is a website with no accounts and no server of its own.
+  <p class="lead">Factbox is a website with real accounts, and a small amount of server behind them.
      Almost everything it remembers about you is written into your own browser and
      stays there. This page lists what it writes, the few things that do leave your
      browser, and how to get rid of any of it.</p>
@@ -56,7 +56,8 @@
 
   <h2>The short version</h2>
   <ul>
-    <li>There is no server-side account and no password. Signing up means <strong>this browser</strong> remembers your email address, and your first name if you give one; nothing is registered with us, because there is no us to register with.</li>
+    <li>You can sign in with Google, an email address and password, or a phone number. Your account is held by Google Firebase; we never see your password. Signing in is what makes a subscription follow you to another phone.</li>
+    <li>If you are signed in, your onboarding answers are saved to your own record. If you are not, nothing is copied anywhere and they stay in this browser.</li>
     <li>That email leaves your browser in exactly one place: it is put into the email field of the Stripe checkout page, so you do not have to type it twice.</li>
     <li>What you have read, how far into each story, and which stories you saved are written to <strong>your browser's storage and are never sent anywhere</strong>.</li>
     <li>Three small values — whether you have access, your restore token, and where that access came from — are also mirrored into a first-party cookie, because in-app browsers wipe the other store.</li>
@@ -109,7 +110,7 @@
   <h3>The sign-up record</h3>
   <p>Because there is no server, "sign up" and "log in" cannot mean what they usually
      mean. There is nobody to register with and nothing to authenticate against, which
-     is why the form has no password field: a password implies a check we are not able
+     was why the form once had no password field: at the time a password implied a check we could not
      to perform.</p>
   <p>What signing up actually does is write <code>fb_acct_v1</code> above into your own
      browser. Your email and name sit there and nowhere else. We never receive them, and
@@ -172,6 +173,17 @@
   <p>The illustrated front-page story contains a second, older counter of its own. Its
      endpoint is an empty string, so it writes its line to the browser's developer
      console and sends nothing over the network. It is inert.</p>
+  <p><strong>We also send the same events to Google Analytics.</strong> Alongside
+     PostHog, every event listed above goes to
+     <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Google
+     Analytics 4</a>, through Firebase. It is exactly the same list — the same story ids,
+     card numbers, step names and dwell times — and still never your email address, your
+     name, or the content of your answers. Google stores an identifier in your browser
+     too, for the same reason PostHog does.</p>
+  <p><strong>Running two analytics services is a duplication, and it is temporary.</strong>
+     We are comparing them on the same traffic in order to keep one. Until we do, your
+     visit is measured twice. The switch below turns off <strong>both</strong>.</p>
+
   <h3>Turning it off</h3>
   <p>Press the button. It takes effect immediately in this browser, is remembered, and
      stops the analytics script from loading at all on your next visit — not merely
@@ -201,7 +213,9 @@
   <p>That session id becomes your <strong>restore token</strong>, stored as
      <code>fb_pass_v1</code>, and your restore link is that token on the end of a
      factbox.app address. It is the only way to move access from the browser you paid
-     in to another phone or another browser, because there is no account to log into.</p>
+     in to another phone or another browser. Signing in does exactly that, and is now
+     the route we would rather you used; the restore link remains for anyone who
+     subscribed before accounts existed.</p>
   <div class="note">
     <p><strong>The restore link is a bearer token.</strong> There is no server to check
        it against, so possession is the entire proof. Anyone you forward it to gets

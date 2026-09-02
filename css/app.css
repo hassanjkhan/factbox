@@ -422,3 +422,88 @@ img{max-width:100%;display:block}
   font-family:var(--ui); font-size:.82rem; font-weight:800;
   padding:9px 14px; min-height:var(--tap);
 }
+
+/* --------------------------------------------------------------------------
+   The account control. Top right of the .tabs row on every page, and the only
+   route to signing in from anywhere on the site. Signed out it is two links;
+   signed in it is the reader's name, pointing at Account.
+
+   IT MUST NOT FLASH. `FBU.ready()` settles asynchronously, and rendering
+   "Sign in" and then swapping it for a name is worse than rendering nothing
+   for that moment. So the head snippet puts `fb-hdr` on <html>, which makes
+   the slot INVISIBLE WITHOUT COLLAPSING IT: the row keeps its height from the
+   first paint, the tabs keep their place, and the slot is right-aligned so
+   whatever width it settles on moves nothing else. A four-second timer removes
+   the class unconditionally — same shape, and same reason, as `au-js`: a
+   script that never runs must leave a readable header, not a hidden one.
+   -------------------------------------------------------------------------- */
+.acct{
+  margin-left:auto; flex:0 1 auto; min-width:0; overflow:hidden;
+  display:flex; align-items:center; gap:10px;
+  min-height:var(--tap);
+}
+/* If the row ever runs out of room it is the account slot that gives, never
+   the section nav, and it gives by clipping rather than by widening the body:
+   SPEC §3 says the page never scrolls sideways. */
+.tabs > a{flex:none}
+html.fb-hdr .acct{visibility:hidden}
+
+.acct a{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:var(--tap); padding:10px 0;
+  font-size:.88rem; font-weight:700; letter-spacing:-.01em;
+  color:var(--dimmer); text-decoration:none; white-space:nowrap;
+}
+/* `.tabs a` sets a display, which beats the UA stylesheet's rule for
+   [hidden]. Without this line the hidden half of the control would still be
+   on screen and the header would say "Sign in" next to a reader's name. */
+.acct a[hidden]{display:none !important}
+
+/* Sign up is a chip with a hairline, not a coral capsule: a filled pill here
+   would compete with the one real button on the page, and SPEC §4 already
+   says why a coloured capsule in a nav row reads wrong. */
+.acct .acct-up{
+  padding:0 13px; border-radius:var(--pill);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  color:var(--coral); font-weight:800;
+}
+/* The name is text, brighter than a tab, truncated rather than allowed to
+   push the tabs sideways on a 390px screen. */
+.acct .acct-me{
+  display:block; padding:0;
+  min-height:var(--tap); line-height:var(--tap);
+  color:var(--parchment); font-weight:800;
+  max-width:14ch; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* Every phone this site runs on is between 320 and 430 CSS pixels wide, and on
+   all of them the three tabs and this control share one line — so the
+   breakpoint is the whole phone range rather than a narrow-screen
+   afterthought. Type comes down, the gaps come in, and the slot above still
+   clips rather than widening the row if a long word ever lands in it. */
+@media (max-width:430px){
+  .tabs{gap:16px}
+  .acct{gap:8px}
+  .acct a{font-size:.82rem}
+  .acct .acct-me{max-width:11ch}
+}
+@media (max-width:359px){
+  .tabs{gap:13px}
+  .acct .acct-me{max-width:8ch}
+}
+
+/* read.html has no .tabs — it is a full-bleed deck with one floating pill in
+   the top bar. The control mirrors that pill on the opposite side, at the
+   same 38px height the back button already uses, and shows one link rather
+   than two so the two bars never meet in the middle of a phone. */
+.topbar-r{position:fixed; top:var(--top-safe); right:12px; z-index:31}
+.acct.is-float{min-height:0}
+.acct.is-float a{
+  min-height:38px; padding:0 13px; border-radius:var(--pill);
+  background:rgba(14,11,18,.6); backdrop-filter:blur(10px);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  color:var(--parchment); font-size:.83rem; font-weight:700;
+}
+.acct.is-float .acct-me{
+  min-height:38px; line-height:38px; max-width:11ch;
+}

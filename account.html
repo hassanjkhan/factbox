@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox · Account</title>
+<meta name="description" content="Your Factbox account: how you sign in, what your plan is, and when it renews.">
+<meta name="theme-color" content="#0E0B12">
+<meta name="robots" content="noindex,nofollow">
+<link rel="canonical" href="https://factbox.app/account.html">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/account.css">
+<link rel="stylesheet" href="css/auth.css">
+
+<!-- Same anti-flip class as login.html, same unconditional timer. An account
+     screen that shows "Free" for a second and then flips to "Reading
+     everything" is a support email; one that shows the other way round is a
+     refund request. See the note at the foot of css/auth.css. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "au-js";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)au-js(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+<!-- The header's account control must not flash. This class makes its slot
+     invisible without collapsing it, so the row keeps its height from the
+     first paint and nothing shifts when auth finally answers. The timer
+     removes it unconditionally: a script that never runs, or throws, still
+     leaves a readable header rather than a hidden one. See css/app.css. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+
+<!--
+  YOUR ACCOUNT.
+
+  Four things, in the order they were asked for: the reader's name, a way to
+  cancel the subscription, a way to read the privacy policy, and a way to sign
+  out. Around them the facts that make those four make sense: which email, how
+  you sign in, whether that email is verified, what your plan is, when it
+  renews or when the trial ends, and what it costs.
+
+  THERE IS NO "CHANGE YOUR NAME" HERE. It would be four lines of page, but the
+  write itself is Firebase's updateProfile, and js/auth.js — the only file
+  allowed to touch the SDK — exposes no wrapper for it. Adding one is that
+  file's call, not this page's; until it exists the name shown here is the one
+  the provider supplied, and the fallback is the local part of the email.
+
+  WHERE THE PLAN COMES FROM. `customers/{uid}.premium` — one boolean, written
+  by the Stripe webhook, readable by exactly one signed-in reader, never
+  writable from a browser. The subscription document underneath it supplies
+  the dates and the amount, and nothing else on this site decides anything
+  from it. If the two ever disagree, the boolean is right.
+
+  WHAT SIGNING OUT DOES NOT DO. It does not touch reading progress or saved
+  stories. Those live in this browser (FBP and FBS), not in the account, and
+  wiping them on sign-out would mean lending someone your phone for one story
+  costs you fifty-one stories' worth of place-keeping. The copy on the button
+  says so, because a reader is entitled to know before they tap it. AUTH.md
+  carries the full reasoning.
+
+  Every panel here ships its real copy. The script hides what it is not
+  showing. If it never runs, this page is a readable explanation of what an
+  account is with a link to the billing portal on it — not a blank screen.
+-->
+
+<main class="lib">
+  <header class="mast">
+    <p class="mark">FACTBOX</p>
+    <nav class="tabs" aria-label="Sections">
+      <a href="stories.html">Home</a>
+      <a href="explore.html">Explore</a>
+      <a href="library.html">Library</a>
+      <!-- Account. Signed out this is two links; signed in it is the reader's
+           name. Never both: the script sets hidden on every branch. -->
+      <span class="acct" id="fb-acct">
+        <a class="acct-in" id="fb-acct-in" href="login.html?next=account.html">Sign in</a>
+        <a class="acct-up" id="fb-acct-up" href="login.html?next=account.html">Sign up</a>
+        <a class="acct-me" id="fb-acct-me" href="account.html" hidden>Account</a>
+      </span>
+    </nav>
+    <h1>Account</h1>
+    <p id="ac-blurb">How you sign in, what your plan is, and when it renews.</p>
+  </header>
+
+  <div class="au-wait" id="ac-wait" role="status" hidden>
+    <span class="au-spin" aria-hidden="true"></span>
+    <span id="ac-wait-t">Looking up your account…</span>
+  </div>
+
+  <!-- ===== signed in ==================================================== -->
+  <section class="au-panel" id="ac-in" hidden aria-labelledby="ac-in-h">
+    <h2 id="ac-in-h" class="jn-vh">Account</h2>
+
+    <dl class="au-rows">
+      <!-- The name first. It is what a reader opens this page to confirm, and
+           it is what the header shows them on every other page — the two are
+           the same string, derived the same way, so they cannot disagree. -->
+      <div class="au-row">
+        <dt>Name</dt>
+        <dd id="ac-name">your account</dd>
+      </div>
+      <div class="au-row">
+        <dt>Signed in as</dt>
+        <dd id="ac-email">your account</dd>
+      </div>
+      <div class="au-row">
+        <dt>How you sign in</dt>
+        <dd id="ac-prov">Email and password</dd>
+      </div>
+      <div class="au-row" id="ac-ver-row">
+        <dt>Email</dt>
+        <dd id="ac-ver">Verified</dd>
+      </div>
+      <div class="au-row">
+        <dt>Plan</dt>
+        <dd>
+          <span class="au-pill is-off" id="ac-pill">FREE</span>
+          <small id="ac-plan">The two free stories. The other forty-nine are locked.</small>
+        </dd>
+      </div>
+      <div class="au-row" id="ac-when-row" hidden>
+        <dt id="ac-when-t">Renews</dt>
+        <dd id="ac-when">—</dd>
+      </div>
+      <div class="au-row" id="ac-cost-row" hidden>
+        <dt>Price</dt>
+        <dd id="ac-cost">—</dd>
+      </div>
+    </dl>
+
+    <p class="au-say" id="ac-note" hidden role="status"></p>
+    <p class="jn-err" id="ac-err" hidden role="alert"></p>
+
+    <a class="go" id="ac-read" href="stories.html"
+       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:18px">Read season one</a>
+
+    <button class="au-2nd" id="ac-resend" type="button" hidden>Resend the verification email</button>
+
+    <!-- Cancelling is Stripe's job, on Stripe's page, with Stripe's record of
+         what was charged. A cancel button here that only sets a flag would be
+         a lie the first time a card is charged after it. -->
+    <a class="au-2nd" id="ac-portal" href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+       rel="noopener" hidden>Cancel plan or manage billing</a>
+
+    <a class="au-2nd" id="ac-join" href="join.html" hidden>See the plans</a>
+
+    <!-- A reader who came looking for the privacy policy nearly always wants
+         one of the other two within the next thirty seconds, so all three sit
+         together, above the sign-out button rather than below it. -->
+    <p class="fine" id="ac-legal">
+      <a href="privacy.html">Privacy policy</a> ·
+      <a href="terms.html">Terms</a> ·
+      <a href="support.html">Support</a>
+    </p>
+
+    <button class="au-2nd" id="ac-out" type="button">Sign out</button>
+    <p class="fine" style="margin-top:10px;text-align:left">Signing out leaves
+    your place in each story, and anything you saved, on this phone. Neither
+    is tied to your account.</p>
+  </section>
+
+  <!-- ===== signed out =================================================== -->
+  <section class="au-panel" id="ac-out-panel" hidden aria-labelledby="ac-out-h">
+    <h2 id="ac-out-h">Sign in to see your account</h2>
+    <p>Your plan, your renewal date and your billing all live behind your
+    account rather than on this phone, so this page needs you signed in.</p>
+    <a class="go" id="ac-signin" href="login.html?next=account.html"
+       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Sign in</a>
+    <a class="au-2nd" href="stories.html">Back to the stories</a>
+  </section>
+
+  <!-- ===== could not start ============================================== -->
+  <section class="au-panel" id="ac-dead" hidden aria-labelledby="ac-dead-h">
+    <h2 id="ac-dead-h">Your account will not load in this browser</h2>
+    <p>Something between here and Google is blocking sign-in — usually an
+    in-app browser with storage switched off. Opening factbox.app in Safari or
+    Chrome fixes it almost every time. Billing works either way: the portal
+    below is Stripe's own page and needs nothing from us.</p>
+    <a class="go" href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener"
+       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Cancel plan or manage billing</a>
+    <a class="au-2nd" href="stories.html">Back to the stories</a>
+    <a class="au-2nd" href="support.html">Tell support</a>
+  </section>
+
+  <noscript>
+    <p class="fine" style="margin-top:24px;text-align:left">
+      <b>This page needs JavaScript.</b> To cancel or change a plan without it,
+      open the <a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">billing
+      portal</a> — it is Stripe's own page and works on its own.</p>
+  </noscript>
+
+  <p class="fine" style="margin-top:34px;text-align:left">
+    <a href="stories.html">Season one</a> · <a href="login.html">Sign in</a> ·
+    <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> ·
+    <a href="support.html">Support</a>
+  </p>
+</main>
+
+<script type="module" src="js/auth.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/gate.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var GENERIC = "Something went wrong. Try that again in a moment.";
+  var PORTAL  = "https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600";
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  function show(n, on) { try { if (n) n.hidden = !on; } catch (e) {} }
+  function text(n, s) { try { if (n) n.textContent = s; } catch (e) {} }
+  function on(n, ev, fn) {
+    try { if (n && n.addEventListener) n.addEventListener(ev, fn, false); } catch (e) {}
+  }
+  function cls(n, s) { try { if (n) n.className = s; } catch (e) {} }
+
+  /* The same second wall as login.html. A Firebase error code is a debugging
+     aid; it is never a sentence, and it never reaches this page. */
+  function safeText(s) {
+    var t;
+    try { t = String(s == null ? "" : s); } catch (e) { return GENERIC; }
+    if (!t) return GENERIC;
+    if (t.indexOf("auth/") !== -1) return GENERIC;
+    if (t.indexOf("Firebase") !== -1 || t.indexOf("firebase") !== -1) return GENERIC;
+    if (t.indexOf("permission-denied") !== -1) return GENERIC;
+    if (t.length > 220) return GENERIC;
+    return t;
+  }
+  function errText(e) {
+    var m = "";
+    try { if (window.FBU && window.FBU.message) m = window.FBU.message(e); } catch (x) {}
+    if (!m) { try { m = (e && e.friendly) ? e.friendly : ""; } catch (x) {} }
+    return safeText(m);
+  }
+
+  /* Dates a reader reads, not an ISO string. toLocaleDateString is present on
+     every webview that can run the SDK, but it is wrapped anyway: a thrown
+     date formatter must not cost someone their renewal date. */
+  var MON = ["January","February","March","April","May","June","July",
+             "August","September","October","November","December"];
+  function dateText(ms) {
+    var n = Number(ms);
+    if (!isFinite(n) || n <= 0) return "";
+    try {
+      var d = new Date(n);
+      try {
+        var s = d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+        if (s) return s;
+      } catch (e) {}
+      return d.getDate() + " " + MON[d.getMonth()] + " " + d.getFullYear();
+    } catch (e) { return ""; }
+  }
+
+  function moneyText(sub) {
+    try {
+      if (!sub) return "";
+      var a = sub.amount;
+      if (typeof a !== "number" || !isFinite(a)) return "";
+      /* Stripe carries amounts in the currency's smallest unit. */
+      var cur = String(sub.currency || "usd").toUpperCase();
+      var sym = (cur === "USD") ? "$" : (cur === "GBP" ? "£" : (cur === "EUR" ? "€" : ""));
+      var v = (a / 100).toFixed(2);
+      var head = sym ? (sym + v) : (v + " " + cur);
+      var iv = String(sub.interval || "");
+      if (iv === "month")  return head + " every month";
+      if (iv === "year")   return head + " a year";
+      if (iv === "week")   return head + " every week";
+      if (iv === "day")    return head + " every day";
+      return head;
+    } catch (e) { return ""; }
+  }
+
+  /* The header on every page shows this same string. One function, one rule:
+     the display name if there is one, otherwise the local part of the email,
+     otherwise the phone number — and never an error code, whatever a future
+     SDK release decides to put in a displayName. */
+  function nameText() {
+    var s = "";
+    try { s = String(FBU.name() || ""); } catch (e) {}
+    if (!s) {
+      var m = "";
+      try { m = String(FBU.email() || ""); } catch (e2) {}
+      var at = m.indexOf("@");
+      s = at > 0 ? m.slice(0, at) : "";
+    }
+    if (!s) { try { s = String(FBU.phone() || ""); } catch (e3) {} }
+    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "your account";
+    if (s.indexOf("auth/") !== -1) return "your account";
+    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "your account";
+    return s.length > 60 ? s.slice(0, 59) + "\u2026" : s;
+  }
+
+  var wait   = el("ac-wait");
+  var pIn    = el("ac-in");
+  var pOut   = el("ac-out-panel");
+  var pDead  = el("ac-dead");
+
+  var eName  = el("ac-name");
+  var eEmail = el("ac-email");
+  var eProv  = el("ac-prov");
+  var eVer   = el("ac-ver");
+  var eVerRow= el("ac-ver-row");
+  var ePill  = el("ac-pill");
+  var ePlan  = el("ac-plan");
+  var eWhenR = el("ac-when-row");
+  var eWhenT = el("ac-when-t");
+  var eWhen  = el("ac-when");
+  var eCostR = el("ac-cost-row");
+  var eCost  = el("ac-cost");
+  var eNote  = el("ac-note");
+  var eErr   = el("ac-err");
+  var eRead  = el("ac-read");
+  var eResend= el("ac-resend");
+  var ePortal= el("ac-portal");
+  var eJoin  = el("ac-join");
+  var eOut   = el("ac-out");
+
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)au-js(\s|$)/g, " ").replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  function whenFBU(cb) {
+    var done = false;
+    function go() {
+      if (done) return;
+      done = true;
+      try { cb(window.FBU || null); } catch (e) {}
+    }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    /* A module script is deferred: the browser runs it after the document is
+       parsed and BEFORE DOMContentLoaded. So if FBU is not here by then, the
+       file 404'd, failed to parse, or this browser ignores type="module" —
+       and no amount of further waiting changes that. */
+    try {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", go, false);
+      } else {
+        setTimeout(go, 0);
+      }
+    } catch (e) {}
+    /* Belt and braces, for a page that loaded auth.js some other way. */
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  var FBU = null;
+
+  /* --- the plan block ------------------------------------------------------
+     Three shapes, and each has to be true rather than merely reassuring:
+
+       premium, with a subscription   → the pill, the date, the amount
+       premium, with no subscription  → the pill and an honest "no renewal
+                                        date on file", which is what a comped
+                                        or manually granted account looks like
+       not premium                    → the free two, and the way to change it
+
+     A fourth case exists and is deliberately not dressed up as one of the
+     three: the billing read did not come back at all — offline, denied, or
+     Firestore slow. That says so, rather than reporting "Free" to somebody
+     who is paying. */
+  function paintPlan() {
+    var prem = false, sub = null, known = false;
+    try { prem = !!FBU.premium(); } catch (e) {}
+    try { sub = FBU.subscription(); } catch (e) {}
+    try { known = !!FBU.billingKnown(); } catch (e) {}
+
+    show(eWhenR, false);
+    show(eCostR, false);
+    show(ePortal, false);
+    show(eJoin, false);
+
+    if (!known) {
+      cls(ePill, "au-pill is-off");
+      text(ePill, "CHECKING");
+      text(ePlan, "Looking up your plan…");
+      return;
+    }
+
+    if (!prem) {
+      cls(ePill, "au-pill is-off");
+      text(ePill, "FREE");
+      text(ePlan, "Two stories are open. The other forty-nine unlock with a subscription — three days free first.");
+      text(eRead, "Read the free stories");
+      show(eJoin, true);
+      /* Somebody who cancelled still has a subscription row for a while. If
+         they are between "cancelled" and "period end", the portal is still
+         the right button to show them. With no subscription at all there is
+         nothing to cancel, and the honest offer is the plans. */
+      if (sub) { text(ePortal, "Cancel plan or manage billing"); show(ePortal, true); }
+      return;
+    }
+
+    text(eRead, "Read season one");
+    /* "Cancel" is only true when there is a subscription to cancel. A premium
+       account with no subscription row — comped, or granted by hand — still
+       gets the portal, because a paying reader must never be left without a
+       route to their own billing, but it does not promise a cancel button
+       that Stripe will not show them. */
+    text(ePortal, sub ? "Cancel plan or manage billing" : "Manage billing");
+    show(ePortal, true);
+
+    if (sub && sub.trialing) {
+      cls(ePill, "au-pill is-trial");
+      text(ePill, "TRIAL");
+      text(ePlan, "All fifty-one stories. Your free trial is running and nothing has been charged yet.");
+      var te = dateText(sub.trialEnd || sub.currentPeriodEnd);
+      if (te) {
+        text(eWhenT, sub.cancelAtPeriodEnd ? "Trial ends" : "Trial ends, first charge");
+        text(eWhen, te);
+        show(eWhenR, true);
+      }
+    } else if (sub) {
+      cls(ePill, "au-pill is-on");
+      text(ePill, "SUBSCRIBED");
+      text(ePlan, sub.cancelAtPeriodEnd
+        ? "All fifty-one stories. Your plan is set to end and will not renew."
+        : "All fifty-one stories, and everything added through the season.");
+      var ce = dateText(sub.currentPeriodEnd);
+      if (ce) {
+        text(eWhenT, sub.cancelAtPeriodEnd ? "Ends" : "Renews");
+        text(eWhen, ce);
+        show(eWhenR, true);
+      }
+    } else {
+      cls(ePill, "au-pill is-on");
+      text(ePill, "SUBSCRIBED");
+      text(ePlan, "All fifty-one stories. There is no renewal date on file for this account, which is normal for an account opened by hand.");
+    }
+
+    var m = moneyText(sub);
+    if (m) { text(eCost, m); show(eCostR, true); }
+  }
+
+  function paint() {
+    reveal();
+    show(wait, false);
+
+    if (!FBU) {
+      show(pIn, false); show(pOut, false); show(pDead, true);
+      return;
+    }
+    show(pDead, false);
+
+    var inNow = false;
+    try { inNow = !!FBU.signedIn(); } catch (e) {}
+
+    if (!inNow) {
+      show(pIn, false);
+      show(pOut, true);
+      return;
+    }
+
+    show(pOut, false);
+    show(pIn, true);
+
+    var mail = "", prov = "", verified = true, hasMail = false;
+    try { mail = FBU.email() || FBU.phone() || "your account"; } catch (e) { mail = "your account"; }
+    try { prov = FBU.providerText(); } catch (e) { prov = "Email and password"; }
+    try { hasMail = !!FBU.email(); verified = !!FBU.emailVerified(); } catch (e) {}
+
+    text(eName, nameText());
+    text(eEmail, mail);
+    text(eProv, prov);
+
+    if (!hasMail) {
+      /* A phone-only account has no email to verify, so the row would be a
+         question nobody asked. */
+      show(eVerRow, false);
+      show(eResend, false);
+    } else {
+      show(eVerRow, true);
+      text(eVer, verified ? "Verified" : "Not verified yet — you can still read everything.");
+      show(eResend, !verified);
+    }
+
+    paintPlan();
+  }
+
+  function busy(n, label) {
+    try { if (n) { n.disabled = true; n.setAttribute("data-was", n.textContent || ""); n.textContent = label; } }
+    catch (e) {}
+  }
+  function idle(n) {
+    try {
+      if (!n) return;
+      n.disabled = false;
+      var w = n.getAttribute("data-was");
+      if (w) n.textContent = w;
+    } catch (e) {}
+  }
+
+  on(eResend, "click", function () {
+    if (!FBU) return;
+    text(eErr, ""); show(eErr, false);
+    busy(eResend, "Sending…");
+    try {
+      FBU.resendVerification().then(function () {
+        idle(eResend);
+        text(eNote, "Verification email sent. Check Promotions if it is not in your inbox, then reload this page.");
+        show(eNote, true);
+      }, function (e) {
+        idle(eResend);
+        text(eErr, errText(e)); show(eErr, true);
+      });
+    } catch (e) { idle(eResend); }
+  });
+
+  on(ePortal, "click", function () {
+    try { if (window.FB && FB.track) FB.track("billing_portal"); } catch (e) {}
+  });
+
+  on(eOut, "click", function () {
+    if (!FBU) return;
+    busy(eOut, "Signing out…");
+    try {
+      FBU.signOut().then(function () {
+        idle(eOut);
+        try { if (window.FB && FB.track) FB.track("signout"); } catch (x) {}
+        paint();
+      }, function () { idle(eOut); paint(); });
+    } catch (e) { idle(eOut); paint(); }
+  });
+
+  /* Make sure the portal href is the live one even if the markup drifts. */
+  try { if (ePortal) ePortal.setAttribute("href", (window.FBU && window.FBU.PORTAL) || PORTAL); } catch (e) {}
+
+  show(wait, true);
+
+  whenFBU(function (api) {
+    FBU = api;
+    if (!FBU) { paint(); return; }
+    try { if (ePortal) ePortal.setAttribute("href", FBU.PORTAL || PORTAL); } catch (e) {}
+    try { FBU.onReady(function () { paint(); }); } catch (e) { paint(); }
+    try { FBU.onChange(function () { paint(); }); } catch (e) {}
+    /* premium and the subscription both arrive after auth state does, and
+       both can change while this page is open — a webhook landing seconds
+       after a checkout is the common case. */
+    try { FBU.onPremium(function () { paint(); }); } catch (e) {}
+    try { FBU.onSubscription(function () { paintPlan(); }); } catch (e) {}
+    try { setTimeout(function () { if (wait && !wait.hidden) paint(); }, 10000); } catch (e) {}
+  });
+})();
+</script>
+<!-- The header account control. js/auth.js is already loaded above, and it is
+     a module, so it has run by DOMContentLoaded and not necessarily before
+     this: the block below reaches it through the whenFBU() bridge, AUTH.md §2,
+     the same way the page script above does. -->
+<script>
+/* The header account control. ES5, every lookup guarded, and it cannot throw:
+   the worst case is the signed-out pair staying on screen, which is what the
+   markup already says. */
+(function () {
+  "use strict";
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+
+  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
+                                      .replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  /* A display name is text the reader typed, going straight into the header,
+     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
+     rule the rest of the site follows: no error code, ever, on screen. */
+  function label(FBU) {
+    var s = "";
+    try { s = String(FBU.name() || ""); } catch (e) {}
+    if (!s) {
+      var m = "";
+      try { m = String(FBU.email() || ""); } catch (e2) {}
+      var at = m.indexOf("@");
+      s = at > 0 ? m.slice(0, at) : "";
+    }
+    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "Account";
+    if (s.indexOf("auth/") !== -1) return "Account";
+    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
+    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
+  }
+
+  function paint(FBU) {
+    var inNow = false;
+    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
+    if (inNow) {
+      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
+      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+    } else {
+      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+    }
+    reveal();
+  }
+
+  function whenFBU(cb) {
+    var done = false;
+    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    try {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
+      else setTimeout(go, 0);
+    } catch (e) {}
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  whenFBU(function (FBU) {
+    /* No FBU at all — the file 404'd, or this webview ignores type="module".
+       That is the signed-out header, which links to a page that explains it. */
+    if (!FBU) { paint(null); return; }
+    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
+    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
+  });
+})();
+</script>
+<script src="js/analytics.js"></script>
+</body>
+</html>

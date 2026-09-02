@@ -1,14 +1,32 @@
 /* ==========================================================================
    Factbox — analytics.
 
-   One file owns the whole thing: loading PostHog, bridging the events the site
-   already names, measuring how long each card is actually on screen, and the
-   notice that tells a reader it is happening.
+   One file owns the whole thing: loading the analytics sinks, bridging the
+   events the site already names, measuring how long each card is actually on
+   screen, and the notice that tells a reader it is happening.
 
-   Nothing else on the site knows PostHog exists. `FB.track()` in gate.js and
-   `track()` on the illustrated story both route through here, so the 26 event
-   names that were already wired keep working unchanged and there is exactly
-   one place to swap the vendor.
+   Nothing else on the site knows which vendor is in use. `FB.track()` in
+   gate.js and `track()` on the illustrated story both route through here, so
+   the event names that were already wired keep working unchanged and there is
+   exactly one place to swap the vendor.
+
+   ---------------------------------------------------------------------------
+   TWO SINKS, ON PURPOSE, FOR NOW
+
+   Every event goes to PostHog *and* to Google Analytics 4 through Firebase.
+   That is a deliberate duplication, agreed with the owner, so the two can be
+   compared on the same traffic before one is dropped. It is not an accident
+   and it is not free: two beacons per event, two vendors in the privacy
+   policy, two places a number can be wrong. FIREBASE-ANALYTICS.md says what
+   each is good for and which one to keep.
+
+   Both sinks hang off the single `capture()` below. There is still exactly
+   one place to change vendor, and no second set of call sites anywhere.
+
+   GA4 is stricter than PostHog about names: 40 characters, [a-z0-9_], must
+   start with a letter, and a reserved list it silently drops. `gaName()` and
+   `gaParams()` map ours across; every rename is written down in
+   FIREBASE-ANALYTICS.md rather than left to be discovered in a report.
 
    ---------------------------------------------------------------------------
    Consent
@@ -28,6 +46,32 @@
   var KEY  = "phc_CzcoLdwsVBHS8WwahoCcZW49vyWQ2VzvYWYra5TUDaPP";
   var HOST = "https://us.i.posthog.com";
 
+  /* ---- Sink two: Google Analytics 4, through Firebase ------------------ *
+     The same project js/auth.js signs readers into. This config is public by
+     design — it is the web API key Firebase ships in every client, not a
+     secret — and it is repeated here rather than imported because auth.js is
+     a module and this file is not. If the two ever disagree, auth.js is the
+     one that matters, because access depends on it and this does not.
+
+     Analytics is initialised as a SECOND, NAMED app ("fbq"). The default app
+     belongs to auth.js and its options carry no measurementId, so asking it
+     for an Analytics instance would fail; a named app also means nothing here
+     can disturb the auth or billing wiring next door. */
+  var MEASUREMENT_ID = "G-VELZ9B3E3Q";
+  var GA_APP_NAME    = "fbq";
+  var GA_SDK_VERSION = "10.14.1";
+  var GA_SDK_BASE    = "https://www.gstatic.com/firebasejs/" + GA_SDK_VERSION + "/";
+  var GA_CONFIG = {
+    apiKey:            "AIzaSyD3GRAWOihX3kTEGgxz3QytfcMg6M-7mM8",
+    authDomain:        "factbox-7cb97.firebaseapp.com",
+    projectId:         "factbox-7cb97",
+    storageBucket:     "factbox-7cb97.firebasestorage.app",
+    messagingSenderId: "790045781901",
+    appId:             "1:790045781901:web:527527387e7dd3285497c4",
+    measurementId:     MEASUREMENT_ID
+  };
+  var GA_QUEUE_MAX = 80;   /* events buffered while the SDK is in flight */
+
   var OPT_IN_REQUIRED = false;   /* true = capture nothing until agreed */
   var NOTICE_KEY = "fb_analytics_notice_v1";
   var OPTOUT_KEY = "fb_analytics_optout_v1";
@@ -39,10 +83,16 @@
     } catch (e) { return null; }
   }
 
-  /* A reader who has opted out is never measured, and the loader never runs. */
+  /* A reader who has opted out is never measured, and NEITHER loader runs.
+     The privacy page promises the script does not load — not that it loads
+     and stays quiet — so this return has to come before both of them. The
+     gtag kill switch is set as well, in case anything else on the page ever
+     brings GA in by another route. */
   if (ls(OPTOUT_KEY) === "1") {
+    try { window["ga-disable-" + MEASUREMENT_ID] = true; } catch (e) {}
     window.FBQ = { capture: function () {}, optedOut: function () { return true; },
-                   optOut: function () {}, optIn: function () {} };
+                   optOut: function () {}, optIn: function () {},
+                   sinks: function () { return { posthog: false, firebase: false }; } };
     return;
   }
 
@@ -61,10 +111,198 @@
     });
   } catch (e) {}
 
+  /* ======================================================================
+     Google Analytics 4, through the Firebase SDK.
+
+     Loaded with a dynamic import, the same way js/auth.js loads its half of
+     the SDK — so nothing else on the site has to become a module.
+
+     The import is built with `new Function` rather than written literally.
+     This file is a classic <script> on every page of the site; a browser old
+     enough to treat `import(` as a syntax error would fail to parse the WHOLE
+     FILE, taking PostHog, the dwell measurement and window.FBQ down with it.
+     Built this way, such a browser fails to build one function and everything
+     else carries on. js/auth.js can afford the literal form because it is
+     type="module": a browser that cannot parse it simply skips it, which is a
+     state that file already renders.
+     ====================================================================== */
+
+  var gaLog   = null;    /* logEvent, bound to the analytics instance */
+  var gaOff   = false;   /* opted out mid-session */
+  var gaQueue = [];      /* fired before the SDK arrived */
+
+  var gaImport = null;
+  try { gaImport = new Function("u", "return import(u);"); } catch (e) { gaImport = null; }
+
+  function gaSDK() {
+    /* Documented seam, mirroring js/auth.js's FBU_SDK: a flattened namespace
+       already on the page is used instead of the network, so the render
+       checks can drive this in jsdom and a self-hosted bundle needs no edit. */
+    try { if (window.FBQ_SDK) return Promise.resolve(window.FBQ_SDK); } catch (e) {}
+    if (!gaImport) return Promise.reject(new Error("no dynamic import"));
+    try {
+      return Promise.all([
+        gaImport(GA_SDK_BASE + "firebase-app.js"),
+        gaImport(GA_SDK_BASE + "firebase-analytics.js")
+      ]).then(function (mods) {
+        var out = {}, i, k;
+        for (i = 0; i < mods.length; i++) {
+          for (k in mods[i]) { try { out[k] = mods[i][k]; } catch (e) {} }
+        }
+        return out;
+      });
+    } catch (e) { return Promise.reject(e); }
+  }
+
+  function gaBoot() {
+    gaSDK().then(function (sdk) {
+      if (!sdk || typeof sdk.getAnalytics !== "function" ||
+          typeof sdk.logEvent !== "function") return null;
+
+      /* isSupported() is false in a webview with no indexedDB, and in a few
+         in-app browsers. Calling getAnalytics anyway throws there. */
+      var supported;
+      try {
+        supported = (typeof sdk.isSupported === "function")
+          ? sdk.isSupported() : Promise.resolve(true);
+      } catch (e) { supported = Promise.resolve(false); }
+
+      return Promise.resolve(supported).then(function (ok) {
+        if (!ok) return null;
+        var app = null;
+        try { app = sdk.initializeApp(GA_CONFIG, GA_APP_NAME); }
+        catch (e) {
+          /* Already initialised — another copy of this file, or a re-entry. */
+          try { app = sdk.getApp(GA_APP_NAME); } catch (e2) { app = null; }
+        }
+        if (!app) return null;
+
+        var an = null;
+        try { an = sdk.getAnalytics(app); } catch (e) { an = null; }
+        if (!an) return null;
+
+        gaLog = function (n, p) {
+          try { sdk.logEvent(an, n, p); } catch (e) {}
+        };
+        try {
+          if (gaOff && typeof sdk.setAnalyticsCollectionEnabled === "function") {
+            sdk.setAnalyticsCollectionEnabled(an, false);
+          }
+        } catch (e) {}
+
+        /* Whatever happened while the SDK was in flight. */
+        try {
+          var q = gaQueue; gaQueue = [];
+          if (!gaOff) {
+            for (var i = 0; i < q.length; i++) gaLog(q[i][0], q[i][1]);
+          }
+        } catch (e) {}
+        return null;
+      }, function () { return null; });
+    }, function () { return null; })
+    /* A missing CDN, a blocked gstatic, a webview with no indexedDB: all of
+       them mean no GA4 and none of them mean a broken page. */
+    .then(null, function () { return null; });
+  }
+
+  /* ---- GA4 naming rules ------------------------------------------------ *
+     Event names: <= 40 chars, letters/digits/underscore, must begin with a
+     letter. The reserved names below are dropped silently by GA4, and the
+     reserved prefixes are refused, so anything colliding is given an `fb_`
+     in front rather than being thrown away. None of the site's current names
+     collide — this is here so that the next one added cannot break quietly. */
+  var GA_RESERVED = {
+    ad_activeview: 1, ad_click: 1, ad_exposure: 1, ad_query: 1, ad_reward: 1,
+    adunit_exposure: 1, app_background: 1, app_clear_data: 1, app_exception: 1,
+    app_remove: 1, app_store_refund: 1, app_store_subscription_cancel: 1,
+    app_store_subscription_convert: 1, app_store_subscription_renew: 1,
+    app_update: 1, app_upgrade: 1, dynamic_link_app_open: 1,
+    dynamic_link_app_update: 1, dynamic_link_first_open: 1, error: 1,
+    first_open: 1, first_visit: 1, in_app_purchase: 1, notification_dismiss: 1,
+    notification_foreground: 1, notification_open: 1, notification_receive: 1,
+    os_update: 1, session_start: 1, screen_view: 1, user_engagement: 1,
+    firebase_campaign: 1, page_view: 1
+  };
+
+  function gaName(n) {
+    try {
+      var s = String(n == null ? "" : n).toLowerCase()
+                .replace(/[^a-z0-9_]/g, "_")
+                .replace(/^[^a-z]+/, "");
+      if (!s) return "";
+      if (s.indexOf("ga_") === 0 || s.indexOf("google_") === 0 ||
+          s.indexOf("firebase_") === 0 || GA_RESERVED[s] === 1) s = "fb_" + s;
+      return s.slice(0, 40);
+    } catch (e) { return ""; }
+  }
+
+  /* Parameters: <= 25 per event, names <= 40 chars on the same character set,
+     string values <= 100 chars. Anything GA4 would refuse is dropped rather
+     than sent malformed — a missing parameter is a gap in a report, a
+     malformed one is an event GA4 discards whole. */
+  function gaKey(k) {
+    try {
+      var s = String(k == null ? "" : k).toLowerCase()
+                .replace(/[^a-z0-9_]/g, "_")
+                .replace(/^[^a-z]+/, "");
+      if (!s) return "";
+      if (s.indexOf("ga_") === 0 || s.indexOf("google_") === 0 ||
+          s.indexOf("firebase_") === 0) s = "p_" + s;
+      return s.slice(0, 40);
+    } catch (e) { return ""; }
+  }
+
+  function gaParams(name, props) {
+    var out = {}, n = 0;
+    try {
+      if (!props) return out;
+      for (var k in props) {
+        if (!Object.prototype.hasOwnProperty.call(props, k)) continue;
+        if (n >= 24) break;                     /* one spare, always */
+        /* dwell_s is dwell_ms divided by a thousand. Sending both spends two
+           of the property's fifty custom-metric registrations on one fact. */
+        if (name === "card_view" && k === "dwell_s") continue;
+        var v = props[k];
+        if (v === null || v === undefined) continue;
+        var key = gaKey(k);
+        if (!key) continue;
+        if (typeof v === "boolean") { out[key] = v ? 1 : 0; n++; continue; }
+        if (typeof v === "number")  { if (isFinite(v)) { out[key] = v; n++; } continue; }
+        if (typeof v === "string")  { if (v) { out[key] = v.slice(0, 100); n++; } continue; }
+        if (Object.prototype.toString.call(v) === "[object Array]") {
+          var j = v.join("|");
+          if (j) { out[key] = j.slice(0, 100); n++; }
+          continue;
+        }
+        /* Objects and functions have no honest GA4 representation. */
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  function gaCapture(name, props) {
+    try {
+      if (gaOff) return;
+      var n = gaName(name);
+      if (!n) return;
+      var p = gaParams(String(name), props);
+      if (gaLog) { gaLog(n, p); return; }
+      if (gaQueue.length < GA_QUEUE_MAX) gaQueue.push([n, p]);
+    } catch (e) {}
+  }
+
+  try { gaBoot(); } catch (e) {}
+
+  /* ======================================================================
+     THE SEAM. Every event on the site arrives here and fans out to both
+     sinks. One function to change when a vendor goes.
+     ====================================================================== */
+
   function capture(name, props) {
     try {
       if (window.posthog && posthog.capture) posthog.capture(name, props || {});
     } catch (e) {}
+    try { gaCapture(name, props || {}); } catch (e) {}
   }
 
   /* ---- Bridge the events the site already names ------------------------ *
@@ -168,7 +406,12 @@
     });
     document.body.appendChild(d);
   }
-  setTimeout(notice, 2500);
+  /* The notice used to be shown here. It is not any more: a banner over a
+     full-screen painting is an interruption, and it asked a reader to
+     acknowledge something on a page they had not yet agreed to anything on.
+     What it said now lives where someone goes looking for it — the profile
+     links the privacy policy, which carries the real off switch. The
+     function stays defined so the behaviour is one line from returning. */
 
   window.FBQ = {
     capture: capture,
@@ -176,10 +419,33 @@
     optOut: function () {
       ls(OPTOUT_KEY, "1");
       try { if (window.posthog && posthog.opt_out_capturing) posthog.opt_out_capturing(); } catch (e) {}
+      /* GA4 is already loaded by the time this button can be pressed, so
+         "off" here means: stop logging now, drop anything still queued, and
+         set gtag's own kill switch so nothing revives it. On the next load
+         the early return at the top of this file means it never arrives at
+         all, which is what the privacy page promises. */
+      gaOff = true;
+      gaQueue = [];
+      try { window["ga-disable-" + MEASUREMENT_ID] = true; } catch (e) {}
     },
     optIn: function () {
       try { localStorage.removeItem(OPTOUT_KEY); } catch (e) {}
       try { if (window.posthog && posthog.opt_in_capturing) posthog.opt_in_capturing(); } catch (e) {}
-    }
+      gaOff = false;
+      try { window["ga-disable-" + MEASUREMENT_ID] = false; } catch (e) {}
+      try { if (!gaLog) gaBoot(); } catch (e) {}
+    },
+
+    /* Which sinks are actually live. For the render checks, and for anyone
+       asking whether the duplication is still running. */
+    sinks: function () {
+      var ph = false;
+      try { ph = !!(window.posthog && window.posthog.capture); } catch (e) {}
+      return { posthog: ph, firebase: !!gaLog && !gaOff };
+    },
+    /* The GA4 name a given event is reported under — the mapping, callable,
+       so FIREBASE-ANALYTICS.md can be checked rather than believed. */
+    gaName: gaName,
+    MEASUREMENT_ID: MEASUREMENT_ID
   };
 })();

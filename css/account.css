@@ -385,3 +385,15 @@ body{background:var(--ground); color:var(--parchment)}
 @media (prefers-reduced-motion:reduce){
   .jn-bar > i, .jn-day, .jn-yn{transition:none}
 }
+
+/* A way back in from anywhere in the funnel. Someone returning on a new phone
+   is not "signing up" — and without this their only visible route through is
+   to pay a second time. */
+.jn-haveacct{
+  margin:14px 0 0; text-align:center; font-size:.86rem;
+  color:var(--dimmer);
+}
+.jn-haveacct a{
+  color:var(--coral); font-weight:700; text-decoration:none;
+  display:inline-block; padding:9px 6px; min-height:var(--tap); line-height:26px;
+}

@@ -20,10 +20,39 @@
   .by{display:block;color:var(--dimmer);margin-top:3px}
   .wrap{overflow-x:auto}
 </style>
+<!-- The header's account control must not flash. This class makes its slot
+     invisible without collapsing it, so the row keeps its height from the
+     first paint and nothing shifts when auth finally answers. The timer
+     removes it unconditionally: a script that never runs, or throws, still
+     leaves a readable header rather than a hidden one. See css/app.css. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 <main class="doc">
   <p class="mark">FACTBOX</p>
+  <nav class="tabs" aria-label="Sections">
+    <a href="stories.html">Home</a>
+    <a href="explore.html">Explore</a>
+    <a href="library.html">Library</a>
+    <!-- Account. Signed out this is two links; signed in it is the reader's
+         name. Never both: the script sets hidden on every branch. -->
+    <span class="acct" id="fb-acct">
+      <a class="acct-in" id="fb-acct-in" href="login.html?next=credits.html">Sign in</a>
+      <a class="acct-up" id="fb-acct-up" href="login.html?next=credits.html">Sign up</a>
+      <a class="acct-me" id="fb-acct-me" href="account.html" hidden>Account</a>
+    </span>
+  </nav>
   <h1>Artwork credits</h1>
   <p>Season one runs on 361 plates across 450 cards, every one of them from
      Wikimedia Commons. 328 are public domain or public-domain equivalent.
@@ -56,7 +85,87 @@ derivative work</td><td class="l">Public domain<br><a href="https://commons.wiki
 （存活时间：未知）</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Genghis_Khan%EF%BC%88Ming_dynasty%EF%BC%89.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">44</td><td>Tiashing595</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:Mongol_Empire_at_its_extent.png" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">44</td><td>Rashid-al-Din Hamadani</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Hijra_Abyssinia_(Rashid_ad-Din).jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">44</td><td>Bernard Gagnon</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:Landscape_of_Kh%C3%B6vsg%C3%B6l_Province.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">44</td><td>14th-century artist</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Pursuit_by_Mongol_Warriors_(Diez_Albums).jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">44</td><td>AnonymousUnknown author</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:YuanEmperorAlbumGenghisFull.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">44</td><td>Jean Baptiste Bourguignon d&#x27;Anville</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:1784_D%27Anville_Wall_Map_of_Asia_-_Geographicus_-_Asia-anville-1794.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">44</td><td>Unknown authorUnknown author</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:YuanEmperorAlbumGenghisPortrait.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">45</td><td>Attributed to Albrecht Dürer</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Albrecht-Durer-Christ-with-the-doctors.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">45</td><td>Eugène Delacroix</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Eug%C3%A8ne_Delacroix_-_Christ_on_the_Sea_of_Galilee_-_Walters_37186.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">45</td><td>Albrecht Dürer</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:Albrecht_D%C3%BCrer,_Christ_among_the_Doctors,_c._1503-1504,_NGA_6708.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">45</td><td>Léonard Gaultier</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:L%C3%A9onard_Gaultier,_Mary_and_Joseph_Find_the_Boy_Jesus_in_the_Temple_with_the_Doctors,_probably_c._1576-1580,_NGA_48101.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">46</td><td>Abdul Qadir al-Rassam (1882 - 1952) – painter (Iraqi) Born in Baghdad, Iraq. Died in Bagh</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Abdul_Qadir_al-Rassam_-_River_Scene_on_the_Banks_of_the_Tigris_-_Google_Art_Project.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">46</td><td>Lucas Cranach the Elder</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Cranach_der_%C3%84ltere,_Lucas_-_Paradies,_Gal.-Nr._1908_A.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">46</td><td>Karl Spruner von Mertz</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:1865_Spruner_Map_of_Canaan_-_Mesopotamia_crop.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">46</td><td>Oursana</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Adam_and_Eve_-_Kunstgewerbemuseum_Berlin.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">46</td><td>Dodd, Mead, and Company</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Map_of_the_Ancient_Near_East.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">47</td><td>Matthias Grünewald</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Matthias_Gr%C3%BCnewald_-_The_Crucifixion_-_WGA10723.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">47</td><td>Byzantine medieval</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Cathedral_(Monreale)_-_Left_wing_transept_-_West_wall_-_Crucifixion.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">47</td><td>Crucifixion of Jesus Hosios Loukas</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Crucifixion_of_Jesus-Hosios_Loukas.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">47</td><td>Unknown authorUnknown author</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:CHRIST_PANTOCRATOR-SINAI(6th_Century).jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">47</td><td>Peter Paul Rubens</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Peter_Paul_Rubens_(1577-1640)_-_Christus_am_Kreuz_-_3242_-_F%C3%BChrermuseum.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">47</td><td>Internet Archive Book Images</td><td class="l">No restrictions<br><a href="https://commons.wikimedia.org/wiki/File:The_history_of_the_decline_and_fall_of_the_Roman_empire_(1909)_(14774972781).jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">48</td><td>Donal, donaldson</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:616_name_of_the_beast_with_ancient_greek_and_roman_numerals_combined.png" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">48</td><td>Unknown authorUnknown author</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Oxford,_Sackler_Library_Ms_LXIV_4499_(Papyrus_115)_Plate_3_verso_crop_Number_of_the_Beast_%CF%87%CE%B9%CF%9B_616.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">48</td><td>Unknown authorUnknown author</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Oxford,_Sackler_Library_Ms_LXIV_4499_(Papyrus_115)_Plate_1_verso_Rev_2,13%E2%80%9314;_3,10%E2%80%9312;_6,5%E2%80%936;_9,1%E2%80%935;_9,7%E2%80%9311.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">48</td><td>William Blake</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:The_number_of_the_beast_is_666_Philadelphia,_Rosenbach_Museum_and_Library.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">48</td><td>Unknown authorUnknown author</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Oxford,_Sackler_Library_Ms_LXIV_4499_(Papyrus_115)_Plate_2_recto_Rev_9,11%E2%80%9316;_9,18%E2%80%9321;_11,1%E2%80%936;_11,8%E2%80%9312.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">48</td><td>Albrecht Dürer</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:Albrecht_D%C3%BCrer,_The_Babylonian_Whore,_probably_c._1496-1498,_NGA_6684.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">49</td><td>Luca Signorelli</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Fra_angelico_luca_signorelli_orvieto.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">49</td><td>see filename or category</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Gentile_da_fabriano,_madonna_di_orvieto_prima_del_restauro.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">49</td><td>Luca Signorelli</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Luca_Signorelli_-_Portrait_of_an_Old_Man_-_Gem%C3%A4ldegalerie_Berlin.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">49</td><td>Luca Signorelli</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Duomo_Orvieto,_Resurrezione_della_carne,_particle.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">49</td><td>Luca Signorelli</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Signorelli_self.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">50</td><td>Reinhard Saczewski</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:R%C3%B6m._Republik-_M._Iunius_Brutus_und_L._Plaetorius_Cestianus_-_M%C3%BCnzkabinett,_Berlin_-_5475441.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">50</td><td>Jastrow</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Capitoline_Brutus_Musei_Capitolini_MC1183.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">50</td><td>Rijksmuseum</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:Reconstructie_van_het_Theater_van_Pompeius_te_Rome_Dimostrazione_dell_odierno_avanzo_del_teatro_di_Pompeo_(titel_op_object)_Archeologische_vondsten_in_en_rond_Rome_(serietitel)_Le_Antichit%C3%A0_Romane_(serietitel),_RP-P-OB-36.878.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">50</td><td>Vincenzo Camuccini</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:Assassination_of_Julius_Caesar_MET_87.12.171.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">50</td><td>Rijksmuseum</td><td class="l"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener" target="_blank">CC0</a><br><a href="https://commons.wikimedia.org/wiki/File:De_moord_op_Julius_Ceasar,_RP-T-2006-3.jpg" rel="noopener" target="_blank">source</a></td></tr><tr><td class="n">50</td><td>Vincenzo Camuccini</td><td class="l">Public domain<br><a href="https://commons.wikimedia.org/wiki/File:Vincenzo_Camuccini_(1771-1844)_-_The_Death_of_Julius_Caesar_-_318_-_Glasgow_Museums_Resource_Centre.jpg" rel="noopener" target="_blank">source</a></td></tr></tbody></table></div>
 
   <p style="margin-top:30px"><a class="ghost" href="stories.html">← All stories</a></p>
+  <p class="fine" style="margin-top:14px;text-align:left">
+    <a href="account.html">Account</a> · <a href="privacy.html">Privacy</a> ·
+    <a href="terms.html">Terms</a> · <a href="support.html">Support</a>
+  </p>
 </main>
+<!-- js/auth.js is a module, so the browser defers it: it runs after the
+     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
+     is in. The ES5 block below therefore cannot read window.FBU at the moment
+     it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
+<script type="module" src="js/auth.js"></script>
+<script>
+/* The header account control. ES5, every lookup guarded, and it cannot throw:
+   the worst case is the signed-out pair staying on screen, which is what the
+   markup already says. */
+(function () {
+  "use strict";
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+
+  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
+                                      .replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  /* A display name is text the reader typed, going straight into the header,
+     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
+     rule the rest of the site follows: no error code, ever, on screen. */
+  function label(FBU) {
+    var s = "";
+    try { s = String(FBU.name() || ""); } catch (e) {}
+    if (!s) {
+      var m = "";
+      try { m = String(FBU.email() || ""); } catch (e2) {}
+      var at = m.indexOf("@");
+      s = at > 0 ? m.slice(0, at) : "";
+    }
+    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "Account";
+    if (s.indexOf("auth/") !== -1) return "Account";
+    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
+    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
+  }
+
+  function paint(FBU) {
+    var inNow = false;
+    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
+    if (inNow) {
+      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
+      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+    } else {
+      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+    }
+    reveal();
+  }
+
+  function whenFBU(cb) {
+    var done = false;
+    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    try {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
+      else setTimeout(go, 0);
+    } catch (e) {}
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  whenFBU(function (FBU) {
+    /* No FBU at all — the file 404'd, or this webview ignores type="module".
+       That is the signed-out header, which links to a page that explains it. */
+    if (!FBU) { paint(null); return; }
+    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
+    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
+  });
+})();
+</script>
 <script src="js/analytics.js"></script>
 </body>
 </html>
