@@ -198,6 +198,21 @@ is mirrored to a first-party cookie because in-app webviews wipe localStorage.
 Stripe: a hosted Payment Link (no server, no API key). Success URL must be
 `https://factbox.app/stories.html?unlocked=1&session_id={CHECKOUT_SESSION_ID}`.
 
+### Owner access
+`unlock.html` + `js/owner.js` let the owner past the paywall without paying.
+It compares a SHA-256 of a typed passphrase against a digest in the file, and
+on success sets the same unlock flag a purchase would. `?k=<phrase>` on that
+page does it in one tap.
+
+**It is convenience, not security, and cannot be otherwise.** The digest ships
+to the browser, and the full text of all 51 stories is already public in
+`data/stacks.json`, so this gates nothing that was not already open. It exists
+so the owner can read everything on a new phone and so a demo needs no
+checkout. `unlock.html` is `noindex` and linked from nowhere.
+
+Change the passphrase by replacing `DIGEST` in `js/owner.js` with
+`python3 -c "import hashlib;print(hashlib.sha256(b'new-phrase').hexdigest())"`.
+
 ---
 
 ## 10. File ownership

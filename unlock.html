@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Owner access</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0E0B12">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .doc{max-width:460px;margin:0 auto;padding:var(--top-safe) 20px var(--bottom-safe);
+       min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;gap:14px}
+  .doc h1{font-size:clamp(1.6rem,6vw,2rem);font-weight:850;margin:0;letter-spacing:-.015em}
+  .doc p{margin:0;color:var(--dim);line-height:1.55;font-size:.95rem}
+  form{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  input[type=password],input[type=text]{
+    width:100%;padding:14px;border:0;border-radius:12px;
+    background:rgba(255,247,237,.07);color:var(--parchment);
+    font-family:var(--ui);font-size:1rem;min-height:var(--tap);
+  }
+  .msg{font-size:.9rem;font-weight:650;min-height:1.2em}
+  .msg.bad{color:#FF9E86}
+  .msg.good{color:var(--mint,#8FDCA8)}
+  .note{margin-top:20px;padding:14px;border-radius:14px;background:var(--raise);
+        box-shadow:inset 0 0 0 1px var(--hair)}
+  .note b{display:block;font-size:.9rem;font-weight:800;margin-bottom:6px}
+  .note p{font-size:.83rem;color:var(--dimmer);line-height:1.55}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row a{flex:1;text-align:center}
+</style>
+</head>
+<body>
+<main class="doc">
+  <p class="mark">FACTBOX</p>
+  <h1 id="head">Owner access</h1>
+  <p id="lede">Enter the owner passphrase to read everything without paying.</p>
+
+  <form id="f" autocomplete="off">
+    <input id="k" type="password" inputmode="text" autocapitalize="off"
+           autocorrect="off" spellcheck="false" placeholder="Passphrase"
+           aria-label="Owner passphrase">
+    <button class="go" type="submit">Unlock</button>
+  </form>
+  <p class="msg" id="m" role="status" aria-live="polite"></p>
+
+  <div class="row" id="links" hidden>
+    <a class="ghost" href="stories.html">Home</a>
+    <a class="ghost" href="explore.html">Explore</a>
+    <a class="ghost" href="library.html">Library</a>
+  </div>
+
+  <div class="note">
+    <b>This is convenience, not security.</b>
+    <p>The site is static files, so this check runs in the browser and the
+       passphrase digest ships with the page. Anyone determined can get past it,
+       and the full text of every story is already public in the site's data
+       file. It exists so you can read everything on a new phone without paying,
+       not to keep anyone out. Real protection needs a server.</p>
+  </div>
+</main>
+
+<script src="js/progress.js"></script>
+<script src="js/gate.js"></script>
+<script src="js/owner.js"></script>
+<script>
+(function () {
+  var f = document.getElementById("f"),
+      k = document.getElementById("k"),
+      m = document.getElementById("m"),
+      links = document.getElementById("links");
+
+  function showOwner() {
+    document.getElementById("head").textContent = "You are signed in";
+    document.getElementById("lede").textContent =
+      "Every story is unlocked in this browser.";
+    f.hidden = true;
+    links.hidden = false;
+    m.className = "msg good";
+    m.textContent = "Owner access is on.";
+    var out = document.createElement("button");
+    out.className = "go";
+    out.type = "button";
+    out.style.marginTop = "10px";
+    out.textContent = "Sign out of owner access";
+    out.addEventListener("click", function () {
+      FBO.revoke();
+      location.reload();
+    });
+    links.parentNode.insertBefore(out, links.nextSibling);
+  }
+
+  /* A bookmarked ?k=<phrase> unlocks in one tap. */
+  try { FBO.claimFromURL(); } catch (e) {}
+
+  if (FBO.isOwner()) { showOwner(); return; }
+
+  f.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (FBO.check(k.value)) {
+      FBO.grant();
+      if (window.FB && FB.track) FB.track("owner_unlock");
+      showOwner();
+    } else {
+      m.className = "msg bad";
+      m.textContent = "That passphrase is not right.";
+      k.select();
+    }
+  });
+})();
+</script>
+</body>
+</html>
