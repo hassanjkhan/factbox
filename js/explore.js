@@ -476,7 +476,9 @@
 
     if (!window.FB || !FB.load) { fail(); return; }
 
-    OPEN = unlocked();
+    /* Deliberately not read here. This runs before the account has answered,
+       so reading it now paints padlocks over stories the reader has paid for.
+       It is set inside the load below, after FBX.ready() has settled. */
 
     if (buybar) buybar.hidden = OPEN;
     var pay = el("pay");
@@ -527,8 +529,12 @@
       } catch (e) {}
     }
 
-    FB.load().then(function (stacks) {
+    var _wait = (window.FBX && FBX.ready) ? FBX.ready() : Promise.resolve();
+    Promise.all([FB.load(), _wait]).then(function (_r) {
+      var stacks = _r[0];
       try {
+        OPEN = unlocked();
+        if (buybar) buybar.hidden = OPEN;
         STACKS = (stacks && stacks.length) ? stacks : [];
         if (!STACKS.length) { fail(); return; }
         buildIndex();

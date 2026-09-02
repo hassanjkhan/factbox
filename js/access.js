@@ -160,8 +160,22 @@ var FBX = (function () {
     try { ready().then(announce); } catch (e) {}
   })();
 
+  /* Render once the answer is known, and again if it changes. Every shelf
+     wants exactly this, and hand-rolling it per page is how three surfaces
+     ended up disagreeing about when access was knowable. */
+  function paint(fn) {
+    if (typeof fn !== "function") return;
+    ready().then(function () {
+      try { fn(can(), why()); } catch (e) {}
+      onChange(function (allowed, reason) {
+        try { fn(allowed, reason); } catch (e) {}
+      });
+    });
+  }
+
   return {
     ready: ready,
+    paint: paint,
     can: can,
     why: why,
     isAdmin: isAdmin,

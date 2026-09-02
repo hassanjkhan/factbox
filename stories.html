@@ -78,7 +78,16 @@
 (function () {
   var shelf = document.getElementById("shelf");
   var bar   = document.getElementById("buybar");
-  var open  = FB.unlocked();
+  var open = false;
+
+  /* One clock. FBX.ready() settles when access is genuinely knowable — after
+     the subscription snapshot, not just after sign-in. Rendering before it
+     paints padlocks over stories the reader has paid for. */
+  function whenAccess() {
+    try { if (window.FBX && FBX.ready) return FBX.ready(); } catch (e) {}
+    return Promise.resolve();
+  }
+
 
   function card(s) {
     var locked = !s.free && !open;
@@ -110,7 +119,9 @@
            '<div class="grid">' + items.map(card).join("") + '</div>';
   }
 
-  FB.load().then(function (stacks) {
+  Promise.all([FB.load(), whenAccess()]).then(function (_r) {
+    var stacks = _r[0];
+    open = FB.unlocked();
     var free   = stacks.filter(function (s) { return s.free; });
     var rest   = stacks.filter(function (s) { return !s.free; });
 
@@ -172,6 +183,14 @@
     shelf.innerHTML = '<p class="fine" style="margin-top:28px">' +
       "Could not load the stories. Check your connection and reload." + '</p>';
   });
+
+  try {
+    if (window.FBX && FBX.onChange) {
+      FBX.onChange(function (allowed) {
+        if (allowed && !open) location.reload();
+      });
+    }
+  } catch (e) {}
 
   document.getElementById("pay").addEventListener("click", function () {
     FB.checkout(this, "home");
