@@ -96,9 +96,17 @@ var FB = (function () {
     return out;
   }
 
+  /* Half-minute steps, because whole minutes hide the story.
+
+     Every story here runs between about 90 seconds and two and a half minutes,
+     so rounding to the nearest minute labelled 49 of 51 of them "2 min" — the
+     one number a reader wants from that line, carrying no information at all.
+     Half-minutes are the honest maximum resolution for content this length. */
   function minutes(secs) {
-    var m = Math.max(1, Math.round((secs || 0) / 60));
-    return m + " min";
+    var halves = Math.max(1, Math.round((Number(secs) || 0) / 30));
+    var whole = Math.floor(halves / 2);
+    if (whole === 0) return "\u00bd min";
+    return whole + (halves % 2 ? "\u00bd" : "") + " min";
   }
 
   return { PAY_URL: PAY_URL, unlocked: unlocked, checkout: checkout,
