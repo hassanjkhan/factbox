@@ -37,10 +37,15 @@
 /* The pane is a scroll-snap child of the reader deck. Nothing here changes
    scroll-snap-align, height, or the deck's snap type. */
 
-.pane.rec h2{margin:0 0 2px}
+/* Nothing made of words may shrink. .pane.rec is a flex column, so when the
+   content runs close to the height available the browser takes it out of
+   whichever children will give — and a paragraph that gives loses a line off
+   the bottom, mid-sentence, with no ellipsis to say so. flex:none on the text
+   means a tight pane scrolls instead, which it is built to do. */
+.pane.rec h2{margin:0 0 2px; flex:none}
 
 .rec-lede{
-  margin:0; color:var(--dim);
+  margin:0; color:var(--dim); flex:none;
   font-size:.98rem; line-height:1.5;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;
