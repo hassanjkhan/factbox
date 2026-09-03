@@ -1,0 +1,151 @@
+/* ==========================================================================
+   Factbox — Today.
+
+   The front door. It answers one question ("what should I read right now?")
+   and only then offers browsing, which is why Explore is not a separate
+   destination any more: its shelves are the bottom of this page.
+
+   Additive. It reuses .lib, .mast, .tabs, .card, .plate, .go and .fine from
+   app.css and paints on top. Phone-first; every width above that is handled by
+   letting shelves gain COLUMNS rather than letting two cards stretch across a
+   laptop, which is what "stretch to fit" looks like when it is taken too
+   literally.
+   ========================================================================== */
+
+.td{display:flex; flex-direction:column; gap:22px}
+
+.td-h1{
+  font-size:clamp(1.62rem,6.2vw,2.15rem); font-weight:850; margin:0;
+  line-height:1.13; letter-spacing:-.022em; text-wrap:balance;
+}
+.td-sub{margin:0; font-size:1rem; line-height:1.5; color:var(--dim); max-width:62ch}
+
+/* The streak line. Numbers a reader collects, stated once, small. */
+.td-stats{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.td-streak{display:inline-flex; align-items:center; gap:6px; color:var(--coral);
+  font-size:.95rem; font-weight:850}
+.td-dot{width:3px; height:3px; border-radius:999px; background:rgba(255,247,237,.3)}
+.td-stat{font-size:.95rem; font-weight:750; color:var(--dim)}
+
+/* --------------------------------------------------------------------------
+   The hero. One story, given room: art, then the words under it.
+
+   Above 760px it becomes art BESIDE words — a 3:4 painting at full laptop
+   width would be a metre tall. The plate keeps its own aspect either way; no
+   crop of a portrait painting is invented to fill a wide box.
+   -------------------------------------------------------------------------- */
+.td-hero{
+  display:flex; flex-direction:column;
+  border-radius:20px; overflow:hidden; background:var(--raise);
+  box-shadow:0 10px 28px rgba(0,0,0,.5), inset 0 0 0 1px var(--hair);
+  text-decoration:none; color:var(--parchment);
+}
+.td-hero-art{
+  width:100%; aspect-ratio:3/4; overflow:hidden; flex:none;
+  /* A 3:4 painting at phone width is 450px tall, which puts the hook and the
+     button below the fold — the reader scrolls past a picture to find out
+     whether they want it. Capped so the sell and the tap are both on screen;
+     object-fit:cover takes the crop off the top and bottom, where these
+     paintings carry the least. */
+  max-height:38vh;
+}
+.td-hero-art img{width:100%; height:100%; object-fit:cover; object-position:center 30%}
+.td-hero-body{padding:18px 20px 20px; display:flex; flex-direction:column; gap:9px}
+.td-eyebrow{
+  font-size:.72rem; font-weight:850; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--coral); margin:0;
+}
+.td-hook{
+  margin:0; font-size:1.24rem; font-weight:850; line-height:1.2; letter-spacing:-.015em;
+}
+.td-meta{
+  margin:0; font-size:.84rem; font-weight:650; color:var(--dimmer);
+  font-variant-numeric:tabular-nums;
+}
+.td-hero .go{margin-top:5px}
+
+/* Resume: the same hero with a bar across it. */
+.td-bar{display:flex; align-items:center; gap:10px; margin-top:2px}
+.td-bar-t{flex:1 1 auto; height:6px; border-radius:999px; background:rgba(255,247,237,.18); overflow:hidden}
+.td-bar-t i{display:block; height:100%; border-radius:999px; background:var(--coral)}
+
+/* --------------------------------------------------------------------------
+   Shelves. One row on a phone that you push sideways; a grid that gains
+   columns once there is room for them.
+   -------------------------------------------------------------------------- */
+.td-sec{display:flex; flex-direction:column; gap:12px}
+.td-sec h2{
+  margin:0; font-size:1.16rem; font-weight:850; letter-spacing:-.012em;
+}
+.td-sec h2 span{font-size:.84rem; font-weight:700; color:var(--dimmer); margin-left:9px}
+
+.td-shelf{
+  display:flex; gap:13px; overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; margin:0 -18px; padding:0 18px 2px;
+}
+.td-shelf::-webkit-scrollbar{display:none}
+.td-tile{flex:0 0 214px; width:214px; scroll-snap-align:start; text-align:left}
+.td-tile .plate{width:100%; border-radius:13px}
+.td-tile .plate img{object-position:center 32%}
+.td-cat{
+  display:block; margin-top:8px;
+  font-size:.66rem; font-weight:850; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--coral);
+}
+.td-tile b{
+  display:block; margin-top:4px;
+  font-size:1.04rem; font-weight:800; line-height:1.24; letter-spacing:-.008em;
+  /* Three lines, then ellipsis. The hook is the sell, so it gets the room the
+     title used to have, but a 300-character hook cannot own the shelf. */
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+}
+.td-tile .td-meta{margin-top:5px}
+
+/* Obsessions. */
+.td-chips{display:flex; flex-wrap:wrap; gap:9px}
+.td-chip{
+  display:inline-flex; align-items:center; min-height:46px; padding:0 17px;
+  border-radius:var(--pill); font-size:.98rem; font-weight:780;
+  color:var(--parchment); text-decoration:none;
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+
+/* Series rows, with how far in you are. */
+.td-series{display:flex; flex-direction:column; gap:10px}
+.td-row{
+  display:flex; align-items:center; gap:13px; padding:10px;
+  border-radius:16px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  text-decoration:none; color:var(--parchment);
+}
+.td-row .plate{width:64px; flex:0 0 64px; border-radius:11px}
+.td-row-t{display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 1 auto}
+.td-row-t b{font-size:1.06rem; font-weight:830; line-height:1.2; letter-spacing:-.01em}
+.td-chev{flex:0 0 auto; color:var(--dimmer)}
+
+/* Search, last: it is for someone who already knows what they want. */
+.td-search{
+  display:flex; align-items:center; gap:10px; min-height:var(--tap); padding:0 16px;
+  border-radius:var(--pill); color:var(--dimmer); text-decoration:none;
+  box-shadow:inset 0 0 0 1px var(--hair); font-size:.94rem; font-weight:650;
+}
+
+/* --------------------------------------------------------------------------
+   Wider than a phone. Shelves stop being a single pushed row and become a
+   grid; the hero lays art beside words. Nothing is re-cropped to fill space.
+   -------------------------------------------------------------------------- */
+@media (min-width:760px){
+  .td-hero{flex-direction:row; align-items:stretch}
+  .td-hero-art{width:300px; flex:0 0 300px; aspect-ratio:3/4; max-height:none}
+  .td-hero-body{justify-content:center; padding:34px 38px; gap:11px}
+  .td-hook{font-size:1.5rem}
+  .td-hero .go{width:auto; min-width:260px; align-self:flex-start}
+
+  .td-shelf{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(228px,1fr));
+    gap:20px; overflow:visible; margin:0; padding:0;
+  }
+  .td-tile{flex:none; width:auto}
+  .td-series{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px}
+}
