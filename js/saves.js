@@ -458,6 +458,30 @@ var FBS = (function () {
              in and emptying again a second later. Same dimmed treatment as a
              dead store: the icon stays, because a control that vanishes reads
              as a bug. */
+          /* Signed out is not the same as broken.
+
+             This used to grey the button out and say, in a tooltip nobody on a
+             phone can open, "Sign in to save stories to your library." A reader
+             who wants to save a story was told no by a control that looked
+             dead, with the way to say yes hidden inside an attribute. So the
+             signed-out button is live now and takes them to sign in — the tap
+             does something, which is the whole point of a button.
+
+             The genuinely dead cases below are different and stay dead: no
+             story to save, or a browser that refuses to remember anything.
+             Nothing the reader does will change either. */
+          if (!_visible && _lsOK && k) {
+            b.disabled = false;
+            b.removeAttribute("aria-disabled");
+            b.removeAttribute("aria-pressed");
+            b.innerHTML = mark(false);
+            b.title = "Sign in to save this story";
+            b.setAttribute("aria-label", b.title);
+            b.style.cssText = BASE +
+              "background:rgba(20,16,26,.86);color:#FFF7ED;" +
+              "border:1px solid rgba(255,247,237,.22);";
+            return;
+          }
           if (!_lsOK || !k || !_visible) {
             b.disabled = true;
             b.setAttribute("aria-disabled", "true");
@@ -494,7 +518,20 @@ var FBS = (function () {
       try {
         b.addEventListener("click", function () {
           try {
-            if (!_lsOK || !k || !_visible) return;
+            /* Signed out: this is the sign-in button. Carry where they are so
+               they come back to the story rather than to a home page — the
+               same next= the account insignia uses. */
+            if (!_visible && _lsOK && k) {
+              var back = "";
+              try {
+                var pth = String(location.pathname || "").replace(/^\/+/, "") +
+                          String(location.search || "");
+                if (/^[A-Za-z0-9._~\/?=&-]{0,96}$/.test(pth)) back = encodeURIComponent(pth);
+              } catch (x) {}
+              try { location.href = "/login" + (back ? "?next=" + back : ""); } catch (x2) {}
+              return;
+            }
+            if (!_lsOK || !k) return;
             var on = toggle(k);
             paint();
             if (typeof onChange === "function") onChange(on, k);
