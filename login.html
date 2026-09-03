@@ -437,7 +437,13 @@
 
   function paint() {
     reveal();
-    show(wait, false);
+    /* The bar finishes rather than blinking out. It is lifted from the row
+       first, so nothing below it waits on the animation. */
+    try {
+      if (window.FBLoad && FBLoad.done && wait) {
+        FBLoad.done(wait, function () { show(wait, false); });
+      } else { show(wait, false); }
+    } catch (e) { show(wait, false); }
     if (!FBU) { show(pMain, false); show(pSigned, false); show(pDead, true); return; }
     show(pDead, false);
 

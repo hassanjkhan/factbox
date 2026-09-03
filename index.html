@@ -133,8 +133,17 @@
         '</a>';
     }
 
+    /* The waiting bar finishes over the top instead of vanishing mid-crawl;
+       FBLoad.done lifts it out first, so the grid is not held up. */
+    function fin(host, fn) {
+      try { if (window.FBLoad && FBLoad.done) { FBLoad.done(host, fn); return; } } catch (e) {}
+      fn();
+    }
+
     if (open) {
-      shelf.innerHTML = resume + section("All stories", stacks.length + " in season one", stacks);
+      fin(shelf, function () {
+        shelf.innerHTML = resume + section("All stories", stacks.length + " in season one", stacks);
+      });
       bar.hidden = true;
       document.getElementById("blurb").textContent =
         "You have all fifty-one. New stories are added through the season.";
@@ -167,9 +176,11 @@
         });
       }
     } else {
-      shelf.innerHTML = resume +
-        section("Start here", "free", free) +
-        section("The rest of season one", rest.length + " stories", rest);
+      fin(shelf, function () {
+        shelf.innerHTML = resume +
+          section("Start here", "free", free) +
+          section("The rest of season one", rest.length + " stories", rest);
+      });
       bar.hidden = false;
     }
     FB.track("library_view");

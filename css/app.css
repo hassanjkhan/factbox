@@ -550,12 +550,22 @@ html.fb-hdr .acct{visibility:hidden}
   background:linear-gradient(90deg,
     var(--coral,#FF7A5C) 0%, #FFC08A 45%, var(--coral,#FF7A5C) 100%);
   background-size:220% 100%;
-  animation:fbload-grow 3.2s cubic-bezier(.12,.72,.22,1) forwards,
+  /* 1.8s, not 3.2s. Pagination and the gate fix put first content on screen
+     at around 900ms, so the old curve was still down at a third of the track
+     when the content arrived — a bar that never got anywhere before it was
+     replaced. This one is convincingly along by then and still has somewhere
+     left to go if the network is having a bad day. */
+  animation:fbload-grow 1.8s cubic-bezier(.1,.78,.2,1) forwards,
             fbload-shine 1.5s linear infinite;
 }
 @keyframes fbload-grow{
-  0%{width:4%} 18%{width:34%} 42%{width:58%} 70%{width:78%} 100%{width:92%}
+  0%{width:6%} 18%{width:42%} 45%{width:66%} 72%{width:82%} 100%{width:92%}
 }
+
+/* Finishing, driven by FBLoad.done(): the fill is run to 100% from script and
+   the whole block fades once it lands. */
+.fbload.is-done{opacity:0; pointer-events:none;
+  transition:opacity 130ms ease 150ms}
 @keyframes fbload-shine{ to{ background-position:-220% 0 } }
 
 .fbload-say{

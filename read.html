@@ -258,8 +258,13 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
       '<a class="ghost" href="/stories">All stories</a></section>';
   }
 
+  function fin(host, fn) {
+    try { if (window.FBLoad && FBLoad.done) { FBLoad.done(host, fn); return; } } catch (e) {}
+    fn();
+  }
+
   function showPaywall(s) {
-    deck.innerHTML = paywall(s);
+    fin(deck, function () { deck.innerHTML = paywall(s); });
     document.getElementById("pay").addEventListener("click", function () {
       FB.checkout(this, "paywall");
     });
@@ -290,7 +295,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     h1.textContent = s.title;
     document.body.insertBefore(h1, document.body.firstChild);
 
-    deck.innerHTML = html;
+    fin(deck, function () { deck.innerHTML = html; });
     FB.track("stack_open", { stack: s.id });
 
     /* Saving lives beside the back button: the two things you do to a story

@@ -237,6 +237,14 @@
         'factbox.app in Safari or Chrome fixes it.</p>';
     }
 
+    /* Let the waiting bar finish over the top rather than vanish mid-crawl.
+       It is lifted out of the shelf first, so this is not delayed. */
+    try {
+      if (window.FBLoad && FBLoad.done) {
+        FBLoad.done(shelf, function () { shelf.innerHTML = html; });
+        return;
+      }
+    } catch (e) {}
     shelf.innerHTML = html;
   }
 

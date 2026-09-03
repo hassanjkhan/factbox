@@ -186,12 +186,22 @@
   /* The first paint. Free stories first, then the rest — which is also the
      order the stacks already come in, so the open view is the same grid with
      one heading instead of two and nothing moves. */
+  /* The waiting bar gets to finish rather than just stop. FBLoad.done lifts it
+     out of the shelf and runs it to 100% over the top, so the grid below is
+     not delayed by it. Without the module, the grid simply appears. */
+  function fin(host, fn) {
+    try { if (window.FBLoad && FBLoad.done) { FBLoad.done(host, fn); return; } } catch (e) {}
+    fn();
+  }
+
   function draw() {
     var free = STACKS.filter(function (s) { return s.free; });
     var rest = STACKS.filter(function (s) { return !s.free; });
-    shelf.innerHTML = resumeHTML() +
-      section("free", "Start here", "free", free) +
-      section("rest", "The rest of season one", rest.length + " stories", rest);
+    fin(shelf, function () {
+      shelf.innerHTML = resumeHTML() +
+        section("free", "Start here", "free", free) +
+        section("rest", "The rest of season one", rest.length + " stories", rest);
+    });
   }
 
   function cards() {

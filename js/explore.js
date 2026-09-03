@@ -398,6 +398,15 @@
 
     if (!q && !FTYPE) {
       if (tally) tally.textContent = count(STACKS.length) + " in season one";
+      /* Only the first paint has a waiting bar under it; every keystroke after
+         that redraws this same node, and FBLoad.done is a no-op once the bar
+         is gone. */
+      try {
+        if (window.FBLoad && FBLoad.done) {
+          FBLoad.done(view, function () { view.innerHTML = browse(); });
+          return;
+        }
+      } catch (e) {}
       view.innerHTML = browse();
       return;
     }
