@@ -25,9 +25,20 @@
       only works if the buyer still has it — which is why it is minted at
       purchase, stored, and rebuildable from FBP.restoreURL() forever after.
 
-   4. Reading memory is per-browser too, and is never sent anywhere. Clearing
-      site data loses it. That is the correct trade for a site with no
-      accounts: nothing to leak, nothing to breach.
+   4. Reading memory is no longer per-browser for a reader with an account.
+      js/progress-sync.js mirrors it to customers/{uid}/profile/reading, so
+      it follows the person rather than the phone. localStorage is now a
+      CACHE of that document, not the record. Two things follow, and both
+      are load-bearing:
+
+        - the cache is TAGGED with the uid it came from (K_OWNER). A map
+          tagged with an account is not shown to a different account, and is
+          not shown to a signed-out visitor. That is the whole of the bug
+          this was written for: a shared browser wearing the last reader's
+          blue ticks.
+        - a reader with no account still gets everything they had before.
+          Untagged progress is theirs, stays local, is never sent anywhere,
+          and is never cleared by anything here.
 
    Design rules this file obeys without exception:
    - It must never throw. Every storage read, every storage write, every
@@ -47,6 +58,8 @@ var FBP = (function () {
   var K_TOKEN  = "fb_pass_v1";      /* the restore token, so the link is rebuildable */
   var K_SRC    = "fb_passsrc_v1";   /* where access came from: stripe | restore | local */
   var K_READ   = "fb_read_v1";      /* the whole reading memory, one key, JSON */
+  var K_OWNER  = "fb_cache_owner_v1"; /* whose personal state this browser holds.
+                                         js/saves.js reads the same key. */
 
   var CANON        = "https://factbox.app";
   var MAX_ENTRIES  = 60;      /* 51 stacks today; room to grow, still tiny */
@@ -274,7 +287,7 @@ var FBP = (function () {
   function restoreURL() {
     var t = token();
     if (!t) return null;
-    return origin() + "/stories.html?restore=" + encodeURIComponent(t);
+    return origin() + "/explore?restore=" + encodeURIComponent(t);
   }
 
   /* Force-unlock, e.g. from a support code the lead pastes in. */
@@ -301,6 +314,12 @@ var FBP = (function () {
      is a byte closer to a quota error on a webview with a small budget.
      done is stored rather than derived: a stack's card count changes when the
      story is edited, and a finished read should stay finished. */
+
+  /* Whether the memory below may be SHOWN. See the gate section further
+     down; declared here because rec() consults it. Default false: the safe
+     direction is an empty shelf that fills in, never someone else's ticks
+     that fade out. */
+  var _visible = false;
 
   var _mem = null;     /* the parsed map, in memory */
   var _dirty = false;
@@ -413,7 +432,9 @@ var FBP = (function () {
       if (r[1] > 0 && r[0] >= r[1] - 1) r[3] = 1;
       m[k] = r;
       _seq[k] = ++_seqN;
+      _reading = true;
       schedule();
+      notify("local");
       return true;
     } catch (e) { return false; }
   }
@@ -432,7 +453,9 @@ var FBP = (function () {
       r[3] = 1;
       m[k] = r;
       _seq[k] = ++_seqN;
+      _reading = true;
       flush();
+      notify("local");
       return true;
     } catch (e) { return false; }
   }
@@ -444,6 +467,7 @@ var FBP = (function () {
   }
 
   function rec(k) {
+    if (!_visible) return null;          /* not this viewer's memory */
     var r = mem()[k];
     if (!r) return null;
     return { card: r[0], total: r[1], done: !!r[3], at: r[2] * 1000,
@@ -457,8 +481,12 @@ var FBP = (function () {
   function all() {
     var out = {};
     try {
-      var m = mem(), k;
-      for (k in m) { if (Object.prototype.hasOwnProperty.call(m, k)) out[k] = rec(k); }
+      var m = mem(), k, r;
+      for (k in m) {
+        if (!Object.prototype.hasOwnProperty.call(m, k)) continue;
+        r = rec(k);
+        if (r) out[k] = r;
+      }
     } catch (e) {}
     return out;
   }
@@ -523,8 +551,317 @@ var FBP = (function () {
     } catch (e) { return null; }
   }
 
+  /* --- whose memory is this? ----------------------------------------------
+
+     THE BUG THIS EXISTS FOR. Reading memory used to be one localStorage key
+     and nothing else, so it belonged to the BROWSER. On a shared phone the
+     shelf showed blue "Finished" ticks to a signed-out visitor who had never
+     opened those stories: they were the last reader's, and signing out of
+     Firebase does not touch localStorage.
+
+     The fix is one string. K_OWNER records which account the map in K_READ
+     was last reconciled with:
+
+       ""          nobody's yet — read signed out, on this device only.
+                   This is the common case and it is never touched by any of
+                   the account machinery. A reader with no account keeps
+                   exactly what they had before this file changed.
+       "<uid>"     this map has been reconciled with that account.
+
+     js/progress-sync.js is the only caller that sets it. Everything below is
+     storage plumbing; the merge policy lives over there, next to the network
+     call it needs, so this file stays offline-only and cannot fail to load a
+     page because Firestore was slow.
+     ---------------------------------------------------------------------- */
+
+  /* --- the gate: may this memory be shown? --------------------------------
+
+     THE RULE, from the owner, verbatim: "If someone's not even authorized,
+     like they're not even logged in, then the UI should not have anything in
+     the finished story."
+
+     So personal state is shown to a signed-in account and to nobody else.
+     _visible is that answer. It starts false and is set three ways:
+
+       1. the HINT, below, synchronously at load, so a returning reader's
+          shelf is correct on the FIRST paint rather than a beat later;
+       2. js/progress-sync.js calling show(), once Firebase has actually
+          answered who this is — that is the authoritative one;
+       3. clear(), on sign-out, which empties the cache as well as hiding it.
+
+     WHY A HINT AT ALL. Firebase takes roughly 600ms to say who someone is,
+     because it fetches 200KB of SDK first. Neither of the two obvious things
+     to do in that window is acceptable on its own:
+
+       paint the cache   the shared browser flashes the last reader's blue
+                         ticks. That is the reported bug, briefly.
+       paint nothing     safe, but every returning reader's shelf blinks, and
+                         the pages that draw progress do not repaint
+                         themselves yet.
+
+     So we ask, synchronously, whether Firebase HAS A LIVE SESSION for the uid
+     that owns this cache. Not whether they may read anything — that is
+     js/access.js's job and this file does not touch it — only whether the
+     ticks about to be drawn belong to whoever is holding the phone.
+
+     THREE PLACES THAT ANSWER, and they are tried in that order because that
+     is the order of how cheap they are, not how much they are trusted; all
+     three are Firebase's own record of its own session, and all three fail to
+     the same safe answer.
+
+       1. sessionStorage. Written by js/progress-sync.js the moment FBU
+          confirms a uid, and gone when the tab closes. Exact, free, and it
+          makes every navigation after the first one in a tab instant.
+       2. localStorage, key prefix "firebase:authUser:". Where Firebase Auth
+          persists the user when IndexedDB is unavailable — private mode, and
+          several in-app webviews.
+       3. IndexedDB, database "firebaseLocalStorageDb". Where it persists by
+          default, which means this is the normal case on a returning reader's
+          first page load. Asynchronous, so it cannot inform the very first
+          statement of a render — but it is a local read of a tiny store and
+          it usually lands before the shelf has finished fetching its JSON,
+          which is what it is racing. When it loses that race the shelf paints
+          empty and fills in; it never paints somebody else's.
+
+     Points 2 and 3 read a store Firebase owns and whose layout is Firebase's
+     business, not ours. That is a deliberate, bounded coupling: it is read
+     only, it is wrapped, and if a future SDK renames either of them the hint
+     simply stops finding a session. Every shelf then paints empty for 600ms
+     and fills in correctly, which is the same behaviour as a reader whose
+     IndexedDB is slow. A hint that has gone stale cannot leak anything
+     either, because it can only turn the cache on for the uid that ALREADY
+     OWNS IT — and if the session it found turns out to be revoked, FBU says
+     so within a second and js/progress-sync.js takes the ticks back off the
+     screen.
+     ---------------------------------------------------------------------- */
+
+  var AUTH_HINT_PREFIX = "firebase:authUser:";
+  var K_LIVE = "fb_live_v1";        /* sessionStorage: this tab saw this uid */
+  var IDB_DB = "firebaseLocalStorageDb";
+  var IDB_STORE = "firebaseLocalStorage";
+
+  function liveUid() {
+    try { return String(sessionStorage.getItem(K_LIVE) || ""); } catch (e) { return ""; }
+  }
+
+  /* Called by js/progress-sync.js once FBU has actually confirmed the uid, so
+     the next page in this tab does not have to wait 600ms to find out again. */
+  function noteLive(uid) {
+    try {
+      if (uid) sessionStorage.setItem(K_LIVE, String(uid));
+      else sessionStorage.removeItem(K_LIVE);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function hintUid() {
+    var v = liveUid();
+    if (v) return v;
+    try {
+      if (typeof localStorage === "undefined" || !localStorage) return "";
+      var n = localStorage.length, i, k, raw, o;
+      for (i = 0; i < n; i++) {
+        k = localStorage.key(i);
+        if (!k || k.indexOf(AUTH_HINT_PREFIX) !== 0) continue;
+        raw = localStorage.getItem(k);
+        if (!raw) continue;
+        o = JSON.parse(raw);
+        if (o && o.uid) return String(o.uid);
+      }
+    } catch (e) {}
+    return "";
+  }
+
+  /* The IndexedDB half. cb(uid) with "" for "no session, or could not tell".
+     Every branch calls back exactly once, including the ones that fail, so a
+     caller can rely on being told something. */
+  function hintAsync(cb) {
+    var done = false;
+    function fin(v) { if (done) return; done = true; try { cb(String(v || "")); } catch (e) {} }
+    try {
+      if (typeof indexedDB === "undefined" || !indexedDB || !indexedDB.open) { fin(""); return; }
+      /* Never hold a paint hostage on a store that is not answering. */
+      setTimeout(function () { fin(""); }, 1500);
+      var req = indexedDB.open(IDB_DB);
+      req.onerror = function () { fin(""); };
+      req.onblocked = function () { fin(""); };
+      /* onupgradeneeded means the database did not exist: Firebase has never
+         stored a session here. Abort rather than create an empty one in
+         somebody's browser as a side effect of asking a question. */
+      req.onupgradeneeded = function () {
+        try { req.transaction.abort(); } catch (e) {}
+        fin("");
+      };
+      req.onsuccess = function () {
+        var db = req.result, all;
+        try {
+          if (!db.objectStoreNames.contains(IDB_STORE)) { db.close(); fin(""); return; }
+          all = db.transaction(IDB_STORE, "readonly").objectStore(IDB_STORE).getAll();
+          all.onerror = function () { try { db.close(); } catch (e) {} fin(""); };
+          all.onsuccess = function () {
+            var rows = all.result || [], i, r, v = "";
+            for (i = 0; i < rows.length; i++) {
+              r = rows[i];
+              if (!r || !r.fbase_key) continue;
+              if (String(r.fbase_key).indexOf(AUTH_HINT_PREFIX) !== 0) continue;
+              if (r.value && r.value.uid) { v = String(r.value.uid); break; }
+            }
+            try { db.close(); } catch (e) {}
+            fin(v);
+          };
+        } catch (e) { try { db.close(); } catch (e2) {} fin(""); }
+      };
+    } catch (e) { fin(""); }
+  }
+
+  /* show(true|false) — the authoritative answer, from progress-sync.js.
+     Returns whether it changed anything, and tells listeners when it did, so
+     a shelf can redraw without polling. */
+  function show(on) {
+    var next = !!on;
+    if (next === _visible) return false;
+    _visible = next;
+    notify(next ? "show" : "hide");
+    return true;
+  }
+
+  function visible() { return _visible; }
+
+  function owner() {
+    try { var v = lsGet(K_OWNER); return v == null ? "" : String(v); }
+    catch (e) { return ""; }
+  }
+
+  function setOwner(uid) {
+    try {
+      var u = uid ? String(uid).slice(0, 128) : "";
+      if (u) lsSet(K_OWNER, u); else lsDel(K_OWNER);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* --- change notification ------------------------------------------------
+     Two directions, and callers must be able to tell them apart or they will
+     loop. reason is:
+
+       "local"    mark() or complete(); the reader moved through a story.
+                  progress-sync pushes these up.
+       "replace"  progress-sync just wrote the account's answer in. Pushing
+                  this back up is how you get an infinite write loop.
+       "clear"    a sign-out emptied the cache.
+
+     A listener that throws is dropped on the floor, not propagated: a shelf
+     with a broken redraw must not stop a reader turning a card. */
+
+  var _subs = [];
+
+  function onChange(fn) {
+    if (typeof fn !== "function") return function () {};
+    try { _subs.push(fn); } catch (e) { return function () {}; }
+    return function () {
+      try {
+        for (var i = 0; i < _subs.length; i++) {
+          if (_subs[i] === fn) { _subs.splice(i, 1); return; }
+        }
+      } catch (e) {}
+    };
+  }
+
+  function notify(reason) {
+    var list, i;
+    try { list = _subs.slice(0); } catch (e) { return; }
+    for (i = 0; i < list.length; i++) {
+      try { list[i](String(reason || "")); } catch (e) {}
+    }
+  }
+
+  function listeners() { try { return _subs.length; } catch (e) { return 0; } }
+
+  /* True once a card has actually been viewed on this page — i.e. this is a
+     reader, not a shelf. progress-sync uses it to refuse to do anything
+     disruptive to someone who is mid-story. */
+  var _reading = false;
+  function reading() { return _reading; }
+
+  /* A plain copy of the map, safe to serialise. Deliberately the raw
+     [card, total, seconds, done] arrays rather than rec()'s friendly objects:
+     this is what goes on the wire and what comes back off it, and the two
+     have to be the same shape or a round trip is lossy. */
+  function snapshot() {
+    var out = {};
+    try {
+      var m = mem(), k, r;
+      for (k in m) {
+        if (!Object.prototype.hasOwnProperty.call(m, k)) continue;
+        r = m[k];
+        if (!r) continue;
+        out[k] = [ +r[0] || 0, +r[1] || 0, +r[2] || 0, r[3] ? 1 : 0 ];
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  /* Swap the whole map for a reconciled one and record whose it is. Every
+     value is re-validated on the way in exactly as mem() validates what it
+     reads from storage — this argument arrived over a network, and the fact
+     that it came from our own Firestore document is not a reason to trust its
+     shape. A hostile value produces a dropped entry, never a throw. */
+  function replaceAll(map, ownerUid) {
+    try {
+      var next = {}, k, a, n = 0;
+      if (map && typeof map === "object") {
+        for (k in map) {
+          if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
+          if (!keyOf(k)) continue;
+          a = map[k];
+          if (!a || typeof a.length !== "number" || a.length < 3) continue;
+          next[k] = [ Math.max(0, Math.floor(+a[0]) || 0),
+                      Math.max(0, Math.floor(+a[1]) || 0),
+                      Math.max(0, Math.floor(+a[2]) || 0),
+                      a[3] ? 1 : 0 ];
+          n++;
+          if (n >= MAX_ENTRIES * 2) break;   /* nothing legitimate is this big */
+        }
+      }
+      _mem = next;
+      _dirty = true;
+      save();                    /* trims to MAX_ENTRIES / MAX_BYTES for us */
+      setOwner(ownerUid);
+      notify("replace");
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* The first paint's answer, computed now, from storage only — then asked
+     again of IndexedDB, which is where Firebase actually keeps the session on
+     a returning reader's first page load. The second answer usually arrives
+     before the shelf has finished fetching data/stacks.json, so the common
+     case is one correct paint and no redraw at all. */
+  (function () {
+    var o = "";
+    try {
+      o = owner();
+      _visible = !!o && o === hintUid();
+    } catch (e) { _visible = false; }
+    if (_visible || !o) return;
+    try {
+      hintAsync(function (uid) {
+        try { if (uid && uid === owner()) show(true); } catch (e) {}
+      });
+    } catch (e) {}
+  })();
+
   function clear() {
-    try { _mem = {}; _dirty = false; lsDel(K_READ); return true; } catch (e) { return false; }
+    try {
+      _mem = {}; _dirty = false;
+      _visible = false;              /* signed out shows nothing */
+      try { if (_timer) { clearTimeout(_timer); _timer = null; } } catch (e2) {}
+      lsDel(K_READ);
+      setOwner("");
+      noteLive("");
+      notify("clear");
+      return true;
+    } catch (e) { return false; }
   }
   function clearAll() { clear(); lock(); return true; }
 
@@ -596,9 +933,45 @@ var FBP = (function () {
     get: get, all: all, state: state,
     resumeFor: resumeFor, continueReading: continueReading,
     clear: clear, clearAll: clearAll,
+    /* the account mirror's seam — see js/progress-sync.js */
+    owner: owner, setOwner: setOwner,
+    show: show, visible: visible,
+    hintUid: hintUid, hintAsync: hintAsync, noteLive: noteLive,
+    snapshot: snapshot, replaceAll: replaceAll,
+    onChange: onChange, listeners: listeners, reading: reading,
+    LIMITS: { entries: MAX_ENTRIES, bytes: MAX_BYTES },
     /* optional UI */
     resumeChip: resumeChip,
     /* meta — false when no store would take a write */
     get ok() { return lsOK; }
   };
+})();
+
+/* ==========================================================================
+   The account mirror.
+
+   js/progress-sync.js carries the map above — and js/saves.js's list — to and
+   from customers/{uid}/profile/reading, so reading progress follows the
+   reader instead of the phone. It is appended here rather than added as a
+   <script> to each of the twelve pages that carry this file, for three
+   reasons: it cannot then be present where FBP is absent, it cannot be
+   forgotten when a thirteenth page is added, and it cannot be added twice.
+
+   async, so it never delays a paint, and every failure is silent: no
+   dynamic import, no network, a blocked gstatic, a Content-Security-Policy
+   that refuses the tag — any of those and the site is exactly the site it was
+   before this existed, running from localStorage. FBP above does not call
+   into it and does not know whether it arrived.
+   ========================================================================== */
+(function () {
+  try {
+    if (typeof document === "undefined" || !document.createElement) return;
+    if (typeof window !== "undefined" && window.FBPG) return;
+    if (document.getElementById("fbp-sync")) return;
+    var s = document.createElement("script");
+    s.id = "fbp-sync";
+    s.src = "/js/progress-sync.js";
+    s.async = true;
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) {}
 })();

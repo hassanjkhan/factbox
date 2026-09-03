@@ -14,11 +14,28 @@
    - It stands alone. It does not define, redefine or require FB or FBP. If
      neither ever loads, FBS still works.
 
+   WHOSE SAVES ARE THESE? Saves used to belong to the BROWSER: one
+   localStorage key and nothing else. On a shared phone /library showed a
+   signed-out visitor five finished stories and one saved one, all of them
+   the last reader's, because signing out of Firebase does not touch
+   localStorage. Same defect as js/progress.js had, same fix, and
+   deliberately the same shape rather than a second design:
+
+     - customers/{uid}/profile/reading is the record. js/progress-sync.js
+       carries this list there and back, alongside the reading map.
+     - localStorage is a CACHE of that document, tagged with the uid it came
+       from (fb_cache_owner_v1, the same key js/progress.js writes).
+     - personal state is shown to a signed-in account and to nobody else.
+       See the gate below.
+
    HONEST LIMITATIONS:
-   - Saves live in this browser's localStorage and are never sent anywhere.
-     Clearing site data loses them, and Safari's tracking prevention can evict
-     script-written storage after roughly seven days with no visit. There is
-     no way to back them up without a server.
+   - Signed out, this list is not shown and cannot be added to. That is the
+     product decision, not an accident: a shared browser must not offer a
+     stranger's library, and there is no signed-out identity to attach a save
+     to. The button says so rather than silently doing nothing.
+   - Safari's tracking prevention can evict script-written storage after
+     roughly seven days with no visit. For a signed-in reader that now costs
+     a round trip, not the list; signed out there is nothing to lose.
    - Private mode and some in-app webviews (Instagram, TikTok) refuse writes.
      There, FBS.ok is false: saving works for the length of the pageview and
      is gone on reload. The UI must say so rather than pretend.
@@ -27,6 +44,8 @@
 var FBS = (function () {
 
   var KEY   = "fb_saved_v1";   /* one key, the whole list, JSON */
+  var K_OWNER = "fb_cache_owner_v1"; /* whose list this is. js/progress.js
+                                        writes it; this file only reads. */
   var PROBE = "fb_saveprobe";  /* written and deleted once, to learn the truth early */
 
   var MAX_ENTRIES = 200;       /* 51 stacks today; a cap so the key cannot grow forever */
@@ -131,6 +150,148 @@ var FBS = (function () {
     return false;
   }
 
+  /* --- the gate and the account mirror -------------------------------------
+
+     Everything here is the twin of the section of the same name in
+     js/progress.js, on purpose: two stores with the same defect got one
+     design, not two. Read that file's comments for the reasoning; this is the
+     same three ideas applied to a list instead of a map.
+
+       owner()    which uid this cache was reconciled with, "" for nobody.
+                  Written by js/progress-sync.js through js/progress.js; this
+                  file only reads the key, so there is exactly one writer.
+       _visible   whether the list may be SHOWN. False by default, set
+                  synchronously from the auth hint below so a returning
+                  reader's library is right on the first paint, then set
+                  authoritatively by progress-sync once Firebase has answered.
+       onChange   so a shelf can redraw when the account's answer lands.
+
+     Reads are gated; writes are not. add() and remove() still operate on the
+     underlying list whatever the gate says, because the gate is about whose
+     data may be displayed, not about whether this file works. The one place
+     that matters to a reader is button(), which refuses to toggle while
+     hidden and says why. */
+
+  var _visible = false;
+  var _subs = [];
+
+  function owner() {
+    try { var v = lsGet(K_OWNER); return v == null ? "" : String(v); }
+    catch (e) { return ""; }
+  }
+
+  /* The synchronous half of js/progress.js's hint, and the same three-line
+     reasoning: does Firebase have a live session for the uid that owns this
+     cache? sessionStorage first (js/progress-sync.js writes it the moment FBU
+     confirms a uid), then the localStorage key Firebase Auth falls back to
+     when IndexedDB is unavailable. The IndexedDB half is not duplicated here;
+     the initialiser at the end of this section borrows FBP's. */
+  function hintUid() {
+    try { var v = String(sessionStorage.getItem("fb_live_v1") || ""); if (v) return v; }
+    catch (e) {}
+    try {
+      if (typeof localStorage === "undefined" || !localStorage) return "";
+      var n = localStorage.length, i, k, raw, o;
+      for (i = 0; i < n; i++) {
+        k = localStorage.key(i);
+        if (!k || k.indexOf("firebase:authUser:") !== 0) continue;
+        raw = localStorage.getItem(k);
+        if (!raw) continue;
+        o = JSON.parse(raw);
+        if (o && o.uid) return String(o.uid);
+      }
+    } catch (e) {}
+    return "";
+  }
+
+  function onChange(fn) {
+    if (typeof fn !== "function") return function () {};
+    try { _subs.push(fn); } catch (e) { return function () {}; }
+    return function () {
+      try {
+        for (var i = 0; i < _subs.length; i++) {
+          if (_subs[i] === fn) { _subs.splice(i, 1); return; }
+        }
+      } catch (e) {}
+    };
+  }
+
+  function notify(reason) {
+    var l, i;
+    try { l = _subs.slice(0); } catch (e) { return; }
+    for (i = 0; i < l.length; i++) { try { l[i](String(reason || "")); } catch (e) {} }
+  }
+
+  function listeners() { try { return _subs.length; } catch (e) { return 0; } }
+
+  function show(on) {
+    var next = !!on;
+    if (next === _visible) return false;
+    _visible = next;
+    notify(next ? "show" : "hide");
+    return true;
+  }
+
+  function visible() { return _visible; }
+
+  /* [[id, seconds], ...] newest first — the wire form, which is also the
+     stored form, so a round trip through Firestore is lossless. */
+  function snapshot() {
+    var out = [];
+    try {
+      var l = list();
+      for (var i = 0; i < l.length; i++) out.push([ l[i][0], +l[i][1] || 0 ]);
+    } catch (e) {}
+    return out;
+  }
+
+  /* Swap the whole list for a reconciled one. Re-validated on the way in
+     exactly as list() validates what it reads from storage: this argument
+     came off a network and its shape is not to be trusted. */
+  function replaceAll(rows) {
+    try {
+      var next = [], seen = {}, i, e, id, at;
+      if (rows && rows.length) {
+        for (i = 0; i < rows.length && next.length < MAX_ENTRIES; i++) {
+          e = rows[i];
+          if (!e || !e.length) continue;
+          id = keyOf(e[0]);
+          if (!id || Object.prototype.hasOwnProperty.call(seen, id)) continue;
+          at = Math.max(0, Math.floor(+e[1]) || 0);
+          seen[id] = 1;
+          next.push([id, at]);
+        }
+        next.sort(function (a, b) { return b[1] - a[1]; });
+      }
+      _list = next;
+      save();
+      notify("replace");
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* The first paint's answer, from storage only, no network — then asked
+     again of IndexedDB through js/progress.js, which owns that reader. FBP is
+     on every page this file is, and loads before it, but the call is guarded
+     anyway: without it the answer is simply the synchronous one, which is the
+     safe one. */
+  (function () {
+    var o = "";
+    try {
+      o = owner();
+      _visible = !!o && o === hintUid();
+    } catch (e) { _visible = false; }
+    if (_visible || !o) return;
+    try {
+      if (typeof window !== "undefined" && window.FBP &&
+          typeof window.FBP.hintAsync === "function") {
+        window.FBP.hintAsync(function (uid) {
+          try { if (uid && uid === owner()) show(true); } catch (e) {}
+        });
+      }
+    } catch (e) {}
+  })();
+
   function indexOf(id) {
     try {
       var l = list();
@@ -142,6 +303,7 @@ var FBS = (function () {
   /* --- public surface ----------------------------------------------------- */
 
   function saved(id) {
+    if (!_visible) return false;         /* not this viewer's library */
     try { var k = keyOf(id); return k ? indexOf(k) !== -1 : false; } catch (e) { return false; }
   }
 
@@ -156,6 +318,7 @@ var FBS = (function () {
       if (i !== -1) l.splice(i, 1);
       l.unshift([k, nowSec()]);
       save();
+      notify("local");
       return true;
     } catch (e) { return false; }
   }
@@ -169,6 +332,7 @@ var FBS = (function () {
       if (i === -1) return false;
       list().splice(i, 1);
       save();
+      notify("local");
       return true;
     } catch (e) { return false; }
   }
@@ -184,6 +348,7 @@ var FBS = (function () {
   /* all() -> [{id, at}], newest first. `at` is ms epoch, or 0 if unknown. */
   function all() {
     var out = [];
+    if (!_visible) return out;
     try {
       var l = list();
       for (var i = 0; i < l.length; i++) out.push({ id: l[i][0], at: (l[i][1] || 0) * 1000 });
@@ -195,6 +360,7 @@ var FBS = (function () {
      for the common case of "is this id in the set". */
   function ids() {
     var out = [];
+    if (!_visible) return out;
     try {
       var l = list();
       for (var i = 0; i < l.length; i++) out.push(l[i][0]);
@@ -203,11 +369,19 @@ var FBS = (function () {
   }
 
   function count() {
+    if (!_visible) return 0;
     try { return list().length; } catch (e) { return 0; }
   }
 
   function clear() {
-    try { _list = []; lsDel(KEY); sync(); return true; } catch (e) { return false; }
+    try {
+      _list = [];
+      _visible = false;                  /* signed out shows nothing */
+      lsDel(KEY);
+      sync();
+      notify("clear");
+      return true;
+    } catch (e) { return false; }
   }
 
   /* --- the save button ----------------------------------------------------
@@ -279,7 +453,12 @@ var FBS = (function () {
 
       function paint() {
         try {
-          if (!_lsOK || !k) {
+          /* Signed out there is no library to put this in and nothing that
+             would survive the tap, so the button says so instead of filling
+             in and emptying again a second later. Same dimmed treatment as a
+             dead store: the icon stays, because a control that vanishes reads
+             as a bug. */
+          if (!_lsOK || !k || !_visible) {
             b.disabled = true;
             b.setAttribute("aria-disabled", "true");
             b.removeAttribute("aria-pressed");
@@ -288,9 +467,9 @@ var FBS = (function () {
                and the accessible name. The icon stays, dimmed, rather than
                vanishing — a control that disappears reads as a bug. */
             b.innerHTML = mark(false);
-            b.title = k
-              ? "This browser will not let the site remember anything."
-              : "No story to save.";
+            b.title = !k ? "No story to save."
+              : (!_lsOK ? "This browser will not let the site remember anything."
+                        : "Sign in to save stories to your library.");
             b.setAttribute("aria-label", b.title);
             /* .52, matching --dimmer in app.css. .42 did not clear contrast
                on --raise, and this button paints itself. */
@@ -315,7 +494,7 @@ var FBS = (function () {
       try {
         b.addEventListener("click", function () {
           try {
-            if (!_lsOK || !k) return;
+            if (!_lsOK || !k || !_visible) return;
             var on = toggle(k);
             paint();
             if (typeof onChange === "function") onChange(on, k);
@@ -324,6 +503,10 @@ var FBS = (function () {
       } catch (e) {}
 
       b.refresh = paint;
+      /* The account's answer arrives ~600ms after the reader does. Without
+         this the button is stuck on whatever the first paint guessed. */
+      try { b.unbind = onChange(function () { try { paint(); } catch (e) {} }); }
+      catch (e) {}
       paint();
       return b;
     } catch (e) { return null; }
@@ -335,7 +518,13 @@ var FBS = (function () {
   var api = {
     saved: saved, toggle: toggle, add: add, remove: remove,
     all: all, ids: ids, count: count, clear: clear,
-    button: button, ok: _lsOK, KEY: KEY
+    button: button, ok: _lsOK, KEY: KEY,
+    /* the account mirror's seam — see js/progress-sync.js */
+    owner: owner, hintUid: hintUid,
+    show: show, visible: visible,
+    snapshot: snapshot, replaceAll: replaceAll,
+    onChange: onChange, listeners: listeners,
+    LIMITS: { entries: MAX_ENTRIES, bytes: MAX_BYTES }
   };
 
   function sync() { try { api.ok = _lsOK; } catch (e) {} }

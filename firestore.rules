@@ -90,6 +90,62 @@ service cloud.firestore {
           && smallInt("streakDays", 3650)
           && (!("onboardingComplete" in request.resource.data)
               || request.resource.data.onboardingComplete is bool);
+
+        // --- The reader's own reading progress and saves ----------------
+        // js/progress-sync.js mirrors js/progress.js's reading map and
+        // js/saves.js's bookmark list here. Same subcollection and same
+        // reasoning as `onboarding` above: `customers/{uid}` belongs to the
+        // Stripe webhook and a client write racing it would clobber a
+        // subscription state nothing here can rebuild.
+        //
+        // Nothing decides access from this either. The worst a reader can do
+        // with a forged write is lie to us about which of their own stories
+        // they finished.
+        //
+        // WHY BOTH PAYLOADS ARE STRINGS. The obvious shape is a map of story
+        // id -> [card, total, seconds, done]. A rule cannot check it. Story
+        // ids are data, so `keys().hasOnly([...])` cannot enumerate them, and
+        // there is no way to reach inside a map and cap the value under a key
+        // whose name is not known here. `m is map && m.size() <= 60` would
+        // therefore permit sixty keys each holding a 16KB string — very
+        // nearly the 1MiB document limit, written by anyone with an account.
+        //
+        // A string has exactly one length, and the two caps below are the
+        // same numbers js/progress.js (MAX_BYTES 20000) and js/saves.js
+        // (MAX_BYTES 8000) already enforce on themselves, so a well-behaved
+        // client never comes close and a hostile one is stopped here. Nothing
+        // queries these fields, so the opacity costs nothing.
+        //
+        // updatedAt is written `optional, or request.time`, exactly as
+        // `onboarding` above is. Note what that means once the document
+        // exists: a merge write that omits the field leaves the stored value
+        // in place, so `updatedAt` is still in request.resource.data and is
+        // still the OLD timestamp, which is not request.time — and the write
+        // is refused. Measured, from a browser: the same payload is denied
+        // without serverTimestamp() and accepted with it. That is the
+        // behaviour we want and js/progress-sync.js always sends the sentinel;
+        // the effect is that every timestamp in here came off a server clock
+        // and none of them came off a reader's.
+        //
+        // The counts are advisory — for a human reading the console — and are
+        // capped at each file's MAX_ENTRIES so they cannot become a hiding
+        // place for a large number either. Nothing trusts them.
+        allow create, update: if isSelf(uid)
+          && docId == "reading"
+          && request.resource.data.keys().hasOnly([
+               "schema", "updatedAt", "count", "map", "saveCount", "saves"
+             ])
+          && request.resource.data.schema is int
+          && request.resource.data.schema == 1
+          && (!("updatedAt" in request.resource.data)
+              || request.resource.data.updatedAt == request.time)
+          && smallInt("count", 60)
+          && smallInt("saveCount", 200)
+          && request.resource.data.map is string
+          && request.resource.data.map.size() <= 20000
+          && (!("saves" in request.resource.data)
+              || (request.resource.data.saves is string
+                  && request.resource.data.saves.size() <= 8000));
       }
 
       match /checkout_sessions/{id} {

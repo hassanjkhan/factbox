@@ -1,0 +1,509 @@
+/* ==========================================================================
+   Factbox — /join, the eleven-screen onboarding.
+
+   Loaded after css/app.css and css/account.css. It uses their tokens and adds
+   no colour of its own: every value below is a var() from app.css's :root.
+   There is not one hex literal in this file, on purpose — the site was
+   repainted onto a light palette in a single afternoon and the things that
+   broke were the ones carrying their own colours.
+
+   WHAT THIS FILE IS FOR. /join is two things on one URL: an onboarding, and
+   a checkout. The onboarding is eleven screens that should feel like an app —
+   one idea per screen, no nav, no footer, no marketing. The checkout is the
+   sign-up form and the plan picker, and those are styled by css/account.css
+   exactly as they were before this file existed. So:
+
+       body.ob-on   -> onboarding is on screen. Site chrome is hidden.
+       body         -> the money side. Chrome is back, account.css rules.
+
+   js/start.js adds and removes that one class. Nothing else in here touches a
+   .jn- selector, so the plan picker cannot be restyled by accident.
+
+   ---------------------------------------------------------------------------
+   THE THREE RULES THIS FILE EXISTS TO KEEP
+
+   1. NOTHING TAPPABLE BELOW --bottom-safe. Every reader arrives in the
+      Instagram or TikTok webview, whose toolbar is drawn over the bottom
+      ~13vh of the viewport. The column carries that much padding underneath,
+      and the primary button is pushed to the bottom of the column with
+      `margin-top:auto` — so its bottom edge is (viewport - bottom-safe - 8px)
+      BY CONSTRUCTION rather than by a number someone tuned once. The column is
+      height-capped and the answers scroll inside it, so this holds at any
+      viewport rather than at the three sizes someone remembered to check; the
+      short-viewport blocks at the end of the file only stop it needing to.
+
+   2. ONE SCREEN AT A TIME, AND THE REST ARE display:none. Not opacity:0, not
+      visibility:hidden. A hidden answer button that still takes a tap is a
+      real bug this flow has had.
+
+   3. EVERY HIDEABLE THING SHIPS ITS OWN [hidden] RULE. `.go{display:block}`
+      in app.css is (0,1,0) and beats the user agent's `[hidden]{display:none}`
+      (0,0,1) — so `<button class="go" hidden>` renders anyway. That is live in
+      this repo's history: a Continue button that carried `hidden` and showed
+      up regardless. Any selector below that sets `display` on something the
+      script hides is followed immediately by its `[hidden]` twin.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1 · The column
+   ========================================================================== */
+
+.ob{
+  /* BOUNDED, not just tall. min-height alone lets a long screen grow the
+     column past the viewport, and then the primary button is below the fold —
+     which is the same failure as being under the Instagram toolbar, arrived at
+     from the other direction. Measured before this was here: the seven-option
+     interests screen put Continue 59px below the line on a 375x667 phone and
+     31px below it at 1440x900, because --bottom-safe is 13vh and 13vh of a
+     900px window is 117px. Capping the height and letting the ANSWERS scroll
+     inside it makes the invariant hold at every size instead of at the three
+     someone remembered to tune. */
+  min-height:100vh; min-height:100dvh;
+  max-height:100vh; max-height:100dvh;
+  /* 440-480px of content, centred, with the gutter outside it. */
+  max-width:calc(480px + 36px);
+  margin:0 auto;
+  padding:var(--top-safe) 18px calc(var(--bottom-safe) + 8px);
+  display:flex; flex-direction:column;
+}
+
+/* --- chrome: a wordmark, a thin bar, and a Back arrow. Nothing else. ------ */
+
+/* A three-column grid, not a flex row, and every child is placed EXPLICITLY.
+   The Back arrow is display:none on screens 1 and 10, and in a flex row that
+   collapses its space and slides the wordmark left — it visibly jumps between
+   screen 1 and screen 2, which is the one piece of chrome that is supposed to
+   stay put. Fixed columns keep the gap whether or not the arrow is in it, and
+   the explicit grid-column stops auto-placement filling the empty cell. */
+.ob-top{
+  display:grid;
+  grid-template-columns:var(--tap) 1fr var(--tap);
+  align-items:center;
+  min-height:var(--tap);
+}
+
+.ob-back{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; justify-content:center;
+  grid-column:1; justify-self:start;
+  min-height:var(--tap); min-width:var(--tap);
+  margin-left:-10px;
+  background:transparent; border:0; border-radius:var(--pill);
+  color:var(--parchment); font-family:var(--ui);
+  font-size:1.25rem; line-height:1; cursor:pointer;
+  transition:opacity .15s ease;
+}
+.ob-back:active{opacity:.55}
+.ob-back[hidden]{display:none}
+
+/* The wordmark is centred whether or not the Back arrow is there, so it does
+   not shift sideways between screen 1 and screen 2. */
+.ob-mark{
+  grid-column:2; text-align:center; margin:0;
+  font-size:var(--fs-micro); font-weight:var(--w-head);
+  letter-spacing:var(--ls-mark); color:var(--accent-ink);
+  /* the wordmark is set in caps and the letter-spacing pads the last glyph */
+  padding-left:var(--ls-mark);
+}
+/* A spacer the same width as the arrow, so "centred" is actually centred. */
+.ob-top-pad{grid-column:3}
+
+/* --- the progress bar ---------------------------------------------------- */
+
+.ob-track{
+  height:3px; border-radius:2px; overflow:hidden;
+  background:var(--tint-3);
+  margin:6px 0 0;
+}
+.ob-track[hidden]{display:none}
+.ob-track i{
+  display:block; height:100%; width:0;
+  border-radius:2px; background:var(--coral);
+  transition:width .38s cubic-bezier(.22,.61,.36,1);
+}
+
+
+/* ==========================================================================
+   2 · The stage, and one screen at a time
+   ========================================================================== */
+
+.ob-stage{
+  /* min-height:0 on every link in the chain, or a flex child refuses to
+     shrink below its content and the scroll region never scrolls. This is the
+     whole trick and it is easy to delete by accident. */
+  flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column;
+  /* Questions sit upper-middle rather than jammed under the bar. */
+  padding-top:clamp(18px, 7vh, 64px);
+}
+
+.st-screen{
+  flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column;
+  width:100%;
+}
+/* Rule 3. .st-screen sets display, so it must un-set it. */
+.st-screen[hidden]{display:none !important}
+
+/* The fade-and-lift between screens. Applied by the script on every show, and
+   dropped for a reader who asked for less motion. */
+@media (prefers-reduced-motion:no-preference){
+  .st-screen.is-in{animation:ob-in .30s cubic-bezier(.22,.61,.36,1) both}
+}
+@keyframes ob-in{
+  from{opacity:0; transform:translateY(10px)}
+  to  {opacity:1; transform:none}
+}
+
+
+/* ==========================================================================
+   3 · Type. One idea per screen, so the headline can be large.
+   ========================================================================== */
+
+.st-screen h1,
+.st-screen h2{
+  margin:0;
+  font-size:var(--fs-h1);
+  font-weight:var(--w-head);
+  line-height:var(--lh-head);
+  letter-spacing:var(--ls-head);
+  color:var(--parchment);
+}
+.st-screen h1{font-size:var(--fs-hero); letter-spacing:var(--ls-hero)}
+
+.ob-sub{
+  margin:10px 0 0;
+  font-size:var(--fs-body); font-weight:var(--w-body);
+  line-height:var(--lh-body); color:var(--dim);
+}
+
+.ob-eyebrow{
+  margin:0 0 12px;
+  font-size:var(--fs-micro); font-weight:var(--w-head);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--accent-ink);
+}
+
+
+/* ==========================================================================
+   4 · Answer cards
+   ========================================================================== */
+
+.ob-opts{
+  display:flex; flex-direction:column; gap:9px;
+  margin:22px 0 0;
+  /* The answers are what gives when there is not enough room — never the
+     Continue button, and never the question. */
+  flex:0 1 auto; min-height:0;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  /* room for the focus ring on the last card */
+  padding:2px 2px 4px; margin-left:-2px; margin-right:-2px;
+  scrollbar-width:thin;
+}
+
+.ob-opt{
+  -webkit-appearance:none; appearance:none;
+  display:flex; align-items:center; gap:12px;
+  width:100%; text-align:left;
+  min-height:var(--tap);
+  padding:15px 16px;
+  border:1.5px solid var(--hair);
+  border-radius:16px;
+  background:var(--raise);
+  color:var(--parchment);
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  line-height:var(--lh-tight);
+  cursor:pointer;
+  transition:border-color .16s ease, background-color .16s ease, transform .12s ease;
+}
+.ob-opt[hidden]{display:none !important}
+.ob-opt > b{font-weight:inherit; flex:1 1 auto}
+
+/* The tactile beat: a small squeeze on the press. */
+.ob-opt:active{transform:scale(.985)}
+
+/* Selected. Obvious without shouting: the accent wash, the accent hairline,
+   and a filled tick that only exists when it is on. */
+.ob-opt.on{
+  background:var(--accent-wash);
+  border-color:var(--accent-edge);
+}
+
+.ob-tick{
+  flex:0 0 auto;
+  width:22px; height:22px; border-radius:var(--pill);
+  border:1.5px solid var(--tint-3);
+  display:grid; place-items:center;
+  font-size:.75rem; line-height:1; font-style:normal;
+  color:transparent;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+.ob-opt.on .ob-tick{
+  background:var(--coral); border-color:var(--coral); color:var(--on-accent);
+}
+
+/* "Recommended", on the five-minute option. */
+.ob-flag{
+  flex:0 0 auto;
+  font-size:var(--fs-micro); font-weight:var(--w-head);
+  letter-spacing:var(--ls-badge); text-transform:uppercase;
+  color:var(--teal-ink);
+}
+
+
+/* ==========================================================================
+   5 · The action block, pinned to the bottom of the column
+   ========================================================================== */
+
+ /* The scrolling body of a screen that is neither a question list nor a
+    centred statement — screen 11, which has a summary and a three-stage arc
+    under its headline. */
+.ob-scroll{
+  flex:0 1 auto; min-height:0;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding-bottom:2px;
+}
+
+.ob-act{
+  margin-top:auto;
+  flex:0 0 auto;
+  padding-top:24px;
+}
+.ob-act .go{margin-top:0}
+/* Screen 11's primary control is an <a>, so it works with no script at all.
+   app.css's .go was written for <button> and never resets the anchor's
+   underline or centres its label — the one other anchor wearing .go on this
+   site carries both as inline styles. Doing it here instead. */
+.ob-act a.go{
+  text-decoration:none; text-align:center; line-height:1.25;
+}
+/* Rule 3 again, and this is the one that has actually shipped wrong: .go
+   carries display:block from app.css, which outranks the UA [hidden] rule. */
+.ob-act .go[hidden]{display:none !important}
+
+.ob-tiny{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%;
+  min-height:var(--tap);
+  margin:2px auto 0; padding:10px 8px;
+  background:transparent; border:0;
+  color:var(--dim); font-family:var(--ui);
+  font-size:var(--fs-note); font-weight:var(--w-body); text-align:center;
+  cursor:pointer;
+}
+.ob-tiny[hidden]{display:none !important}
+.ob-tiny u{text-decoration:none; color:var(--accent-ink); font-weight:var(--w-strong)}
+
+
+/* ==========================================================================
+   6 · Screen 4 and 7 — the two screens that are not questions
+   ========================================================================== */
+
+.ob-centre{
+  flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column; justify-content:center;
+  text-align:center;
+  padding-bottom:6vh;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+
+/* The one big number. Whatever it is, it is counted from data/index.json —
+   see FACTS in js/start.js and the note above RECALL_CLAIM_PCT. */
+.ob-stat{
+  margin:0;
+  font-size:clamp(3.6rem, 19vw, 5.5rem);
+  font-weight:var(--w-head);
+  letter-spacing:var(--ls-hero);
+  line-height:1;
+  color:var(--accent-ink);
+  font-variant-numeric:tabular-nums;
+}
+.ob-stat-cap{
+  margin:14px auto 0; max-width:22em;
+  font-size:var(--fs-lead); font-weight:var(--w-strong);
+  line-height:var(--lh-tight); color:var(--parchment);
+}
+.ob-stat-note{
+  margin:14px auto 0; max-width:24em;
+  font-size:var(--fs-note); font-weight:var(--w-body);
+  line-height:var(--lh-body); color:var(--dim);
+}
+
+/* 5 min a day -> 365+ stories a year */
+.ob-swap{
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  margin:26px 0 0; flex-wrap:nowrap;
+}
+.ob-swap-cell{
+  flex:1 1 0; min-width:0;
+  padding:18px 10px;
+  border-radius:18px; border:1.5px solid var(--hair);
+  background:var(--raise);
+}
+.ob-swap-cell b{
+  display:block;
+  font-size:var(--fs-h2); font-weight:var(--w-head);
+  letter-spacing:var(--ls-head); line-height:1.05;
+  color:var(--parchment);
+}
+.ob-swap-cell span{
+  display:block; margin-top:6px;
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
+}
+.ob-swap-cell.is-to{background:var(--accent-wash); border-color:var(--accent-edge)}
+.ob-swap-cell.is-to b{color:var(--accent-ink)}
+.ob-swap-arrow{
+  flex:0 0 auto; font-style:normal; font-size:1.35rem;
+  color:var(--dimmer); line-height:1;
+}
+
+
+/* ==========================================================================
+   7 · Screen 10 — building
+   ========================================================================== */
+
+.ob-steps{
+  list-style:none; margin:28px 0 0; padding:0;
+  display:flex; flex-direction:column; gap:14px;
+  text-align:left; max-width:22em; margin-left:auto; margin-right:auto;
+}
+.ob-steps li{
+  display:flex; align-items:center; gap:12px;
+  font-size:var(--fs-sub); font-weight:var(--w-strong);
+  color:var(--dimmer);
+  transition:color .25s ease;
+}
+.ob-steps li.on{color:var(--parchment)}
+.ob-steps li i{
+  flex:0 0 auto;
+  width:22px; height:22px; border-radius:var(--pill);
+  border:1.5px solid var(--tint-3);
+  display:grid; place-items:center;
+  font-style:normal; font-size:.75rem; line-height:1;
+  color:transparent;
+  transition:background-color .25s ease, border-color .25s ease, color .25s ease;
+}
+.ob-steps li.on i{
+  background:var(--coral); border-color:var(--coral); color:var(--on-accent);
+}
+
+
+/* ==========================================================================
+   8 · Screen 11 — the result
+   ========================================================================== */
+
+.ob-card{
+  margin:22px 0 0;
+  padding:18px 18px 6px;
+  border-radius:20px; border:1.5px solid var(--hair);
+  background:var(--raise);
+}
+.ob-row{
+  display:flex; align-items:baseline; gap:12px;
+  padding:0 0 14px;
+}
+.ob-row + .ob-row{border-top:1px solid var(--hair); padding-top:14px}
+.ob-row dt{
+  flex:0 0 auto; width:8.5em;
+  font-size:var(--fs-meta); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--dimmer);
+}
+.ob-row dd{
+  flex:1 1 auto; margin:0;
+  font-size:var(--fs-sub); font-weight:var(--w-strong);
+  line-height:var(--lh-tight); color:var(--parchment);
+}
+
+/* TODAY -> 30 DAYS -> 3 MONTHS */
+.ob-arc{
+  list-style:none; margin:20px 0 0; padding:0;
+  display:flex; flex-direction:column; gap:0;
+}
+.ob-arc li{
+  display:flex; gap:14px;
+  padding:0 0 16px;
+}
+.ob-arc li:last-child{padding-bottom:0}
+.ob-arc-when{
+  /* "3 MONTHS" is the widest label and it wraps at 5.5em once --ls-caps has
+     padded every glyph. Sized to it, and told not to wrap, because a
+     two-line date stamp beside a one-line sentence reads as a bug. */
+  flex:0 0 auto; width:7em; padding-top:1px; white-space:nowrap;
+  font-size:var(--fs-micro); font-weight:var(--w-head);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--accent-ink);
+}
+.ob-arc-what{
+  flex:1 1 auto;
+  font-size:var(--fs-note); font-weight:var(--w-body);
+  line-height:var(--lh-body); color:var(--dim);
+}
+
+
+/* ==========================================================================
+   9 · Hiding the site while the onboarding is on screen
+   ---------------------------------------------------------------------------
+   The nav, the account insignia, the marketing headline, the footer and the
+   Privacy/Terms/Support line are all part of /join and all belong to the money
+   side of it. They are hidden while a question is showing and come back the
+   moment the sign-up form or the plan picker does — the plan screen keeps its
+   legal links, which is not a style decision.
+   ========================================================================== */
+
+body.ob-on .mast,
+body.ob-on #jn-legal,
+body.ob-on .jn-haveacct,
+body.ob-on .jn-steps,
+body.ob-on .jn-stepnote{display:none !important}
+
+/* The money panels live in the same <main>; while onboarding is on they are
+   hidden by their own [hidden] attribute (css/account.css), and .ob-main
+   simply stops the .lib padding from doubling up with .ob's. */
+body.ob-on .lib{padding:0; max-width:none}
+
+
+/* ==========================================================================
+   10 · Short viewports
+   ---------------------------------------------------------------------------
+   Rule 1 only holds while the column FITS. 375x667 is 265px shorter than the
+   phone this was drawn on, and landscape is shorter still. Both tighten the
+   same three things — the lift above the question, the gap between cards, and
+   the headline — rather than introducing a second layout.
+   ========================================================================== */
+
+@media (max-height:740px){
+  .ob-stage{padding-top:clamp(8px, 2.5vh, 22px)}
+  .ob-opts{gap:7px; margin-top:16px}
+  .ob-opt{padding:12px 14px; border-radius:14px}
+  .ob-act{padding-top:16px}
+  .ob-centre{padding-bottom:2vh}
+  .ob-stat{font-size:clamp(3rem, 15vw, 4.2rem)}
+  .ob-steps{gap:11px; margin-top:20px}
+  .ob-card{margin-top:16px; padding:14px 14px 4px}
+  .ob-arc{margin-top:14px}
+  .ob-arc li{padding-bottom:12px}
+}
+
+@media (max-height:620px){
+  .st-screen h1{font-size:var(--fs-h1)}
+  .st-screen h2{font-size:var(--fs-h2)}
+  .ob-sub{margin-top:6px; font-size:var(--fs-note)}
+  .ob-opts{gap:6px; margin-top:12px}
+  .ob-opt{padding:10px 13px; font-size:var(--fs-note)}
+  .ob-tick{width:19px; height:19px}
+  .ob-swap{margin-top:14px}
+  .ob-swap-cell{padding:12px 8px}
+  .ob-stat{font-size:clamp(2.6rem, 12vw, 3.4rem)}
+  .ob-act{padding-top:12px}
+  .ob-act .go{padding:12px 20px}
+}
+
+/* Desktop: the column stays a phone-width column. A questionnaire that
+   stretches to 1440px is a website with questions in it, which is the thing
+   this rebuild is not. */
+@media (min-width:900px){
+  .ob{padding-top:calc(var(--top-safe) + 24px)}
+  .ob-stage{padding-top:clamp(24px, 9vh, 90px)}
+}

@@ -4,318 +4,84 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Start</title>
-<meta name="description" content="Six taps and your Factbox is built: what you want to uncover first, what hooks you, and how much time you have. No typing.">
+<meta name="description" content="History you'll actually remember. The world's most fascinating stories, explained in 5 minutes a day.">
 <meta name="theme-color" content="#0E0B12">
-<link rel="canonical" href="https://factbox.app/start">
+<!-- /start is not a page of its own any more: the onboarding is /join, and
+     this URL is a door to it. The canonical points there so the two do not
+     compete for the same search result. -->
+<link rel="canonical" href="https://factbox.app/join">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Start">
-<meta property="og:description" content="Remember history without studying it. Six taps and your feed is built.">
+<meta property="og:description" content="History you'll actually remember. Five minutes a day.">
 <meta property="og:image" content="https://factbox.app/img/share.jpg">
-<meta property="og:url" content="https://factbox.app/start">
+<meta property="og:url" content="https://factbox.app/join">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="/data/index.json" as="fetch" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css">
-<link rel="stylesheet" href="/css/start.css">
+<link rel="stylesheet" href="/css/join.css">
 </head>
 <body>
 
 <!--
-  /start — the six-question onboarding.
+  /start — A DOOR, NOT A FLOW.
 
-  WHAT THIS PAGE IS FOR. It asks six things, stores each answer the moment it
-  is tapped, and hands the reader to /join. It never asks for money, never
-  names a price, never mentions the trial and never touches js/account.js's
-  checkout. The last screen is a link to /join and that is the whole of the
-  hand-off.
+  WHAT HAPPENED HERE. This page used to be a six-question onboarding that
+  stored its answers through window.FBA and then handed the reader to /join,
+  which asked four more questions into the same record. Two flows, one store.
+  A reader who came in through /firststory — which calls to action at
+  /join?from=story, and always has — never saw this page at all; a reader who
+  came in here answered "how much time have you got" twice.
 
-  WHERE THE ANSWERS GO. Nowhere new. Every answer is written through an
-  existing window.FBA setter in js/account.js — the same localStorage record
-  and the same cookie mirror the /join funnel has always used — and
-  js/profile-sync.js mirrors that record to customers/{uid}/profile/onboarding
-  for a signed-in reader. There is no second store and no new field:
+  So there is one onboarding now and it is /join. The long version of why that
+  URL rather than this one is at the top of js/start.js, which is still the
+  engine and still where tools/check-analytics.js reads the instrumentation.
 
-      Q1 what to uncover first   -> FBA.setInterests([topic])      (interests[0])
-      Q2 what hooks you          -> FBA.setDraw(k)                 DRAWS
-      Q3 how much you remember   -> FBA.setRelates([k])            RELATES
-      Q4 what you wish you knew  -> FBA.setInterests([t1,t2])      (interests[1])
-      Q5 how much time           -> FBA.setGoal(n)                 GOALS
-      Q6 what you would love     -> FBA.setStreak(n)               STREAKS
+  WHY THIS FILE STILL EXISTS AND IS NOT A REDIRECT. Two reasons:
 
-  /join repaints all of these when the reader arrives (setRadio from A.draw(),
-  A.relates(), A.goal(), A.streak()), so nobody answers the same question
-  twice. This page deliberately does NOT call finishOnboarding(): that flag is
-  /join's own "finished or skipped through", and setting it from here would
-  change which screen /join lands a returning reader on. Not ours to move.
+    * /privacy links to /start.html twice, describing what the opening
+      questions collect. A URL named in the privacy policy has to resolve to
+      something a reader can read.
+    * A stub that bounces is the bug this site has already shipped once —
+      "Sign in" led to a white screen reading "Moved to /login", because
+      GitHub Pages resolves /foo to foo.html before foo/index.html and the
+      stub redirected to its own clean URL. Nothing here redirects.
 
-  EVERY SCREEN BELOW IS IN THE MARKUP WITH ITS REAL COPY. js/start.js hides
-  the ones it is not showing. If the script never runs, or throws, the reader
-  gets one long readable page — six questions with real answers on them —
-  instead of a blank screen. This site has shipped blank twice.
+  So it is one real screen with one real door: the opening promise, and a
+  button that goes to the questions. It works with JavaScript switched off,
+  because the button is the submit control of a GET form and needs no script
+  to navigate. `from=start` rides along so the funnel can tell this door apart
+  from /firststory's.
 
-  THE COVERS ON THE FIRST SCREEN AND THE COUNTS ON THE TURN SCREEN are read
-  from /data/index.json at runtime. What is in the markup is the same three
-  stories and the same real counts, as the fallback, so nothing here is a
-  placeholder either way.
-
-  NUMBERS ON THE TURN SCREEN. Three, all of them counted out of
-  data/index.json by js/start.js: how many stories there are, how many cards
-  they are made of, and how long the middle story takes. There is no claim
-  here about how much anyone remembers, how confident anyone feels, or what
-  percentage of readers anything. Nothing measures that, so nothing says it.
+  There is NO QUESTION on this page and nothing is stored by it.
 -->
 
-<main class="st" id="st-main">
+<main class="ob" id="st-main">
 
-  <header class="mast">
-    <p class="mark">FACTBOX</p>
-    <nav class="tabs" aria-label="Sections">
-      <a href="/explore">Explore</a>
-      <a href="/library">Library</a>
-      <span class="acct" id="fb-acct"></span></nav>
-  </header>
-
-  <!-- Back, and how far in you are. The arrow is hidden on the first screen
-       because there is nothing behind it. It goes BACK. -->
-  <div class="st-top">
-    <button class="st-back" id="st-back" type="button" hidden><i aria-hidden="true">&#8592;</i> Back</button>
-    <p class="st-count" id="st-count" hidden>Question 1 of 6</p>
-    <ol class="st-dots" id="st-dots" aria-hidden="true" hidden>
-      <li></li><li></li><li></li><li></li><li></li><li></li>
-    </ol>
+  <div class="ob-top">
+    <p class="ob-mark">FACTBOX</p>
   </div>
 
-  <!-- ===== open ======================================================== -->
-  <section class="st-screen" id="sc-open" data-sc="open" aria-labelledby="sc-open-h">
-    <h1 id="sc-open-h">Remember history without studying it.</h1>
-    <p class="st-sub">Six taps, no typing. Answer them and the rest of Factbox
-    gets built around what you actually want to read &mdash; starting with
-    stories like these.</p>
+  <div class="ob-stage">
+    <section class="st-screen" id="sc-open" data-sc="open" aria-labelledby="sc-open-h">
+      <div class="ob-centre">
+        <h1 id="sc-open-h">History you&rsquo;ll actually remember.</h1>
+        <p class="ob-sub">The world&rsquo;s most fascinating stories, explained
+        in 5 minutes a day. A few quick questions and your feed is built.</p>
+      </div>
 
-    <ul class="st-covers" id="st-covers">
-      <li>
-        <img src="/img/thumbs/s01.webp" alt="" width="240" height="320" data-fallback="/img/stacks/s01.webp" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')">
-        <b>How did Cleopatra die? (the snake)</b>
-      </li>
-      <li>
-        <img src="/img/thumbs/s02.webp" alt="" width="240" height="320" data-fallback="/img/stacks/s02.webp" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')">
-        <b>Cleopatra the seductress</b>
-      </li>
-      <li>
-        <img src="/img/thumbs/s03.webp" alt="" width="240" height="320" data-fallback="/img/stacks/s03.webp" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')">
-        <b>Cleopatra&rsquo;s body has never been found</b>
-      </li>
-    </ul>
-
-    <button class="st-go" id="st-open-go" type="button">Start</button>
-    <a class="st-ghost" href="/">Not now &mdash; take me to the stories</a>
-  </section>
-
-  <!-- ===== Q1 · what to uncover first ==================================
-       Stored as interests[0]. The eight keys are the real `topic` values in
-       data/index.json and the counts beside them are counted from it. -->
-  <section class="st-screen" id="sc-q1" data-sc="q1" aria-labelledby="sc-q1-h">
-    <h2 id="sc-q1-h">What do you want to uncover first?</h2>
-    <p class="st-sub">Tap one. Nothing is locked in &mdash; this only decides
-    what turns up first.</p>
-
-    <div class="st-opts is-grid" id="st-q1-opts" role="radiogroup" aria-labelledby="sc-q1-h">
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="church_history"><b>The early church</b><span>11 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="new_testament"><b>The New Testament</b><span>11 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="cleopatra"><b>Cleopatra &amp; Egypt</b><span>8 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="old_testament"><b>The Old Testament</b><span>7 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="medieval_modern"><b>Medieval to modern</b><span>5 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="us_history"><b>American history</b><span>4 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="ancient_world"><b>The ancient world</b><span>4 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="disaster"><b>Disasters</b><span>1 story</span></button>
-    </div>
-  </section>
-
-  <!-- ===== Q2 · what hooks you =========================================
-       Stored with FBA.setDraw. The four keys and the four labels are the
-       ones /join already asks — HistoryDraw, in the app's own words. -->
-  <section class="st-screen" id="sc-q2" data-sc="q2" aria-labelledby="sc-q2-h">
-    <h2 id="sc-q2-h">What hooks you?</h2>
-    <p class="st-sub">No wrong answers. Nobody is marking this.</p>
-
-    <div class="st-opts" id="st-q2-opts" role="radiogroup" aria-labelledby="sc-q2-h">
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="people"><b>The people</b><span>Everyone in it was improvising.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="turning"><b>The turning points</b><span>The days it could have gone the other way.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="thread"><b>How we got here</b><span>The line from then to the news.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="tiktok"><b>Honestly, TikTok sent me</b><span>Best reason there is.</span></button>
-    </div>
-  </section>
-
-  <!-- ===== Q3 · how much you remember ==================================
-       Stored with FBA.setRelates, whose vocabulary is the three statements
-       /join calls "Sound familiar?". Each label here is that same statement
-       in the first person, answering this question. -->
-  <section class="st-screen" id="sc-q3" data-sc="q3" aria-labelledby="sc-q3-h">
-    <h2 id="sc-q3-h">Honestly &mdash; how much of it do you remember?</h2>
-    <p class="st-sub">Pick the one that is most true. All three are very
-    normal.</p>
-
-    <div class="st-opts" id="st-q3-opts" role="radiogroup" aria-labelledby="sc-q3-h">
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="notime"><b>Almost none.</b><span>I find history interesting but never actually make time for it.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="unfinished"><b>Bits and pieces.</b><span>I&rsquo;ve started a history book and not finished it.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="stories"><b>The stories, yes. The dates, never.</b><span>I can&rsquo;t hold on to dates, but I remember a good story.</span></button>
-    </div>
-  </section>
-
-  <!-- ===== Q4 · what you wish you knew =================================
-       Stored as interests[1] — a second real topic key, in the same list
-       js/account.js already documents as "an array of stacks.json topic
-       keys". js/start.js drops whatever was picked in Q1. -->
-  <section class="st-screen" id="sc-q4" data-sc="q4" aria-labelledby="sc-q4-h">
-    <h2 id="sc-q4-h">And what do you wish you knew more about?</h2>
-    <p class="st-sub">The one you nod along to and hope nobody asks about.</p>
-
-    <div class="st-opts is-grid" id="st-q4-opts" role="radiogroup" aria-labelledby="sc-q4-h">
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="church_history"><b>The early church</b><span>11 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="new_testament"><b>The New Testament</b><span>11 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="cleopatra"><b>Cleopatra &amp; Egypt</b><span>8 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="old_testament"><b>The Old Testament</b><span>7 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="medieval_modern"><b>Medieval to modern</b><span>5 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="us_history"><b>American history</b><span>4 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="ancient_world"><b>The ancient world</b><span>4 stories</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="disaster"><b>Disasters</b><span>1 story</span></button>
-    </div>
-  </section>
-
-  <!-- ===== Q5 · how much time ==========================================
-       Stored with FBA.setGoal. Same four DailyGoal values /join asks. -->
-  <section class="st-screen" id="sc-q5" data-sc="q5" aria-labelledby="sc-q5-h">
-    <h2 id="sc-q5-h">How much time have you got?</h2>
-    <p class="st-sub">Be honest. A small promise you keep beats a big one you
-    don&rsquo;t.</p>
-
-    <div class="st-opts" id="st-q5-opts" role="radiogroup" aria-labelledby="sc-q5-h">
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="5"><b>5 minutes</b><span>One story. Perfect.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="10"><b>10 minutes</b><span>A story and a bit of a think.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="20"><b>20 minutes</b><span>Three or four, and they stick.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="45"><b>As long as it takes</b><span>We&rsquo;ll keep the kettle on.</span></button>
-    </div>
-  </section>
-
-  <!-- ===== the turn ====================================================
-       This screen asks nothing. It says what the product is, in the
-       product's voice.
-
-       The three numbers are counted out of data/index.json by js/start.js:
-       stacks.length, the total of every stack's cards, and the median of
-       every stack's `secs` rendered with the same half-minute rounding
-       js/gate.js uses. What is printed below is that count for the corpus in
-       the repo today, so a dead fetch shows the true number rather than a
-       gap. If the data changes, the script prints the new one.
-
-       There is no percentage on this screen and there is not going to be
-       one. Nothing here measures how much a reader remembers or how
-       confident they feel, so nothing here says anything about it. -->
-  <section class="st-screen" id="sc-turn" data-sc="turn" aria-labelledby="sc-turn-h">
-    <p class="st-eyebrow">How it is built</p>
-    <h2 id="sc-turn-h">History is easier to remember when it feels like a
-    story.</h2>
-    <p class="st-sub">So that is the only way we write it. One thread you can
-    follow the whole way &mdash; somebody in trouble, what they did about it,
-    how it turned out &mdash; with the painting it happened in on every card.
-    No dates to hold, no chapter to get through first.</p>
-
-    <ul class="st-facts" id="st-facts">
-      <li><strong id="st-fact-stories">51</strong><span>stories in all</span></li>
-      <li><strong id="st-fact-cards">450</strong><span>cards, a painting on every one</span></li>
-      <li><strong id="st-fact-mins">3&frac12; min</strong><span>the middle story, start to finish</span></li>
-    </ul>
-
-    <p class="st-note">That is the whole promise: nothing to revise, nothing to
-    memorise. You read one, and you have a story you could tell someone
-    tonight.</p>
-
-    <button class="st-go" id="st-turn-go" type="button">Makes sense</button>
-  </section>
-
-  <!-- ===== Q6 · what you would love to get =============================
-       Stored with FBA.setStreak — StreakCommitment, the same four values
-       /join asks, framed as the thing the reader would like to end up
-       with. -->
-  <section class="st-screen" id="sc-q6" data-sc="q6" aria-labelledby="sc-q6-h">
-    <h2 id="sc-q6-h">What would you love to get from Factbox?</h2>
-    <p class="st-sub">Everybody says &ldquo;a habit&rdquo;. Pick the run that
-    would make it one.</p>
-
-    <div class="st-opts" id="st-q6-opts" role="radiogroup" aria-labelledby="sc-q6-h">
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="7"><b>A week of it</b><span>Seven days where I learned something every day.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="14"><b>A fortnight</b><span>Long enough that I stop having to remember to.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="30"><b>A month of history</b><span>Thirty days, start to finish.</span></button>
-      <button class="st-opt" type="button" role="radio" aria-checked="false" data-k="50"><b>Fifty days</b><span>Something I would actually bring up at dinner.</span></button>
-    </div>
-  </section>
-
-  <!-- ===== the wait ====================================================
-       One screen, two states. Building, then ready.
-
-       They are deliberately not two screens. A "ready" screen of its own
-       would have a Back arrow that lands on a screen that immediately walks
-       forward again — a Back button that goes forwards is the exact bug this
-       flow had before. Back from here goes to Q6, once, and stays there.
-
-       The lines under "Building" are the reader's own six answers, written
-       by the script. The three stories under "ready" are real ones from
-       data/index.json carrying the topic they picked. -->
-  <section class="st-screen" id="sc-wait" data-sc="wait" aria-labelledby="sc-wait-h">
-
-    <div id="st-building">
-      <h2 id="sc-wait-h">Building your Factbox&hellip;</h2>
-      <p class="st-sub">Six answers, and this is what they said.</p>
-
-      <ul class="st-picks" id="st-picks">
-        <li><i>First up</i><b id="st-pick-topic">the whole shelf</b></li>
-        <li><i>Then</i><b id="st-pick-wish">whatever is next</b></li>
-        <li><i>Hooked by</i><b id="st-pick-draw">the people in it</b></li>
-        <li><i>You said</i><b id="st-pick-relate">the stories stick, the dates don&rsquo;t</b></li>
-        <li><i>A day</i><b id="st-pick-goal">five minutes</b></li>
-        <li><i>Aiming for</i><b id="st-pick-streak">seven days</b></li>
-      </ul>
-
-      <div class="st-bar" id="st-bar" aria-hidden="true"><i></i></div>
-    </div>
-
-    <div id="st-ready">
-      <h2 id="sc-ready-h">Your personalised feed is ready.</h2>
-      <p class="st-sub">Built out of the six answers above. First three, in
-      the order you asked for them:</p>
-
-      <ul class="st-feed" id="st-feed">
-        <li>How did Cleopatra die? (the snake)<em>Free &middot; 4 min</em></li>
-        <li>Cleopatra the seductress<em>Free &middot; 3&frac12; min</em></li>
-        <li>Cleopatra&rsquo;s body has never been found<em>3&frac12; min</em></li>
-      </ul>
-
-      <a class="st-go" id="st-hand-off" href="/join" role="button">Save my Factbox</a>
-      <a class="st-ghost" id="st-home" href="/">Or start reading now</a>
-    </div>
-
-  </section>
+      <form class="ob-act" action="/join" method="get">
+        <input type="hidden" name="from" value="start">
+        <button class="go" id="st-open-go" type="submit">Build my feed</button>
+      </form>
+    </section>
+  </div>
 
 </main>
 
-<script src="/js/gate.js"></script>
-<script src="/js/account.js"></script>
-<script src="/js/profile-sync.js"></script>
-<script src="/js/start.js"></script>
-<!-- /start had NO analytics sink on it at all. js/start.js has always called
-     FB.track, but FB.track only reaches PostHog and GA4 because js/analytics.js
-     wraps it, and this was the one page of the site that never loaded that
-     file — so every start_step this flow has ever fired went nowhere. The six
-     questions every new reader answers were, in measurement terms, silent.
-
-     It goes AFTER js/start.js on purpose: analytics.js bridges window.FB.track
-     when it runs and again on DOMContentLoaded, so either order works, but the
-     onboarding must not wait on it to draw a screen. -->
 <script src="/js/analytics.js"></script>
 <script src="/js/acct.js"></script>
-
 </body>
 </html>
