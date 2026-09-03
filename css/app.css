@@ -557,14 +557,6 @@ html.fb-hdr .acct{visibility:hidden}
   display:flex; align-items:center; gap:8px;
 }
 
-/* The ambient-sound button is created by js/audio-reader.js, which puts it in
-   this rail when the page has one. Both used to be position:fixed at
-   right:12px — two elements given the same corner and no way to see each
-   other, so the speaker sat on top of the reader's own name. In here it is a
-   flex item like the account pill beside it, and the row does the arranging.
-   On the composed story pages there is no rail and it stays fixed; that rule
-   still lives in css/audio-reader.css. */
-.topbar-r .fb-sound{position:static; top:auto; right:auto}
 .acct.is-float{min-height:0}
 .acct.is-float a{
   min-height:38px; padding:0 13px; border-radius:var(--pill);

@@ -652,15 +652,13 @@
     if (shown || dead) return;
     shown = true;
     paint();
-    /* Into the reader's top-right rail if it has one, so the account pill and
-       this button lay themselves out as a row instead of being handed the same
-       fixed corner and covering each other. Body is the fallback, and is what
-       the composed story pages use — they have no rail. */
-    try {
-      var rail = document.querySelector(".topbar-r");
-      (rail || document.body).appendChild(btn);
-      document.body.appendChild(note);
-    }
+    /* Body, not the top-right rail. dbc5036 mounted this into .topbar-r to stop
+       the speaker sitting on top of the account pill — two elements handed the
+       same fixed corner. That collision is gone: the button moved to the action
+       rail at the foot of the right edge (css/audio-reader.css), so the corner
+       it was fighting over is no longer one it occupies. Mounting it into the
+       rail now would make it position:static up there and undo the move. */
+    try { document.body.appendChild(btn); document.body.appendChild(note); }
     catch (e) { shown = false; return; }
 
     /* --------------------------------------------------------------------
