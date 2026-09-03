@@ -310,6 +310,13 @@ html.is-endcard .fb-sound-note{
   display:none !important;
 }
 
+/* The account pill goes too. Everything else on this pane points at the next
+   story; "Sign in" is the one control that points away from it, and it is
+   floating over a screen built to carry a single action. It is still on every
+   other pane of the reader, and on every other page. No !important here —
+   nothing writes this one inline, unlike the save button. */
+html.is-endcard .topbar-r{display:none}
+
 /* End-of-stack card and the paywall share a centred column. */
 .pane{
   height:100vh; height:100dvh;
@@ -552,6 +559,15 @@ html.fb-hdr .acct{visibility:hidden}
    the top bar. The control mirrors that pill on the opposite side, at the
    same 38px height the back button already uses, and shows one link rather
    than two so the two bars never meet in the middle of a phone. */
+/* Today's account control is one icon, not a word, so it needs a box rather
+   than a text baseline — the same fix .topbar got when Save lost its label. */
+.td-acct{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:42px; height:42px; padding:0; border-radius:var(--pill);
+  box-shadow:inset 0 0 0 1px var(--hair); color:var(--dim);
+}
+.td-acct:hover{color:var(--parchment)}
+
 .topbar-r{
   position:fixed; top:var(--top-safe); right:12px; z-index:31;
   display:flex; align-items:center; gap:8px;

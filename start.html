@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox · Get started</title>
+<meta name="description" content="Browse all fifty-one Factbox stories by subject, by the kind of story they are, or by searching for a name.">
+<meta name="theme-color" content="#0E0B12">
+<link rel="canonical" href="https://factbox.app/start">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Factbox">
+<meta property="og:title" content="Factbox · Explore">
+<meta property="og:description" content="Browse all fifty-one Factbox stories by subject, by the kind of story they are, or by searching for a name.">
+<meta property="og:image" content="https://factbox.app/img/share.jpg">
+<meta property="og:url" content="https://factbox.app/explore">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/start.css">
+<!-- The header's account control must not flash. This class makes its slot
+     invisible without collapsing it, so the row keeps its height from the
+     first paint and nothing shifts when auth finally answers. The timer
+     removes it unconditionally: a script that never runs, or throws, still
+     leaves a readable header rather than a hidden one. See css/app.css. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+
+<!-- Real first screen, not a shell. js/start.js replaces this the moment it
+     runs; if it never does, this is still the opening question with every
+     option on it and a link onward. §2.4: no page that renders empty. -->
+<main class="st" id="st">
+  <section class="st-panel is-on">
+    <div class="st-spacer"></div>
+    <h1 class="st-q">Remember history without studying it.</h1>
+    <p class="st-sub">Five minutes a day. Addictive stories. The people,
+      scandals, wars, and ideas you&rsquo;ll actually remember.</p>
+    <div class="st-spacer"></div>
+    <a class="go" href="/join" style="text-decoration:none">Get started</a>
+    <p class="st-fine"><a href="/login?next=today">I already have an account</a></p>
+  </section>
+</main>
+
+<script src="/js/progress.js"></script>
+<script src="/js/access.js"></script>
+<script src="/js/gate.js"></script>
+<script src="/js/start.js"></script>
+<script>
+(function () { try { FBSTART.boot("st"); } catch (e) {} })();
+</script>
+<script src="/js/analytics.js"></script>
+</body>
+</html>
