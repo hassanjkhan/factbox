@@ -140,7 +140,7 @@
     var t = taxTopics(), i;
     for (i = 0; i < t.length; i++) { if (t[i] && t[i].key === key) return t[i].name; }
     var s = String(key == null ? "" : key).replace(/_/g, " ");
-    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Season one";
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "All stories";
   }
 
   function subjectNote(key, n) {

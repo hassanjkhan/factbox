@@ -126,7 +126,7 @@
     <p class="jn-err" id="ac-err" hidden role="alert"></p>
 
     <a class="go" id="ac-read" href="/stories"
-       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:18px">Read season one</a>
+       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:18px">Read all fifty-one stories</a>
 
     <!-- Cancelling is Stripe's job, on Stripe's page, with Stripe's record of
          what was charged. A cancel button here that only sets a flag would be
@@ -137,7 +137,7 @@
     <!-- A reader who came looking for the privacy policy nearly always wants
          one of the other two within the next thirty seconds, so all three sit
          together, above the sign-out button rather than below it. -->
-    <p class="fine" id="ac-legal" style="text-align:center">
+    <p class="fine" id="ac-legal" style="text-align:center;justify-content:center">
       <a href="/privacy">Privacy policy</a> ·
       <a href="/terms">Terms</a> ·
       <a href="/support">Support</a>
@@ -375,7 +375,7 @@
       return;
     }
 
-    text(eRead, "Read season one");
+    text(eRead, "Read all fifty-one stories");
     /* "Cancel" is only true when there is a subscription to cancel. A premium
        account with no subscription row — comped, or granted by hand — still
        gets the portal, because a paying reader must never be left without a

@@ -71,7 +71,7 @@
   <noscript><p class="fine" style="margin-top:24px">Factbox needs JavaScript to
   show the stories.</p></noscript>
 
-  <p class="fine" style="margin-top:34px;text-align:left">
+  <p class="fine" style="margin-top:34px;text-align:center">
     <a href="/account">Account</a> · <a href="/credits">Artwork credits</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
   </p>
 </main>
@@ -187,7 +187,7 @@
     fin(shelf, function () {
       shelf.innerHTML = resumeHTML() +
         section("free", "Start here", "free", free) +
-        section("rest", "The rest of season one", rest.length + " stories", rest);
+        section("rest", "The rest of the stories", rest.length + " stories", rest);
     });
   }
 
@@ -235,7 +235,7 @@
     if (h1) {
       var t = h1.querySelector("h2"), n = h1.querySelector("span");
       if (t) t.textContent = "All stories";
-      if (n) n.textContent = STACKS.length + " in season one";
+      if (n) n.textContent = STACKS.length + " stories";
     }
     if (h2 && h2.parentNode) h2.parentNode.removeChild(h2);
 

@@ -42,7 +42,7 @@ page = f'''<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Artwork credits</title>
-<meta name="description" content="Every plate used in Factbox season one, with its source and licence.">
+<meta name="description" content="Every plate used in Factbox, with its source and licence.">
 <meta name="theme-color" content="#0E0B12">
 <link rel="stylesheet" href="css/app.css">
 <style>
@@ -63,7 +63,7 @@ page = f'''<!doctype html>
 <main class="doc">
   <p class="mark">FACTBOX</p>
   <h1>Artwork credits</h1>
-  <p>Every plate in season one, with its source and licence. {n_pd} are public domain
+  <p>Every plate in Factbox, with its source and licence. {n_pd} are public domain
      or public-domain equivalent. {n_sa + n_at} are used under Creative Commons terms
      and are credited both here and on the card where they appear.</p>
   <p>Plates are reproduced at reduced resolution for delivery. Nothing we serve has

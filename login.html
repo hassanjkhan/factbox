@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Sign in</title>
-<meta name="description" content="Sign in to Factbox to read season one on any phone. Google or email.">
+<meta name="description" content="Sign in to Factbox to read all fifty-one stories on any phone. Google or email.">
 <meta name="theme-color" content="#0E0B12">
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="https://factbox.app/login">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Sign in">
-<meta property="og:description" content="Sign in to read season one on any phone.">
+<meta property="og:description" content="Sign in to read all fifty-one stories on any phone.">
 <meta property="og:image" content="https://factbox.app/img/share.jpg">
 <meta property="og:url" content="https://factbox.app/login">
 <meta name="twitter:card" content="summary_large_image">
@@ -69,7 +69,7 @@
       <a href="/library">Library</a>
       <span class="acct" id="fb-acct"></span></nav>
     <h1 id="au-title">Sign in to Factbox</h1>
-    <p id="au-blurb">One account. Season one, wherever you read it.</p>
+    <p id="au-blurb">One account. All fifty-one stories, wherever you read it.</p>
   </header>
 
   <!-- Shown by the script while FBU.ready() is still settling. Hidden in the
@@ -164,7 +164,7 @@
   </noscript>
 
   <p class="fine" style="margin-top:34px">
-    <a href="/stories">Season one</a> · <a href="/account">Account</a> ·
+    <a href="/account">Account</a> ·
     <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
     <a href="/support">Support</a>
   </p>
@@ -330,7 +330,7 @@
     text(title, up ? "Create your Factbox account" : "Sign in to Factbox");
     text(blurb, up
       ? "One account, every phone. It takes about twenty seconds and nothing is charged for it."
-      : "One account. Season one, wherever you read it.");
+      : "One account. All fifty-one stories, wherever you read it.");
     text(gT, up ? "Sign up with Google" : "Continue with Google");
     show(forgot, !up);
     try { if (pass) pass.setAttribute("autocomplete", up ? "new-password" : "current-password"); } catch (e) {}

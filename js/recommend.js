@@ -391,7 +391,7 @@ var FBR = (function () {
       if (pl.of < 2 && target && str(target.topic)) {
         phrase = topicPhrase(str(target.topic)) || phrase;
       }
-      if (!phrase) phrase = "the rest of season one";
+      if (!phrase) phrase = "the rest of the stories";
       sec.appendChild(el("p", "ec-sub", str(opts.sub) ||
         "Keep going. There’s more to " + phrase + ", and it gets stranger."));
 
