@@ -105,10 +105,6 @@
         <dt>How you sign in</dt>
         <dd id="ac-prov">Email and password</dd>
       </div>
-      <div class="au-row" id="ac-ver-row">
-        <dt>Email</dt>
-        <dd id="ac-ver">Verified</dd>
-      </div>
       <div class="au-row">
         <dt>Plan</dt>
         <dd>
@@ -132,29 +128,22 @@
     <a class="go" id="ac-read" href="/stories"
        style="text-align:center;text-decoration:none;line-height:1.2;margin-top:18px">Read season one</a>
 
-    <button class="au-2nd" id="ac-resend" type="button" hidden>Resend the verification email</button>
-
     <!-- Cancelling is Stripe's job, on Stripe's page, with Stripe's record of
          what was charged. A cancel button here that only sets a flag would be
          a lie the first time a card is charged after it. -->
     <a class="au-2nd" id="ac-portal" href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
        rel="noopener" hidden>Cancel plan or manage billing</a>
 
-    <a class="au-2nd" id="ac-join" href="/join" hidden>See the plans</a>
-
     <!-- A reader who came looking for the privacy policy nearly always wants
          one of the other two within the next thirty seconds, so all three sit
          together, above the sign-out button rather than below it. -->
-    <p class="fine" id="ac-legal">
+    <p class="fine" id="ac-legal" style="text-align:center">
       <a href="/privacy">Privacy policy</a> ·
       <a href="/terms">Terms</a> ·
       <a href="/support">Support</a>
     </p>
 
     <button class="au-2nd" id="ac-out" type="button">Sign out</button>
-    <p class="fine" style="margin-top:10px;text-align:left">Signing out leaves
-    your place in each story, and anything you saved, on this phone. Neither
-    is tied to your account.</p>
   </section>
 
   <!-- ===== signed out =================================================== -->
@@ -187,8 +176,7 @@
       portal</a> — it is Stripe's own page and works on its own.</p>
   </noscript>
 
-  <p class="fine" style="margin-top:34px;text-align:left">
-    <a href="/stories">Season one</a> · <a href="/login">Sign in</a> ·
+  <p class="fine" style="margin-top:34px;text-align:center">
     <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
     <a href="/support">Support</a>
   </p>
@@ -298,8 +286,6 @@
   var eName  = el("ac-name");
   var eEmail = el("ac-email");
   var eProv  = el("ac-prov");
-  var eVer   = el("ac-ver");
-  var eVerRow= el("ac-ver-row");
   var ePill  = el("ac-pill");
   var ePlan  = el("ac-plan");
   var eWhenR = el("ac-when-row");
@@ -310,9 +296,7 @@
   var eNote  = el("ac-note");
   var eErr   = el("ac-err");
   var eRead  = el("ac-read");
-  var eResend= el("ac-resend");
   var ePortal= el("ac-portal");
-  var eJoin  = el("ac-join");
   var eOut   = el("ac-out");
 
   function reveal() {
@@ -370,7 +354,6 @@
     show(eWhenR, false);
     show(eCostR, false);
     show(ePortal, false);
-    show(eJoin, false);
 
     if (!known) {
       cls(ePill, "au-pill is-off");
@@ -384,7 +367,6 @@
       text(ePill, "FREE");
       text(ePlan, "Two stories are open. The other forty-nine unlock with a subscription — three days free first.");
       text(eRead, "Read the free stories");
-      show(eJoin, true);
       /* Somebody who cancelled still has a subscription row for a while. If
          they are between "cancelled" and "period end", the portal is still
          the right button to show them. With no subscription at all there is
@@ -462,25 +444,18 @@
     show(pOut, false);
     show(pIn, true);
 
-    var mail = "", prov = "", verified = true, hasMail = false;
-    try { mail = FBU.email() || FBU.phone() || "your account"; } catch (e) { mail = "your account"; }
+    var mail = "", prov = "";
+    try { mail = FBU.email() || "your account"; } catch (e) { mail = "your account"; }
     try { prov = FBU.providerText(); } catch (e) { prov = "Email and password"; }
-    try { hasMail = !!FBU.email(); verified = !!FBU.emailVerified(); } catch (e) {}
 
     text(eName, nameText());
     text(eEmail, mail);
     text(eProv, prov);
 
-    if (!hasMail) {
-      /* A phone-only account has no email to verify, so the row would be a
-         question nobody asked. */
-      show(eVerRow, false);
-      show(eResend, false);
-    } else {
-      show(eVerRow, true);
-      text(eVer, verified ? "Verified" : "Not verified yet — you can still read everything.");
-      show(eResend, !verified);
-    }
+    /* No verification row. A reader whose email is unverified can already read
+       everything they have paid for, so the row only ever reported a fact
+       about our records back at the person it was about. Verification still
+       happens; it is just not this page's business. */
 
     paintPlan();
   }
@@ -497,22 +472,6 @@
       if (w) n.textContent = w;
     } catch (e) {}
   }
-
-  on(eResend, "click", function () {
-    if (!FBU) return;
-    text(eErr, ""); show(eErr, false);
-    busy(eResend, "Sending…");
-    try {
-      FBU.resendVerification().then(function () {
-        idle(eResend);
-        text(eNote, "Verification email sent. Check Promotions if it is not in your inbox, then reload this page.");
-        show(eNote, true);
-      }, function (e) {
-        idle(eResend);
-        text(eErr, errText(e)); show(eErr, true);
-      });
-    } catch (e) { idle(eResend); }
-  });
 
   on(ePortal, "click", function () {
     try { if (window.FB && FB.track) FB.track("billing_portal"); } catch (e) {}
