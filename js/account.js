@@ -61,147 +61,301 @@
 var FBA = (function () {
 
   /* ======================================================================
-     STRIPE PAYMENT LINKS — the only three values an owner has to fill in.
+     PRICING — THE SINGLE SOURCE OF TRUTH.
 
-     A Payment Link is a checkout URL hosted by Stripe. It needs no backend
-     and no API key, which is the only reason this site can take money at
-     all. Every button in this file checks that its link is present and says
-     so in plain words rather than going dead.
+     Everything the reader is ever shown about money is computed from the
+     PRICING record below. Nothing else in this repo may contain a price.
+     If you are about to type a dollar figure into markup, into copy, or
+     into a .md file, you are about to create the bug this block exists to
+     make impossible.
 
-     HOW TO CREATE EACH ONE (Stripe Dashboard, once per link):
+     WHY IT IS SHAPED THIS WAY. It used to be shaped the other way round:
+     a PRICE_PER_MONTH map was the source, and the billed total was
+     per-month x months. That is backwards, and it was one Stripe edit away
+     from lying. Stripe charges a TOTAL, once per period. The per-month
+     figure is marketing arithmetic performed on that total. Deriving the
+     total from the per-month figure means the code can only ever express
+     prices that happen to divide evenly — it literally cannot represent
+     "$35.00 a year", because no per-month number times twelve is 3500.
+     So: `amountCents` is the source, and `perMonth` is derived, rounded,
+     and flagged `perMonthExact` when the division is not clean, so copy
+     can say "about $2.92 a month" instead of claiming a price nobody is
+     charged.
 
-       1. Products → Add product → "Factbox — season one".
-          Add three recurring prices to that one product:
-            a) USD 4.99  / billing period: monthly
-            b) USD 11.97 / billing period: every 3 months
-            c) USD 35.88 / billing period: yearly
-          Stripe bills the whole period at once. The "$3.99 a month" and
-          "$2.99 a month" in our copy are those totals divided by the months
-          in the period — a description of the same charge, never a separate
-          price. plans() below derives them from PRICE_PER_MONTH so the two
-          can never drift apart.
+     amountCents IS WHAT STRIPE CHARGES. It is not an aspiration and it is
+     not a rounded headline. It was established on 2026-09-03 by loading
+     each live Payment Link in Chrome and reading the price object Stripe's
+     own checkout fetched for it (see STRIPE.md §2). Each record carries
+     the Stripe price id it was read from, so the next person can check the
+     same three numbers in the dashboard in under a minute.
 
-       2. Payment Links → New → pick one of the three prices above.
-
-       3. In the link editor, under the subscription options, tick
-          "Include a free trial" and set it to 3 days. THE TRIAL IS
-          CONFIGURED IN STRIPE, NOT IN THIS CODE — nothing here can grant,
-          extend or end a trial, and this file must never claim otherwise.
-          (API equivalent: subscription_data.trial_period_days = 3.)
-
-       4. After payment → Redirect customers to:
-            https://factbox.app/stories?unlocked=1&session_id={CHECKOUT_SESSION_ID}
-          Paste that literally, braces included. Stripe substitutes the real
-          session id; progress.js mints the buyer's restore link from it, and
-          gate.js's claim() flips the unlock flag on arrival. A success URL
-          without the session_id part still unlocks, but the restore link
-          becomes a locally minted one that no future server could verify.
-
-       5. Copy the resulting https://buy.stripe.com/... URL into the matching
-          constant below. Nothing else in the site needs editing.
-
-     Note on what these links can and cannot do: possession of a completed
-     checkout is the whole proof of purchase, because nothing here can ask
-     Stripe anything after the fact. Anyone who visits the success URL by
-     hand is unlocked too. SPEC.md §9 already covers this; these links do not
-     change it.
+     CHANGING A PRICE IS A TWO-STEP OPERATION AND THE ORDER MATTERS:
+       1. Hassan creates the new price + Payment Link in Stripe.
+       2. Only then does `link` and `amountCents` change here, together,
+          in the same edit, on the same line pair.
+     Editing `amountCents` alone changes what the site SAYS. Editing `link`
+     alone changes what the reader PAYS. Either one on its own is the
+     discrepancy. STRIPE.md §7 is the click-path.
      ====================================================================== */
 
-  var PAY_LINK_MONTHLY   = "https://buy.stripe.com/6oUcN41yFgeLbPF5c63F602";   /* USD 4.99  billed every month     + 3-day trial */
-  var PAY_LINK_QUARTERLY = "https://buy.stripe.com/4gM6oGfpv7If1b16ga3F603";   /* USD 11.97 billed every 3 months  + 3-day trial */
-  var PAY_LINK_ANNUAL    = "https://buy.stripe.com/28E7sKa5b8Mj8DtgUO3F604";   /* USD 35.88 billed every 12 months + 3-day trial */
+  /* How long the free trial runs. THE TRIAL IS CONFIGURED IN STRIPE, on
+     each Payment Link, and this number only describes it — nothing in this
+     file can grant, extend or end a trial. It is a constant rather than a
+     literal so the 3-vs-7 test is one edit here plus one edit in each of
+     the three Stripe links, and so no page has to spell "three" by hand.
+     If you change it, change it in Stripe FIRST. */
+  var TRIAL_DAYS = 3;
+
+  var PRICING = {
+    currency: "USD",
+    symbol:   "$",
+
+    /* The ladder, longest-lived first in intent, rendered in ORDER below.
+
+       offered   — is this plan part of the offer a new reader is shown?
+                   Setting it to false retires a plan from acquisition
+                   WITHOUT deleting anything: the Payment Link keeps
+                   working if someone has it bookmarked, the Stripe price
+                   is untouched, and every existing subscriber on it keeps
+                   renewing at exactly what they agreed to. Nobody is
+                   migrated, nobody is repriced, nobody is cancelled.
+       best      — the one carrying the BEST VALUE badge. At most one.
+       priceId   — the Stripe price the link above resolves to. Recorded so
+                   the numbers here can be re-verified without guessing. */
+    plans: [
+      {
+        key:           "monthly",
+        link:          "https://buy.stripe.com/6oUcN41yFgeLbPF5c63F602",
+        priceId:       "price_1UBG2BAhj1M3E8TlTgdYJ6Xf",
+        amountCents:   499,             /* USD 4.99 */
+        intervalUnit:  "month",
+        intervalCount: 1,
+        cycle:         "every month",
+        cycleShort:    "monthly",
+        offered:       true,
+        best:          false
+      },
+      {
+        /* RETIRED FROM ACQUISITION, NOT DELETED. See §6 of STRIPE.md.
+           offered:false takes it off the plan screen and nothing else.
+           Anyone already subscribed on price_1UBG4LAhj1M3E8TlS3U7Hwto
+           keeps being charged USD 11.97 every 3 months, keeps `premium`,
+           and never notices. Do not delete this record: planByKeyAny()
+           still has to be able to name their plan on the account page, and
+           a reader whose stored plan is "quarterly" must not resolve to
+           nothing. */
+        key:           "quarterly",
+        link:          "https://buy.stripe.com/4gM6oGfpv7If1b16ga3F603",
+        priceId:       "price_1UBG4LAhj1M3E8TlS3U7Hwto",
+        amountCents:   1197,            /* USD 11.97 */
+        intervalUnit:  "month",
+        intervalCount: 3,
+        cycle:         "every 3 months",
+        cycleShort:    "3 months at a time",
+        offered:       false,
+        best:          false
+      },
+      {
+        /* NOT $35. Stripe charges 3588. The owner wants a $35/year price;
+           until that price and its Payment Link exist in the dashboard,
+           this must keep saying 35.88, because 35.88 is what the reader
+           would authorise. When Hassan has made it (STRIPE.md §7), this
+           becomes amountCents: 3500 and the new buy.stripe.com URL — two
+           values, one edit, and the whole site follows. */
+        key:           "annual",
+        link:          "https://buy.stripe.com/28E7sKa5b8Mj8DtgUO3F604",
+        priceId:       "price_1UBG4pAhj1M3E8Tl1x4YFAzB",
+        amountCents:   3588,            /* USD 35.88 */
+        intervalUnit:  "year",
+        intervalCount: 1,
+        cycle:         "a year",
+        cycleShort:    "once a year",
+        offered:       true,
+        best:          true
+      }
+    ],
+
+    /* The rate savings are measured against. Must be a key above; if it is
+       not offered any more, savePct simply comes out 0 rather than wrong. */
+    base: "monthly"
+  };
 
   /* Stripe's documented Payment Link URL parameters. prefilled_email fills in
      the email field on the payment page (the buyer can still change it);
      client_reference_id is an arbitrary string that comes back on the
-     checkout.session.completed webhook, so a future server could join a
-     payment to the local account id without reissuing any link.
+     checkout.session.completed webhook, so the webhook can join a payment to
+     the Firebase account that made it.
      client_reference_id must be alphanumerics, dashes or underscores. */
   var P_EMAIL = "prefilled_email";
   var P_REF   = "client_reference_id";
 
+
   /* ======================================================================
-     The price ladder. THREE NUMBERS, and every other figure on the plan
-     screen is computed from them: the billed total, the billing cycle, the
-     saving against the monthly rate. A hard-coded "save 40%" is a number
-     that silently becomes a lie the first time a price moves.
+     Derivation. Nothing below invents a number; it only divides, rounds
+     and formats the ones above.
      ====================================================================== */
 
-  var TRIAL_DAYS = 3;
-
-  var PRICE_PER_MONTH = { monthly: 4.99, quarterly: 3.99, annual: 2.99 };
-  var MONTHS          = { monthly: 1,    quarterly: 3,    annual: 12   };
-  var CYCLE           = { monthly: "every month", quarterly: "every 3 months",
-                          annual: "a year" };
-  var CYCLE_SHORT     = { monthly: "monthly", quarterly: "3 months at a time",
-                          annual: "once a year" };
-  var ORDER           = ["monthly", "quarterly", "annual"];
-  var BASE            = "monthly";   /* the rate the savings are measured against */
-  var BEST            = "annual";    /* the one marked best value */
-
-  function link(key) {
-    if (key === "monthly")   return PAY_LINK_MONTHLY;
-    if (key === "quarterly") return PAY_LINK_QUARTERLY;
-    if (key === "annual")    return PAY_LINK_ANNUAL;
-    return "";
+  /* Months in one billing period, from the interval Stripe actually bills
+     on. Anything unrecognised counts as one period, which makes the
+     per-month figure equal the charge — understating the saving rather
+     than overstating it. */
+  function monthsIn(p) {
+    try {
+      var n = Number(p.intervalCount);
+      if (!isFinite(n) || n < 1) n = 1;
+      if (p.intervalUnit === "year")  return 12 * n;
+      if (p.intervalUnit === "week")  return n / 4;
+      if (p.intervalUnit === "day")   return n / 30;
+      return n;                       /* "month" */
+    } catch (e) { return 1; }
   }
 
-  /* Money, to the cent, always. 3.99 * 3 is 11.969999999999999 in binary
-     floating point; rounding to cents before formatting is what makes the
-     total read 11.97 rather than 11.96. */
+  function rawByKey(key) {
+    try {
+      var i, list = PRICING.plans;
+      for (i = 0; i < list.length; i++) { if (list[i].key === key) return list[i]; }
+    } catch (e) {}
+    return null;
+  }
+
+  function link(key) {
+    var p = rawByKey(key);
+    return (p && p.link) ? p.link : "";
+  }
+
+  /* Money, to the cent, always, and always from integer cents — because
+     3.99 * 3 is 11.969999999999999 in binary floating point and the reader
+     is entitled to see 11.97. Everything here starts as cents and only
+     becomes a decimal at the last moment, inside the formatter. */
   function cents(n) {
     var v = Number(n);
     if (!isFinite(v)) return 0;
     return Math.round(v * 100);
   }
-  function money(n) {
-    try { return "$" + (cents(n) / 100).toFixed(2); } catch (e) { return "$0.00"; }
+  function moneyCents(c) {
+    try {
+      var v = Math.round(Number(c));
+      if (!isFinite(v)) v = 0;
+      return PRICING.symbol + (v / 100).toFixed(2);
+    } catch (e) { return PRICING.symbol + "0.00"; }
+  }
+  /* Kept for callers that already pass dollars. ACCOUNT.md documents it. */
+  function money(n) { return moneyCents(cents(n)); }
+
+  /* Small numbers as words, for prose that should not start a sentence with
+     a digit. Anything outside the table falls back to the numeral, which is
+     always readable even if it is less pretty. */
+  var WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven",
+               "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+               "fourteen"];
+  function words(n) {
+    try {
+      var i = Math.round(Number(n));
+      if (i >= 0 && i < WORDS.length) return WORDS[i];
+      return String(i);
+    } catch (e) { return String(n); }
   }
 
-  /* plans() — the whole ladder, derived. Safe to call before anything else,
-     and it never throws: the worst case is the three source prices with no
-     extras attached. */
-  function plans() {
-    var out = [], i;
-    for (i = 0; i < ORDER.length; i++) {
-      var k = ORDER[i];
-      var per = PRICE_PER_MONTH[k], months = MONTHS[k];
-      var total = cents(per) * months;                 /* integer cents */
-      var basePer = PRICE_PER_MONTH[BASE];
-      var saveP = 0;
-      try {
-        if (basePer > 0 && per < basePer) {
-          saveP = Math.round((1 - (per / basePer)) * 100);
+  function trialDays() { return TRIAL_DAYS; }
+  /* "3 days free" — for buttons, where the numeral reads faster. */
+  function trialShort() { return TRIAL_DAYS + " days free"; }
+  /* "three days free" — for sentences. Capitalise at the call site. */
+  function trialWords() { return words(TRIAL_DAYS) + " days free"; }
+
+  /* shape() — one raw record into everything a screen could want to say
+     about it. It never throws; the worst case is the charged figure with no
+     extras attached, and the charged figure is the one that matters. */
+  function shape(raw) {
+    var months  = monthsIn(raw);
+    var amount  = Math.round(Number(raw.amountCents));
+    if (!isFinite(amount) || amount < 0) amount = 0;
+
+    /* The derived per-month figure, and — just as important — whether the
+       division was clean. $35.88 a year is exactly $2.99 a month. $35.00 a
+       year is NOT $2.92 a month; it is about $2.92 a month, and copy that
+       drops the "about" is quoting a price that does not exist. */
+    var exact      = months > 0 && (amount % months === 0);
+    var perMonthC  = months > 0 ? Math.round(amount / months) : amount;
+
+    var saveP = 0;
+    try {
+      var b = rawByKey(PRICING.base);
+      if (b && b !== raw) {
+        var basePerC = Math.round(b.amountCents / monthsIn(b));
+        if (basePerC > 0 && perMonthC < basePerC) {
+          saveP = Math.round((1 - (perMonthC / basePerC)) * 100);
         }
-      } catch (e) { saveP = 0; }
-      out.push({
-        key: k,
-        perMonth: per,
-        perMonthText: money(per),
-        months: months,
-        billedCents: total,
-        billed: total / 100,
-        billedText: money(total / 100),
-        cycle: CYCLE[k],
-        cycleShort: CYCLE_SHORT[k],
-        /* "$11.97 every 3 months" — the sentence that must never be missing,
-           because a per-month figure on a plan billed in a lump is only half
-           the truth. */
-        billedLine: money(total / 100) + " " + CYCLE[k],
-        savePct: saveP,
-        best: k === BEST,
-        trialDays: TRIAL_DAYS,
-        link: link(k),
-        ready: !!link(k)
-      });
+      }
+    } catch (e) { saveP = 0; }
+
+    return {
+      key:      raw.key,
+      /* what Stripe charges, which is the only figure that must be exact */
+      amountCents:  amount,
+      billedCents:  amount,
+      billed:       amount / 100,
+      billedText:   moneyCents(amount),
+      currency:     PRICING.currency,
+      /* the period it is charged over */
+      intervalUnit:  raw.intervalUnit,
+      intervalCount: raw.intervalCount,
+      months:        months,
+      cycle:         raw.cycle,
+      cycleShort:    raw.cycleShort,
+      /* "$35.88 a year" — the sentence that must never be missing, because a
+         per-month figure on a plan billed in a lump is only half the truth. */
+      billedLine:    moneyCents(amount) + " " + raw.cycle,
+      /* the derived, secondary figure */
+      perMonthCents: perMonthC,
+      perMonth:      perMonthC / 100,
+      perMonthText:  moneyCents(perMonthC),
+      perMonthExact: exact,
+      /* "$2.99" when it divides cleanly, "about $2.92" when it does not */
+      perMonthAbout: (exact ? "" : "about ") + moneyCents(perMonthC),
+      savePct:  saveP,
+      best:     !!raw.best,
+      offered:  !!raw.offered,
+      priceId:  raw.priceId,
+      trialDays: TRIAL_DAYS,
+      link:     raw.link || "",
+      ready:    !!raw.link
+    };
+  }
+
+  /* plans() — THE OFFER. Only the plans a new reader may pick, in ladder
+     order. This is what the plan screen renders, so retiring a plan is
+     `offered: false` above and nothing else anywhere. */
+  function plans() {
+    var out = [], i, list = PRICING.plans;
+    for (i = 0; i < list.length; i++) {
+      if (list[i].offered) out.push(shape(list[i]));
     }
     return out;
   }
 
+  /* allPlans() — THE LADDER, including retired rungs. For anything that has
+     to name a plan somebody is already on. Never render the offer from this. */
+  function allPlans() {
+    var out = [], i, list = PRICING.plans;
+    for (i = 0; i < list.length; i++) out.push(shape(list[i]));
+    return out;
+  }
+
+  /* planByKey() — resolves within THE OFFER, deliberately. join.html restores
+     a returning reader's stored plan through this, and a stored "quarterly"
+     must NOT come back as a selectable plan once quarterly is retired, or the
+     screen shows no plan selected while the button points at a hidden one. */
   function planByKey(k) {
-    var all = plans(), i;
-    for (i = 0; i < all.length; i++) { if (all[i].key === k) return all[i]; }
-    return null;
+    var raw = rawByKey(k);
+    return (raw && raw.offered) ? shape(raw) : null;
+  }
+
+  /* planByKeyAny() — resolves within the whole ladder, retired rungs
+     included. This is the one to use when the question is "what is this
+     existing subscriber paying", not "what may this reader buy". */
+  function planByKeyAny(k) {
+    var raw = rawByKey(k);
+    return raw ? shape(raw) : null;
   }
 
   function anyLinkReady() {
@@ -211,7 +365,12 @@ var FBA = (function () {
   }
 
   /* checkoutURL(key) — "" means no link is configured for that plan, which is
-     the caller's cue to say so rather than to navigate nowhere. */
+     the caller's cue to say so rather than to navigate nowhere.
+
+     Retired plans still resolve here on purpose: a bookmarked quarterly link
+     must keep working, and a reader who somehow arrives with plan=quarterly
+     should reach a real checkout rather than a dead button. What retirement
+     changes is what we OFFER, not what we honour. */
   function checkoutURL(key) {
     /* Named `dest`, not `link`. A `var link` here shadows the link()
        function above for the whole body — it was calling a `linkFor` that
@@ -237,6 +396,22 @@ var FBA = (function () {
     if (mail) parts.push(P_EMAIL + "=" + encodeURIComponent(mail));
     if (ref) parts.push(P_REF + "=" + encodeURIComponent(ref));
     return parts.length ? dest + "?" + parts.join("&") : dest;
+  }
+
+  /* pricing() — a copy of the source record, for anything that wants to read
+     the configuration rather than the rendered ladder. Copied, not shared, so
+     a caller cannot edit the price list out from under the plan screen. */
+  function pricing() {
+    var out = { currency: PRICING.currency, symbol: PRICING.symbol,
+                base: PRICING.base, trialDays: TRIAL_DAYS, plans: [] }, i, p, c, k;
+    try {
+      for (i = 0; i < PRICING.plans.length; i++) {
+        p = PRICING.plans[i]; c = {};
+        for (k in p) { if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k]; }
+        out.plans.push(c);
+      }
+    } catch (e) {}
+    return out;
   }
 
 
@@ -610,7 +785,13 @@ var FBA = (function () {
   function plan() { try { return rec().p || ""; } catch (e) { return ""; } }
   function setPlan(k) {
     try {
-      if (!planByKey(k)) return false;
+      /* planByKeyAny, not planByKey: this records the plan somebody HAS, and
+         a reader arriving on a bookmarked link for a retired rung is on a
+         real plan even though we no longer offer it. What retirement governs
+         is what the plan screen renders, not what the store may remember.
+         Entitlement never depends on this value either way — the webhook
+         writes that. */
+      if (!planByKeyAny(k)) return false;
       var r = rec();
       r.p = k;
       save();
@@ -667,9 +848,19 @@ var FBA = (function () {
     frequency: frequency, setFrequency: setFrequency,
     onboarded: onboarded, finishOnboarding: finishOnboarding,
     /* money */
-    TRIAL_DAYS: TRIAL_DAYS, plans: plans, planByKey: planByKey,
+    /* the offer: only plans a new reader may pick */
+    plans: plans, planByKey: planByKey,
+    /* the whole ladder, retired rungs included, for naming what an existing
+       subscriber is on. Never render the offer from these two. */
+    allPlans: allPlans, planByKeyAny: planByKeyAny,
     plan: plan, setPlan: setPlan, checkoutURL: checkoutURL,
-    anyLinkReady: anyLinkReady, money: money,
+    anyLinkReady: anyLinkReady, money: money, moneyCents: moneyCents,
+    /* the source record itself, copied */
+    pricing: pricing, PRICING: pricing(),
+    /* the trial, as configuration rather than a literal in someone's copy.
+       TRIAL_DAYS stays a plain number because join.html already reads it. */
+    TRIAL_DAYS: TRIAL_DAYS, trialDays: trialDays,
+    trialShort: trialShort, trialWords: trialWords, words: words,
     /* meta */
     stored: stored, KEY: KEY
   };

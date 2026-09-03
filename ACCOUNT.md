@@ -170,28 +170,59 @@ If a shelf-ordering feature wants a signal, `draw()` is the honest one to
 reach for now. Until something consumes an answer, **the onboarding copy must
 not claim the answers change what you are shown** — and it does not.
 
-### Money — unchanged
+### Money
+
+Every one of these derives from the `PRICING` block in `js/account.js`. There
+is no second place. See §5.
 
 | Call | Returns |
 |---|---|
-| `FBA.plans()` | array of three plan objects, in ladder order |
-| `FBA.planByKey("monthly"\|"quarterly"\|"annual")` | one plan, or `null` |
+| `FBA.plans()` | **the offer** — only the plans a new reader may pick, in ladder order. This is what the plan screen renders. |
+| `FBA.planByKey(key)` | one *offered* plan, or `null`. Deliberately `null` for a retired plan, so a stored `"quarterly"` cannot restore a selection the screen no longer shows. |
+| `FBA.allPlans()` | **the whole ladder**, retired rungs included. Never render the offer from this. |
+| `FBA.planByKeyAny(key)` | one plan from the whole ladder — for naming what an existing subscriber is already on. |
 | `FBA.plan()` / `FBA.setPlan(key)` | the chosen key |
-| `FBA.checkoutURL(key)` | full Stripe URL with `prefilled_email` and `client_reference_id`, or `""` when that plan has no link yet |
+| `FBA.checkoutURL(key)` | full Stripe URL with `prefilled_email` and `client_reference_id`, or `""` when that plan has no link. Retired plans still resolve: a bookmarked link must keep working. |
 | `FBA.anyLinkReady()` | boolean — is checkout switched on at all |
-| `FBA.money(n)` | `"$11.97"` |
-| `FBA.TRIAL_DAYS` | `3` |
+| `FBA.money(11.97)` / `FBA.moneyCents(1197)` | `"$11.97"` |
+| `FBA.pricing()` | a **copy** of the whole `PRICING` record — currency, base, trial, every plan including retired ones |
+| `FBA.PRICING` | the same copy, taken once at load |
+| `FBA.TRIAL_DAYS` / `FBA.trialDays()` | `3` |
+| `FBA.trialShort()` | `"3 days free"` — for buttons |
+| `FBA.trialWords()` | `"three days free"` — for sentences; capitalise at the call site |
+| `FBA.words(3)` | `"three"` |
 
 A plan object:
 
 ```js
-{ key:"quarterly", perMonth:3.99, perMonthText:"$3.99", months:3,
-  billedCents:1197, billed:11.97, billedText:"$11.97",
-  cycle:"every 3 months", cycleShort:"3 months at a time",
-  billedLine:"$11.97 every 3 months",
-  savePct:20, best:false, trialDays:3,
+{ key:"annual",
+  /* what Stripe charges — the only figure that must be exact */
+  amountCents:3588, billedCents:3588, billed:35.88, billedText:"$35.88",
+  currency:"USD",
+  intervalUnit:"year", intervalCount:1, months:12,
+  cycle:"a year", cycleShort:"once a year",
+  billedLine:"$35.88 a year",
+  /* derived, secondary, and honest about it */
+  perMonthCents:299, perMonth:2.99, perMonthText:"$2.99",
+  perMonthExact:true, perMonthAbout:"$2.99",
+  savePct:40, best:true, offered:true,
+  priceId:"price_1UBG4pAhj1M3E8Tl1x4YFAzB", trialDays:3,
   link:"https://buy.stripe.com/…", ready:true }
 ```
+
+Figures in that example, and in the table in §5, are a **record of what was
+verified on 2026-09-03**, not a place to change a price. They carry a date and
+a source for exactly that reason. The only editable copy of a price is
+`PRICING` in `js/account.js`; if this file and that block ever disagree, the
+block is right and this file is stale.
+
+**`perMonthExact` is the one field that stops the site lying.** $35.88 a year
+divides into twelve exactly equal $2.99 months, so `perMonthExact` is `true`
+and `"$2.99 a month"` is a true sentence. $35.00 a year does not divide: the
+per-month figure rounds to $2.92, twelve of which is $35.04, a price nobody is
+charged. In that case `perMonthExact` is `false` and `perMonthAbout` reads
+`"about $2.92"`. **Copy must render `perMonthAbout`, not `perMonthText`**, or
+the plan screen quotes a price that does not exist.
 
 `FBA.get()` returns
 `{accountId, email, name, interests, frequency, plan, onboarded, at, draw,
@@ -227,33 +258,76 @@ streak stay, because the plan screen reads them back.
 Every read, write and cookie access is wrapped. A dead store degrades to "not
 remembered", never to a broken page — proved by the check below.
 
-## 5. The price ladder — unchanged
+## 5. The price ladder — one source, and it is `PRICING`
 
-Three numbers live in `PRICE_PER_MONTH` in `js/account.js`. **Every other
-figure on the plan screen is computed from them** — the billed total, the
-cycle sentence, the "save N%" — because a hard-coded percentage becomes a lie
-the first time a price moves.
+**`PRICING` at the top of `js/account.js` is the single source of truth for
+every figure the site shows about money, and for every URL that takes money.**
+Nothing else in this repo may contain a price. If you are about to type a
+dollar figure into markup, into copy, or into a `.md` file, stop.
 
-| Plan | Per month | Actually billed | Saving vs monthly |
-|---|---|---|---|
-| Monthly | $4.99 | $4.99 every month | — |
-| Quarterly | $3.99 | **$11.97 every 3 months** | 20% |
-| Annual · best value | $2.99 | **$35.88 a year** | 40% |
+Each rung carries the charge and the link *together*, in one record:
 
-Both numbers are always shown together. A per-month figure on a plan billed in
+```js
+{ key:"annual",
+  link:        "https://buy.stripe.com/28E7sKa5b8Mj8DtgUO3F604",
+  priceId:     "price_1UBG4pAhj1M3E8Tl1x4YFAzB",
+  amountCents: 3588,          /* USD 35.88 — what Stripe charges */
+  intervalUnit:"year", intervalCount:1,
+  cycle:"a year", cycleShort:"once a year",
+  offered:true, best:true }
+```
+
+That pairing is the point. Before, the displayed price lived in a
+`PRICE_PER_MONTH` map and the charging URL lived in a separate
+`PAY_LINK_ANNUAL` constant, so either could be edited without the other and
+the site would go on showing a number Stripe had stopped charging. Now they
+are two lines of one object and a price change touches both or neither.
+
+**The total is the source; the per-month figure is derived.** It used to be
+the other way round, which was not just backwards but *lossy*: if the total
+is `perMonth × months`, the code cannot express any annual price that is not
+a multiple of twelve cents. It literally could not represent "$35.00 a year".
+Stripe charges a total, once per period; everything else is arithmetic on it.
+
+| Plan | Charged | Works out at | Saving vs monthly | In the offer? |
+|---|---|---|---|---|
+| Monthly | **$4.99 every month** | $4.99/mo | — | yes |
+| Quarterly | **$11.97 every 3 months** | $3.99/mo | 20% | **no — retired** |
+| Annual · best value | **$35.88 a year** | $2.99/mo | 40% | yes |
+
+Verified against the live Payment Links on 2026-09-03; STRIPE.md §2 records
+how, and is the table to trust if these two ever disagree.
+
+Both figures are always shown together. A per-month figure on a plan billed in
 a lump is the half of the truth that gets a refund request.
+
+### The trial is configuration, not a literal
+
+`TRIAL_DAYS = 3`, one constant, immediately above `PRICING`. `trialShort()`
+gives `"3 days free"` for buttons and `trialWords()` gives `"three days free"`
+for sentences, so the 3-vs-7 test is one edit here and three edits in Stripe —
+not a hunt through copy for the word "three".
+
+**The trial itself is configured in Stripe, on each Payment Link.** Nothing in
+this code can grant, extend or end one. `TRIAL_DAYS` only *describes* what the
+links are set to, so it must be changed in Stripe first and here second.
+
+### Retiring a plan without touching anybody's subscription
+
+`offered: false` on a rung takes it off the plan screen and does nothing else.
+The Stripe price is untouched, the Payment Link keeps working, and every
+existing subscriber on it keeps renewing at exactly what they agreed to.
+Nobody is migrated, repriced or cancelled. Do **not** delete the record: the
+account page still has to be able to name the plan somebody is on, which is
+what `planByKeyAny()` is for.
+
+Quarterly is currently retired this way. See STRIPE.md §6.
 
 ## 6. The three Stripe Payment Links
 
-Live, and at the top of `js/account.js`. Full creation instructions are in the
-comment block next to the constants they fill. In short, per link:
-
-- one recurring price on one product — **$4.99 monthly**, **$11.97 every 3
-  months**, **$35.88 yearly**
-- **Include a free trial → 3 days** (this is set in Stripe; nothing in this
-  code can grant, extend or end a trial)
-- after payment → redirect to
-  `https://factbox.app/stories.html?unlocked=1&session_id={CHECKOUT_SESSION_ID}`
+Live, in `PRICING`, one per rung, beside the price each one charges. The
+click-path for creating or replacing one is **STRIPE.md §7** — it is written
+out there rather than here so there is one procedure, not two.
 
 If a link is ever emptied, the plan screen's button reads *"Checkout is not
 open yet"*, is disabled, and explains itself in a line underneath — before the
@@ -308,8 +382,11 @@ node joincheck.js     # drives the funnel: all six steps, both interstitials,
                       # the echo's four variants, Back, every Skip, dead
                       # storage, FBA absent, reduced motion, the cookie-mirror
                       # return path, log in, already-unlocked, and that the
-                      # plan screen still reads $4.99 / $11.97 / $35.88 with
-                      # all three Stripe links intact
+                      # plan screen still reads exactly what PRICING says
+                      # and every offered plan's Stripe link is intact.
+                      # Assert against FBA.plans(), never against typed
+                      # figures -- a check with its own copy of the prices
+                      # is a fourth place for them to drift.
 node mirrorcheck.js   # the arithmetic, the Stripe URL, and that the no-JS
                       # fallback copy in join.html still matches plans()
 node gatecheck.js     # stories / explore / read still render and still route
@@ -319,7 +396,7 @@ python3 es5scan.py …  # no ES6 outside comments and strings
 Two things that check must keep asserting:
 
 - **Every panel in `join.html` ships visible with its real copy**, including
-  all three prices, both totals, all three loader questions and the loader's
+  every offered plan's charged total, all three loader questions and the loader's
   way out. The script hides what it is not showing. If the script never runs,
   or throws, the reader gets one long readable page rather than a blank one.
 - **The rendered page contains none of the phrases in the check's `FORBID`
