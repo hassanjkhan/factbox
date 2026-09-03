@@ -1,9 +1,9 @@
 /* ==========================================================================
-   Factbox reader (read.html) — the control rail, and nothing else.
+   Factbox reader (read.html) — the control rail, and the night ground.
 
-   Loaded by read.html only, after css/app.css and css/audio-reader.css, and
-   it defines exactly two things: where the rail sits, and the 62px of right
-   margin the card text gives up to clear it.
+   Loaded by read.html only, after css/app.css and css/audio-reader.css. It
+   defines three things: the reader's palette, where the rail sits, and the
+   right margin the card text gives up to clear it.
 
    WHY THERE IS A RAIL
    -------------------
@@ -32,6 +32,71 @@
    floor sits on that line with 6px of air, so it clears the toolbar at every
    screen height rather than at the one the last person tested on.
    ========================================================================== */
+
+/* ==========================================================================
+   THE READER IS NIGHT.
+
+   css/app.css paints the site on paper: cream ground, navy type, blue fills.
+   Every pane in here is a full-bleed museum painting with words laid over it,
+   and cream behind a photograph is unreadable whatever colour the browse pages
+   are. The end pane rides in the same swipe deck, so it has to match or the
+   last swipe of every story is a white flash.
+
+   WHY THE OVERRIDE LIVES IN THIS FILE, of all files.
+
+   The obvious form is `html.reader{...}` in app.css. Nothing sets that class:
+   read.html carries a bare <html lang="en">, and its <head> is not ours to
+   edit. `body:has(> .deck)` would work in a current browser and silently do
+   nothing in an older in-app webview — and ~all of this traffic is an in-app
+   webview, so the failure mode is a cream page behind a painting for exactly
+   the readers we cannot see.
+
+   So the scope is the stylesheet itself. read.html is the only page that
+   loads this file, and it loads it last, so a plain `:root` here outranks
+   app.css's `:root` on the one document that should be dark and is invisible
+   to every document that should not. Custom properties resolve where they are
+   USED, so this repaints recommend.css, audio-reader.css and app.css's own
+   reader rules alike, with nothing to keep in step.
+
+   If you build another page that must be night, link this file from it.
+   If you split the rail out of here, the palette goes with the reader, not
+   with the rail.
+   ========================================================================== */
+:root{
+  color-scheme:dark;
+
+  --parchment:#FFF7ED;
+  --ink:#3E2F4A; --ink-soft:#8B7B93;
+  --coral:#FF7A5C; --coral-deep:#E85F41;
+  /* On cream the bright accent is a fill and --accent-ink is a darker twin.
+     On night that inverts: #FF7A5C measures 6.5:1 on #0E0B12, so the bright
+     one IS the one you may write in, and the pair collapses to one colour. */
+  --accent-ink:#FF7A5C;
+  --teal:#4FC3B8; --teal-ink:#4FC3B8;
+  --butter:#FFD36E;
+
+  --ground:#0E0B12;
+  --raise:#181320;
+  --ground-0:rgba(14,11,18,0);
+  --raise-0:rgba(24,19,32,0);
+  --hair:rgba(255,247,237,.13);
+  --dim:rgba(255,247,237,.62);
+  --dimmer:rgba(255,247,237,.52);
+
+  --tint:rgba(255,247,237,.07);
+  --tint-2:rgba(255,247,237,.12);
+  --tint-3:rgba(255,247,237,.16);
+  --accent-wash:rgba(255,122,92,.16);
+  --accent-edge:rgba(255,122,92,.5);
+  --on-accent:#2A1109;
+  --menu:rgba(20,16,26,.97);
+
+  --shadow-1:0 6px 20px rgba(0,0,0,.45);
+  --shadow-2:0 14px 40px rgba(0,0,0,.55);
+  --shadow-go:0 8px 26px rgba(232,95,65,.34);
+  --glow-accent:0 0 10px rgba(232,95,65,.55);
+  --accent-lift:#FFC08A;
+}
 
 .fb-rail{
   position:fixed;

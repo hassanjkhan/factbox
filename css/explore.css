@@ -7,9 +7,10 @@
    all come from app.css unchanged — a cover that looks different here from the
    home shelf reads as a different story.
 
-   Same commitments as the rest of the site: one dark theme, painted
-   explicitly, and nothing tappable in the bottom of the viewport where the
-   Instagram / TikTok toolbar sits.
+   Same commitments as the rest of the site: the ground and the type colour
+   are painted explicitly rather than inherited from the host webview, every
+   colour is an app.css token, and nothing tappable sits in the bottom of the
+   viewport where the Instagram / TikTok toolbar does.
    ========================================================================== */
 
 /* Painted rather than inherited. app.css already does this; repeating it means
@@ -34,11 +35,11 @@ body{background:var(--ground); color:var(--parchment)}
   padding:13px 52px 13px 42px;
   border:0; border-radius:var(--pill);
   background:var(--raise); color:var(--parchment);
-  font-family:var(--ui); font-size:1rem; font-weight:650;
+  font-family:var(--ui); font-size:var(--fs-body); font-weight:var(--w-label);
   box-shadow:inset 0 0 0 1px var(--hair);
   -webkit-appearance:none; appearance:none;
 }
-.find input::placeholder{color:var(--dimmer); font-weight:600}
+.find input::placeholder{color:var(--dimmer); font-weight:var(--w-label)}
 /* The browser's own clear affordance is a 12px grey x. Ours is a tap target. */
 .find input::-webkit-search-cancel-button,
 .find input::-webkit-search-decoration{-webkit-appearance:none; display:none}
@@ -52,13 +53,13 @@ body{background:var(--ground); color:var(--parchment)}
   width:var(--tap); height:var(--tap); min-height:var(--tap);
   border:0; border-radius:var(--pill); cursor:pointer;
   background:transparent; color:var(--dim);
-  font-family:var(--ui); font-size:1.25rem; font-weight:800; line-height:1;
+  font-family:var(--ui); font-size:1.25rem; font-weight:var(--w-head); line-height:1;
 }
-.find .x:active{background:rgba(255,247,237,.09)}
+.find .x:active{background:var(--tint)}
 
 .tally{
   margin:12px 2px 0; min-height:1.1em;
-  font-size:.8rem; font-weight:650; color:var(--dimmer);
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
 
@@ -73,8 +74,8 @@ body{background:var(--ground); color:var(--parchment)}
 
 .chipwrap{margin:14px 0 0}
 .chiplab{
-  margin:14px 2px 6px; font-size:.7rem; font-weight:900;
-  letter-spacing:.18em; text-transform:uppercase; color:var(--dimmer);
+  margin:14px 2px 6px; font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
 }
 .chiprow{
   display:flex; gap:8px; overflow-x:auto;
@@ -89,14 +90,17 @@ body{background:var(--ground); color:var(--parchment)}
   min-height:var(--tap); padding:0 15px;
   border:0; border-radius:var(--pill); cursor:pointer;
   background:var(--raise); color:var(--dim);
-  font-family:var(--ui); font-size:.87rem; font-weight:700;
-  letter-spacing:-.005em; white-space:nowrap;
+  font-family:var(--ui); font-size:var(--fs-note); font-weight:var(--w-strong);
+  letter-spacing:var(--ls-title); white-space:nowrap;
   box-shadow:inset 0 0 0 1px var(--hair);
   transition:background .16s ease, color .16s ease;
 }
-.chip b{font-weight:800; opacity:.5; margin-left:5px; font-variant-numeric:tabular-nums}
-.chip.on{background:var(--coral); color:#2A1109; box-shadow:none}
-.chip.on b{opacity:.62}
+/* opacity:.5 on a count that sits on the page's own card ground took --dim to
+   about 2.9:1. .72 keeps it a step quieter than the label beside it and still
+   clears 4.5:1 on both grounds. */
+.chip b{font-weight:var(--w-head); opacity:.72; margin-left:5px; font-variant-numeric:tabular-nums}
+.chip.on{background:var(--coral); color:var(--on-accent); box-shadow:none}
+.chip.on b{opacity:.72}
 
 /* --------------------------------------------------------------------------
    Shelves. A grid of fifty-one covers is an inventory; a shelf you flick is a
@@ -115,7 +119,7 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .shelf::-webkit-scrollbar{display:none}
 .shelf > .card{flex:0 0 136px; width:136px; scroll-snap-align:start}
-.shelf > .card h3{font-size:.88rem}
+.shelf > .card h3{font-size:var(--fs-note)}
 
 /* The two big dividers. Heavier than a .sechead, because they separate two
    whole ways of looking at the same fifty-one stories. */
@@ -124,10 +128,13 @@ body{background:var(--ground); color:var(--parchment)}
   border-top:2px solid var(--hair);
 }
 .ghead h2{
-  margin:0 0 7px; font-size:1.32rem; font-weight:850;
-  letter-spacing:-.018em; line-height:1.15;
+  margin:0 0 7px; font-size:var(--fs-h3); font-weight:var(--w-head);
+  letter-spacing:var(--ls-head); line-height:1.15;
 }
-.ghead p{margin:0; max-width:44ch; font-size:.92rem; line-height:1.45; color:var(--dim)}
+.ghead p{
+  margin:0; max-width:44ch; font-size:var(--fs-sub);
+  line-height:1.45; color:var(--dim);
+}
 
 /* --------------------------------------------------------------------------
    Empty state, and the way back out of one. A search that finds nothing has to
@@ -140,19 +147,24 @@ body{background:var(--ground); color:var(--parchment)}
   border-radius:16px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
 }
-.void b{display:block; margin-bottom:7px; font-size:1.04rem; font-weight:800; line-height:1.3}
-.void p{margin:0 0 14px; font-size:.9rem; line-height:1.55; color:var(--dim)}
+.void b{
+  display:block; margin-bottom:7px;
+  font-size:var(--fs-lead); font-weight:var(--w-head); line-height:1.3;
+}
+.void p{
+  margin:0 0 14px; font-size:var(--fs-note); line-height:var(--lh-body); color:var(--dim);
+}
 .void.slim{padding:14px; margin-top:26px}
 .void.slim .reset{margin:0}
 
 .reset{
   display:block; width:100%; min-height:var(--tap);
   border:0; border-radius:var(--pill); cursor:pointer;
-  background:rgba(255,247,237,.09); color:var(--parchment);
-  font-family:var(--ui); font-size:.94rem; font-weight:750;
+  background:var(--tint); color:var(--parchment);
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
   text-align:center; text-decoration:none; padding:12px 16px;
 }
-.reset:active{background:rgba(255,247,237,.15)}
+.reset:active{background:var(--tint-2)}
 
 /* --------------------------------------------------------------------------
    A wider window gets wider covers rather than more of them crammed in — the

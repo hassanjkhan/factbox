@@ -7,8 +7,10 @@
    exists because the Library has something Home does not — a stats line, a
    real empty state, a remove control, and a storage-is-dead notice.
 
-   Same committed dark ground as the rest of the site. Colours are declared
-   with fallbacks so this file still paints if app.css ever fails to load.
+   Colours are app.css tokens, declared with fallbacks so this file still
+   paints if app.css ever fails to load. The fallbacks are the PAPER values,
+   because that is what a browse page is now; the reader's night values reach
+   these tokens through css/reader-rail.css and never through a fallback.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -18,17 +20,17 @@
    -------------------------------------------------------------------------- */
 .statline{
   margin:16px 2px 2px;
-  font-size:.86rem; line-height:1.5; font-weight:600;
-  color:var(--dim,rgba(255,247,237,.62));
+  font-size:var(--fs-note); line-height:1.5; font-weight:var(--w-label);
+  color:var(--dim,rgba(29,49,89,.82));
   font-variant-numeric:tabular-nums;
 }
 .statline b{
-  color:var(--parchment,#FFF7ED); font-weight:800;
+  color:var(--parchment,#1D3159); font-weight:var(--w-head);
 }
 .statline small{
   display:block; margin-top:6px; max-width:46ch;
-  font-size:.72rem; font-weight:500; line-height:1.45;
-  color:var(--dimmer,rgba(255,247,237,.52));
+  font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.45;
+  color:var(--dimmer,rgba(29,49,89,.74));
 }
 
 /* --------------------------------------------------------------------------
@@ -39,16 +41,16 @@
 .empty{
   margin:26px 0 4px; padding:22px 18px;
   border-radius:18px;
-  background:var(--raise,#181320);
-  box-shadow:inset 0 0 0 1px var(--hair,rgba(255,247,237,.13));
+  background:var(--raise,#EDE8DE);
+  box-shadow:inset 0 0 0 1px var(--hair,rgba(29,49,89,.16));
 }
 .empty h2{
-  margin:0 0 9px; font-size:1.2rem; font-weight:850; letter-spacing:-.015em;
-  color:var(--parchment,#FFF7ED);
+  margin:0 0 9px; font-size:var(--fs-h3); font-weight:var(--w-head);
+  letter-spacing:var(--ls-head); color:var(--parchment,#1D3159);
 }
 .empty p{
-  margin:0; font-size:.94rem; line-height:1.55; max-width:44ch;
-  color:var(--dim,rgba(255,247,237,.62));
+  margin:0; font-size:var(--fs-sub); line-height:var(--lh-body); max-width:44ch;
+  color:var(--dim,rgba(29,49,89,.82));
 }
 .emptygo{
   display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -56,7 +58,7 @@
 }
 /* .go is a <button> everywhere else on the site; here it is a link, so it
    needs the two properties a button gets for free. */
-.emptygo .go{ text-decoration:none; text-align:center; }
+.emptygo .go{ text-decoration:none; text-align:center; font-weight:var(--w-strong); }
 .emptygo .ghost{ text-decoration:none; }
 
 /* --------------------------------------------------------------------------
@@ -74,14 +76,14 @@
   min-height:var(--tap,44px); padding:0 12px;
   border:0; border-radius:var(--pill,999px);
   background:transparent;
-  color:var(--dimmer,rgba(255,247,237,.52));
+  color:var(--dimmer,rgba(29,49,89,.74));
   font-family:var(--ui,system-ui,-apple-system,sans-serif);
-  font-size:.78rem; font-weight:700; cursor:pointer;
+  font-size:var(--fs-meta); font-weight:var(--w-strong); cursor:pointer;
   transition:color .16s ease, background-color .16s ease;
 }
 .unsave:hover,.unsave:active{
-  color:var(--parchment,#FFF7ED);
-  background:rgba(255,247,237,.08);
+  color:var(--parchment,#1D3159);
+  background:var(--tint,rgba(29,49,89,.07));
 }
 
 /* --------------------------------------------------------------------------
@@ -91,18 +93,26 @@
 .libnote{
   margin:26px 0 0; padding:14px 16px;
   border-radius:14px;
-  background:rgba(255,211,110,.08);
-  box-shadow:inset 0 0 0 1px rgba(255,211,110,.24);
-  color:var(--dim,rgba(255,247,237,.62));
-  font-size:.84rem; line-height:1.5;
+  background:var(--accent-wash,rgba(76,155,232,.16));
+  box-shadow:inset 0 0 0 1px var(--accent-edge,rgba(33,90,151,.34));
+  color:var(--dim,rgba(29,49,89,.82));
+  font-size:var(--fs-note); line-height:1.5;
 }
-.libnote b{ display:block; margin-bottom:4px; color:var(--butter,#FFD36E); font-weight:800; }
+/* The heading was --butter, which is a FILL colour in both grounds: amber on
+   night, light blue on paper, and 1.5:1 as type on a card either way. --teal-ink
+   is the second accent taken down to something you may write in — 4.7:1 on the
+   page, 5.0:1 on this notice's own wash — so the notice still reads as its own
+   kind of message rather than as another blue link. */
+.libnote b{
+  display:block; margin-bottom:4px;
+  color:var(--teal-ink,#476220); font-weight:var(--w-head);
+}
 
 /* The one thing that shows when the season itself could not be fetched. It is
    copy, not a blank page — that distinction is the whole point. */
 .libfail{
-  margin:30px 0 0; font-size:.95rem; line-height:1.55;
-  color:var(--dim,rgba(255,247,237,.62));
+  margin:30px 0 0; font-size:var(--fs-sub); line-height:var(--lh-body);
+  color:var(--dim,rgba(29,49,89,.82));
 }
 
 /* The save button (FBS.button) is styled inline in js/saves.js so no

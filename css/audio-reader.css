@@ -44,13 +44,15 @@
   padding:0;
   border-radius:var(--pill, 999px);
   border:0;
+  /* Dark glass in both grounds: on read.html this sits on a painting, and on
+     the composed story pages the whole document is night. */
   box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13));
   background:rgba(24,19,32,.72);
   -webkit-backdrop-filter:blur(16px) saturate(1.2);
   backdrop-filter:blur(16px) saturate(1.2);
-  color:var(--parchment, #FFF7ED);
+  color:var(--on-glass, #FFF7ED);
   font-family:var(--ui, inherit);
-  font-size:.8rem;font-weight:700;letter-spacing:.01em;line-height:1;
+  font-size:var(--fs-meta,.8125rem);font-weight:var(--w-strong,600);letter-spacing:.01em;line-height:1;
   transition:background .2s ease, box-shadow .2s ease,
              transform .12s ease, opacity .3s ease;
 }
@@ -119,9 +121,9 @@
   background:rgba(20,16,26,.86);
   -webkit-backdrop-filter:blur(18px) saturate(1.2);
   backdrop-filter:blur(18px) saturate(1.2);
-  color:var(--parchment, #FFF7ED);
+  color:var(--on-glass, #FFF7ED);
   font-family:var(--ui, inherit);
-  font-size:.74rem;font-weight:600;line-height:1.4;letter-spacing:.005em;
+  font-size:var(--fs-fine,.75rem);font-weight:var(--w-label,500);line-height:1.4;letter-spacing:.005em;
   text-align:right;
   pointer-events:none;
   opacity:0;transform:translateY(-6px);

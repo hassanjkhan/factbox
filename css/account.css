@@ -7,8 +7,9 @@
    fine print and every colour token come from app.css unchanged. A funnel
    that looks like a different site is a funnel people abandon.
 
-   Same commitments as the rest of the site: one dark theme, painted
-   explicitly, 44px targets, and nothing tappable below --bottom-safe, where
+   Same commitments as the rest of the site: the ground and the type colour
+   painted explicitly rather than inherited, every colour an app.css token,
+   44px targets, and nothing tappable below --bottom-safe, where
    the Instagram / TikTok toolbar sits. Everything here is prefixed .jn- so it
    cannot collide with a class another layer owns.
    ========================================================================== */
@@ -32,14 +33,14 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .jn-steps li{
   flex:1 1 0; height:4px; border-radius:2px;
-  background:rgba(255,247,237,.14);
+  background:var(--tint-3);
   transition:background .2s ease;
 }
 .jn-steps li.is-done{background:var(--coral-deep)}
 .jn-steps li.is-on{background:var(--coral)}
 .jn-stepnote{
-  margin:0 2px 2px; font-size:.78rem; font-weight:700; letter-spacing:.02em;
-  color:var(--dimmer); font-variant-numeric:tabular-nums;
+  margin:0 2px 2px; font-size:var(--fs-meta); font-weight:var(--w-strong);
+  letter-spacing:0; color:var(--dimmer); font-variant-numeric:tabular-nums;
 }
 
 /* --------------------------------------------------------------------------
@@ -50,11 +51,11 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-panel{margin-top:18px}
 .jn-panel[hidden]{display:none}
 .jn-panel h2{
-  font-size:clamp(1.45rem,5.8vw,1.85rem); font-weight:850; margin:0 0 8px;
-  line-height:1.14; letter-spacing:-.015em; text-wrap:balance;
+  font-size:clamp(1.45rem,5.8vw,1.85rem); font-weight:var(--w-head); margin:0 0 8px;
+  line-height:var(--lh-head); letter-spacing:var(--ls-head); text-wrap:balance;
 }
 .jn-panel > p{
-  margin:0 0 4px; color:var(--dim); font-size:1rem; line-height:1.5;
+  margin:0 0 4px; color:var(--dim); font-size:var(--fs-body); line-height:var(--lh-body);
   max-width:44ch;
 }
 
@@ -66,27 +67,30 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-field{display:block; margin:16px 0 0}
 .jn-field > span{
   display:block; margin:0 0 7px 2px;
-  font-size:.84rem; font-weight:750; color:var(--dim);
+  font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--dim);
 }
 .jn-field input{
   width:100%; min-height:var(--tap);
   padding:14px 16px; border:0; border-radius:14px;
   background:var(--raise); color:var(--parchment);
-  font-family:var(--ui); font-size:1rem; font-weight:650;
+  font-family:var(--ui); font-size:var(--fs-body); font-weight:var(--w-label);
   box-shadow:inset 0 0 0 1px var(--hair);
   -webkit-appearance:none; appearance:none;
 }
-.jn-field input::placeholder{color:rgba(255,247,237,.38)}
+/* A placeholder is still text a reader has to parse, so it gets --dimmer's
+   4.6:1 rather than the .38 wash it carried, which measured 1.9:1 on paper. */
+.jn-field input::placeholder{color:var(--dimmer)}
 .jn-field input:focus{box-shadow:inset 0 0 0 1px var(--coral); outline:none}
 .jn-opt-note{
-  margin:7px 2px 0; font-size:.78rem; color:var(--dimmer); line-height:1.45;
+  margin:7px 2px 0; font-size:var(--fs-meta); font-weight:var(--w-label);
+  color:var(--dimmer); line-height:1.45;
 }
 
 /* An error is a sentence, in the one colour that means "look here", and it is
    never the only signal: the field keeps focus and the button stays live. */
 .jn-err{
-  margin:10px 2px 0; font-size:.86rem; font-weight:700; line-height:1.45;
-  color:var(--coral);
+  margin:10px 2px 0; font-size:var(--fs-note); font-weight:var(--w-strong);
+  line-height:1.45; color:var(--accent-ink);
 }
 .jn-err[hidden]{display:none}
 
@@ -106,19 +110,23 @@ body{background:var(--ground); color:var(--parchment)}
   min-height:var(--tap); padding:12px 14px;
   border:0; border-radius:14px;
   background:var(--raise); color:var(--parchment);
-  font-family:var(--ui); font-size:.95rem; font-weight:750;
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
   box-shadow:inset 0 0 0 1px var(--hair);
   transition:box-shadow .15s ease, background .15s ease, transform .15s ease;
 }
 .jn-opt:active{transform:scale(.985)}
-.jn-opt b{display:block; font-size:.95rem; font-weight:800; line-height:1.25}
+.jn-opt b{
+  display:block; font-size:var(--fs-sub); font-weight:var(--w-head);
+  line-height:var(--lh-tight);
+}
 .jn-opt span{
   display:block; margin-top:3px;
-  font-size:.78rem; font-weight:600; color:var(--dimmer); line-height:1.35;
+  font-size:var(--fs-meta); font-weight:var(--w-label);
+  color:var(--dimmer); line-height:1.35;
 }
 .jn-opt[aria-pressed="true"],
 .jn-opt[aria-checked="true"]{
-  background:rgba(255,122,92,.13);
+  background:var(--accent-wash);
   box-shadow:inset 0 0 0 2px var(--coral);
 }
 .jn-opt[aria-pressed="true"] span,
@@ -142,43 +150,45 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .jn-plan:active{transform:scale(.99)}
 .jn-plan[aria-checked="true"]{
-  background:rgba(255,122,92,.13);
+  background:var(--accent-wash);
   box-shadow:inset 0 0 0 2px var(--coral);
 }
 .jn-plan .jn-per{
-  display:block; font-size:1.32rem; font-weight:850; letter-spacing:-.02em;
-  line-height:1.1;
+  display:block; font-size:var(--fs-h3); font-weight:var(--w-head);
+  letter-spacing:var(--ls-hero); line-height:1.1;
 }
 .jn-plan .jn-per i{
-  font-style:normal; font-size:.86rem; font-weight:700; color:var(--dim);
+  font-style:normal; font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--dim);
 }
 .jn-plan .jn-billed{
   display:block; margin-top:5px;
-  font-size:.86rem; font-weight:650; color:var(--dim); line-height:1.4;
+  font-size:var(--fs-note); font-weight:var(--w-label); color:var(--dim);
+  line-height:1.4;
 }
 .jn-plan .jn-save{
   display:inline-block; margin-top:8px;
   padding:3px 9px; border-radius:var(--pill);
-  background:rgba(255,247,237,.09); color:var(--parchment);
-  font-size:.7rem; font-weight:800; letter-spacing:.04em;
+  background:var(--tint); color:var(--parchment);
+  font-size:var(--fs-micro); font-weight:var(--w-head); letter-spacing:var(--ls-badge);
 }
 /* The best-value marker is the one piece of emphasis on this screen, and it
    is a statement of arithmetic — the cheapest month — not a scarcity claim. */
-.jn-plan.is-best{box-shadow:inset 0 0 0 1px rgba(255,122,92,.45)}
+.jn-plan.is-best{box-shadow:inset 0 0 0 1px var(--accent-edge)}
 .jn-plan.is-best[aria-checked="true"]{box-shadow:inset 0 0 0 2px var(--coral)}
 .jn-badge{
   position:absolute; right:14px; top:-9px;
   padding:3px 9px; border-radius:var(--pill);
-  background:var(--coral); color:#2A1109;
-  font-size:.64rem; font-weight:900; letter-spacing:.09em;
+  background:var(--coral); color:var(--on-accent);
+  font-size:var(--fs-micro); font-weight:var(--w-head); letter-spacing:var(--ls-badge);
 }
 
 /* The trial sentence sits directly under the button it describes. */
 .jn-terms{
   margin:12px auto 0; max-width:520px;
-  font-size:.8rem; line-height:1.55; color:var(--dim);
+  font-size:var(--fs-meta); line-height:var(--lh-body); color:var(--dim);
 }
-.jn-terms b{color:var(--parchment); font-weight:800}
+.jn-terms b{color:var(--parchment); font-weight:var(--w-head)}
 
 /* --------------------------------------------------------------------------
    Row of secondary actions: Back on the left, Skip on the right. Both are
@@ -193,14 +203,15 @@ body{background:var(--ground); color:var(--parchment)}
   display:inline-flex; align-items:center; gap:6px;
   min-height:var(--tap); padding:10px 4px;
   background:none; border:0; cursor:pointer;
-  font-family:var(--ui); font-size:.9rem; font-weight:700; color:var(--dim);
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  color:var(--dim);
 }
 .jn-skip{
   display:inline-flex; align-items:center;
   min-height:var(--tap); padding:10px 4px;
   background:none; border:0; cursor:pointer;
-  font-family:var(--ui); font-size:.9rem; font-weight:700; color:var(--dimmer);
-  text-decoration:underline; text-underline-offset:3px;
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  color:var(--dimmer); text-decoration:underline; text-underline-offset:3px;
 }
 
 /* A boxed aside for the two things a reader has to act on themselves: moving
@@ -213,15 +224,19 @@ body{background:var(--ground); color:var(--parchment)}
   box-shadow:inset 0 0 0 1px var(--hair);
 }
 .jn-aside[hidden]{display:none}
-.jn-aside b{display:block; font-size:.95rem; font-weight:800; margin-bottom:5px}
-.jn-aside p{margin:0 0 8px; font-size:.86rem; line-height:1.5; color:var(--dim)}
+.jn-aside b{
+  display:block; font-size:var(--fs-sub); font-weight:var(--w-head); margin-bottom:5px;
+}
+.jn-aside p{
+  margin:0 0 8px; font-size:var(--fs-note); line-height:var(--lh-body); color:var(--dim);
+}
 .jn-aside p:last-child{margin-bottom:0}
-.jn-aside a{color:var(--coral); font-weight:700}
+.jn-aside a{color:var(--accent-ink); font-weight:var(--w-strong)}
 .jn-aside input{
   width:100%; margin:2px 0 9px; padding:11px 12px;
-  border:0; border-radius:10px; background:rgba(255,247,237,.07);
+  border:0; border-radius:10px; background:var(--tint);
   color:var(--parchment); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:.76rem; min-height:var(--tap);
+  font-size:var(--fs-meta); min-height:var(--tap);
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -230,7 +245,7 @@ body{background:var(--ground); color:var(--parchment)}
 
 /* "First name optional" — the qualifier reads as a qualifier, not as part of
    the label. */
-.jn-field > span i{font-style:normal; font-weight:600; color:var(--dimmer)}
+.jn-field > span i{font-style:normal; font-weight:var(--w-label); color:var(--dimmer)}
 
 /* ==========================================================================
    THE PORTED FUNNEL
@@ -248,9 +263,10 @@ body{background:var(--ground); color:var(--parchment)}
    -------------------------------------------------------------------------- */
 .jn-reinf{
   margin:16px 0 0; padding:12px 14px;
-  border-radius:14px; background:rgba(255,122,92,.10);
-  box-shadow:inset 0 0 0 1px rgba(255,122,92,.26);
-  font-size:.9rem; font-weight:700; line-height:1.45; color:var(--parchment);
+  border-radius:14px; background:var(--accent-wash);
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
+  font-size:var(--fs-sub); font-weight:var(--w-strong); line-height:1.45;
+  color:var(--parchment);
 }
 .jn-reinf[hidden]{display:none}
 
@@ -262,25 +278,25 @@ body{background:var(--ground); color:var(--parchment)}
    -------------------------------------------------------------------------- */
 .jn-echo{
   margin:20px 0 0; padding:24px 20px;
-  border-radius:22px; background:rgba(255,122,92,.11);
-  box-shadow:inset 0 0 0 1px rgba(255,122,92,.24);
+  border-radius:22px; background:var(--accent-wash);
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
   text-align:center;
 }
 .jn-echo .jn-eyebrow{
-  margin:0 0 12px; font-size:.68rem; font-weight:900; letter-spacing:.2em;
-  color:var(--coral); text-transform:uppercase;
+  margin:0 0 12px; font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); color:var(--accent-ink); text-transform:uppercase;
 }
 .jn-echo h2{
-  font-size:clamp(1.5rem,6.2vw,2rem); font-weight:850; margin:0 0 12px;
-  line-height:1.12; letter-spacing:-.018em; text-wrap:balance;
+  font-size:clamp(1.5rem,6.2vw,2rem); font-weight:var(--w-head); margin:0 0 12px;
+  line-height:var(--lh-head); letter-spacing:var(--ls-head); text-wrap:balance;
 }
 .jn-echo p{
   margin:0 0 12px; max-width:34ch; margin-left:auto; margin-right:auto;
-  font-size:1rem; line-height:1.5; color:var(--dim);
+  font-size:var(--fs-body); line-height:var(--lh-body); color:var(--dim);
 }
 /* The benefit, not the compliment, is the sentence that converts. */
 .jn-echo p.jn-benefit{
-  margin-bottom:0; color:var(--parchment); font-weight:750;
+  margin-bottom:0; color:var(--parchment); font-weight:var(--w-strong);
 }
 
 /* --------------------------------------------------------------------------
@@ -289,7 +305,7 @@ body{background:var(--ground); color:var(--parchment)}
    is content hides here — only the response to an action not yet taken.
    -------------------------------------------------------------------------- */
 .jn-opt .reply{display:none}
-.jn-opt[aria-pressed="true"] .reply{display:block; color:var(--coral)}
+.jn-opt[aria-pressed="true"] .reply{display:block; color:var(--accent-ink)}
 
 /* --------------------------------------------------------------------------
    Streak rows. A day count in a badge, then the adjective the reader is
@@ -303,18 +319,18 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-day{
   flex:0 0 46px; height:46px; border-radius:12px;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  background:rgba(255,247,237,.08); color:var(--parchment);
-  font-style:normal; font-size:1.04rem; font-weight:850; line-height:1;
+  background:var(--tint); color:var(--parchment);
+  font-style:normal; font-size:var(--fs-lead); font-weight:var(--w-head); line-height:1;
   font-variant-numeric:tabular-nums;
   transition:background .15s ease, color .15s ease;
 }
 .jn-day u{
   text-decoration:none; margin-top:3px;
-  font-size:.55rem; font-weight:800; letter-spacing:.09em;
+  font-size:.6rem; font-weight:var(--w-head); letter-spacing:var(--ls-badge);
   text-transform:uppercase; color:var(--dimmer);
 }
-.jn-opt[aria-checked="true"] .jn-day{background:rgba(255,122,92,.24); color:var(--coral)}
-.jn-opt[aria-checked="true"] .jn-day u{color:var(--coral)}
+.jn-opt[aria-checked="true"] .jn-day{background:var(--accent-wash); color:var(--accent-ink)}
+.jn-opt[aria-checked="true"] .jn-day u{color:var(--accent-ink)}
 
 /* --------------------------------------------------------------------------
    The plan loader. Three bars that fill, stall, ask one thing, then finish.
@@ -336,16 +352,18 @@ body{background:var(--ground); color:var(--parchment)}
   display:flex; align-items:baseline; justify-content:space-between; gap:10px;
   margin:0 0 7px;
 }
-.jn-phase-top b{font-size:.92rem; font-weight:800; line-height:1.3}
+.jn-phase-top b{font-size:var(--fs-sub); font-weight:var(--w-head); line-height:1.3}
 .jn-phase-top i{
   flex:none; font-style:normal;
-  font-size:.8rem; font-weight:750; color:var(--dimmer);
+  font-size:var(--fs-meta); font-weight:var(--w-strong); color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
-.jn-phase.is-done .jn-phase-top i{color:var(--teal)}
+/* --teal is the sage FILL, which is 1.9:1 as type on cream. The bar beside
+   this number stays sage; the number itself takes the ink version. */
+.jn-phase.is-done .jn-phase-top i{color:var(--teal-ink)}
 .jn-bar{
   height:6px; border-radius:3px; overflow:hidden;
-  background:rgba(255,247,237,.13);
+  background:var(--tint-3);
 }
 .jn-bar > i{
   display:block; height:100%; width:100%;
@@ -358,29 +376,36 @@ body{background:var(--ground); color:var(--parchment)}
    reads as the reason the bar stopped rather than as a new screen. */
 .jn-q{
   margin:12px 0 2px; padding:14px 15px;
-  border-radius:14px; background:rgba(255,247,237,.05);
+  border-radius:14px; background:var(--tint);
   box-shadow:inset 0 0 0 1px var(--hair);
 }
 .jn-q[hidden]{display:none}
 .jn-q .jn-q-eyebrow{
-  margin:0 0 6px; font-size:.64rem; font-weight:900; letter-spacing:.18em;
-  color:var(--coral); text-transform:uppercase;
+  margin:0 0 6px; font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); color:var(--accent-ink); text-transform:uppercase;
 }
 .jn-q .jn-q-t{
-  margin:0 0 12px; font-size:1rem; font-weight:800; line-height:1.35;
-  color:var(--parchment);
+  margin:0 0 12px; font-size:var(--fs-body); font-weight:var(--w-head);
+  line-height:1.35; color:var(--parchment);
 }
 .jn-q-row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
 .jn-yn{
   min-height:var(--tap); padding:12px 10px;
   border:0; border-radius:12px; cursor:pointer;
-  background:rgba(255,247,237,.07); color:var(--parchment);
-  font-family:var(--ui); font-size:.95rem; font-weight:800;
+  background:var(--tint); color:var(--parchment);
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-head);
   box-shadow:inset 0 0 0 1px var(--hair);
   transition:transform .15s ease, background .15s ease;
 }
 .jn-yn:active{transform:scale(.985)}
-.jn-yn.is-yes{background:rgba(79,195,184,.15); box-shadow:inset 0 0 0 1px rgba(79,195,184,.4)}
+/* Sage, written out rather than mixed from --teal. color-mix() is Safari 16.2
+   and Chrome 111; an in-app webview older than that drops the declaration as
+   invalid, and the "yes" state would silently stop showing at all. This page
+   is only ever served on the paper ground, so the literal is the whole truth. */
+.jn-yn.is-yes{
+  background:rgba(140,167,93,.30);
+  box-shadow:inset 0 0 0 1px rgba(71,98,32,.55);
+}
 
 @media (prefers-reduced-motion:reduce){
   .jn-bar > i, .jn-day, .jn-yn{transition:none}
@@ -390,10 +415,10 @@ body{background:var(--ground); color:var(--parchment)}
    is not "signing up" — and without this their only visible route through is
    to pay a second time. */
 .jn-haveacct{
-  margin:14px 0 0; text-align:center; font-size:.86rem;
+  margin:14px 0 0; text-align:center; font-size:var(--fs-note);
   color:var(--dimmer);
 }
 .jn-haveacct a{
-  color:var(--coral); font-weight:700; text-decoration:none;
+  color:var(--accent-ink); font-weight:var(--w-strong); text-decoration:none;
   display:inline-block; padding:9px 6px; min-height:var(--tap); line-height:26px;
 }

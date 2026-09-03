@@ -45,6 +45,16 @@
     return whole + (halves % 2 ? "\u00bd" : "") + " min";
   }
   function track(n, x) { try { if (G && G.track) G.track(n, x); } catch (e) {} }
+
+  /* SPEC §2.6: a missing plate falls back to the stack hero, never to a
+     broken image box on a shelf. The same pair read.html puts on every card
+     in the deck — the hero URL is carried on the element itself, because by
+     the time onerror fires the story it was built from is long out of scope,
+     and the handler clears itself so a missing hero cannot loop. */
+  function heroFallback(slot) {
+    return ' data-fallback="/img/stacks/' + esc(slot) + '.webp"' +
+           ' onerror="this.onerror=null;this.src=this.getAttribute(\'data-fallback\')"';
+  }
   /* What the covers on screen were drawn from.
 
      It starts TRUE — nothing wears a padlock before the answer is known — and
@@ -115,7 +125,7 @@
       '<a class="card is-' + st.status + (locked ? " locked" : "") + '" href="' + href(s) + '">' +
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
-               'src="/img/thumbs/' + esc(s.img) + '.webp">' +
+               'src="/img/thumbs/' + esc(s.img) + '.webp"' + heroFallback(s.img) + '>' +
           (locked
             ? '<span class="lock" aria-hidden="true">🔒</span>'
             : (s.free ? '<span class="freetag">FREE</span>' : '')) +
@@ -212,7 +222,8 @@
       html += '<div class="sechead"><h2>Continue reading</h2>' +
               '<span>' + esc(cont.pct + "% in") + '</span></div>' +
               '<a class="resume" href="' + (cont.id === "01" ? "/cleopatra" : cont.href) + '">' +
-                '<div class="plate"><img alt="" src="/img/thumbs/' + esc(cont.stack.img) + '.webp"></div>' +
+                '<div class="plate"><img alt="" src="/img/thumbs/' + esc(cont.stack.img) + '.webp"' +
+                     heroFallback(cont.stack.img) + '></div>' +
                 '<div class="t"><b>' + esc(cont.stack.title) + '</b>' +
                 '<span>' + esc(cont.label) + '</span></div>' +
               '</a>';

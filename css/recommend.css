@@ -5,7 +5,10 @@
    redefines neither. Every colour, radius and tap size is a token from
    app.css — this sheet had its own copies of the palette once, so a change to
    --dimmer moved every other surface and not this one.
-   Single dark theme, colours explicit, phone-first at 390x844 in a webview.
+
+   read.html is the only page that loads this file, and read.html is night —
+   the palette reaches here from the `:root` block in css/reader-rail.css. The
+   tokens below are what makes that free: nothing in this file names a colour.
 
    WHAT THIS PANE IS FOR
    ---------------------
@@ -56,8 +59,8 @@
   width:100%; margin:0 0 2px;
 }
 .ec-where{
-  font-size:.68rem; font-weight:900; letter-spacing:.17em;
-  color:var(--coral); text-transform:uppercase;
+  font-size:var(--fs-micro); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
+  color:var(--accent-ink); text-transform:uppercase;
   font-variant-numeric:tabular-nums;
 }
 .ec-segs{
@@ -67,15 +70,16 @@
    (church_history) and one (disaster) both fill the same strip. */
 .ec-segs i{
   display:block; flex:1 1 0; height:3px; border-radius:999px;
-  background:rgba(255,247,237,.16);
+  background:var(--tint-3);
 }
-.ec-segs i.is-done{background:rgba(255,122,92,.5)}
-.ec-segs i.is-now{background:var(--coral); box-shadow:0 0 10px rgba(232,95,65,.6)}
+.ec-segs i.is-done{background:var(--coral-deep)}
+.ec-segs i.is-now{background:var(--coral); box-shadow:var(--glow-accent)}
 
 .pane.rec h2{margin:0}
 .ec-sub{
   margin:0; color:var(--dim);
-  font-size:1rem; line-height:1.5; max-width:32ch;
+  font-size:var(--fs-body); font-weight:var(--w-body); line-height:var(--lh-body);
+  max-width:32ch;
   margin-left:auto; margin-right:auto;
 }
 
@@ -92,7 +96,7 @@
   padding-top:min(225px, 55.5%);      /* 4:3 of the width above */
   border-radius:16px; overflow:hidden;
   background:var(--raise);
-  box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px var(--hair);
+  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
 }
 .ec-plate img{
   position:absolute; inset:0;
@@ -106,14 +110,18 @@
              rgba(10,8,13,.72) 46%, rgba(10,8,13,0) 100%);
 }
 .ec-cap b{
-  font-size:.86rem; font-weight:780; line-height:1.25; letter-spacing:-.008em;
-  color:var(--parchment);
+  font-size:var(--fs-note); font-weight:var(--w-head); line-height:var(--lh-tight);
+  letter-spacing:var(--ls-title);
+  /* The caption sits on a scrim over the plate, not on the page, so it keeps a
+     light colour whatever ground the rest of the site is on. */
+  color:var(--on-glass);
   /* Two lines, then ellipsis. Some titles are a whole sentence. */
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;
 }
 .ec-min{
-  font-size:.72rem; font-weight:700; color:var(--dimmer);
+  font-size:var(--fs-fine); font-weight:var(--w-label);
+  color:rgba(255,247,237,.72);
   font-variant-numeric:tabular-nums;
 }
 /* Finished. The tick is the only state this plate has, so it is a badge and
@@ -122,8 +130,8 @@
   position:absolute; top:9px; right:9px;
   width:26px; height:26px; border-radius:999px;
   display:flex; align-items:center; justify-content:center;
-  background:var(--coral); color:#2A1109;
-  box-shadow:0 4px 14px rgba(232,95,65,.45);
+  background:var(--coral); color:var(--on-accent);
+  box-shadow:var(--shadow-go);
 }
 .ec-tick svg{width:14px; height:14px; display:block}
 
@@ -150,7 +158,7 @@ a.ec-go{
 }
 @media (max-height:640px){
   .ec-plate{width:min(200px, 52%); padding-top:min(150px, 39%)}
-  .ec-sub{font-size:.94rem}
+  .ec-sub{font-size:var(--fs-sub)}
 }
 
 @media (prefers-reduced-motion:reduce){

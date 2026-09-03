@@ -38,8 +38,8 @@
   min-height:var(--tap); min-width:var(--tap);
   padding:0 12px 0 8px; margin-left:-8px;
   background:transparent; border:0; border-radius:var(--pill);
-  color:var(--parchment); font-family:var(--ui); font-size:.92rem; font-weight:700;
-  cursor:pointer;
+  color:var(--parchment); font-family:var(--ui);
+  font-size:var(--fs-sub); font-weight:var(--w-strong); cursor:pointer;
 }
 .st-back i{font-style:normal; font-size:1.15rem; line-height:1}
 .st-back[hidden]{display:none}
@@ -52,11 +52,11 @@
 }
 .st-dots li{
   width:16px; height:4px; border-radius:2px;
-  background:rgba(255,247,237,.18);
+  background:var(--tint-3);
 }
 .st-dots li.on{background:var(--coral)}
 .st-count{
-  margin:0; font-size:.76rem; font-weight:700; letter-spacing:.02em;
+  margin:0; font-size:var(--fs-meta); font-weight:var(--w-strong); letter-spacing:0;
   color:var(--dimmer); white-space:nowrap;
 }
 
@@ -73,23 +73,25 @@
 }
 
 .st-mark{
-  font-size:.78rem; font-weight:900; letter-spacing:.34em;
-  color:var(--coral); margin:0 0 12px;
+  font-size:var(--fs-meta); font-weight:var(--w-head); letter-spacing:var(--ls-mark);
+  color:var(--accent-ink); margin:0 0 12px;
 }
+/* --teal is the sage FILL and measures 1.9:1 as type on cream. The eyebrow is
+   type, so it takes --teal-ink: the same sage taken to 4.7:1 on the page. */
 .st-eyebrow{
-  font-size:.74rem; font-weight:800; letter-spacing:.18em; text-transform:uppercase;
-  color:var(--teal); margin:0 0 8px;
+  font-size:var(--fs-fine); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
+  text-transform:uppercase; color:var(--teal-ink); margin:0 0 8px;
 }
 .st h1{
-  font-size:clamp(1.8rem,6.6vw,2.3rem); font-weight:850; line-height:1.08;
-  letter-spacing:-.015em; margin:0 0 10px; text-wrap:balance;
+  font-size:clamp(1.8rem,6.6vw,2.3rem); font-weight:var(--w-head); line-height:1.08;
+  letter-spacing:var(--ls-head); margin:0 0 10px; text-wrap:balance;
 }
 .st h2{
-  font-size:clamp(1.35rem,5.2vw,1.7rem); font-weight:850; line-height:1.14;
-  letter-spacing:-.012em; margin:0 0 8px; text-wrap:balance;
+  font-size:var(--fs-h2); font-weight:var(--w-head); line-height:var(--lh-head);
+  letter-spacing:var(--ls-head); margin:0 0 8px; text-wrap:balance;
 }
 .st-sub{
-  margin:0 0 18px; color:var(--dim); font-size:.95rem; line-height:1.45;
+  margin:0 0 18px; color:var(--dim); font-size:var(--fs-sub); line-height:1.45;
   max-width:40ch;
 }
 
@@ -114,15 +116,17 @@
 .st-covers li[hidden]{display:none !important}
 #st-building[hidden],#st-ready[hidden]{display:none !important}
 
-.st-opt b{display:block; font-size:.98rem; font-weight:800; line-height:1.2}
-.st-opts.is-grid .st-opt b{font-size:.92rem}
+.st-opt b{
+  display:block; font-size:var(--fs-sub); font-weight:var(--w-head); line-height:1.2;
+}
+.st-opts.is-grid .st-opt b{font-size:var(--fs-note)}
 .st-opt span{
-  display:block; margin-top:4px; font-size:.8rem; line-height:1.3;
-  color:var(--dim); font-weight:600;
+  display:block; margin-top:4px; font-size:var(--fs-meta); line-height:1.3;
+  color:var(--dim); font-weight:var(--w-label);
 }
 .st-opt.on{
   border-color:var(--coral);
-  background:linear-gradient(rgba(255,122,92,.16),rgba(255,122,92,.16)),var(--raise);
+  background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--raise);
   transform:translateY(-1px);
 }
 
@@ -132,16 +136,18 @@
   -webkit-appearance:none; appearance:none;
   display:block; width:100%; min-height:52px;
   margin:18px 0 0; padding:15px 18px;
-  background:var(--coral); color:#20121C;
+  background:var(--coral); color:var(--on-accent);
   border:0; border-radius:var(--pill);
-  font-family:var(--ui); font-size:1.02rem; font-weight:850; letter-spacing:-.01em;
+  font-family:var(--ui); font-size:var(--fs-lead); font-weight:var(--w-strong);
+  letter-spacing:var(--ls-title);
   text-align:center; text-decoration:none; cursor:pointer;
 }
 a.st-go{display:block}
 .st-ghost{
   display:inline-flex; align-items:center; justify-content:center;
   width:100%; min-height:var(--tap); margin-top:8px;
-  color:var(--dim); font-size:.9rem; font-weight:700; text-decoration:none;
+  color:var(--dim); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  text-decoration:none;
 }
 
 /* --- the open screen's covers -------------------------------------------- */
@@ -162,7 +168,8 @@ a.st-go{display:block}
 }
 .st-covers b{
   display:block; margin-top:7px;
-  font-size:.72rem; font-weight:700; line-height:1.25; color:var(--dim);
+  font-size:var(--fs-fine); font-weight:var(--w-strong); line-height:1.25;
+  color:var(--dim);
 }
 
 /* --- the turn ------------------------------------------------------------ */
@@ -175,15 +182,19 @@ a.st-go{display:block}
 }
 .st-facts li{min-width:0}
 .st-facts strong{
-  display:block; font-size:1.45rem; font-weight:900; letter-spacing:-.02em;
-  color:var(--butter); line-height:1.05;
+  display:block; font-size:1.45rem; font-weight:var(--w-head);
+  letter-spacing:var(--ls-hero); line-height:1.05;
+  /* --butter is a FILL: light blue on paper, amber on night, and 1.5:1 as type
+     on a card either way. This is the one number on the screen, so it takes
+     the ink accent — 5.8:1 on the card it sits in. */
+  color:var(--accent-ink);
 }
 .st-facts span{
-  display:block; margin-top:5px; font-size:.72rem; font-weight:700;
-  line-height:1.25; color:var(--dim);
+  display:block; margin-top:5px; font-size:var(--fs-fine);
+  font-weight:var(--w-strong); line-height:1.25; color:var(--dim);
 }
 .st-note{
-  margin:14px 0 0; font-size:.92rem; line-height:1.45; color:var(--dim);
+  margin:14px 0 0; font-size:var(--fs-sub); line-height:1.45; color:var(--dim);
 }
 
 /* --- the wait ------------------------------------------------------------ */
@@ -195,17 +206,18 @@ a.st-go{display:block}
 .st-picks li{
   display:flex; align-items:baseline; gap:10px;
   padding:11px 2px; border-bottom:1px solid var(--hair);
-  font-size:.92rem; line-height:1.3;
+  font-size:var(--fs-sub); line-height:1.3;
 }
 .st-picks i{
-  font-style:normal; color:var(--dimmer); font-size:.74rem; font-weight:800;
-  letter-spacing:.1em; text-transform:uppercase; flex:0 0 5.6em;
+  font-style:normal; color:var(--dimmer); font-size:var(--fs-fine);
+  font-weight:var(--w-label); letter-spacing:var(--ls-caps);
+  text-transform:uppercase; flex:0 0 5.6em;
 }
-.st-picks b{font-weight:800}
+.st-picks b{font-weight:var(--w-head)}
 
 .st-bar{
   height:6px; border-radius:3px; margin:20px 0 0;
-  background:rgba(255,247,237,.14); overflow:hidden;
+  background:var(--tint-3); overflow:hidden;
 }
 .st-bar i{
   display:block; height:100%; width:8%; border-radius:3px;
@@ -218,9 +230,9 @@ a.st-go{display:block}
 .st-feed{list-style:none; margin:16px 0 0; padding:0}
 .st-feed li{
   padding:11px 2px; border-bottom:1px solid var(--hair);
-  font-size:.94rem; font-weight:700; line-height:1.3;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); line-height:1.3;
 }
 .st-feed li em{
   display:block; font-style:normal; margin-top:3px;
-  font-size:.76rem; font-weight:600; color:var(--dimmer);
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
 }

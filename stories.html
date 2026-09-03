@@ -14,6 +14,9 @@
 <meta property="og:image" content="https://factbox.app/img/share.jpg">
 <meta property="og:url" content="https://factbox.app/stories">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css">
 <script src="/js/loader.js"></script>
 
@@ -128,8 +131,13 @@
          ' data-free="' + (s.free ? "1" : "") + '"' +
          ' data-meta="' + FB.esc(metaLine(s)) + '">' +
         '<div class="plate">' +
+          /* One retry at the stack's own plate if the thumbnail is missing,
+             the same pair read.html puts on every card. A cover that 404s is
+             otherwise a hole in the grid with a title under it. */
           '<img loading="lazy" decoding="async" alt="" width="420" height="560" ' +
-               'src="/img/thumbs/' + FB.esc(s.img) + '.webp">' +
+               'src="/img/thumbs/' + FB.esc(s.img) + '.webp" ' +
+               'data-fallback="/img/stacks/' + FB.esc(s.img) + '.webp" ' +
+               'onerror="this.onerror=null;this.src=this.getAttribute(\'data-fallback\')">' +
           (s.free ? '<span class="freetag">FREE</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +

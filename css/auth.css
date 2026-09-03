@@ -13,8 +13,9 @@
    Everything here is prefixed .au- so it cannot collide with .jn- (the
    funnel), .fbq- (the analytics notice) or anything the core owns.
 
-   Same commitments as the rest of the site: one committed dark theme painted
-   explicitly rather than inherited, 44px targets, and nothing tappable below
+   Same commitments as the rest of the site: the ground and the type colour
+   painted explicitly rather than inherited, every colour an app.css token,
+   44px targets, and nothing tappable below
    --bottom-safe, where the Instagram and TikTok toolbar sits. Both pages lay
    their actions out in normal flow inside .lib, which already reserves that
    height in its padding, so no control on either page can end up under the
@@ -40,7 +41,7 @@ body{background:var(--ground); color:var(--parchment)}
   margin:26px 0 0; padding:16px 16px;
   border-radius:16px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
-  font-size:.92rem; font-weight:700; color:var(--dim); line-height:1.4;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); color:var(--dim); line-height:1.4;
 }
 .au-wait[hidden]{display:none}
 
@@ -48,19 +49,24 @@ body{background:var(--ground); color:var(--parchment)}
    Google. The one tap that works for most people, so it is the biggest thing
    on the page and it sits above everything it competes with.
 
-   It is parchment on dark rather than coral, because coral is this site's
+   It is light blue rather than the accent, because the accent is this site's
    "the thing you came to do" colour and is already spent on Continue further
-   down. A white-on-dark provider button is also the shape people have learned
-   to look for, and looking for it is the whole job it has.
+   down. A pale provider button is also the shape people have learned to look
+   for, and looking for it is the whole job it has.
    -------------------------------------------------------------------------- */
 .au-prov{
   display:flex; align-items:center; justify-content:center; gap:11px;
   width:100%; max-width:520px; margin:18px auto 0;
   min-height:52px; padding:14px 18px;
   border:0; border-radius:var(--pill); cursor:pointer;
-  background:var(--parchment); color:#221A2A;
-  font-family:var(--ui); font-size:1.02rem; font-weight:800;
-  box-shadow:0 8px 26px rgba(0,0,0,.42);
+  /* Light blue, not --parchment. That token used to be near-white, which is
+     what a Google button wants; on paper it is navy, so the button turned into
+     dark text on a dark ground — measured 1.31:1. --butter with navy type is
+     7.3:1. The shadow lightened with it: a 42% black glow was drawn for a
+     button floating on night. */
+  background:var(--butter); color:var(--parchment);
+  font-family:var(--ui); font-size:var(--fs-lead); font-weight:var(--w-strong);
+  box-shadow:0 6px 18px rgba(29,49,89,.18);
   transition:transform .15s ease, filter .15s ease;
 }
 .au-prov:active{transform:translateY(1px) scale(.99)}
@@ -75,7 +81,7 @@ body{background:var(--ground); color:var(--parchment)}
 .au-or{
   display:flex; align-items:center; gap:12px;
   margin:22px 2px 4px;
-  font-size:.76rem; font-weight:800; letter-spacing:.14em;
+  font-size:var(--fs-meta); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
   color:var(--dimmer); text-transform:uppercase;
 }
 .au-or::before, .au-or::after{
@@ -94,11 +100,11 @@ body{background:var(--ground); color:var(--parchment)}
 .au-switch button{
   position:relative; background:none; border:0; cursor:pointer;
   padding:10px 0; min-height:var(--tap);
-  font-family:var(--ui); font-size:.98rem; font-weight:700;
-  letter-spacing:-.01em; color:var(--dimmer);
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  letter-spacing:var(--ls-title); color:var(--dimmer);
   transition:color .16s ease;
 }
-.au-switch button[aria-selected="true"]{color:var(--parchment); font-weight:850}
+.au-switch button[aria-selected="true"]{color:var(--parchment); font-weight:var(--w-head)}
 .au-switch button[aria-selected="true"]::after{
   content:""; position:absolute; left:0; right:0; bottom:4px; height:2px;
   border-radius:2px; background:var(--coral);
@@ -108,8 +114,11 @@ body{background:var(--ground); color:var(--parchment)}
    sent a code". Same shell as .jn-err so the two read as the same kind of
    line, in the colour that means "this worked". */
 .au-say{
-  margin:10px 2px 0; font-size:.86rem; font-weight:700; line-height:1.45;
-  color:var(--teal);
+  margin:10px 2px 0; font-size:var(--fs-note); font-weight:var(--w-strong);
+  line-height:1.45;
+  /* --teal is the sage FILL and reads 1.9:1 as type on cream. --teal-ink is
+     the same colour taken to 4.7:1, which is what a sentence needs. */
+  color:var(--teal-ink);
 }
 .au-say[hidden]{display:none}
 
@@ -119,8 +128,8 @@ body{background:var(--ground); color:var(--parchment)}
   display:inline-flex; align-items:center;
   min-height:var(--tap); padding:10px 2px;
   background:none; border:0; cursor:pointer;
-  font-family:var(--ui); font-size:.88rem; font-weight:700; color:var(--dim);
-  text-decoration:underline; text-underline-offset:3px;
+  font-family:var(--ui); font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--dim); text-decoration:underline; text-underline-offset:3px;
 }
 .au-link[disabled]{color:var(--dimmer); text-decoration:none; cursor:default}
 
@@ -143,16 +152,17 @@ body{background:var(--ground); color:var(--parchment)}
 .au-row{padding:14px 0}
 .au-row + .au-row{border-top:1px solid var(--hair)}
 .au-row dt{
-  margin:0 0 5px; font-size:.76rem; font-weight:800; letter-spacing:.1em;
-  color:var(--dimmer); text-transform:uppercase;
+  margin:0 0 5px; font-size:var(--fs-meta); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); color:var(--dimmer); text-transform:uppercase;
 }
 .au-row dd{
-  margin:0; font-size:1rem; font-weight:700; line-height:1.4;
+  margin:0; font-size:var(--fs-body); font-weight:var(--w-strong); line-height:1.4;
   color:var(--parchment); word-break:break-word;
 }
 .au-row dd small{
   display:block; margin-top:5px;
-  font-size:.84rem; font-weight:650; color:var(--dim); line-height:1.45;
+  font-size:var(--fs-note); font-weight:var(--w-label); color:var(--dim);
+  line-height:1.45;
 }
 
 /* The state chip. Three states and each has to read at a glance: reading
@@ -160,12 +170,14 @@ body{background:var(--ground); color:var(--parchment)}
 .au-pill{
   display:inline-block; vertical-align:middle;
   padding:4px 11px; border-radius:var(--pill);
-  font-size:.72rem; font-weight:900; letter-spacing:.08em;
-  background:rgba(255,247,237,.09); color:var(--parchment);
+  font-size:var(--fs-fine); font-weight:var(--w-head); letter-spacing:var(--ls-badge);
+  background:var(--tint); color:var(--parchment);
 }
-.au-pill.is-on{background:var(--coral); color:#2A1109}
-.au-pill.is-trial{background:rgba(79,195,184,.2); color:var(--teal)}
-.au-pill.is-off{background:rgba(255,247,237,.09); color:var(--dim)}
+.au-pill.is-on{background:var(--coral); color:var(--on-accent)}
+/* Sage, written out rather than taken from --teal: the wash is a background
+   and the word on it is type, so the two cannot be the same value. */
+.au-pill.is-trial{background:rgba(140,167,93,.30); color:var(--teal-ink)}
+.au-pill.is-off{background:var(--tint); color:var(--dim)}
 
 /* Secondary actions at the foot of the account screen: manage billing, sign
    out. Outlined, full width, real targets — they are not the point of the
@@ -177,7 +189,7 @@ body{background:var(--ground); color:var(--parchment)}
   border:0; border-radius:var(--pill); cursor:pointer;
   background:var(--raise); color:var(--parchment);
   box-shadow:inset 0 0 0 1px var(--hair);
-  font-family:var(--ui); font-size:.98rem; font-weight:780;
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
   text-decoration:none; text-align:center; line-height:1.2;
   transition:transform .15s ease;
 }
@@ -194,20 +206,21 @@ body{background:var(--ground); color:var(--parchment)}
 .au-panel{margin-top:14px}
 .au-panel[hidden]{display:none}
 .au-panel h2{
-  font-size:clamp(1.35rem,5.4vw,1.7rem); font-weight:850; margin:0 0 8px;
-  line-height:1.14; letter-spacing:-.015em; text-wrap:balance;
+  font-size:var(--fs-h2); font-weight:var(--w-head); margin:0 0 8px;
+  line-height:var(--lh-head); letter-spacing:var(--ls-head); text-wrap:balance;
 }
 .au-panel > p{
-  margin:0 0 4px; color:var(--dim); font-size:1rem; line-height:1.5;
+  margin:0 0 4px; color:var(--dim);
+  font-size:var(--fs-body); font-weight:var(--w-body); line-height:var(--lh-body);
   max-width:44ch;
 }
 
 /* A row of two small facts under a heading — "Signed in as …" on the account
    screen — where a whole .au-rows block would be too much furniture. */
 .au-who{
-  margin:14px 0 0; font-size:.94rem; line-height:1.5; color:var(--dim);
+  margin:14px 0 0; font-size:var(--fs-sub); line-height:1.5; color:var(--dim);
 }
-.au-who b{color:var(--parchment); font-weight:800; word-break:break-word}
+.au-who b{color:var(--parchment); font-weight:var(--w-head); word-break:break-word}
 
 @media (prefers-reduced-motion:reduce){
     .au-prov, .au-2nd{transition:none}
@@ -247,4 +260,35 @@ html.au-js .au-panel{display:none}
   min-height:var(--tap); padding:0 6px;
   color:var(--parchment); text-decoration:underline;
   text-underline-offset:3px;
+}
+
+/* --------------------------------------------------------------------------
+   Centred.
+
+   The page was a left-aligned column with two centred buttons in it, so the
+   heading, the tabs, the field labels and the footer links all sat on one
+   edge while the things you press sat on another. One axis now.
+
+   Tokens only, no colours: the palette is being repainted elsewhere and this
+   page has no opinion about it.
+   -------------------------------------------------------------------------- */
+.au-panel{text-align:center}
+.au-switch{justify-content:center}
+.au-panel .jn-field{text-align:left}          /* a label belongs over its box */
+.au-panel .jn-row{justify-content:center; gap:22px}
+.au-panel .fine{margin-left:auto; margin-right:auto; max-width:46ch}
+
+/* The title belongs to the shared .mast, which every other page wants left.
+   Scoped to this page's body so nothing else moves. */
+body.au h1, body.au .mast{text-align:center}
+body.au .tabs{justify-content:center}
+body.au .tabs .acct{position:absolute; right:0; top:0}
+body.au .mast{position:relative}
+
+/* The footer note and the noscript line sit outside .au-panel, so the rule
+   above does not reach them. Left alone they would be the only left-aligned
+   thing on the page. */
+body.au .lib > .fine,
+body.au .lib noscript .fine{
+  text-align:center; margin-left:auto; margin-right:auto; max-width:46ch;
 }

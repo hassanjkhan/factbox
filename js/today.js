@@ -65,6 +65,24 @@
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
 
+  /* SPEC §2.6: a missing plate falls back to the stack hero, never to a
+     broken image box in the middle of a shelf. The same pair read.html puts
+     on every card in the deck — the hero URL is carried on the element
+     itself, because by the time onerror fires the story it was built from is
+     long out of scope, and the handler clears itself so a missing hero cannot
+     loop. img/thumbs and img/stacks hold one file per slot today; this is the
+     degrade path for the day one of them does not.
+
+     srcset goes first. Today's Factbox names two candidates, and a browser
+     re-runs that list when src changes — so leaving it in place would pick
+     the broken file again and the swap would do nothing. Harmless on the
+     covers, which carry no srcset. */
+  function heroFallback(slot) {
+    return ' data-fallback="/img/stacks/' + esc(slot) + '.webp"' +
+           ' onerror="this.onerror=null;this.removeAttribute(\'srcset\');' +
+           'this.src=this.getAttribute(\'data-fallback\')"';
+  }
+
   function track(name) { try { if (window.FB && FB.track) FB.track(name); } catch (e) {} }
 
   /* Always an object. No FBP, no reading memory, every cover unread. */
@@ -245,7 +263,7 @@
          ' data-pct="' + (st.pct || 0) + '">' +
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" width="420" height="560" ' +
-               'src="/img/thumbs/' + esc(s.img) + '.webp">' +
+               'src="/img/thumbs/' + esc(s.img) + '.webp"' + heroFallback(s.img) + '>' +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +
@@ -350,7 +368,8 @@
     return '' +
       '<a class="tdy-cont" href="' + esc(href(c.stack)) + '">' +
         '<div class="plate"><img loading="eager" decoding="async" alt="" ' +
-             'src="/img/thumbs/' + esc(c.stack.img) + '.webp"></div>' +
+             'src="/img/thumbs/' + esc(c.stack.img) + '.webp"' +
+             heroFallback(c.stack.img) + '></div>' +
         '<div class="t">' +
           '<p class="tdy-eyebrow">Continue</p>' +
           '<b>' + esc(c.stack.title) + '</b>' +
@@ -372,7 +391,7 @@
           '<img loading="eager" decoding="async" alt="" width="1280" height="800" ' +
                'src="/img/thumbs/' + slot + '.webp" ' +
                'srcset="/img/thumbs/' + slot + '.webp 420w, /img/stacks/' + slot + '.webp 1280w" ' +
-               'sizes="(min-width:1024px) 560px, 100vw">' +
+               'sizes="(min-width:1024px) 560px, 100vw"' + heroFallback(s.img) + '>' +
         '</div>' +
         '<div class="tdy-body">' +
           '<p class="tdy-kicker">Today’s Factbox</p>' +
@@ -449,7 +468,8 @@
          ' data-id="' + esc(next.stack.id) + '"' +
          ' data-free="' + (next.stack.free ? "1" : "") + '">' +
         '<div class="plate"><img loading="lazy" decoding="async" alt="" ' +
-             'src="/img/thumbs/' + esc(next.stack.img) + '.webp"></div>' +
+             'src="/img/thumbs/' + esc(next.stack.img) + '.webp"' +
+             heroFallback(next.stack.img) + '></div>' +
         '<div class="t">' +
           '<b>' + esc(subjectName(key)) + '</b>' +
           '<span class="tdy-where">' + esc(where) + '</span>' +

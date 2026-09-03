@@ -4,27 +4,150 @@
    in an in-app webview: a viewport that resizes mid-scroll and a toolbar that
    eats the bottom 44-60pt. Both facts are designed around, not worked around.
 
-   This is a committed dark design — the artwork is the page, and a light
-   variant would mean a different product — so it paints its own ground and
-   colours explicitly rather than inheriting the host theme.
+   TWO GROUNDS, ONE SET OF TOKENS.
+   The browse pages are paper: cream, navy type, blue fills. The READER is
+   night, because every pane there is a museum painting filling the screen with
+   words laid over it, and cream behind a photograph is unreadable whatever
+   colour the rest of the site is. Both are painted explicitly rather than
+   inherited from the host webview.
+
+   The reader's night values are ONE `:root` block, and it lives in
+   css/reader-rail.css — read.html loads that file last and no other page loads
+   it at all, so it is the reader's scope with no class on <html> to set and no
+   :has() to depend on. If you add a page that needs night, load that file.
+   The composed story pages (story.html and its copies) are self-contained and
+   never see this stylesheet.
    ========================================================================== */
 
 :root{
-  color-scheme:dark;
+  color-scheme:light;
 
-  /* Theme.swift palette, same values the app and the story page use */
-  --parchment:#FFF7ED; --ink:#3E2F4A; --ink-soft:#8B7B93;
-  --coral:#FF7A5C; --coral-deep:#E85F41; --crimson:#A81F38;
-  --teal:#4FC3B8; --butter:#FFD36E; --lilac:#B79CED;
+  /* ---- Paper -------------------------------------------------------------
+     Six colours: cream, navy, bright blue, light blue, sage, dark brown.
+
+     The token NAMES are kept even though their meaning inverted — --parchment
+     is the reading colour and is now navy, not near-white. Renaming it would
+     have touched several hundred declarations across nine stylesheets for no
+     gain; the value is the thing that matters and this note is the warning.
+
+     --coral is a FILL, never type. At 2.0:1 on cream it is a colour you put
+     words on, not a colour you write words in. --accent-ink is the same blue
+     taken down to 4.8:1 on the page and 5.8:1 on a card, and it is what every
+     link, eyebrow and coloured label uses.
+     ---------------------------------------------------------------------- */
+  --parchment:#1D3159;                 /* navy — the reading colour */
+  --ink:#443A3A; --ink-soft:#6E625F;   /* dark brown, and it softened */
+  --coral:#4C9BE8;                     /* bright blue — fills and buttons */
+  --coral-deep:#3B82CC;
+  --accent-ink:#215A97;                /* the blue you may WRITE in */
+  --crimson:#A81F38;
+  --teal:#8CA75D;                      /* sage — the second accent, as a fill */
+  --teal-ink:#476220;                  /* sage you may write in: 4.7:1 on cream */
+  --butter:#95C8F7;                    /* light blue — bars and washes */
+  --lilac:#B79CED;
+  /* Not repainted. --night is the backstop BEHIND a plate — .beat and .tdy-art
+     show it for the milliseconds before the painting decodes, and a cream flash
+     there is the one thing worse than a dark one. */
   --night:#1B1620;
 
-  --ground:#0E0B12;
-  --raise:#181320;
-  --hair:rgba(255,247,237,.13);
-  --dim:rgba(255,247,237,.62);
-  --dimmer:rgba(255,247,237,.52);
+  --ground:#DCD5C8;                    /* cream — the page */
+  --raise:#EDE8DE;                     /* a card lifted off it */
+  /* The transparent end of a fade over --ground / --raise. `transparent` is
+     rgba(0,0,0,0) and older webviews interpolate it un-premultiplied, which
+     greys the middle of every gradient on a light ground. */
+  --ground-0:rgba(220,213,200,0);
+  --raise-0:rgba(237,232,222,0);
+  --hair:rgba(29,49,89,.16);
 
-  --ui:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  /* --dim and --dimmer are NOT her .66 / .5.
+
+     On night, .62 and .52 of near-white over #0E0B12 measure 8.4:1 and 6.2:1.
+     Inverted onto cream the same alphas measure 3.8:1 and 2.6:1, and every one
+     of their users — .meta under a cover, .fine under the buy button, an
+     unselected tab, .statline small — is 12-15px body text that needs 4.5:1.
+     Raised until they clear it on the WORSE of the two grounds (#DCD5C8):
+     .82 → 5.7:1 on the page and 6.4:1 on a card, .74 → 4.6:1 and 5.1:1.
+     They read closer together than they do on night. That is the honest cost
+     of a light ground, and it is cheaper than illegible metadata. */
+  --dim:rgba(29,49,89,.82);
+  --dimmer:rgba(29,49,89,.74);
+
+  /* ---- Surfaces that are not the page ------------------------------------
+     Every one of these was a hard-coded near-white or near-black rgba() before
+     the repaint, which is exactly why they all broke at once: a wash written
+     as rgba(255,247,237,.09) is "a little lighter than whatever is behind it",
+     and on cream that is a little lighter than cream.
+     ---------------------------------------------------------------------- */
+  --tint:rgba(29,49,89,.07);           /* a quiet chip on --raise */
+  --tint-2:rgba(29,49,89,.12);         /* the same chip, pressed */
+  --tint-3:rgba(29,49,89,.18);         /* an unfilled track or dot */
+  --accent-wash:rgba(76,155,232,.16);  /* a chosen option's ground */
+  --accent-edge:rgba(33,90,151,.34);   /* its hairline */
+  --on-accent:#0B1B2E;                 /* type on a --coral fill — 5.9:1 */
+  --menu:#FBF8F2;                      /* the account popover, and the notice */
+
+  /* Glass over ARTWORK stays dark in both grounds: the lock badge and the
+     reader's own pills sit on a painting, never on the page. --on-glass is
+     what you may write on them (8.4:1 over the lock badge's composite). */
+  --glass:rgba(14,11,18,.62);
+  --glass-deep:rgba(14,11,18,.72);
+  --on-glass:#FFF7ED;
+
+  /* Shadow is a light source, and on cream the light is coming from the same
+     place — so these are navy at low alpha, not black at .45, which on paper
+     reads as soot around every cover. */
+  --shadow-1:0 6px 20px rgba(29,49,89,.16);   /* a cover lifted off the page */
+  --shadow-2:0 14px 40px rgba(29,49,89,.22);  /* a menu or a notice above it */
+  --shadow-go:0 8px 22px rgba(33,90,151,.28); /* the primary button's own */
+  --glow-accent:0 0 10px rgba(76,155,232,.55);/* the read bar's trail */
+  --accent-lift:#9CCBF7;                      /* the sweep along the load bar */
+
+  /* ---- Type --------------------------------------------------------------
+     DM Sans, four real weights. Every page's <head> asks Google for
+     wght@400;500;600;700 and gets those four faces back, so the 650 / 750 /
+     780 / 820 / 850 / 900 values this stylesheet used to carry were not
+     weights the browser had: each snapped to the nearest face or was
+     synthesised, which is why 800 and 850 rendered identically and 650 came
+     out as 600 on iOS and as faux-bold on Android. Four tokens, one job each.
+
+       --w-head    700   headlines, card titles, the word that is the point
+       --w-strong  600   buttons, the current tab, a <b> inside a paragraph
+       --w-label   500   metadata, counts, eyebrows, small-caps labels
+       --w-body    400   paragraphs
+
+     The fallbacks are the rounded stack DM Sans replaced, so a webview that
+     blocks the font request still gets a face rather than Times. The link
+     carries display=swap, because the words are the product: they appear
+     immediately in the fallback instead of after a round trip on cellular.
+
+     And one size ladder. This file alone held eleven distinct sizes between
+     .64rem and .82rem; these are the rungs they collapse to. rem, not px, so
+     the ladder tracks the reader's own text size.
+     ---------------------------------------------------------------------- */
+  --ui:"DM Sans",ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+
+  --w-head:700; --w-strong:600; --w-label:500; --w-body:400;
+
+  --fs-hero:clamp(1.9rem,7vw,2.5rem);    /* the mast, the hook */
+  --fs-h1:clamp(1.6rem,6.4vw,2.1rem);    /* a pane's headline */
+  --fs-h2:clamp(1.35rem,5.2vw,1.7rem);   /* a card headline */
+  --fs-h3:1.3rem;                        /* a section divider */
+  --fs-lead:1.0625rem;                   /* a standfirst, a primary button */
+  --fs-body:1rem;                        /* paragraphs, inputs */
+  --fs-sub:.9375rem;                     /* a card title, a tab, a menu item */
+  --fs-note:.875rem;                     /* secondary copy */
+  --fs-meta:.8125rem;                    /* metadata under a cover */
+  --fs-fine:.75rem;                      /* the fine print */
+  --fs-micro:.6875rem;                   /* a tag, an eyebrow, a badge */
+
+  --ls-hero:-.02em;                      /* the bigger the type, the tighter */
+  --ls-head:-.015em;
+  --ls-title:-.008em;
+  --ls-caps:.16em;                       /* anything set in small capitals */
+  --ls-badge:.08em;                      /* a filled badge, where .16em splits the pill */
+  --ls-mark:.32em;                       /* the wordmark, and only it */
+
+  --lh-head:1.12; --lh-body:1.55; --lh-tight:1.25;
 
   /* The bottom of an in-app webview is not ours. Nothing tappable and nothing
      that must be read sits below this line. */
@@ -47,7 +170,7 @@ body{
 }
 a{color:inherit}
 img{max-width:100%;display:block}
-:focus-visible{outline:2px solid var(--coral);outline-offset:3px;border-radius:6px}
+:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px;border-radius:6px}
 
 /* ==========================================================================
    Library
@@ -61,21 +184,33 @@ img{max-width:100%;display:block}
 
 .mast{padding:22px 2px 6px}
 .mark{
-  font-size:.82rem; font-weight:900; letter-spacing:.34em;
-  color:var(--coral); margin:0 0 14px;
+  font-size:var(--fs-meta); font-weight:var(--w-head); letter-spacing:var(--ls-mark);
+  color:var(--accent-ink); margin:0 0 14px;
 }
 .mast h1{
-  font-size:clamp(1.9rem,7vw,2.5rem); font-weight:850; margin:0 0 10px;
-  line-height:1.08; letter-spacing:-.015em; text-wrap:balance;
+  font-size:var(--fs-hero); font-weight:var(--w-head); margin:0 0 10px;
+  line-height:1.08; letter-spacing:var(--ls-head); text-wrap:balance;
 }
-.mast p{margin:0; color:var(--dim); font-size:1rem; line-height:1.5; max-width:44ch}
+/* :not(.mark), because the wordmark is a <p> in this same block and `.mast p`
+   outranks `.mark` on specificity. It has been quietly winning: FACTBOX was
+   rendering at 16px in --dim rather than at --fs-meta in the accent, and
+   giving this rule a font-weight would have taken the wordmark's weight too.
+   css/today.css already writes the standfirst as `.mast p:not(.mark)` for the
+   same reason. */
+.mast p:not(.mark){
+  margin:0; color:var(--dim); max-width:44ch;
+  font-size:var(--fs-body); font-weight:var(--w-body); line-height:var(--lh-body);
+}
 
 .sechead{
   display:flex; align-items:baseline; gap:10px;
   margin:34px 2px 14px; padding-top:18px; border-top:1px solid var(--hair);
 }
-.sechead h2{font-size:1.05rem; font-weight:800; margin:0; letter-spacing:-.01em}
-.sechead span{font-size:.82rem; color:var(--dimmer); font-weight:600}
+.sechead h2{
+  margin:0; font-size:var(--fs-lead); font-weight:var(--w-head);
+  letter-spacing:var(--ls-title);
+}
+.sechead span{font-size:var(--fs-meta); color:var(--dimmer); font-weight:var(--w-label)}
 
 /* Two up on a phone, more as the window allows. The cover is the pitch, so it
    gets the room; the title sits under it rather than over it, because a title
@@ -95,17 +230,17 @@ img{max-width:100%;display:block}
 .plate{
   position:relative; aspect-ratio:3/4; overflow:hidden;
   border-radius:14px; background:var(--raise);
-  box-shadow:0 6px 20px rgba(0,0,0,.45), inset 0 0 0 1px var(--hair);
+  box-shadow:var(--shadow-1), inset 0 0 0 1px var(--hair);
 }
 .plate img{
   width:100%; height:100%; object-fit:cover; object-position:center 32%;
 }
 .card h3{
-  font-size:.94rem; font-weight:750; margin:0; line-height:1.26;
-  letter-spacing:-.008em;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); margin:0;
+  line-height:var(--lh-tight); letter-spacing:var(--ls-title);
 }
 .meta{
-  font-size:.76rem; color:var(--dimmer); font-weight:600;
+  font-size:var(--fs-meta); color:var(--dimmer); font-weight:var(--w-label);
   font-variant-numeric:tabular-nums;
 }
 
@@ -116,15 +251,15 @@ img{max-width:100%;display:block}
 .lock{
   position:absolute; right:8px; top:8px;
   width:26px; height:26px; border-radius:var(--pill);
-  background:rgba(14,11,18,.72); backdrop-filter:blur(6px);
-  display:grid; place-items:center; font-size:.72rem;
+  background:var(--glass-deep); color:var(--on-glass); backdrop-filter:blur(6px);
+  display:grid; place-items:center; font-size:var(--fs-fine);
   box-shadow:inset 0 0 0 1px var(--hair);
 }
 .freetag{
   position:absolute; left:8px; top:8px;
   padding:3px 8px; border-radius:var(--pill);
-  background:var(--coral); color:#2A1109;
-  font-size:.64rem; font-weight:900; letter-spacing:.09em;
+  background:var(--coral); color:var(--on-accent);
+  font-size:var(--fs-micro); font-weight:var(--w-head); letter-spacing:var(--ls-badge);
 }
 
 /* The buy bar. Fixed, above the webview toolbar, and it never covers the last
@@ -132,7 +267,7 @@ img{max-width:100%;display:block}
 .buybar{
   position:fixed; left:0; right:0; bottom:0; z-index:40;
   padding:12px 16px calc(env(safe-area-inset-bottom,0px) + var(--toolbar) - 12px);
-  background:linear-gradient(to top,var(--ground) 62%,rgba(14,11,18,0));
+  background:linear-gradient(to top,var(--ground) 62%,var(--ground-0));
   pointer-events:none;
 }
 .buybar > *{pointer-events:auto}
@@ -140,17 +275,18 @@ img{max-width:100%;display:block}
 .go{
   display:block; width:100%; max-width:520px; margin:0 auto;
   border:0; border-radius:var(--pill); cursor:pointer;
-  background:var(--coral); color:#2A1109;
-  font-family:var(--ui); font-size:1.02rem; font-weight:850;
+  background:var(--coral); color:var(--on-accent);
+  font-family:var(--ui); font-size:var(--fs-lead); font-weight:var(--w-strong);
   padding:16px 20px; min-height:var(--tap);
-  box-shadow:0 8px 26px rgba(232,95,65,.34);
+  box-shadow:var(--shadow-go);
   transition:transform .15s ease, filter .15s ease;
 }
 .go:active{transform:translateY(1px) scale(.99)}
 .go[disabled]{background:var(--raise); color:var(--dim); box-shadow:none; cursor:default}
 .fine{
   margin:9px auto 0; max-width:520px; text-align:center;
-  font-size:.75rem; color:var(--dimmer); line-height:1.45;
+  font-size:var(--fs-fine); font-weight:var(--w-body);
+  color:var(--dimmer); line-height:var(--lh-body);
 }
 
 /* ==========================================================================
@@ -196,16 +332,17 @@ img{max-width:100%;display:block}
   max-width:620px; margin:0 auto;
 }
 .copy .eyebrow{
-  font-size:.7rem; font-weight:900; letter-spacing:.2em;
+  font-size:var(--fs-micro); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
   color:var(--coral); margin:0 0 10px;
 }
 .copy h2{
-  font-size:clamp(1.35rem,5.2vw,1.7rem); font-weight:800; margin:0;
-  line-height:1.2; letter-spacing:-.014em; text-wrap:balance;
+  font-size:var(--fs-h2); font-weight:var(--w-head); margin:0;
+  line-height:1.2; letter-spacing:var(--ls-head); text-wrap:balance;
   text-shadow:0 2px 18px rgba(0,0,0,.55);
 }
 .copy p{
-  margin:12px 0 0; font-size:clamp(1rem,3.9vw,1.08rem); line-height:1.52;
+  margin:12px 0 0; font-size:clamp(1rem,3.9vw,1.08rem);
+  font-weight:var(--w-body); line-height:1.62;
   color:rgba(255,247,237,.88); max-width:42ch;
   text-shadow:0 2px 14px rgba(0,0,0,.5);
 }
@@ -217,8 +354,8 @@ img{max-width:100%;display:block}
 .beat.is-landing .copy{bottom:calc(var(--bottom-safe) + 4vh)}
 
 .cite{
-  margin:14px 0 0; font-size:.74rem; line-height:1.45;
-  color:rgba(255,247,237,.5);
+  margin:14px 0 0; font-size:var(--fs-fine); font-weight:var(--w-body);
+  line-height:var(--lh-body); color:rgba(255,247,237,.5);
 }
 .cite a{color:rgba(255,247,237,.66)}
 
@@ -227,7 +364,7 @@ img{max-width:100%;display:block}
 .plate-credit{
   position:absolute; left:20px; right:20px;
   bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
-  font-size:.66rem; line-height:1.4; color:rgba(255,247,237,.56);
+  font-size:var(--fs-micro); line-height:1.4; color:rgba(255,247,237,.56);
   text-align:left;
 }
 .plate-credit a{color:rgba(255,247,237,.72)}
@@ -278,9 +415,9 @@ img{max-width:100%;display:block}
 .back{
   display:inline-flex; align-items:center; gap:7px;
   min-height:38px; padding:0 14px 0 11px; border-radius:var(--pill);
-  background:rgba(14,11,18,.6); backdrop-filter:blur(10px);
+  background:var(--glass); backdrop-filter:blur(10px);
   box-shadow:inset 0 0 0 1px var(--hair);
-  font-size:.83rem; font-weight:700; text-decoration:none;
+  font-size:var(--fs-meta); font-weight:var(--w-strong); text-decoration:none;
   color:var(--parchment);
 }
 
@@ -293,10 +430,13 @@ img{max-width:100%;display:block}
   max-width:560px; margin:0 auto; text-align:center;
 }
 .pane h2{
-  font-size:clamp(1.6rem,6.4vw,2.1rem); font-weight:850; margin:0;
-  line-height:1.14; letter-spacing:-.015em; text-wrap:balance;
+  font-size:var(--fs-h1); font-weight:var(--w-head); margin:0;
+  line-height:var(--lh-head); letter-spacing:var(--ls-head); text-wrap:balance;
 }
-.pane p{margin:0; color:var(--dim); font-size:1rem; line-height:1.55}
+.pane p{
+  margin:0; color:var(--dim);
+  font-size:var(--fs-body); font-weight:var(--w-body); line-height:1.62;
+}
 .pane .go{margin-top:8px}
 
 .nextrow{
@@ -305,12 +445,15 @@ img{max-width:100%;display:block}
 }
 .nextrow .plate{width:78px; flex:0 0 78px; border-radius:11px}
 .nextrow .t{text-align:left}
-.nextrow .t b{display:block; font-size:.95rem; font-weight:780; line-height:1.25}
-.nextrow .t span{font-size:.78rem; color:var(--dimmer)}
+.nextrow .t b{
+  display:block; font-size:var(--fs-sub); font-weight:var(--w-head);
+  line-height:var(--lh-tight);
+}
+.nextrow .t span{font-size:var(--fs-meta); color:var(--dimmer)}
 
 .ghost{
   display:inline-block; margin-top:4px;
-  font-size:.9rem; font-weight:700; color:var(--dim);
+  font-size:var(--fs-sub); font-weight:var(--w-strong); color:var(--dim);
   text-decoration:none; padding:10px; min-height:var(--tap);
 }
 
@@ -327,7 +470,7 @@ img{max-width:100%;display:block}
    these set at body scale and read as a paragraph, not a shouted headline. */
 .beat.is-long .copy h2{
   font-size:clamp(1.02rem,4vw,1.14rem);
-  font-weight:700; line-height:1.45; letter-spacing:0;
+  font-weight:var(--w-strong); line-height:1.45; letter-spacing:0;
   color:rgba(255,247,237,.93);
 }
 .beat.is-hook.is-long .copy h2{font-size:clamp(1.25rem,4.9vw,1.45rem); line-height:1.32}
@@ -339,7 +482,7 @@ img{max-width:100%;display:block}
 .readbar{
   position:absolute; left:0; bottom:0; height:3px;
   background:var(--coral); border-radius:0 3px 3px 0;
-  box-shadow:0 0 10px rgba(232,95,65,.55);
+  box-shadow:var(--glow-accent);
 }
 /* Finished covers step back so the unread ones carry the eye. The check is the
    signal; dimming alone would read as "locked", which is a different thing. */
@@ -347,11 +490,11 @@ img{max-width:100%;display:block}
 .card.is-done .plate::after{
   content:"✓"; position:absolute; right:8px; bottom:8px;
   width:22px; height:22px; border-radius:var(--pill);
-  background:var(--coral); color:#2A1109;
-  font-size:.72rem; font-weight:900; display:grid; place-items:center;
+  background:var(--coral); color:var(--on-accent);
+  font-size:var(--fs-fine); font-weight:var(--w-head); display:grid; place-items:center;
   box-shadow:0 2px 8px rgba(0,0,0,.4);
 }
-.card.is-reading .meta{color:var(--coral); font-weight:700}
+.card.is-reading .meta{color:var(--accent-ink); font-weight:var(--w-strong)}
 
 /* "Pick up where you left off" — one wide cover, not a grid cell, because it
    is a single answer to a single question. */
@@ -364,8 +507,13 @@ img{max-width:100%;display:block}
 }
 .resume .plate{width:64px; flex:0 0 64px; border-radius:10px; aspect-ratio:3/4}
 .resume .t{min-width:0}
-.resume .t b{display:block; font-size:.98rem; font-weight:780; line-height:1.25}
-.resume .t span{font-size:.8rem; color:var(--coral); font-weight:650}
+.resume .t b{
+  display:block; font-size:var(--fs-sub); font-weight:var(--w-head);
+  line-height:var(--lh-tight);
+}
+.resume .t span{
+  font-size:var(--fs-meta); color:var(--accent-ink); font-weight:var(--w-label);
+}
 
 /* --------------------------------------------------------------------------
    The restore link. Access lives in one browser's storage, so this link is the
@@ -376,18 +524,22 @@ img{max-width:100%;display:block}
   border-radius:16px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
 }
-.keep b{display:block; font-size:.98rem; font-weight:800; margin-bottom:5px}
-.keep p{margin:0 0 11px; font-size:.86rem; line-height:1.5; color:var(--dim)}
+.keep b{
+  display:block; font-size:var(--fs-sub); font-weight:var(--w-head); margin-bottom:5px;
+}
+.keep p{
+  margin:0 0 11px; font-size:var(--fs-note); line-height:var(--lh-body); color:var(--dim);
+}
 .keep input{
   width:100%; margin-bottom:9px; padding:11px 12px;
-  border:0; border-radius:10px; background:rgba(255,247,237,.07);
+  border:0; border-radius:10px; background:var(--tint);
   color:var(--parchment); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:.78rem; min-height:var(--tap);
+  font-size:var(--fs-meta); min-height:var(--tap);
 }
 .keep button{
   width:100%; min-height:var(--tap); border:0; border-radius:var(--pill);
-  background:var(--coral); color:#2A1109; cursor:pointer;
-  font-family:var(--ui); font-size:.94rem; font-weight:800;
+  background:var(--coral); color:var(--on-accent); cursor:pointer;
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
 }
 .keep .fine{margin:9px 0 0; text-align:left}
 
@@ -409,18 +561,18 @@ img{max-width:100%;display:block}
   position:relative; text-decoration:none;
   padding:10px 0; min-height:var(--tap);
   display:inline-flex; align-items:center;
-  font-size:.95rem; font-weight:700; letter-spacing:-.01em;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); letter-spacing:var(--ls-title);
   color:var(--dimmer);
   transition:color .16s ease;
 }
 .tabs a:hover{color:var(--dim)}
-.tabs a[aria-current="page"]{color:var(--parchment); font-weight:800}
+.tabs a[aria-current="page"]{color:var(--parchment); font-weight:var(--w-head)}
 .tabs a[aria-current="page"]::after{
   content:""; position:absolute; left:0; right:0; bottom:4px; height:2px;
   border-radius:2px; background:var(--coral);
 }
 .tabs .count{
-  margin-left:auto; font-size:.76rem; font-weight:650; color:var(--dimmer);
+  margin-left:auto; font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
 
@@ -440,16 +592,16 @@ img{max-width:100%;display:block}
   bottom:calc(env(safe-area-inset-bottom,0px) + var(--toolbar) + 8px);
   display:flex; gap:12px; align-items:center;
   padding:12px 14px; border-radius:14px;
-  background:rgba(24,19,32,.96); backdrop-filter:blur(10px);
-  box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px var(--hair);
-  font-size:.8rem; line-height:1.45; color:var(--dim);
+  background:var(--menu); backdrop-filter:blur(10px);
+  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
+  font-size:var(--fs-meta); line-height:var(--lh-body); color:var(--dim);
   max-width:560px; margin:0 auto;
 }
 .fbq-notice a{color:var(--parchment)}
 .fbq-notice button{
   flex:none; border:0; cursor:pointer; border-radius:var(--pill);
-  background:var(--coral); color:#2A1109;
-  font-family:var(--ui); font-size:.82rem; font-weight:800;
+  background:var(--coral); color:var(--on-accent);
+  font-family:var(--ui); font-size:var(--fs-meta); font-weight:var(--w-strong);
   padding:9px 14px; min-height:var(--tap);
 }
 
@@ -485,12 +637,12 @@ img{max-width:100%;display:block}
 }
 .fbload-track{
   height:4px; border-radius:999px; overflow:hidden;
-  background:rgba(255,247,237,.10);
+  background:var(--tint-3);
 }
 .fbload-fill{
   display:block; height:100%; width:4%; border-radius:999px;
   background:linear-gradient(90deg,
-    var(--coral,#FF7A5C) 0%, #FFC08A 45%, var(--coral,#FF7A5C) 100%);
+    var(--coral,#4C9BE8) 0%, var(--accent-lift,#9CCBF7) 45%, var(--coral,#4C9BE8) 100%);
   background-size:220% 100%;
   /* 1.8s, not 3.2s. Pagination and the gate fix put first content on screen
      at around 900ms, so the old curve was still down at a third of the track
@@ -511,8 +663,8 @@ img{max-width:100%;display:block}
 @keyframes fbload-shine{ to{ background-position:-220% 0 } }
 
 .fbload-say{
-  margin:0; font-size:.86rem; line-height:1.45;
-  color:var(--dim,rgba(255,247,237,.62));
+  margin:0; font-size:var(--fs-note); line-height:var(--lh-body);
+  color:var(--dim,rgba(29,49,89,.82));
   font-variant-numeric:tabular-nums;
 }
 
@@ -543,20 +695,20 @@ html.no-motion .fbload-fill{
   appearance:none;-webkit-appearance:none; cursor:pointer;
   width:34px; height:34px; padding:0; border:0; border-radius:50%;
   display:inline-flex; align-items:center; justify-content:center;
-  background:rgba(255,247,237,.09);
+  background:var(--tint);
   box-shadow:inset 0 0 0 1px var(--hair);
   color:var(--parchment);
-  font:800 .86rem/1 var(--ui, inherit);
+  font:var(--w-head) var(--fs-note)/1 var(--ui, inherit);
   -webkit-tap-highlight-color:transparent;
   transition:background .18s ease, box-shadow .18s ease, transform .12s ease;
 }
-.acct-btn:hover{background:rgba(255,247,237,.14)}
+.acct-btn:hover{background:var(--tint-2)}
 .acct-btn:active{transform:scale(.94)}
 .acct-btn:focus-visible{outline:2px solid var(--coral); outline-offset:3px}
 .acct-btn.is-in{
-  background:rgba(255,122,92,.16);
-  box-shadow:inset 0 0 0 1px rgba(255,122,92,.5);
-  color:var(--coral);
+  background:var(--accent-wash);
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
+  color:var(--accent-ink);
 }
 
 /* Signed out there is no letter, so the circle carries a plain figure drawn in
@@ -580,24 +732,25 @@ html.no-motion .fbload-fill{
   position:absolute; top:calc(100% + 9px); right:0; z-index:60;
   min-width:11.5rem; padding:6px;
   border-radius:14px;
-  background:rgba(20,16,26,.97);
+  background:var(--menu);
   -webkit-backdrop-filter:blur(18px) saturate(1.2);
   backdrop-filter:blur(18px) saturate(1.2);
-  box-shadow:inset 0 0 0 1px var(--hair), 0 14px 40px rgba(0,0,0,.55);
+  box-shadow:inset 0 0 0 1px var(--hair), var(--shadow-2);
   display:flex; flex-direction:column; gap:2px;
 }
 .acct-menu[hidden]{display:none}
 
 .acct-who{
   margin:0; padding:8px 10px 6px;
-  font-size:.74rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  font-size:var(--fs-fine); font-weight:var(--w-label);
+  letter-spacing:var(--ls-badge); text-transform:uppercase;
   color:var(--dim);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .acct-item{
   display:block; padding:9px 10px; border-radius:9px;
   color:var(--parchment); text-decoration:none;
-  font-size:.9rem; font-weight:700; line-height:1.2;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); line-height:1.2;
 }
-.acct-item:hover{background:rgba(255,247,237,.09)}
+.acct-item:hover{background:var(--tint)}
 .acct-item:focus-visible{outline:2px solid var(--coral); outline-offset:-2px}

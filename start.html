@@ -15,6 +15,9 @@
 <meta property="og:url" content="https://factbox.app/start">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/data/index.json" as="fetch" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css">
 <link rel="stylesheet" href="/css/start.css">
 </head>
@@ -94,15 +97,15 @@
 
     <ul class="st-covers" id="st-covers">
       <li>
-        <img src="/img/thumbs/s01.webp" alt="" width="240" height="320">
+        <img src="/img/thumbs/s01.webp" alt="" width="240" height="320" data-fallback="/img/stacks/s01.webp" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')">
         <b>How did Cleopatra die? (the snake)</b>
       </li>
       <li>
-        <img src="/img/thumbs/s02.webp" alt="" width="240" height="320">
+        <img src="/img/thumbs/s02.webp" alt="" width="240" height="320" data-fallback="/img/stacks/s02.webp" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')">
         <b>Cleopatra the seductress</b>
       </li>
       <li>
-        <img src="/img/thumbs/s03.webp" alt="" width="240" height="320">
+        <img src="/img/thumbs/s03.webp" alt="" width="240" height="320" data-fallback="/img/stacks/s03.webp" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback')">
         <b>Cleopatra&rsquo;s body has never been found</b>
       </li>
     </ul>

@@ -12,7 +12,11 @@ These run the page in a real DOM instead.
 npm install                  # jsdom
 python3 -m http.server 8899 --directory .. &
 
-node check-story.js ../story.html                      # illustrated story
+node check-story.js ../build/story.html                # the illustrated deck
+node check-page.js  "story.html"      ".beat"  "Cleopatra"
+node check-page.js  "cleopatra.html"  ".endask" "Read the rest of season one"
+node check-plates.js "index.html"     ".card"        # every cover has a fallback
+node check-regressions.js                            # bugs that must not come back
 node check-page.js  "stories.html"   ".card"    "Season one"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
 node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
