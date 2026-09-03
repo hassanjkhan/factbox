@@ -232,14 +232,39 @@ img{max-width:100%;display:block}
 }
 .plate-credit a{color:rgba(255,247,237,.72)}
 
-/* Progress. One hair-thin bar; 12 dots on a phone is confetti. */
-.prog{
-  position:fixed; top:0; left:0; right:0; height:2.5px; z-index:30;
-  background:rgba(255,247,237,.14);
+/* Where you are in the story.
+
+   A column of clear segments down the right edge, one per card, the current
+   one white and twice as tall — the same indicator the illustrated Cleopatra
+   story has used since the beginning. It replaced a coral bar across the top
+   of the viewport, which was drawn over the top edge of a full-bleed painting
+   and could only say "some fraction in". This says how many cards there are
+   and which one you are on.
+
+   Vertically centred, so it never meets the action rail sitting on the floor
+   of the same edge: thirteen cards make a column about 220px tall, and the
+   rail's own top is 719px down a 932px screen. */
+.vrail{
+  position:fixed; right:7px; top:50%; transform:translateY(-50%);
+  z-index:30; display:flex; flex-direction:column; gap:5px;
+  pointer-events:none;
 }
-.prog i{
-  display:block; height:100%; width:0%;
-  background:var(--coral); transition:width .28s ease;
+.vrail i{
+  display:block; width:3px; height:12px; border-radius:var(--pill);
+  background:rgba(255,255,255,.28);
+  transition:background .3s ease, height .3s ease;
+}
+.vrail i.on{background:#fff; height:24px}
+
+/* The end pane is the way out of the story, not a card in it — read.html
+   marks the rail directly, the same way it marks the action rail. An earlier
+   version of this rule keyed off a class on <html> that nothing ever set, so
+   it silently did nothing. */
+.vrail{transition:opacity .25s ease}
+.vrail.is-off{opacity:0}
+
+@media (prefers-reduced-motion: reduce){
+  .vrail i{transition:none}
 }
 
 .topbar{

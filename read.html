@@ -80,7 +80,14 @@
 </head>
 <body>
 
-<div class="prog" aria-hidden="true"><i id="bar"></i></div>
+<!-- Where you are in the story: one clear segment per card down the right
+     edge, the current one white and taller. This is the indicator the
+     illustrated Cleopatra story has always used, and it says something the
+     coral bar across the top could not — not just "some fraction in", but how
+     many cards there are and which one this is. It is also out of the way: a
+     full-bleed painting with a bar drawn across its top edge is a painting
+     with a bar drawn across it. -->
+<div class="vrail" id="vrail" aria-hidden="true"></div>
 <div class="topbar"><a class="back" href="/stories">← Stories</a></div>
 
 <!-- The reader's own two controls, as one column at the foot of the right
@@ -103,6 +110,7 @@
 <noscript><p style="padding:24px;color:#FFF7ED">Factbox needs JavaScript to
 read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></noscript>
 
+<script src="/js/drag-deck.js"></script>
 <script src="/js/progress.js"></script>
 <script src="/js/access.js"></script>
 <script src="/js/gate.js"></script>
@@ -112,7 +120,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
 <script>
 (function () {
   var deck = document.getElementById("deck");
-  var bar  = document.getElementById("bar");
+  var vrail = document.getElementById("vrail");
 
   /* Reading memory is a nice-to-have; the story is not. Losing progress.js must
      not cost the reader the words. */
@@ -315,6 +323,10 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
        The first card gets it on the next frame rather than waiting for the
        observer's first tick, and — the lesson from shipping a wordless page —
        nothing that can throw runs before this point. */
+    /* Press and pull with a mouse moves the deck, the way a thumb does on a
+       phone. Touch is untouched; see js/drag-deck.js. */
+    try { if (window.FBDrag) FBDrag.attach(deck); } catch (e) {}
+
     var beats = [].slice.call(deck.querySelectorAll(".beat, .pane"));
 
     /* ----------------------------------------------------------------------
@@ -408,14 +420,36 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
        because the no-observer path marks every card live at once, and a rail
        that hides itself for the whole story is worse than one that never
        hides. Scroll is the coarser, always-true signal. */
+    /* Past the last card is the end pane, which is not a card in the story:
+       both rails come off it. The action rail because two floating controls
+       land on its words, the progress rail because there is no card left for
+       it to be pointing at. */
     function railFor(n) {
-      try { if (rail) rail.classList.toggle("is-off", n >= s.cards.length); } catch (e) {}
+      var past = n >= s.cards.length;
+      try { if (rail) rail.classList.toggle("is-off", past); } catch (e) {}
+      /* toggle, not assign: writing className outright strips "vrail" off the
+         element, which loses every rule that positions it — including the one
+         that was meant to hide it. */
+      try { if (vrail) vrail.classList.toggle("is-off", past); } catch (e) {}
     }
 
     function onScroll() {
       var h = deck.clientHeight || 1;
       var n = Math.round(deck.scrollTop / h);
-      bar.style.width = Math.min(100, (n + 1) / total * 100) + "%";
+      /* One segment per card, lit one at a time. Built on the first call
+         rather than at boot, because the card count is not known until the
+         story lands, and rebuilt only if that count changes. */
+      if (vrail) {
+        if (vrail.childNodes.length !== total) {
+          var html = "", q;
+          for (q = 0; q < total; q++) html += "<i></i>";
+          vrail.innerHTML = html;
+        }
+        var kids = vrail.childNodes, j;
+        for (j = 0; j < kids.length; j++) {
+          kids[j].className = (j === n) ? "on" : "";
+        }
+      }
       if (n > deepest) deepest = n;
       railFor(n);
       if (P) P.mark(s.id, deepest, s.cards.length);
