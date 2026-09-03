@@ -167,8 +167,8 @@ var FBSTART = (function () {
 
   function fillPeek(box) {
     try {
-      if (!window.FB || !FB.load) return;
-      FB.load().then(function (stacks) {
+      if (!window.FB || !FB.loadIndex) return;
+      FB.loadIndex().then(function (stacks) {
         try {
           /* One per subject. The free stories are 01-03 and all three are
              Cleopatra, so taking the first three made a history app look like

@@ -77,9 +77,7 @@
       <span class="acct" id="fb-acct"></span>
     </nav>
     <h1 id="jn-title">Five minutes a day, and you actually remember it</h1>
-    <p id="jn-blurb">Two stories are free. Answer four quick things and the rest
-    of season one gets built around how you actually read — three days free
-    first, and nothing is charged until the trial ends.</p>
+    <p id="jn-blurb"></p>
   </header>
 
   <ol class="jn-steps" id="jn-steps" hidden aria-hidden="true">
@@ -1056,25 +1054,12 @@
     } catch (e) {}
   }
 
-  /* The first story's real title, if the season file is reachable. A
-     nice-to-have on top of copy that already stands on its own: if the fetch
-     fails the phase keeps the line it shipped with. */
-  function loadFirstStory() {
-    try {
-      if (!window.FB || !FB.load) return;
-      FB.load().then(function (stacks) {
-        try {
-          if (!stacks || !stacks.length) return;
-          var pick = null, i;
-          for (i = 0; i < stacks.length; i++) {
-            if (stacks[i] && !stacks[i].free) { pick = stacks[i]; break; }
-          }
-          if (!pick) pick = stacks[0];
-          if (pick && pick.title) LOAD.first = String(pick.title).slice(0, 44);
-        } catch (e) {}
-      })["catch"](function () {});
-    } catch (e) {}
-  }
+  /* loadFirstStory() used to live here. It fetched data/stacks.json — every
+     card of all fifty-one stories, 413KB — so that one phase of the signup
+     copy could name the first locked story. Its own comment called it a
+     nice-to-have on top of copy that stands on its own, and this is the page
+     a reader lands on straight after tapping "Read the rest of this story":
+     the slowest possible moment to spend a third of a megabyte on a flourish. */
 
   /* --- log in ------------------------------------------------------------- */
 
@@ -1296,7 +1281,6 @@
     }
 
     syncDraw(); syncRelate(); syncTime();
-    loadFirstStory();
 
     if (unlocked()) {
       go("jn-done");

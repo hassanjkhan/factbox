@@ -268,11 +268,14 @@
   } catch (e) {}
 
   function boot() {
-    if (!G || !G.load) {
+    if (!G || !G.loadIndex) {
       fail("Could not load the stories. Reload the page.");
       return;
     }
-    G.load().then(function (stacks) {
+    /* The index, not the season. This page draws covers, titles, card counts
+       and runtimes — none of which need the card bodies that make up 96% of
+       data/stacks.json. */
+    G.loadIndex().then(function (stacks) {
       try {
         _stacks = (stacks && stacks.length) ? stacks : [];
         render(_stacks);
