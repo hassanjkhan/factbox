@@ -10,7 +10,7 @@
      FB/FBP is guarded, and a failure renders a sentence a reader can act on
      rather than an empty page. This site has shipped blank twice.
    - ES5 only: var and function. No modules, no build step, no network beyond
-     FB.load()'s one fetch of data/stacks.json.
+     FB.loadIndex()'s one fetch of data/stacks.json.
    - It defines nothing global except FBT, and redefines neither FB nor FBP.
    ========================================================================== */
 
@@ -419,7 +419,7 @@ var FBT = (function () {
     try { root = document.getElementById(rootId || "td"); } catch (e) {}
     if (!root) return;
     try {
-      FB.load().then(function (stacks) {
+      FB.loadIndex().then(function (stacks) {
         try { render(root, stacks); }
         catch (e) {
           root.innerHTML = '<p class="fine" style="margin-top:28px">' +

@@ -71,70 +71,24 @@ var FBA = (function () {
     } catch (e) { return "%2F"; }
   }
 
+  /* A link, not a menu. The menu was a second decision stacked on top of the
+     first: a reader who taps a profile icon has already decided they want
+     their account, and /login is the page that works out whether that means
+     signing in or making one. Signed in, it points at the account page. */
   function build(host) {
-    var wrap = el("div", "acct-wrap");
-
-    var btn = el("button", "acct-btn");
-    btn.type = "button";
-    btn.innerHTML = ICON;
-    btn.setAttribute("aria-haspopup", "true");
-    btn.setAttribute("aria-expanded", "false");
-    btn.setAttribute("aria-label", "Account");
-
-    var menu = el("div", "acct-menu");
-    menu.setAttribute("role", "menu");
-    menu.hidden = true;
-
-    var who = el("p", "acct-who");
-    who.hidden = true;
-    menu.appendChild(who);
-
-    var inLink = link("/login?next=" + next(), "Sign in");
-    var upLink = link("/start", "Create account");
-    var meLink = link("/account", "Account");
-    var libLink = link("/library", "Your library");
-    meLink.hidden = true; libLink.hidden = true;
-    menu.appendChild(inLink);
-    menu.appendChild(upLink);
-    menu.appendChild(meLink);
-    menu.appendChild(libLink);
-
-    function open(on) {
-      try {
-        menu.hidden = !on;
-        btn.setAttribute("aria-expanded", on ? "true" : "false");
-        wrap.className = "acct-wrap" + (on ? " is-open" : "");
-      } catch (e) {}
-    }
-    btn.addEventListener("click", function (ev) {
-      try { ev.stopPropagation(); } catch (e) {}
-      open(menu.hidden);
-    });
-    /* Anywhere else closes it, and so does Escape — a menu that can only be
-       dismissed by hitting the same 42px target again is a trap on a phone. */
-    try {
-      document.addEventListener("click", function () { open(false); }, false);
-      document.addEventListener("keydown", function (e) {
-        if (e && (e.key === "Escape" || e.keyCode === 27)) open(false);
-      }, false);
-      menu.addEventListener("click", function (ev) {
-        try { ev.stopPropagation(); } catch (e) {}
-      }, false);
-    } catch (e) {}
-
-    wrap.appendChild(btn);
-    wrap.appendChild(menu);
+    var a = el("a", "acct-btn");
+    a.href = "/login?next=" + next();
+    a.innerHTML = ICON;
+    a.setAttribute("aria-label", "Sign in");
     host.innerHTML = "";
-    host.appendChild(wrap);
+    host.appendChild(a);
 
     return function paint(FBU) {
       var on = false;
       try { on = !!(FBU && FBU.signedIn()); } catch (e) {}
       try {
-        inLink.hidden = on; upLink.hidden = on;
-        meLink.hidden = !on; libLink.hidden = !on;
-        who.hidden = !on;
-        if (on) who.textContent = label(FBU);
+        a.href = on ? "/account" : ("/login?next=" + next());
+        a.setAttribute("aria-label", on ? label(FBU) : "Sign in");
       } catch (e) {}
       reveal();
     };

@@ -11,7 +11,7 @@
      FB/FBP is guarded, and a failure renders a sentence a reader can act on
      rather than an empty page. This site has shipped blank twice.
    - ES5 only: var and function. No modules, no build step, no network beyond
-     FB.load()'s one fetch of data/stacks.json.
+     FB.loadIndex()'s one fetch of data/stacks.json.
    - It does not define or redefine FB or FBP. If progress.js never loaded,
      every cover simply renders unread.
    ========================================================================== */
@@ -184,7 +184,7 @@
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
                'src="/img/thumbs/' + esc(s.img) + '.webp">' +
-          (locked ? '<span class="lock" aria-hidden="true">\U0001F512</span>' : '') +
+          (locked ? '<span class="lock" aria-hidden="true">🔒</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +
@@ -528,7 +528,7 @@
     }
 
     var _wait = (window.FBX && FBX.ready) ? FBX.ready() : Promise.resolve();
-    Promise.all([FB.load(), _wait]).then(function (_r) {
+    Promise.all([FB.loadIndex(), _wait]).then(function (_r) {
       var stacks = _r[0];
       try {
         OPEN = unlocked();
