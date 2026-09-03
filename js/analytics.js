@@ -83,6 +83,40 @@
     } catch (e) { return null; }
   }
 
+  /* ------------------------------------------------------------------------
+     Only the real site is measured.
+
+     This file shipped with no idea where it was running, so every local test
+     run posted into the production project. One afternoon of verification —
+     headless browsers on 127.0.0.1:8899, :8905, :8913, a fresh browser context
+     per case, each one a new distinct_id — put 500-odd "users" and three
+     localhost URLs into the dashboard, next to a genuine handful of readers.
+     The owner opened PostHog to see which story was doing well and was looking
+     mostly at a robot.
+
+     So: the live hostname, or nothing. Not a debug flag someone has to
+     remember to set, because the failure mode of forgetting is silently
+     corrupting the only record of how the product is doing.
+
+     A local run still exercises every code path in here; capture() simply
+     returns before it reaches a network. To measure a local build on purpose,
+     set fb_analytics_local=1 in localStorage. */
+  var LIVE_HOSTS = ["factbox.app", "www.factbox.app"];
+  function onLiveSite() {
+    try {
+      var h = String(location.hostname || "");
+      for (var i = 0; i < LIVE_HOSTS.length; i++) if (h === LIVE_HOSTS[i]) return true;
+      return ls("fb_analytics_local") === "1";
+    } catch (e) { return false; }
+  }
+  if (!onLiveSite()) {
+    try { window["ga-disable-" + MEASUREMENT_ID] = true; } catch (e) {}
+    window.FBQ = { capture: function () {}, optedOut: function () { return false; },
+                   optOut: function () {}, optIn: function () {},
+                   sinks: function () { return { posthog: false, firebase: false }; } };
+    return;
+  }
+
   /* A reader who has opted out is never measured, and NEITHER loader runs.
      The privacy page promises the script does not load — not that it loads
      and stays quiet — so this return has to come before both of them. The
@@ -304,6 +338,58 @@
     } catch (e) {}
     try { gaCapture(name, props || {}); } catch (e) {}
   }
+
+  /* ------------------------------------------------------------------------
+     Who, and what they are allowed to read.
+
+     Every event used to be anonymous and stateless, so two questions could not
+     be asked at all: "do people who sign up read more?" and "how much of this
+     do people see before they hit the wall?" — because nothing on an event
+     said whether the reader had an account, and a person's reading before
+     signing up was a different distinct_id from the same person afterwards.
+
+     Two things fix that:
+
+       identify(uid)  ties this browser to the Firebase account, and PostHog
+                      stitches the anonymous history that came before it onto
+                      the same person. Called once per sign-in.
+
+       register(...)  attaches has_account and is_subscriber to EVERY event
+                      from then on, so any chart can be split by them without
+                      re-instrumenting anything.
+
+     Both read from FBX, which is already the single answer to "may this person
+     read?" — this does not add a second opinion, it reports the first one. */
+  var lastWho = "";
+  function whoChanged() {
+    try {
+      var uid = "", acct = false, sub = false, why = "none";
+      if (window.FBU && FBU.uid) { uid = String(FBU.uid() || ""); acct = !!uid; }
+      if (window.FBX) {
+        try { why = FBX.why(); } catch (e) {}
+        sub = (why === "subscriber" || why === "admin");
+      }
+      var sig = uid + "|" + acct + "|" + sub + "|" + why;
+      if (sig === lastWho) return;
+      lastWho = sig;
+
+      if (window.posthog && posthog.register) {
+        posthog.register({ has_account: acct, is_subscriber: sub, access: why });
+      }
+      /* identify only with a real account id. Calling it with an empty string
+         would merge every signed-out reader into one person. */
+      if (uid && window.posthog && posthog.identify) posthog.identify(uid);
+    } catch (e) {}
+  }
+
+  /* Once now, again whenever the answer changes. FBX.paint fires on the first
+     known answer and on every change after it, which is exactly the two
+     moments this needs. */
+  try {
+    whoChanged();
+    if (window.FBX && FBX.paint) FBX.paint(function () { whoChanged(); });
+    else setTimeout(whoChanged, 2500);
+  } catch (e) {}
 
   /* ---- Bridge the events the site already names ------------------------ *
      gate.js's FB.track and the illustrated story's global track() both existed
