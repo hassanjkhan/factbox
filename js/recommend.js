@@ -422,7 +422,7 @@ var FBR = (function () {
           try {
             if (window.FB && typeof FB.checkout === "function") { FB.checkout(go, "endcard"); return; }
           } catch (e) {}
-          location.href = "/stories";
+          location.href = "/explore";
         });
       }
       sec.appendChild(go);
@@ -435,7 +435,7 @@ var FBR = (function () {
         var f = el("section", "pane rec endcard");
         f.appendChild(el("h2", null, "Want to know what happened next?"));
         var a = el("a", "go ec-go", "Continue");
-        a.href = "/stories";
+        a.href = "/explore";
         f.appendChild(a);
         return f;
       } catch (e2) { return sec || null; }

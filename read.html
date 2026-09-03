@@ -91,7 +91,7 @@
      full-bleed painting with a bar drawn across its top edge is a painting
      with a bar drawn across it. -->
 <div class="vrail" id="vrail" aria-hidden="true"></div>
-<div class="topbar"><a class="back" href="/stories">← Stories</a></div>
+<div class="topbar"><a class="back" href="/explore">← Stories</a></div>
 
 <!-- The reader's own two controls, as one column at the foot of the right
      edge: sound on top, the Save bookmark on the bottom. Empty markup — the
@@ -107,11 +107,11 @@
       <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
       <p class="fbload-say" role="status">Unrolling the scroll. It is a long one…</p>
     </div>
-    <a class="ghost" href="/stories" style="margin-top:22px">All stories</a>
+    <a class="ghost" href="/explore" style="margin-top:22px">All stories</a>
   </section>
 </main>
 <noscript><p style="padding:24px;color:#FFF7ED">Factbox needs JavaScript to
-read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></noscript>
+read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></noscript>
 
 <script src="/js/drag-deck.js"></script>
 <script src="/js/progress.js"></script>
@@ -191,7 +191,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
         '<p>' + FB.esc(s.hook) + '</p>' +
         '<button class="go" id="pay" type="button">Read the rest of this story</button>' +
         '<p class="fine">Two stories are free. The rest needs an account — three days free first.</p>' +
-        '<a class="ghost" href="/stories">Back to stories</a>' +
+        '<a class="ghost" href="/explore">Back to stories</a>' +
       '</section>';
   }
 
@@ -247,7 +247,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     deck.innerHTML =
       '<section class="pane"><h1>That story is not in this season.</h1>' +
       '<p>The link may be mistyped.</p>' +
-      '<a class="ghost" href="/stories">All stories</a></section>';
+      '<a class="ghost" href="/explore">All stories</a></section>';
   }
 
   function fin(host, fn) {
@@ -574,7 +574,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
   }).catch(function () {
     deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +
       '<p>Check your connection and reload.</p>' +
-      '<a class="ghost" href="/stories">All stories</a></section>';
+      '<a class="ghost" href="/explore">All stories</a></section>';
   });
 })();
 </script>

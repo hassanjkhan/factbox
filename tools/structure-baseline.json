@@ -134,26 +134,26 @@
   "start.html": {
     "body_close": 1,
     "body_open": 1,
-    "comment_close": 11,
-    "comment_open": 11,
-    "head_close": 1,
-    "head_open": 1,
-    "nav": 1,
-    "preload": 1,
-    "script_close": 5,
-    "script_open": 5
-  },
-  "stories.html": {
-    "body_close": 1,
-    "body_open": 1,
     "comment_close": 2,
     "comment_open": 2,
     "head_close": 1,
     "head_open": 1,
     "nav": 1,
-    "preload": 7,
-    "script_close": 8,
-    "script_open": 8
+    "preload": 0,
+    "script_close": 2,
+    "script_open": 2
+  },
+  "stories.html": {
+    "body_close": 1,
+    "body_open": 1,
+    "comment_close": 3,
+    "comment_open": 3,
+    "head_close": 1,
+    "head_open": 1,
+    "nav": 1,
+    "preload": 0,
+    "script_close": 3,
+    "script_open": 3
   },
   "story.html": {
     "body_close": 0,

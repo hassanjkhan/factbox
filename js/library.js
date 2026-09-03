@@ -95,19 +95,19 @@
     try {
       shelf.innerHTML = '<p class="libfail">' + esc(msg) + '</p>' +
         '<p class="fine" style="text-align:left">' +
-        '<a href="/stories">All stories</a></p>';
+        '<a href="/explore">All stories</a></p>';
     } catch (e) {}
   }
 
   /* --- pieces -------------------------------------------------------------
-     Deliberately the same markup as stories.html, so a cover looks and reads
-     the same on both shelves. .card / .plate / .meta / .readbar / .lock all
+     Deliberately the same markup as the shelf on / and /explore (js/today.js),
+     so a cover looks and reads the same on both shelves. .card / .plate / .meta / .readbar / .lock all
      come from app.css; nothing here restyles them. */
 
   function href(s) {
     /* Stack 01 is the fully illustrated version and lives at the front page,
        so it points there rather than at the generic reader. Same rule as
-       stories.html — if it ever changes, it changes in both. */
+       js/today.js — if it ever changes, it changes in both. */
     return s.id === "01" ? "/cleopatra" : "/read?s=" + encodeURIComponent(s.id);
   }
 
@@ -247,7 +247,6 @@
           'it is all kept in this browser.</p>' +
           '<div class="emptygo">' +
             '<a class="go" href="/explore">Explore all 51 stories</a>' +
-            '<a class="ghost" href="/stories">All stories</a>' +
           '</div>' +
         '</div>' +
         section("Start with these", "free to read", free);

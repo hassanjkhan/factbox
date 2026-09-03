@@ -258,9 +258,9 @@ end.innerHTML =
     '<button class="go pay" id="pay" type="button">Read the rest of the stories</button>' +
     '<p class="fine">Sign up first &mdash; three days free before anything ' +
       'is charged.</p>' +
-    '<a class="ghostlink" href="stories.html">See what is inside first</a>' +
+    '<a class="ghostlink" href="/explore">See what is inside first</a>' +
     '<p class="haveacct">Already have an account? ' +
-      '<a href="login.html?next=%2Fstories">Sign in</a></p>' +
+      '<a href="/login?next=%2Fexplore">Sign in</a></p>' +
     '<p class="endfoot">' +
       '<a href="explore.html">Explore</a> &middot; <a href="library.html">Library</a> &middot; ' +
       '<a href="credits.html">Artwork credits</a> &middot; <a href="support.html">Support</a>' +

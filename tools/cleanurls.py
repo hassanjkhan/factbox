@@ -19,7 +19,22 @@ and a launch is a bad time to break the URL people are pasting.
 import pathlib, re, sys
 
 # index.html and story.html are the front door and keep their names.
-PAGES = ["stories", "explore", "library", "read", "join", "credits",
+#
+# "stories" is NOT in this list, and must not be put back.
+#
+# /stories is deprecated — every internal link now goes to /explore — but
+# stories.html is still a live landing page: Stripe's three Payment Links send
+# every buyer to /stories.html?unlocked=1&session_id=..., and the restore links
+# already in buyers' inboxes point at the same file. It is a forwarder that
+# hands that query string on to /explore.
+#
+# Moving it would break both. `stub()` below overwrites the source file with a
+# fixed redirect that carries no query string of its own, so applying this to
+# "stories" would replace the forwarder with something that drops session_id
+# and never unlocks the buyer. It would also shadow the real page the way the
+# login stub did (SPEC.md 2.4): GitHub Pages resolves /stories to stories.html
+# before stories/index.html.
+PAGES = ["explore", "library", "read", "join", "credits",
          "unlock", "privacy", "terms", "support", "login", "account"]
 ASSET_DIRS = ["css", "js", "img", "data", "audio", "tools"]
 
@@ -43,13 +58,32 @@ def cleanlinks(html: str) -> str:
 
 
 def stub(target: str) -> str:
+    """The old .html path, forwarding to the clean URL.
+
+    SPEC.md 2.4 names the previous version of this function as the bug: a page
+    reading "Moved to /login" and nothing else, which then shadowed the real
+    /login. So this keeps a heading, a sentence and a link a reader can tap,
+    and the script carries the query string and hash across — an old link with
+    ?restore= or ?unlocked= has to arrive intact or the reader is not unlocked.
+
+    The script runs before the stylesheet link for the same reason it does in
+    stories.html: an inline script after a <link rel="stylesheet"> waits for
+    that sheet to load.
+    """
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
-            f'<title>Redirecting</title>'
+            f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<title>Factbox &middot; This page moved</title>'
             f'<link rel="canonical" href="https://factbox.app{target}">'
-            f'<meta http-equiv="refresh" content="0; url={target}">'
-            f'<meta name="robots" content="noindex">'
-            f'</head><body><p>Moved to <a href="{target}">{target}</a>.</p>'
             f'<script>location.replace("{target}"+location.search+location.hash)</script>'
+            f'<link rel="stylesheet" href="/css/app.css">'
+            f'</head><body><main class="lib"><header class="mast">'
+            f'<p class="mark">FACTBOX</p>'
+            f'<h1>This page moved to {target}.</h1>'
+            f'<p>Taking you there now. If nothing happens, tap the link below.</p>'
+            f'</header><p style="margin-top:26px">'
+            f'<a class="go" href="{target}" style="display:inline-block;'
+            f'text-decoration:none">Go to {target}</a></p></main>'
+            f'<script src="/js/analytics.js"></script>'
             f'</body></html>\n')
 
 

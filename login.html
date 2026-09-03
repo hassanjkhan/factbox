@@ -85,7 +85,7 @@
     <h2 id="au-signed-h">You are signed in</h2>
     <p class="au-who" id="au-who">Signed in as <b id="au-who-who">your account</b>.</p>
     <p class="au-say" id="au-signed-note" hidden role="status"></p>
-    <a class="go" id="au-continue" href="/stories"
+    <a class="go" id="au-continue" href="/explore"
        style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Continue reading</a>
     <a class="au-2nd" href="/account">Account</a>
     <button class="au-2nd" id="au-resend" type="button" hidden>Resend the verification email</button>
@@ -152,7 +152,7 @@
     <p>Something between here and Google is blocking it — usually an in-app
     browser with storage switched off. Opening factbox.app in Safari or Chrome
     fixes it almost every time.</p>
-    <a class="go" href="/stories"
+    <a class="go" href="/explore"
        style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Read the free stories</a>
     <a class="au-2nd" href="/support">Tell support</a>
   </section>
@@ -160,7 +160,7 @@
   <noscript>
     <p class="fine" style="margin-top:24px">
       <b>Signing in needs JavaScript.</b> The
-      <a href="/stories">two free stories</a> read fine without it.</p>
+      <a href="/explore">two free stories</a> read fine without it.</p>
   </noscript>
 
   <p class="fine" style="margin-top:34px">
@@ -234,7 +234,7 @@
 
      Not URLSearchParams: it is missing on the older in-app webviews this
      site targets, and this runs on a top-level-reachable path. */
-  var HOME = "/stories";
+  var HOME = "/explore";
   function nextURL() {
     try {
       var q = String(location.search || "");

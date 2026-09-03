@@ -82,7 +82,7 @@ page = f'''<!doctype html>
      digitised them.</p>
   {t_pd}
 
-  <p style="margin-top:30px"><a class="ghost" href="stories.html">← All stories</a></p>
+  <p style="margin-top:30px"><a class="ghost" href="/explore">← All stories</a></p>
 </main>
 </body>
 </html>'''

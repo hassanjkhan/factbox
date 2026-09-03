@@ -244,7 +244,7 @@ _ASK = """
      carry it; only the one that sets window.FB_ENDCTA puts it on screen. */
   var JOIN = "/join?from=story";
   /* The same words and the same destination as join.html's own line. */
-  var SIGNIN = "/login?next=%2Fstories";
+  var SIGNIN = "/login?next=%2Fexplore";
 
   var deck = document.getElementById("deck");
   if (!deck) return;
@@ -366,7 +366,7 @@ for _name, _p, _asks in _written:
     if _asks:
         for _need in ('window.FB_ENDCTA = "%s";' % END_CTA,
                       "Already have an account? ",
-                      "/login?next=%2Fstories",
+                      "/login?next=%2Fexplore",
                       'p.className = "fine ec-signin";'):
             if _need not in _p:
                 raise SystemExit(

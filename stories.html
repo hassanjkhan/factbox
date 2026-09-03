@@ -3,48 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Factbox · Be disgustingly well-informed.</title>
-<meta name="description" content="Trade five minutes of scrolling for something worth remembering. Fifty-one history stories on paintings from the world's museums.">
+<title>Factbox · The shelf is now Explore</title>
+<meta name="description" content="The Factbox story shelf now lives at /explore. This page forwards you there.">
 <meta name="theme-color" content="#0E0B12">
-<link rel="canonical" href="https://factbox.app/stories">
+
+<!-- Canonical points at the destination, not at this path. /stories is
+     deprecated: it must keep resolving, but it should not be the URL a search
+     engine indexes or a reader is shown. One address for the shelf, /explore. -->
+<link rel="canonical" href="https://factbox.app/explore">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Be disgustingly well-informed.">
-<meta property="og:description" content="Trade five minutes of scrolling for something worth remembering. Fifty-one history stories on paintings from the world's museums.">
+<meta property="og:description" content="Trade five minutes of scrolling for something worth remembering.">
 <meta property="og:image" content="https://factbox.app/img/share.jpg">
-<meta property="og:url" content="https://factbox.app/stories">
+<meta property="og:url" content="https://factbox.app/explore">
 <meta name="twitter:card" content="summary_large_image">
+
+<!-- ======================================================================
+     /stories is deprecated. This page is its forwarder, and it is the one
+     page on this site where getting the details wrong costs money.
+
+     WHY IT CANNOT SIMPLY BE DELETED
+     Stripe's three Payment Links send every buyer to
+         https://factbox.app/stories.html?unlocked=1&session_id={CHECKOUT_SESSION_ID}
+     That success URL lives in the Stripe dashboard (ACCOUNT.md 256,
+     PROGRESS.md 36) and can only be changed by hand, by the account owner.
+     Until it is, this path IS the checkout return page. A 404 here is a
+     buyer who paid and was never unlocked.
+
+     The same path is also the restore link — ?restore=<token> — and links
+     already sent to real buyers are in the wild and in their inboxes.
+
+     WHY IT FORWARDS *BEFORE* CLAIMING, RATHER THAN CLAIMING FIRST
+     Both claims — js/gate.js's claim() for ?unlocked=1 and js/progress.js's
+     for ?restore= and the session id — run wherever those two files load, and
+     index.html and explore.html both load them, in the order progress.js,
+     access.js, gate.js. So /explore already claims. Claiming here as well
+     would mean running the claim twice, and it would mean running it against
+     a URL that both of those files rewrite as a side effect: gate.js does
+     history.replaceState(pathname) and progress.js's dropParams() removes
+     ?restore=. By the time a forward could read location.search it would
+     already have been emptied, and the buyer would arrive at /explore with
+     nothing for the claim to read.
+
+     So this page does one job and does it first: hand the query string on,
+     untouched, to the page that knows what to do with it. One claim, in one
+     place, on the page the reader ends up on.
+
+     location.replace, not href: /stories must not sit in the back stack, or
+     Back from /explore lands here and forwards again — a trap.
+
+     Everything below the fold is real (SPEC.md 2.4). A reader with no
+     JavaScript, or one on a connection slow enough to paint this first, sees
+     where they are going and has a link to tap. There is no <meta refresh>
+     on purpose: a timed refresh cannot carry ?session_id, and if it ever won
+     the race against this script the buyer would land unclaimed.
+
+     This script sits above the stylesheet links deliberately. An inline
+     script placed *after* a <link rel="stylesheet"> is blocked until that
+     sheet has loaded, which would put a font round-trip in front of a
+     buyer's redirect.
+     ====================================================================== -->
+<script>
+(function () {
+  "use strict";
+  try {
+    var q = location.search || "";
+    var h = location.hash || "";
+    /* ES5, no URL and no URLSearchParams: both are missing on the in-app
+       webviews this site targets, and Instagram's is where people buy. */
+    location.replace("/explore" + q + h);
+  } catch (e) {
+    /* location refused to move. The page below is the fallback and says so. */
+  }
+})();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css">
-<script src="/js/loader.js"></script>
-
-<!-- Discovery, not bandwidth.
-
-     Nothing on this page is large. The problem was WHEN the browser found out
-     it needed things. data/index.json is fetched by js/gate.js, which is
-     itself a <script> the parser reaches partway down, so the fetch started at
-     ~1100ms on a cold load — and every cover on the shelf is written by the
-     JavaScript that runs after it, so the preload scanner never saw a single
-     image either. The first thumbnail therefore could not begin before ~1200ms
-     on a page whose HTML had arrived at 400ms.
-
-     These links are in the <head>, so the scanner starts all of them in the
-     first few milliseconds, in parallel with the stylesheet.
-
-     The six covers are the first six the grid draws: the two free stories,
-     then the rest in id order. That order is stable, and a wrong guess costs
-     exactly one unused 20KB fetch, never a broken page — so this may drift out
-     of date without anyone having to keep it in step. -->
-<link rel="preload" href="/data/index.json" as="fetch" crossorigin>
-<link rel="preload" href="/img/thumbs/s01.webp" as="image">
-<link rel="preload" href="/img/thumbs/s02.webp" as="image">
-<link rel="preload" href="/img/thumbs/s03.webp" as="image">
-<link rel="preload" href="/img/thumbs/s04.webp" as="image">
-<link rel="preload" href="/img/thumbs/s05.webp" as="image">
-<link rel="preload" href="/img/thumbs/s06.webp" as="image">
-
 </head>
 <body>
 
@@ -53,292 +91,42 @@
     <p class="mark">FACTBOX</p>
     <nav class="tabs" aria-label="Sections">
       <a href="/explore">Explore</a>
-      <a href="/library">Library</a>
-      <span class="acct" id="fb-acct"></span></nav>
-    <!-- The home page's headline and subtitle, word for word, so the two
-         cannot drift apart. #blurb is still swapped further down for a reader
-         who already has all fifty-one; this is the signed-out line. -->
-    <h1>Be disgustingly well-informed.</h1>
-    <p id="blurb">Trade five minutes of scrolling for something worth remembering.</p>
+      <a href="/library">Library</a></nav>
+    <h1>The stories moved to Explore.</h1>
+    <p>Taking you there now. If nothing happens, tap the link below.</p>
   </header>
 
-  <div id="shelf">
-    <div class="fbload">
-      <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
-      <p class="fbload-say" role="status">Waking the archivist…</p>
-    </div>
-  </div>
-  <noscript><p class="fine" style="margin-top:24px">Factbox needs JavaScript to
-  show the stories.</p></noscript>
+  <p style="margin-top:26px">
+    <a class="go" id="fwd-go" href="/explore"
+       style="display:inline-block;text-align:center;text-decoration:none;line-height:1.2">Go to Explore</a>
+  </p>
+
+  <p class="fine" style="margin-top:22px">
+    Bought a subscription and landed here? Keep the whole address — everything
+    after the question mark is what unlocks your account, and the link above
+    carries it with you.
+  </p>
 
   <p class="fine" style="margin-top:34px;text-align:center">
     <a href="/account">Account</a> · <a href="/credits">Artwork credits</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
   </p>
 </main>
 
-
-<script src="/js/progress.js"></script>
-<script src="/js/access.js"></script>
-<script src="/js/gate.js"></script>
+<!-- Only reached if the redirect above did not fire. The manual link then has
+     to carry the buyer's query string too, or tapping it drops the session id
+     that unlocks them. -->
 <script>
 (function () {
-  var shelf = document.getElementById("shelf");
-
-  /* ----------------------------------------------------------------------
-     A cover does not depend on who is asking. A padlock does.
-
-     This used to be Promise.all([data, FBX.ready()]) — every cover, every
-     title, every thumbnail held back until the account had answered. For a
-     signed-in reader that answer waits on the Firebase module downloading
-     from gstatic, an auth handshake and a Firestore subscription snapshot.
-     Measured on this machine with the gate answering in six seconds, the
-     first cover appeared at 13.0s. None of that is needed to draw a picture
-     and a title.
-
-     So the shelf draws itself the moment the index lands, with NO padlocks,
-     and the access answer only decorates it afterwards. The direction
-     matters and is not symmetric: starting with no padlock and adding one
-     when the answer says "locked" is safe, because the failure mode is a
-     reader briefly seeing a cover they cannot open yet. Starting with
-     padlocks and removing them is the bug this file has already shipped
-     twice — a paying reader looking at locks on stories they bought.
-
-     Nothing here reflows when the answer lands for a signed-out reader:
-     .lock and .freetag are absolutely positioned inside .plate, and the meta
-     line stays one line either way. See css/app.css.
-
-     There is no buy bar on this page any more. The fixed bar that used to sit
-     at the foot of a signed-out shelf, and the button and line of copy in it,
-     were removed; the padlocks below are untouched and are still the whole of
-     what a signed-out reader is shown.
-     ---------------------------------------------------------------------- */
-
-  var STACKS = null;
-  var drewOpen = false;     /* what the thing on screen was actually built from */
-  var settledOnce = false;
-
-  function metaLine(s) {
-    return s.cards.length + " cards · " + FB.minutes(s.secs);
-  }
-
-  /* Drawn open: no padlock on anything. The access answer adds them. */
-  function card(s) {
-    var st = FBP.state(s.id, s.cards.length);
-    var href = "/read?s=" + encodeURIComponent(s.id);
-    /* Stack 01 is the fully illustrated version and lives at the front page,
-       so its cover points there rather than at the generic reader. */
-    if (s.id === "01") href = "/cleopatra";
-    return '' +
-      '<a class="card is-' + st.status + '" href="' + href + '"' +
-         ' data-id="' + FB.esc(s.id) + '"' +
-         ' data-free="' + (s.free ? "1" : "") + '"' +
-         ' data-meta="' + FB.esc(metaLine(s)) + '">' +
-        '<div class="plate">' +
-          /* One retry at the stack's own plate if the thumbnail is missing,
-             the same pair read.html puts on every card. A cover that 404s is
-             otherwise a hole in the grid with a title under it. */
-          '<img loading="lazy" decoding="async" alt="" width="420" height="560" ' +
-               'src="/img/thumbs/' + FB.esc(s.img) + '.webp" ' +
-               'data-fallback="/img/stacks/' + FB.esc(s.img) + '.webp" ' +
-               'onerror="this.onerror=null;this.src=this.getAttribute(\'data-fallback\')">' +
-          (s.free ? '<span class="freetag">FREE</span>' : '') +
-          (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
-        '</div>' +
-        '<h3>' + FB.esc(s.title) + '</h3>' +
-        '<p class="meta">' + (st.label ? FB.esc(st.label) : FB.esc(metaLine(s))) + '</p>' +
-      '</a>';
-  }
-
-  function section(id, title, note, items) {
-    if (!items.length) return "";
-    return '<div class="sechead" id="sechead-' + id + '"><h2>' + FB.esc(title) + '</h2>' +
-           '<span>' + FB.esc(note) + '</span></div>' +
-           '<div class="grid" id="grid-' + id + '">' + items.map(card).join("") + '</div>';
-  }
-
-  function resumeHTML() {
-    /* One answer to "where was I". continueReading already filters stacks the
-       reader cannot open, so this can never offer a locked story. */
-    var cont = null;
-    try { cont = FBP.continueReading(STACKS); } catch (e) { cont = null; }
-    if (!cont) return "";
-    var href = cont.id === "01" ? "/cleopatra" : cont.href;
-    return '<a class="resume" href="' + href + '">' +
-      '<div class="plate"><img alt="" src="/img/thumbs/' + FB.esc(cont.stack.img) + '.webp"></div>' +
-      '<div class="t"><b>' + FB.esc(cont.stack.title) + '</b>' +
-      '<span>' + FB.esc(cont.label) + '</span></div>' +
-    '</a>';
-  }
-
-  /* The first paint. Free stories first, then the rest — which is also the
-     order the stacks already come in, so the open view is the same grid with
-     one heading instead of two and nothing moves. */
-  /* The waiting bar gets to finish rather than just stop. FBLoad.done lifts it
-     out of the shelf and runs it to 100% over the top, so the grid below is
-     not delayed by it. Without the module, the grid simply appears. */
-  function fin(host, fn) {
-    try { if (window.FBLoad && FBLoad.done) { FBLoad.done(host, fn); return; } } catch (e) {}
-    fn();
-  }
-
-  function draw() {
-    var free = STACKS.filter(function (s) { return s.free; });
-    var rest = STACKS.filter(function (s) { return !s.free; });
-    fin(shelf, function () {
-      shelf.innerHTML = resumeHTML() +
-        section("free", "Start here", "free", free) +
-        section("rest", "The rest of the stories", rest.length + " stories", rest);
-    });
-  }
-
-  function cards() {
-    try { return [].slice.call(shelf.querySelectorAll(".card")); } catch (e) { return []; }
-  }
-
-  /* The answer came back "not a subscriber". Decorate, in place. */
-  function applyLocked() {
-    var list = cards();
-    for (var i = 0; i < list.length; i++) {
-      var a = list[i];
-      if (a.getAttribute("data-free")) continue;
-      if (a.className.indexOf("locked") !== -1) continue;
-      a.className += " locked";
-      var plate = a.querySelector(".plate");
-      if (plate && !plate.querySelector(".lock")) {
-        var lock = document.createElement("span");
-        lock.className = "lock";
-        lock.setAttribute("aria-hidden", "true");
-        lock.textContent = "🔒";
-        plate.appendChild(lock);
-      }
-      /* A locked cover shows neither progress bar nor progress label — the
-         same rule the one-shot render used. */
-      var rb = a.querySelector(".readbar");
-      if (rb && rb.parentNode) rb.parentNode.removeChild(rb);
-      var meta = a.querySelector(".meta");
-      if (meta) meta.textContent = a.getAttribute("data-meta") || "";
-    }
-  }
-
-  /* The answer came back "may read everything". Consolidate the two headings
-     into the one the open shelf has always shown, by MOVING the cards rather
-     than rebuilding them — the thumbnails on screen are never re-requested. */
-  function applyOpen() {
-    var g1 = document.getElementById("grid-free");
-    var g2 = document.getElementById("grid-rest");
-    var h1 = document.getElementById("sechead-free");
-    var h2 = document.getElementById("sechead-rest");
-    if (g1 && g2) {
-      while (g2.firstChild) g1.appendChild(g2.firstChild);
-      if (g2.parentNode) g2.parentNode.removeChild(g2);
-    }
-    if (h1) {
-      var t = h1.querySelector("h2"), n = h1.querySelector("span");
-      if (t) t.textContent = "All stories";
-      if (n) n.textContent = STACKS.length + " stories";
-    }
-    if (h2 && h2.parentNode) h2.parentNode.removeChild(h2);
-
-    try {
-      var blurb = document.getElementById("blurb");
-      if (blurb) blurb.textContent =
-        "You have all fifty-one. New stories are added through the season.";
-    } catch (e) {}
-
-    /* A subscriber's "continue reading" may have been filtered out of the
-       first paint, because at that moment the answer was not yet known. */
-    try {
-      if (!shelf.querySelector(".resume")) {
-        var html = resumeHTML();
-        if (html) {
-          var holder = document.createElement("div");
-          holder.innerHTML = html;
-          if (holder.firstChild) shelf.insertBefore(holder.firstChild, shelf.firstChild);
-        }
-      }
-    } catch (e) {}
-
-    keepBox();
-  }
-
-  /* The buyer's only bridge to another browser. Access lives in this browser's
-     storage, so without this link a reader who paid in the Instagram browser
-     and later opens Safari has lost it. */
-  function keepBox() {
-    try {
-      if (document.querySelector(".keep")) return;
-      var url = FBP.restoreURL();
-      if (!url) return;
-      var box = document.createElement("div");
-      box.className = "keep";
-      box.innerHTML =
-        '<b>Keep this link</b>' +
-        '<p>It re-opens your stories on any phone or browser. Email it to yourself.</p>' +
-        '<input readonly aria-label="Your restore link" value="' + FB.esc(url) + '">' +
-        '<button type="button" id="cp">Copy link</button>' +
-        '<p class="fine">' + FB.esc(FBP.RESTORE_NOTE) + '</p>' +
-        '<p class="fine" style="margin-top:10px">' +
-          'Manage or cancel your subscription in the ' +
-          '<a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">billing portal</a>.</p>';
-      shelf.parentNode.insertBefore(box, shelf);
-      box.querySelector("#cp").addEventListener("click", function () {
-        var self = this, inp = box.querySelector("input");
-        try {
-          inp.select();
-          if (navigator.clipboard) navigator.clipboard.writeText(url);
-          else document.execCommand("copy");
-          self.textContent = "Copied";
-        } catch (e) { self.textContent = "Select and copy the link above"; }
-      });
-    } catch (e) {}
-  }
-
-  /* The shelf draws covers, not card text: data/index.json, a quarter the
-     size, with the same fallback to the full corpus. */
-  (FB.loadIndex ? FB.loadIndex() : FB.load()).then(function (stacks) {
-    STACKS = (stacks && stacks.length) ? stacks : [];
-    if (!STACKS.length) throw new Error("no stacks");
-
-    draw();                       /* covers on screen now, no padlocks */
-    FB.track("library_view");
-
-    /* And now the access answer, whenever it turns up, in place. Both
-       directions are repaired here, so no page reload is needed and none is
-       registered: FBX.correct() exists for pages that CANNOT repair
-       themselves, and reloading a shelf that has already corrected itself
-       would only throw away the covers it just drew. */
-    function settle(allowed) {
-      if (settledOnce && allowed === drewOpen) return;
-      settledOnce = true;
-      drewOpen = allowed;
-      if (allowed) applyOpen(); else applyLocked();
-    }
-
-    var painted = false;
-    try {
-      if (window.FBX && FBX.paint) {
-        painted = true;
-        FBX.paint(function (allowed) { settle(!!allowed); });
-      }
-    } catch (e) { painted = false; }
-    /* No FBX at all — an old cached access.js, or a webview that dropped it.
-       Fall back to the synchronous answer rather than leaving the shelf in
-       its undecided state forever. */
-    if (!painted) { try { settle(!!FB.unlocked()); } catch (e) { settle(false); } }
-  }).catch(function (e) {
-    shelf.innerHTML = '<p class="fine" style="margin-top:28px">' +
-      "Could not load the stories. Check your connection and reload." + '</p>';
-  });
-
+  "use strict";
+  try {
+    var q = location.search || "";
+    if (!q) return;
+    var a = document.getElementById("fwd-go");
+    if (a) a.href = "/explore" + q + (location.hash || "");
+  } catch (e) {}
 })();
 </script>
-<!-- js/auth.js is a module, so the browser defers it: it runs after the
-     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
-     is in. The ES5 block below therefore cannot read window.FBU at the moment
-     it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
-<script type="module" src="/js/auth.js"></script>
 
 <script src="/js/analytics.js"></script>
-<script src="/js/acct.js"></script>
 </body>
 </html>
