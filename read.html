@@ -461,13 +461,37 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
        recommendations are missing. */
     if (window.FBR && FBR.endPanel && FB.loadIndex) {
       FB.loadIndex().then(function (stacks) {
-        var panel = FBR.endPanel(s, stacks, { n: 3 });
-        if (!panel) return;
-        deck.appendChild(panel);
-        if (io) { try { io.observe(panel); } catch (e) {} }
-        else panel.classList.add("live");
-        /* A reader can already be sitting on the last card when this lands. */
-        onScroll();
+        var panel = null, builtFor = null;
+
+        /* Which story Continue offers depends on what this reader may open, and
+           that answer can arrive after the panel is built. Built once with the
+           wrong answer, the end of a story sends a subscriber to checkout, or
+           offers a signed-out reader a story that will meet them with a wall.
+           So the panel records the answer it was built from and is rebuilt if
+           the answer changes — the same render-then-correct the shelf, the home
+           page and the library use, rather than a fourth opinion. */
+        function build(allowed) {
+          if (panel && builtFor === allowed) return;
+          var fresh = FBR.endPanel(s, stacks, { n: 3 });
+          if (!fresh) return;
+          builtFor = allowed;
+          if (panel && panel.parentNode) {
+            if (io) { try { io.unobserve(panel); } catch (e) {} }
+            panel.parentNode.replaceChild(fresh, panel);
+          } else {
+            deck.appendChild(fresh);
+          }
+          panel = fresh;
+          if (io) { try { io.observe(panel); } catch (e) {} }
+          else panel.classList.add("live");
+          /* A reader can already be sitting on the last card when this lands. */
+          onScroll();
+        }
+
+        build(FB.unlocked());
+        try {
+          if (window.FBX && FBX.paint) FBX.paint(function (a) { build(!!a); });
+        } catch (e) {}
       }).catch(function () {});
     }
   }

@@ -45,7 +45,25 @@
     return whole + (halves % 2 ? "\u00bd" : "") + " min";
   }
   function track(n, x) { try { if (G && G.track) G.track(n, x); } catch (e) {} }
-  function unlocked() { try { return !!(G && G.unlocked && G.unlocked()); } catch (e) { return false; } }
+  /* What the covers on screen were drawn from.
+
+     It starts TRUE — nothing wears a padlock before the answer is known — and
+     the answer, when it lands, either leaves it alone or triggers one redraw.
+
+     Two reasons it is a variable and not a call to G.unlocked() at render
+     time. The first is that this page renders the moment the covers index
+     arrives, which is well before Firebase has reported the subscription; a
+     direct call there returns "no" and the page drew a padlock on every story
+     a signed-in reader had already paid for, and never took it off, because
+     nothing here re-rendered. That is the bug this replaces.
+
+     The second is the direction of the mistake. Starting open and adding locks
+     risks a reader briefly seeing a cover they cannot open yet. Starting
+     locked and removing them shows a paying reader a wall — and if the
+     correction never arrives, they simply believe it. The shelf and the home
+     page already make the same choice for the same reason. */
+  var OPEN = true;
+  function unlocked() { return OPEN; }
 
   /* Always an object, whatever FBP is doing. */
   function stateOf(id, total) {
@@ -285,6 +303,22 @@
         _stacks = (stacks && stacks.length) ? stacks : [];
         render(_stacks);
         track("library_own_view", { saved: String(S && S.count ? S.count() : 0) });
+
+        /* Registered after the first render, never before: FBX.paint fires
+           immediately when the answer is already known, and a listener that
+           can run before the page has drawn is how /stories once reloaded
+           itself forever. Redraw only when the answer disagrees with what is
+           on screen — in either direction, since signing out has to put the
+           padlocks back as surely as subscribing takes them off. */
+        try {
+          if (window.FBX && FBX.paint) {
+            FBX.paint(function (allowed) {
+              if (OPEN === !!allowed) return;
+              OPEN = !!allowed;
+              rerender();
+            });
+          }
+        } catch (e) {}
       } catch (e) {
         fail("Something went wrong drawing your library. Reload the page.");
       }
