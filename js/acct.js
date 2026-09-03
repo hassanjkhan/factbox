@@ -96,10 +96,17 @@
       }
       menu.appendChild(item("/account", "Your account"));
       menu.appendChild(item("/library", "Your library"));
-    } else {
-      menu.appendChild(item("/login?next=" + here(), "Sign in"));
-      menu.appendChild(item("/join", "Create account"));
     }
+    /* Signed out there is no menu at all — see the click handler. A menu of
+       one destination is a tap spent choosing between "Sign in" and "Create
+       account", which is the same page either way. */
+  }
+
+  /* Where a signed-out reader goes. One place: the sign-in page, which already
+     offers both signing in and creating an account on the same screen. */
+  function signInURL() {
+    var n = here();
+    return "/login" + (n ? "?next=" + n : "");
   }
 
   /* Where to come back to. A path, never a full URL, and never anything with a
@@ -124,10 +131,21 @@
   function paint() {
     try {
       var ini = initial();
-      btn.className = "acct-btn" + (signedIn() ? " is-in" : "");
-      btn.setAttribute("aria-label", signedIn()
+      var inNow = signedIn();
+      btn.className = "acct-btn" + (inNow ? " is-in" : "");
+      btn.setAttribute("aria-label", inNow
         ? (nameOf() ? "Account menu for " + nameOf() : "Account menu")
-        : "Sign in or create an account");
+        : "Sign in");
+      /* Only a menu may claim to have a popup. Signed out this navigates, and
+         announcing a popup that never opens is a lie to a screen reader. */
+      if (inNow) {
+        btn.setAttribute("aria-haspopup", "true");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      } else {
+        btn.removeAttribute("aria-haspopup");
+        btn.removeAttribute("aria-expanded");
+        if (open) show(false);
+      }
       var slot = btn.querySelector(".acct-ini");
       if (slot) {
         if (ini) { slot.textContent = ini; slot.className = "acct-ini"; }
@@ -162,6 +180,14 @@
     btn.addEventListener("click", function (e) {
       if (e && e.preventDefault) e.preventDefault();
       if (e && e.stopPropagation) e.stopPropagation();
+      /* Signed out, the insignia IS the sign-in button. It used to open a menu
+         whose two items — "Sign in" and "Create account" — both led to the same
+         screen, so the menu asked the reader to choose between two names for
+         one page. Signed in there is a real choice to make, so the menu stays. */
+      if (!signedIn()) {
+        try { location.href = signInURL(); } catch (x) {}
+        return;
+      }
       show(!open);
     });
 
