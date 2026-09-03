@@ -98,9 +98,12 @@
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
                'src="/img/thumbs/' + esc(s.img) + '.webp">' +
-          (locked
-            ? '<span class="lock" aria-hidden="true">🔒</span>'
-            : (s.free ? '<span class="freetag">FREE</span>' : '')) +
+          /* No FREE tag. Everything reads as open until a locked story says
+             otherwise — a shelf that labels three of fifty-one as free is
+             really labelling the other forty-eight as not. The padlock still
+             marks what is shut, because that is information a reader needs
+             before they tap rather than after. */
+          (locked ? '<span class="lock" aria-hidden="true">🔒</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +

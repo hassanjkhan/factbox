@@ -93,17 +93,100 @@ var FBT = (function () {
      If the reader has finished it, we walk forward from there rather than
      showing them something they have read — the shared pick is the default,
      not a rule worth being unhelpful over. */
+  /* What the six questions in /start actually buy.
+
+     Each answer maps onto topics and kinds that exist in data/stacks.json —
+     nothing invented, and an answer with no honest mapping ("Genius &
+     discovery" has no matching kind) simply contributes nothing rather than
+     being forced onto a subject it does not describe.
+
+     The date still decides WHICH of their stories today is, so a reader gets a
+     stable pick that does not shuffle on reload — it is just drawn from a
+     smaller pool. Two readers who answered differently now see different
+     stories, which is the trade for asking them at all. */
+  var TASTE = {
+    "Powerful people":                  { t: ["cleopatra", "us_history"] },
+    "Scandals & betrayals":             { k: ["moral_reversal"] },
+    "Wars & revolutions":               { t: ["us_history", "medieval_modern"] },
+    "Mysteries & conspiracies":         { k: ["unsolved_mystery"] },
+    "Religion & mythology":             { t: ["new_testament", "old_testament", "church_history"] },
+    "Ancient civilizations":            { t: ["ancient_world", "cleopatra"] },
+
+    "Love, sex & betrayal":             { t: ["cleopatra"] },
+    "Power & ambition":                 { t: ["cleopatra", "medieval_modern"] },
+    "Murder & mystery":                 { k: ["violent_death", "unsolved_mystery"] },
+    "Rise & fall":                      { k: ["moral_reversal"] },
+    "The truth behind famous stories":  { k: ["myth_correction"] },
+
+    "Ancient Egypt & Rome":             { t: ["cleopatra", "ancient_world"] },
+    "Kings, queens & empires":          { t: ["medieval_modern"] },
+    "Christianity & biblical history":  { t: ["new_testament", "old_testament", "church_history"] },
+    "American history":                 { t: ["us_history"] },
+    "World wars":                       { t: ["medieval_modern"] },
+    "Famous thinkers & inventors":      { t: ["ancient_world"] }
+  };
+
+  /* Counted, not pooled. A flat union of every answer put "Ancient Egypt &
+     Rome" and "Powerful people" in one bucket and then served Lincoln, because
+     us_history was in the bucket too. Counting how many of the reader's own
+     answers a story satisfies puts Cleopatra — which two of them point at —
+     ahead of a story only one points at. */
+  function taste() {
+    var out = { t: {}, k: {}, any: false };
+    try {
+      var raw = window.localStorage.getItem("fb-onboarding");
+      if (!raw) return out;
+      var a = JSON.parse(raw), key, hit, i;
+      for (key in a) {
+        if (!Object.prototype.hasOwnProperty.call(a, key)) continue;
+        hit = TASTE[a[key]];
+        if (!hit) continue;
+        if (hit.t) for (i = 0; i < hit.t.length; i++) {
+          out.t[hit.t[i]] = (out.t[hit.t[i]] || 0) + 1; out.any = true;
+        }
+        if (hit.k) for (i = 0; i < hit.k.length; i++) {
+          out.k[hit.k[i]] = (out.k[hit.k[i]] || 0) + 1; out.any = true;
+        }
+      }
+    } catch (e) {}
+    return out;
+  }
+
   function pickToday(stacks) {
     try {
       if (!stacks || !stacks.length) return null;
-      var pool = stacks.slice().sort(function (a, b) {
+      var all = stacks.slice().sort(function (a, b) {
         return str(a.id) < str(b.id) ? -1 : (str(a.id) > str(b.id) ? 1 : 0);
       });
+
+      var want = taste(), pool = all, i, s2, best = 0, scored = [], sc;
+      if (want.any) {
+        for (i = 0; i < all.length; i++) {
+          s2 = all[i];
+          sc = (want.t[str(s2.topic)] || 0) + (want.k[str(s2.kind)] || 0);
+          if (sc > best) best = sc;
+          scored.push(sc);
+        }
+        if (best) {
+          var top = [];
+          for (i = 0; i < all.length; i++) if (scored[i] === best) top.push(all[i]);
+          /* Only narrow if what they asked for leaves something to read. A
+             reader whose two best matches are both finished should still be
+             given a story. */
+          if (top.length >= 3) pool = top;
+          else {
+            var second = [];
+            for (i = 0; i < all.length; i++) if (scored[i] > 0) second.push(all[i]);
+            if (second.length >= 3) pool = second;
+          }
+        }
+      }
+
       var day = Math.floor(Date.now() / 86400000);
-      var start = ((day % pool.length) + pool.length) % pool.length, i, s;
+      var start = ((day % pool.length) + pool.length) % pool.length;
       for (i = 0; i < pool.length; i++) {
-        s = pool[(start + i) % pool.length];
-        if (progress(s).status !== "done") return s;
+        s2 = pool[(start + i) % pool.length];
+        if (progress(s2).status !== "done") return s2;
       }
       return pool[start];
     } catch (e) { return null; }
