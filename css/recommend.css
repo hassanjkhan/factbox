@@ -46,7 +46,7 @@
 
 .rec-lede{
   margin:0; color:var(--dim); flex:none;
-  font-size:.98rem; line-height:1.5;
+  font-size:.98rem; line-height:1.62; font-weight:400;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;
 }
@@ -54,7 +54,7 @@
 /* Where they are in the topic, said in words above the bar — the bar itself is
    aria-hidden, so this line is the accessible version of the same fact. */
 .rec-count{
-  margin:0; font-size:.72rem; font-weight:800; letter-spacing:.14em;
+  margin:0; font-size:.72rem; font-weight:500; letter-spacing:.14em;
   text-transform:uppercase; color:var(--dimmer);
 }
 
@@ -142,7 +142,7 @@
 }
 .rec-plate-t b{
   display:block;
-  font-size:1.18rem; font-weight:850; line-height:1.18; letter-spacing:-.015em;
+  font-size:1.18rem; font-weight:700; line-height:1.18; letter-spacing:-.015em;
   text-shadow:0 2px 14px rgba(0,0,0,.6);
   /* Two lines, then ellipsis — a four-line title covers the painting. */
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
@@ -150,7 +150,7 @@
 }
 .rec-meta{
   display:block; margin-top:3px;
-  font-size:.78rem; font-weight:650; color:rgba(255,247,237,.72);
+  font-size:.78rem; font-weight:500; color:rgba(255,247,237,.72);
   font-variant-numeric:tabular-nums;
 }
 
@@ -162,7 +162,7 @@
 .pane.rec .go{
   margin-top:2px; width:100%;
   text-decoration:none; text-align:center;
-}
+  font-weight:600;}
 .pane.rec .fine{margin:0; text-align:center}
 
 /* Short phones: 844px minus the webview toolbar is not much. Tighten rather

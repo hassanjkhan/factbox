@@ -38,7 +38,7 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-steps li.is-done{background:var(--coral-deep)}
 .jn-steps li.is-on{background:var(--coral)}
 .jn-stepnote{
-  margin:0 2px 2px; font-size:.78rem; font-weight:700; letter-spacing:.02em;
+  margin:0 2px 2px; font-size:.78rem; font-weight:600; letter-spacing:.02em;
   color:var(--dimmer); font-variant-numeric:tabular-nums;
 }
 
@@ -50,7 +50,7 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-panel{margin-top:18px}
 .jn-panel[hidden]{display:none}
 .jn-panel h2{
-  font-size:clamp(1.45rem,5.8vw,1.85rem); font-weight:850; margin:0 0 8px;
+  font-size:clamp(1.45rem,5.8vw,1.85rem); font-weight:700; margin:0 0 8px;
   line-height:1.14; letter-spacing:-.015em; text-wrap:balance;
 }
 .jn-panel > p{
@@ -66,13 +66,13 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-field{display:block; margin:16px 0 0}
 .jn-field > span{
   display:block; margin:0 0 7px 2px;
-  font-size:.84rem; font-weight:750; color:var(--dim);
+  font-size:.84rem; font-weight:600; color:var(--dim);
 }
 .jn-field input{
   width:100%; min-height:var(--tap);
   padding:14px 16px; border:0; border-radius:14px;
   background:var(--raise); color:var(--parchment);
-  font-family:var(--ui); font-size:1rem; font-weight:650;
+  font-family:var(--ui); font-size:1rem; font-weight:500;
   box-shadow:inset 0 0 0 1px var(--hair);
   -webkit-appearance:none; appearance:none;
 }
@@ -80,12 +80,12 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-field input:focus{box-shadow:inset 0 0 0 1px var(--coral); outline:none}
 .jn-opt-note{
   margin:7px 2px 0; font-size:.78rem; color:var(--dimmer); line-height:1.45;
-}
+  font-weight:600;}
 
 /* An error is a sentence, in the one colour that means "look here", and it is
    never the only signal: the field keeps focus and the button stays live. */
 .jn-err{
-  margin:10px 2px 0; font-size:.86rem; font-weight:700; line-height:1.45;
+  margin:10px 2px 0; font-size:.86rem; font-weight:600; line-height:1.45;
   color:var(--coral);
 }
 .jn-err[hidden]{display:none}
@@ -106,15 +106,15 @@ body{background:var(--ground); color:var(--parchment)}
   min-height:var(--tap); padding:12px 14px;
   border:0; border-radius:14px;
   background:var(--raise); color:var(--parchment);
-  font-family:var(--ui); font-size:.95rem; font-weight:750;
+  font-family:var(--ui); font-size:.95rem; font-weight:600;
   box-shadow:inset 0 0 0 1px var(--hair);
   transition:box-shadow .15s ease, background .15s ease, transform .15s ease;
 }
 .jn-opt:active{transform:scale(.985)}
-.jn-opt b{display:block; font-size:.95rem; font-weight:800; line-height:1.25}
+.jn-opt b{display:block; font-size:.95rem; font-weight:700; line-height:1.25}
 .jn-opt span{
   display:block; margin-top:3px;
-  font-size:.78rem; font-weight:600; color:var(--dimmer); line-height:1.35;
+  font-size:.78rem; font-weight:500; color:var(--dimmer); line-height:1.35;
 }
 .jn-opt[aria-pressed="true"],
 .jn-opt[aria-checked="true"]{
@@ -146,21 +146,21 @@ body{background:var(--ground); color:var(--parchment)}
   box-shadow:inset 0 0 0 2px var(--coral);
 }
 .jn-plan .jn-per{
-  display:block; font-size:1.32rem; font-weight:850; letter-spacing:-.02em;
+  display:block; font-size:1.32rem; font-weight:700; letter-spacing:-.02em;
   line-height:1.1;
 }
 .jn-plan .jn-per i{
-  font-style:normal; font-size:.86rem; font-weight:700; color:var(--dim);
+  font-style:normal; font-size:.86rem; font-weight:600; color:var(--dim);
 }
 .jn-plan .jn-billed{
   display:block; margin-top:5px;
-  font-size:.86rem; font-weight:650; color:var(--dim); line-height:1.4;
+  font-size:.86rem; font-weight:500; color:var(--dim); line-height:1.4;
 }
 .jn-plan .jn-save{
   display:inline-block; margin-top:8px;
   padding:3px 9px; border-radius:var(--pill);
   background:rgba(255,247,237,.09); color:var(--parchment);
-  font-size:.7rem; font-weight:800; letter-spacing:.04em;
+  font-size:.7rem; font-weight:700; letter-spacing:.04em;
 }
 /* The best-value marker is the one piece of emphasis on this screen, and it
    is a statement of arithmetic — the cheapest month — not a scarcity claim. */
@@ -170,7 +170,7 @@ body{background:var(--ground); color:var(--parchment)}
   position:absolute; right:14px; top:-9px;
   padding:3px 9px; border-radius:var(--pill);
   background:var(--coral); color:#2A1109;
-  font-size:.64rem; font-weight:900; letter-spacing:.09em;
+  font-size:.64rem; font-weight:700; letter-spacing:.09em;
 }
 
 /* The trial sentence sits directly under the button it describes. */
@@ -178,7 +178,7 @@ body{background:var(--ground); color:var(--parchment)}
   margin:12px auto 0; max-width:520px;
   font-size:.8rem; line-height:1.55; color:var(--dim);
 }
-.jn-terms b{color:var(--parchment); font-weight:800}
+.jn-terms b{color:var(--parchment); font-weight:700}
 
 /* --------------------------------------------------------------------------
    Row of secondary actions: Back on the left, Skip on the right. Both are
@@ -193,13 +193,13 @@ body{background:var(--ground); color:var(--parchment)}
   display:inline-flex; align-items:center; gap:6px;
   min-height:var(--tap); padding:10px 4px;
   background:none; border:0; cursor:pointer;
-  font-family:var(--ui); font-size:.9rem; font-weight:700; color:var(--dim);
+  font-family:var(--ui); font-size:.9rem; font-weight:600; color:var(--dim);
 }
 .jn-skip{
   display:inline-flex; align-items:center;
   min-height:var(--tap); padding:10px 4px;
   background:none; border:0; cursor:pointer;
-  font-family:var(--ui); font-size:.9rem; font-weight:700; color:var(--dimmer);
+  font-family:var(--ui); font-size:.9rem; font-weight:600; color:var(--dimmer);
   text-decoration:underline; text-underline-offset:3px;
 }
 
@@ -213,10 +213,10 @@ body{background:var(--ground); color:var(--parchment)}
   box-shadow:inset 0 0 0 1px var(--hair);
 }
 .jn-aside[hidden]{display:none}
-.jn-aside b{display:block; font-size:.95rem; font-weight:800; margin-bottom:5px}
+.jn-aside b{display:block; font-size:.95rem; font-weight:700; margin-bottom:5px}
 .jn-aside p{margin:0 0 8px; font-size:.86rem; line-height:1.5; color:var(--dim)}
 .jn-aside p:last-child{margin-bottom:0}
-.jn-aside a{color:var(--coral); font-weight:700}
+.jn-aside a{color:var(--coral); font-weight:600}
 .jn-aside input{
   width:100%; margin:2px 0 9px; padding:11px 12px;
   border:0; border-radius:10px; background:rgba(255,247,237,.07);
@@ -230,7 +230,7 @@ body{background:var(--ground); color:var(--parchment)}
 
 /* "First name optional" — the qualifier reads as a qualifier, not as part of
    the label. */
-.jn-field > span i{font-style:normal; font-weight:600; color:var(--dimmer)}
+.jn-field > span i{font-style:normal; font-weight:500; color:var(--dimmer)}
 
 /* ==========================================================================
    THE PORTED FUNNEL
@@ -250,7 +250,7 @@ body{background:var(--ground); color:var(--parchment)}
   margin:16px 0 0; padding:12px 14px;
   border-radius:14px; background:rgba(255,122,92,.10);
   box-shadow:inset 0 0 0 1px rgba(255,122,92,.26);
-  font-size:.9rem; font-weight:700; line-height:1.45; color:var(--parchment);
+  font-size:.9rem; font-weight:600; line-height:1.45; color:var(--parchment);
 }
 .jn-reinf[hidden]{display:none}
 
@@ -267,11 +267,11 @@ body{background:var(--ground); color:var(--parchment)}
   text-align:center;
 }
 .jn-echo .jn-eyebrow{
-  margin:0 0 12px; font-size:.68rem; font-weight:900; letter-spacing:.2em;
+  margin:0 0 12px; font-size:.68rem; font-weight:700; letter-spacing:.2em;
   color:var(--coral); text-transform:uppercase;
 }
 .jn-echo h2{
-  font-size:clamp(1.5rem,6.2vw,2rem); font-weight:850; margin:0 0 12px;
+  font-size:clamp(1.5rem,6.2vw,2rem); font-weight:700; margin:0 0 12px;
   line-height:1.12; letter-spacing:-.018em; text-wrap:balance;
 }
 .jn-echo p{
@@ -280,7 +280,7 @@ body{background:var(--ground); color:var(--parchment)}
 }
 /* The benefit, not the compliment, is the sentence that converts. */
 .jn-echo p.jn-benefit{
-  margin-bottom:0; color:var(--parchment); font-weight:750;
+  margin-bottom:0; color:var(--parchment); font-weight:600;
 }
 
 /* --------------------------------------------------------------------------
@@ -304,13 +304,13 @@ body{background:var(--ground); color:var(--parchment)}
   flex:0 0 46px; height:46px; border-radius:12px;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   background:rgba(255,247,237,.08); color:var(--parchment);
-  font-style:normal; font-size:1.04rem; font-weight:850; line-height:1;
+  font-style:normal; font-size:1.04rem; font-weight:700; line-height:1;
   font-variant-numeric:tabular-nums;
   transition:background .15s ease, color .15s ease;
 }
 .jn-day u{
   text-decoration:none; margin-top:3px;
-  font-size:.55rem; font-weight:800; letter-spacing:.09em;
+  font-size:.55rem; font-weight:700; letter-spacing:.09em;
   text-transform:uppercase; color:var(--dimmer);
 }
 .jn-opt[aria-checked="true"] .jn-day{background:rgba(255,122,92,.24); color:var(--coral)}
@@ -336,10 +336,10 @@ body{background:var(--ground); color:var(--parchment)}
   display:flex; align-items:baseline; justify-content:space-between; gap:10px;
   margin:0 0 7px;
 }
-.jn-phase-top b{font-size:.92rem; font-weight:800; line-height:1.3}
+.jn-phase-top b{font-size:.92rem; font-weight:700; line-height:1.3}
 .jn-phase-top i{
   flex:none; font-style:normal;
-  font-size:.8rem; font-weight:750; color:var(--dimmer);
+  font-size:.8rem; font-weight:600; color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
 .jn-phase.is-done .jn-phase-top i{color:var(--teal)}
@@ -363,11 +363,11 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .jn-q[hidden]{display:none}
 .jn-q .jn-q-eyebrow{
-  margin:0 0 6px; font-size:.64rem; font-weight:900; letter-spacing:.18em;
+  margin:0 0 6px; font-size:.64rem; font-weight:700; letter-spacing:.18em;
   color:var(--coral); text-transform:uppercase;
 }
 .jn-q .jn-q-t{
-  margin:0 0 12px; font-size:1rem; font-weight:800; line-height:1.35;
+  margin:0 0 12px; font-size:1rem; font-weight:700; line-height:1.35;
   color:var(--parchment);
 }
 .jn-q-row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
@@ -375,7 +375,7 @@ body{background:var(--ground); color:var(--parchment)}
   min-height:var(--tap); padding:12px 10px;
   border:0; border-radius:12px; cursor:pointer;
   background:rgba(255,247,237,.07); color:var(--parchment);
-  font-family:var(--ui); font-size:.95rem; font-weight:800;
+  font-family:var(--ui); font-size:.95rem; font-weight:700;
   box-shadow:inset 0 0 0 1px var(--hair);
   transition:transform .15s ease, background .15s ease;
 }
@@ -394,6 +394,6 @@ body{background:var(--ground); color:var(--parchment)}
   color:var(--dimmer);
 }
 .jn-haveacct a{
-  color:var(--coral); font-weight:700; text-decoration:none;
+  color:var(--coral); font-weight:600; text-decoration:none;
   display:inline-block; padding:9px 6px; min-height:var(--tap); line-height:26px;
 }
