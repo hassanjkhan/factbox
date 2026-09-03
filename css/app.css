@@ -178,7 +178,16 @@ img{max-width:100%;display:block}
 
 .lib{
   min-height:100vh; min-height:100dvh;
-  padding:var(--top-safe) 18px calc(var(--bottom-safe) + 96px);
+  /* The +96px used to reserve room for the buy bar fixed to the foot of the
+     shelf, so it never covered the last row. There is no buy bar any more, on
+     any page, and the reservation became 96px of dead space under the last
+     cover — measured at 270px of whitespace on a 430px phone.
+
+     It was only ever right on one of the four pages that use .lib: the home
+     page, Explore and Library never had a bar, so they carried the gap for
+     nothing from the day this rule was written. --bottom-safe stays, because
+     that is the Instagram and TikTok toolbar, which is still there. */
+  padding:var(--top-safe) 18px var(--bottom-safe);
   max-width:900px; margin:0 auto;
 }
 

@@ -167,3 +167,157 @@ three pages before finishing. What is now documented:
     the two sign-up sentences in the short version; the sign-up sentence in
     `terms.html` §05; and the sign-up sentences in `support.html`. Everything
     else stands on its own.
+
+---
+
+## 8. 3 September 2026 — `privacy.html` rewritten against a site that grew a backend
+
+Scope: `privacy.html` only. `terms.html` and `support.html` were not touched;
+what they now get wrong is listed at the end of this section.
+
+The page dated 2 September described a site with **no server**. That sentence,
+or a consequence of it, appeared in seven places, and it is no longer true.
+Between then and now the site acquired Firebase Authentication, a Firestore
+record per reader, a Stripe webhook that writes a `premium` flag, a Cloud
+Function that serves paid story text, a second analytics vendor, a Cloudflare
+proxy in front of the first, and a webfont from Google on every page. Every
+claim below was re-read against the file and line named.
+
+### 8.1 What was removed at the owner's instruction
+
+| Removed | Replaced with |
+|---|---|
+| The `.note` box beginning "**Not reviewed by a lawyer.** This is written to describe what the site genuinely does today…", and the "Not reviewed by a lawyer." clause in the footer stamp. | Nothing. Both are gone. **This resolves TODO 6 above by choosing "remove", not by choosing "get the review".** The policy is still not lawyer-reviewed. The disclaimer's disappearance is a decision, not a change in the underlying fact, and it should stay a knowing one. |
+| The phrase "this website", in the dateline (`Applies to: factbox.app, this website`) and in §01 (`This policy covers this website only`). | `Applies to: factbox.app`, and "This policy covers the site and the small backend behind it." The page now says "the site", "these pages" or "Factbox" throughout; there are zero occurrences of "this website". |
+| The opening paragraph: "Factbox is a website with real accounts, and a small amount of server behind them. Almost everything it remembers about you is written into your own browser and stays there…" | A new lead doing the same job, and truer to the current shape: most of what the site remembers is in the browser, some of it is not, and the page's structure is that division. |
+
+### 8.2 Claims that were wrong and are now fixed
+
+- **"You can sign in with … or a phone number"** — no phone field, no SMS step
+  and no reCAPTCHA container exists on any page. `js/auth.js` still carries the
+  phone functions (`:830`), but nothing calls them and `login.html`'s own
+  description says "Google or email". §04 now says so, and says phone sign-in
+  was withdrawn.
+- **"Nothing on this list is transmitted to us or to anyone else"** (§02) —
+  false since `js/profile-sync.js`. For a signed-in reader the contents of
+  `fb_acct_v1`, **including name and email address**, are written to
+  `customers/{uid}/profile/onboarding` (`js/profile-sync.js:176-206`, allowed by
+  `firestore.rules` `match /profile/{docId}`).
+- **"That email leaves your browser in exactly one place"** — it now leaves in
+  two: Stripe's `prefilled_email` (`js/account.js:237`) and Firestore.
+- **`client_reference_id` is "the random local id from your sign-up record"** —
+  it is the **Firebase uid** now, falling back to the local id only when signed
+  out (`js/account.js:229-238`). That is the join between a payment and an
+  account, and the webhook depends on it (`functions/index.js`).
+- **"There is nothing on our side that knows you"**, "no server", "no account to
+  break into, no reader database to leak" — all false. `customers/{uid}` exists,
+  the Stripe webhook writes it (`functions/index.js:44-99`), and
+  `js/access.js:18-26` decides access from it. §07 and §12 are rewritten around
+  what is actually held.
+- **"Clearing this site's data … deletes everything the site holds. You do not
+  have to ask us, because there is no copy anywhere else."** — no longer true
+  for a signed-in reader. §11 now separates the two halves and says plainly that
+  there is no in-product delete button and that deletion is by email.
+- **"A content blocker that blocks `posthog.com` does the same thing"** —
+  analytics is sent to `factbox.app/ink/*` and forwarded by
+  `cloudflare/posthog-proxy.js`, specifically so that blocker lists do not match
+  it. §05 now says this in those words, and names the two things the Worker does
+  that a pass-through would not: it deletes the `Cookie` header before
+  forwarding (`:144`) and sets `X-Forwarded-For` from `CF-Connecting-IP`
+  (`:150-151`).
+- **"Every one of those carries at most a story id, a card number, a step name
+  or a plan name … Not the answers themselves"** — `start_answer` carries the
+  answer the reader tapped (`js/start.js:392-398`), and every event now carries
+  `has_account`, `is_subscriber` and `access` as registered super-properties,
+  plus the Firebase uid once `identify()` has been called
+  (`js/analytics.js:525-543`). §05 says all of it.
+- **"PostHog … is not shared with anyone" / two-vendor comparison** — the GA4
+  half was described but the identify/register half was not. Both sinks are fed
+  from one `capture()` (`js/analytics.js:494-503`).
+- **The 26-name event list** — was out of date in both directions. It named
+  `explore_view`, `rec_save` and `join_interests`, none of which exist any more,
+  and omitted 27 names that do. The list in §05 is now the full 51, grouped, and
+  matches a grep of `js/` and `*.html`.
+- **The `sessionStorage` row** — the old page listed one key, `fb-story`, which
+  no file writes any more. The two that are written are `fbx_corrected_v1`
+  (`js/access.js:227`) and `fb_auth_redirect_v1` (`js/auth.js:85`).
+- **"The illustrated front-page story contains a second, older counter … Its
+  endpoint is an empty string"** — that page was retired in `5bfa0e1`. The
+  paragraph is gone. `js/gate.js:100-103` still calls `window.plausible` if it
+  exists; no page defines it, so it remains a no-op — which is why the page no
+  longer mentions Plausible at all rather than asserting anything about it.
+  (This supersedes TODO 7: there is no Plausible sentence left to correct.)
+- **"There are no others"** about cookies — narrowed to "those four are the ones
+  our own code sets", because PostHog and Firebase Analytics set their own on
+  this domain.
+
+### 8.3 What was added
+
+- **§04 Signing in** — the two remaining methods, that Firebase holds the
+  password, that signing up and resetting a password make Google send mail, and
+  what Google receives when the Google button is used.
+- **§05** — the identify/register paragraph, the proxy paragraph, the
+  "analytics only transmits from `factbox.app`" fact (`js/analytics.js:151-159`),
+  and the full event catalogue.
+- **§07 Your account, and what is held under it** — the three writers of a
+  reader's record, field by field, from `js/auth.js`, `functions/index.js:44-99`
+  and `js/profile-sync.js:176-206`; and the story-serving function.
+- **§09** — every third-party host a page load reaches. `fonts.googleapis.com`
+  and `fonts.gstatic.com` are on **all 17 pages** and are hit signed out, which
+  makes an IP address visible to Google on every visit; that was not disclosed
+  at all before.
+- **§11** — an analytics-deletion route, and the honest statement that account
+  deletion is by email because no button exists.
+- Two rows in the storage table that were missing: `fb_analytics_optout_v1` and
+  `fb_access_seen_v1`.
+
+### 8.4 One behaviour change, in `privacy.html`'s own script
+
+The off switch could turn analytics off but not back on. `js/analytics.js`
+returns early for an opted-out reader (`:171-177`) and installs an `FBQ` whose
+`optIn` is a no-op, so the button relabelled itself to "Turn analytics back on"
+and then did nothing. The page's inline script now sets and clears
+`fb_analytics_optout_v1` directly as well as calling `FBQ`, which is the value
+that actually decides whether the scripts load next time. Verified in Chrome:
+off writes `"1"`, on removes the key, and the label follows both ways.
+
+### 8.5 Also changed: the storage table on a phone
+
+`table{min-width:460px}` inside a `.wrap{overflow-x:auto}` clipped the second
+column at 430px — the description was cut mid-word and could only be read by
+dragging the table sideways. A `@media (max-width:560px)` block stacks each row
+(key, then what it holds) and hides the column headings visually while leaving
+them for a screen reader. Checked at 1200 / 768 / 430 / 360 / 320px: no sideways
+scroll at any of them.
+
+### 8.6 Not verified
+
+- Whether PostHog or Google Analytics actually honour a deletion request for a
+  given user id, and how long each retains events. §11 promises only to ask and
+  to report back what came back, because that is all that can be promised from
+  the code.
+- The retention period for anything in Firestore or in Firebase Auth. Nothing in
+  the repo sets one, and the page therefore claims none.
+- Whether the Stripe webhook and the story function are deployed. Both exist in
+  `functions/` and `js/access.js` reads the flag they write; the page describes
+  them as live because the access path depends on them.
+- The exact storage names PostHog, Google Analytics and Firebase use in a
+  browser. The page says each keeps storage "under names they choose rather than
+  ones written here" rather than naming keys that could be wrong.
+- `/support` — at the time of writing, the submit path in the tree is still a
+  `mailto:` handoff (`support.html:306-323`): pressing Send composes a message in
+  the reader's own mail app and nothing is posted anywhere. §08 describes exactly
+  that. **If the support form is given a real endpoint, §08's last paragraph and
+  the `support_send` / `support_idea` bullet in §05 both become false and must be
+  rewritten in the same commit.**
+
+### 8.7 What `terms.html` now gets wrong (not mine to edit)
+
+- `terms.html:54` — "you can sign in with Google, an email and password, or a
+  phone number". Phone sign-in does not exist.
+- `terms.html:117-118` — "logging in on a second phone therefore cannot bring
+  your access with it. Access lives in the browser you bought it in." That is
+  the pre-account behaviour. Signing in is now exactly how access moves.
+- `terms.html` also still carries the "not reviewed by a lawyer" disclosure that
+  has just been removed from `privacy.html`. Two documents on the same site now
+  disagree about whether that is worth saying.

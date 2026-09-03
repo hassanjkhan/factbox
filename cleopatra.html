@@ -339,6 +339,16 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     });
     if (chip) {
       document.body.appendChild(chip);
+      /* js/progress.js builds this chip's two buttons with no id and no class,
+         so js/analytics.js's delegated click listener has nothing to name them
+         by. Name them here, where the chip is known: the first already reports
+         itself as resume_used above, the second -- "start from the beginning"
+         -- has never been measured at all and now arrives as ui_click. */
+      try {
+        var chipBtns = chip.getElementsByTagName("button");
+        if (chipBtns[0]) chipBtns[0].setAttribute("data-fbt", "-");
+        if (chipBtns[1]) chipBtns[1].setAttribute("data-fbt", "resume_dismiss");
+      } catch (e) {}
       deck.addEventListener("scroll", function once() {
         deck.removeEventListener("scroll", once);
         setTimeout(function () { try { chip.dismiss(); } catch (e) {} }, 2500);
@@ -536,7 +546,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
            page and the library use, rather than a fourth opinion. */
         function build(allowed) {
           if (panel && builtFor === allowed) return;
-          var fresh = FBR.endPanel(s, stacks, { n: 3 });
+          var fresh = FBR.endPanel(s, stacks, { n: 3, cta: window.FB_ENDCTA });
           if (!fresh) return;
           builtFor = allowed;
           if (panel && panel.parentNode) {
@@ -609,62 +619,77 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
      access.js reaches it through the whenFBU() bridge in AUTH.md §2. -->
 <script type="module" src="/js/auth.js"></script>
 <script src="/js/analytics.js"></script>
-<!-- The sign-up ask the retired deck ended on. Its button goes where that
-     one went: FB.checkout(, "story") -> /join?from=story. -->
+<!-- The sign-up ask the retired deck ended on, folded into the end card. -->
 <script>
 (function () {
   "use strict";
+
+  /* The funnel's own route, the one the retired deck's button went to:
+     FB.checkout(el, "story") -> /join?from=story. All three of these pages
+     carry it; only the one that sets window.FB_ENDCTA puts it on screen. */
+  var JOIN = "/join?from=story";
+  /* The same words and the same destination as join.html's own line. */
+  var SIGNIN = "/login?next=%2Fstories";
+
   var deck = document.getElementById("deck");
   if (!deck) return;
-  var pane = null, ticks = 0, mo = null;
 
-  function build() {
-    var s = document.createElement("section");
-    s.className = "pane endask";
-    s.innerHTML =
-      '<h2>Come read more stories.</h2>' +
-      '<p>Fifty more, sourced the same way. Cleopatra, the Bible, Rome, and ' +
-      'the people we have flattened into statues.</p>' +
-      '<button class="go" id="endask-go" type="button">Read the rest of ' +
-      'season one</button>' +
-      '<p class="fine">Sign up first &mdash; three days free before anything ' +
-      'is charged.</p>' +
-      '<a class="ghost" href="/stories">See what is inside first</a>' +
-      '<p class="fine">Already have an account? ' +
-      '<a href="/login?next=%2Fstories">Sign in</a></p>';
-    var b = s.querySelector("#endask-go");
-    if (b) {
-      b.addEventListener("click", function () {
-        try {
-          if (window.FB && typeof FB.checkout === "function") {
-            FB.checkout(b, "story");
-            return;
-          }
-        } catch (e) {}
-        location.href = "/join?from=story";
-      }, false);
-    }
-    return s;
+  var CTA = "";
+  try { CTA = window.FB_ENDCTA ? String(window.FB_ENDCTA) : ""; } catch (e) {}
+
+  function ask(card) {
+    var old = card.querySelector(".ec-go");
+    if (!old) return;
+
+    var a = document.createElement("a");
+    a.className = old.className;          /* go ec-go, whichever shape it was */
+    a.href = JOIN;
+    a.setAttribute("role", "button");
+    /* FB.checkout already sends subscribe_click; "-" is analytics.js's opt out
+       and stops the same tap being counted twice. */
+    a.setAttribute("data-fbt", "-");
+    a.textContent = CTA;
+    a.addEventListener("click", function (ev) {
+      try {
+        if (window.FB && typeof FB.checkout === "function") {
+          if (ev && ev.preventDefault) ev.preventDefault();
+          FB.checkout(a, "story");
+        }
+      } catch (e) {}
+      /* No FB, or it threw: the href is the fallback and goes to the same URL. */
+    }, false);
+    old.parentNode.replaceChild(a, old);
+
+    var p = document.createElement("p");
+    p.className = "fine ec-signin";
+    p.innerHTML = "Already have an account? " +
+                  '<a href="' + SIGNIN + '">Sign in</a>';
+    card.appendChild(p);
+    /* css/recommend.css positions .ec-signin only under .has-ask, so the end
+       card every other story ends on is left exactly as it was. */
+    card.className += " has-ask";
   }
 
-  /* Only after the story is on the screen, and always last. */
   function place() {
     try {
-      if (!deck.querySelector(".beat")) return;
-      if (!pane) pane = build();
-      var last = deck.lastElementChild || deck.lastChild;
-      if (last !== pane) deck.appendChild(pane);
+      if (!CTA) return;
+      if (!deck.querySelector(".beat")) return;   /* no story, no pitch */
+      var card = deck.querySelector(".pane.rec");
+      if (!card || card.getAttribute("data-ask") === "1") return;
+      card.setAttribute("data-ask", "1");
+      ask(card);
     } catch (e) {}
   }
 
   try {
     if (window.MutationObserver) {
-      mo = new MutationObserver(place);
+      var mo = new MutationObserver(place);
       mo.observe(deck, { childList: true });
       setTimeout(function () { try { mo.disconnect(); } catch (e) {} }, 40000);
     }
   } catch (e) {}
 
+  var ticks = 0;
   (function tick() {
     place();
     ticks++;

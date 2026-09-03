@@ -131,9 +131,15 @@ for _name, _canon in (("cleopatra.html", "/cleopatra"), ("firststory.html", "/fi
 #   3. The share card the flagship has always had — title, description and
 #      /img/share.jpg — and no robots:noindex, which read.html carries and
 #      these three must not: they are the pages people are sent to.
-#   4. The sign-up ask at the foot of the deck. The retired deck ended on
-#      one, it is why these URLs exist, and read.html's own end panel is a
-#      recommendation rather than an ask.
+#   4. The sign-up ask. The retired deck ended on one and it is why these
+#      URLs exist. It used to be a whole extra pane bolted on after the end
+#      card — "Come read more stories.", its own button, its own ghost link,
+#      its own sign-in line — which meant two full-screen asks in a row and
+#      four things to tap after the reader had already been given one button.
+#      It is now folded INTO the end card, and only on /firststory: that
+#      page's Continue becomes "Sign up to read more" and goes to /join,
+#      with the site's usual sign-in line under it. /story and /cleopatra
+#      keep Continue and keep sending the reader to the next story.
 #
 # Everything else about the reader — the paywall, the gate, the audio rail,
 # progress, recommendations — is read.html's, unmodified and unforked.
@@ -183,7 +189,7 @@ _HEAD = """<!-- ================================================================
      reader, on the same museum plates as every other story. Real page, not
      a redirect stub (SPEC.md 2.4).
      ====================================================================== -->
-<script>window.FB_STORY = "{sid}";</script>
+<script>window.FB_STORY = "{sid}";{endcta}</script>
 <link rel="canonical" href="https://factbox.app{canon}">
 <meta name="description" content="{desc}">
 <meta property="og:type" content="article">
@@ -203,70 +209,102 @@ _HEAD = """<!-- ================================================================
 <meta name="twitter:image:alt" content="{ogalt}">
 """
 
-# The ask. ES5, guarded, and it adds nothing until a real card is on screen —
-# a story that failed to load must not be followed by a sign-up pitch.
+# Which of the three asks, and with what words. Only /firststory does: it is
+# the alias handed to someone who has never read anything here, so the end of
+# the story is the one moment to ask. /story and /cleopatra are shared links
+# to a story, and their end card keeps pointing at the next story.
+END_CTA = "Sign up to read more"
+
+# The ask. ES5, guarded, and it changes nothing until the end card is really
+# on the page — a story that failed to load must not be followed by a pitch.
 #
-# It keeps itself the last child of the deck because read.html appends its
-# recommendation panel late, after data/index.json lands. The observer and the
-# poll are belt and braces: either alone is enough, and neither can run away
-# because the reposition is a no-op once the pane is already last.
+# WHY THIS IS HERE AND NOT IN js/recommend.js
+# read.html and js/recommend.js are shared by all 51 stories; the ask belongs
+# to three marketing URLs. recommend.js already takes opts.cta for the label,
+# and the call in the generated copy is patched below to pass it, so the
+# button never paints the word "Continue" first. The destination and the
+# sign-in line cannot come through that option, so they are done here, on the
+# built card. Nothing under js/ is modified.
+#
+# recommend.js builds the control as an <a> when there is a next story this
+# reader can open and a <button> when there is not, and read.html REBUILDS the
+# whole card when the access answer changes. So this does not edit the control
+# in place: it swaps in its own <a>, which is right for both shapes, and it
+# runs again on every rebuild. The observer and the poll are belt and braces —
+# either alone is enough, and neither runs away, because a card that has been
+# asked is marked and skipped.
 _ASK = """
-<!-- The sign-up ask the retired deck ended on. Its button goes where that
-     one went: FB.checkout(, "story") -> /join?from=story. -->
+<!-- The sign-up ask the retired deck ended on, folded into the end card. -->
 <script>
 (function () {
   "use strict";
+
+  /* The funnel's own route, the one the retired deck's button went to:
+     FB.checkout(el, "story") -> /join?from=story. All three of these pages
+     carry it; only the one that sets window.FB_ENDCTA puts it on screen. */
+  var JOIN = "/join?from=story";
+  /* The same words and the same destination as join.html's own line. */
+  var SIGNIN = "/login?next=%2Fstories";
+
   var deck = document.getElementById("deck");
   if (!deck) return;
-  var pane = null, ticks = 0, mo = null;
 
-  function build() {
-    var s = document.createElement("section");
-    s.className = "pane endask";
-    s.innerHTML =
-      '<h2>Come read more stories.</h2>' +
-      '<p>Fifty more, sourced the same way. Cleopatra, the Bible, Rome, and ' +
-      'the people we have flattened into statues.</p>' +
-      '<button class="go" id="endask-go" type="button">Read the rest of ' +
-      'season one</button>' +
-      '<p class="fine">Sign up first &mdash; three days free before anything ' +
-      'is charged.</p>' +
-      '<a class="ghost" href="/stories">See what is inside first</a>' +
-      '<p class="fine">Already have an account? ' +
-      '<a href="/login?next=%2Fstories">Sign in</a></p>';
-    var b = s.querySelector("#endask-go");
-    if (b) {
-      b.addEventListener("click", function () {
-        try {
-          if (window.FB && typeof FB.checkout === "function") {
-            FB.checkout(b, "story");
-            return;
-          }
-        } catch (e) {}
-        location.href = "/join?from=story";
-      }, false);
-    }
-    return s;
+  var CTA = "";
+  try { CTA = window.FB_ENDCTA ? String(window.FB_ENDCTA) : ""; } catch (e) {}
+
+  function ask(card) {
+    var old = card.querySelector(".ec-go");
+    if (!old) return;
+
+    var a = document.createElement("a");
+    a.className = old.className;          /* go ec-go, whichever shape it was */
+    a.href = JOIN;
+    a.setAttribute("role", "button");
+    /* FB.checkout already sends subscribe_click; "-" is analytics.js's opt out
+       and stops the same tap being counted twice. */
+    a.setAttribute("data-fbt", "-");
+    a.textContent = CTA;
+    a.addEventListener("click", function (ev) {
+      try {
+        if (window.FB && typeof FB.checkout === "function") {
+          if (ev && ev.preventDefault) ev.preventDefault();
+          FB.checkout(a, "story");
+        }
+      } catch (e) {}
+      /* No FB, or it threw: the href is the fallback and goes to the same URL. */
+    }, false);
+    old.parentNode.replaceChild(a, old);
+
+    var p = document.createElement("p");
+    p.className = "fine ec-signin";
+    p.innerHTML = "Already have an account? " +
+                  '<a href="' + SIGNIN + '">Sign in</a>';
+    card.appendChild(p);
+    /* css/recommend.css positions .ec-signin only under .has-ask, so the end
+       card every other story ends on is left exactly as it was. */
+    card.className += " has-ask";
   }
 
-  /* Only after the story is on the screen, and always last. */
   function place() {
     try {
-      if (!deck.querySelector(".beat")) return;
-      if (!pane) pane = build();
-      var last = deck.lastElementChild || deck.lastChild;
-      if (last !== pane) deck.appendChild(pane);
+      if (!CTA) return;
+      if (!deck.querySelector(".beat")) return;   /* no story, no pitch */
+      var card = deck.querySelector(".pane.rec");
+      if (!card || card.getAttribute("data-ask") === "1") return;
+      card.setAttribute("data-ask", "1");
+      ask(card);
     } catch (e) {}
   }
 
   try {
     if (window.MutationObserver) {
-      mo = new MutationObserver(place);
+      var mo = new MutationObserver(place);
       mo.observe(deck, { childList: true });
       setTimeout(function () { try { mo.disconnect(); } catch (e) {} }, 40000);
     }
   } catch (e) {}
 
+  var ticks = 0;
   (function tick() {
     place();
     ticks++;
@@ -276,15 +314,26 @@ _ASK = """
 </script>
 """
 
+# recommend.js takes the label as opts.cta and read.html does not pass one.
+# Patched on the copy, so the button is never painted "Continue" and then
+# rewritten. Best effort: if the shape changes the block above still sets the
+# label, one frame later.
+READER, _n_cta = re.subn(
+    r'FBR\.endPanel\(s, stacks, \{ n: 3 \}\)',
+    'FBR.endPanel(s, stacks, { n: 3, cta: window.FB_ENDCTA })',
+    READER)
+
 _written = []
-for _name, _canon in (("story.html", "/story"),
-                      ("cleopatra.html", "/cleopatra"),
-                      ("firststory.html", "/firststory")):
+for _name, _canon, _asks in (("story.html", "/story", False),
+                             ("cleopatra.html", "/cleopatra", False),
+                             ("firststory.html", "/firststory", True)):
     _p = READER
+    _endcta = ('\nwindow.FB_ENDCTA = "%s";' % END_CTA) if _asks else ""
     _p = _p.replace("<head>",
                     "<head>\n" + _HEAD.format(sid=STORY_ID, canon=_canon,
                                               desc=OGDESC, ogtitle=OGTITLE,
-                                              ogalt=OGALT).rstrip("\n"), 1)
+                                              ogalt=OGALT,
+                                              endcta=_endcta).rstrip("\n"), 1)
     _p = _p.replace("<title>Factbox</title>", f"<title>{TITLE}</title>", 1)
     # These are the pages people are sent to. read.html is not.
     _p = _p.replace('<meta name="robots" content="noindex">\n', "", 1)
@@ -292,17 +341,40 @@ for _name, _canon in (("story.html", "/story"),
     _p = cleanlinks(rootify(_p))
     check_ids(_p, _name)
     (SITE / _name).write_text(_p)
-    _written.append((_name, _p))
+    _written.append((_name, _p, _asks))
 
 # The one rule: never ship a page that renders empty. This is the cheap half —
 # the page must still contain the things the reader is built out of. The other
 # half is tools/check-page.js, which runs it in a DOM.
-for _name, _p in _written:
+#
+# The call-to-action half of this gate used to look for `endask-go`, the id of
+# the button on the bolted-on second pane. That pane is gone and the ask now
+# lives on the end card, so the gate looks for what actually carries it: the
+# script that builds the end card, the block that turns it into the ask, and
+# the /join route both of them point at. Weakening it to nothing is how these
+# three URLs would quietly ship with no way to sign up.
+for _name, _p, _asks in _written:
     for _need in ('id="deck"', 'src="/js/gate.js"', 'window.FB_STORY',
-                  '<link rel="canonical"', 'og:url', 'endask-go',
+                  '<link rel="canonical"', 'og:url',
+                  'src="/js/recommend.js"', 'FBR.endPanel',
                   "/join?from=story"):
         if _need not in _p:
             raise SystemExit(f"BUILD FAILED — {_name} is missing {_need!r}.")
+    # /firststory is the one that asks. If the label or the sign-in line went
+    # missing it would still render — as a page whose end card offers a story
+    # the reader has not paid for, which is the funnel with its ask removed.
+    if _asks:
+        for _need in ('window.FB_ENDCTA = "%s";' % END_CTA,
+                      "Already have an account? ",
+                      "/login?next=%2Fstories",
+                      'p.className = "fine ec-signin";'):
+            if _need not in _p:
+                raise SystemExit(
+                    f"BUILD FAILED — {_name} is the page that asks and it is "
+                    f"missing {_need!r}.")
+    elif 'window.FB_ENDCTA = "' in _p:
+        raise SystemExit(f"BUILD FAILED — {_name} must keep Continue; only "
+                         "/firststory turns the end card into the ask.")
     if 'content="noindex"' in _p:
         raise SystemExit(f"BUILD FAILED — {_name} still says noindex; it is a "
                          "page people are sent to.")
@@ -311,14 +383,15 @@ print(f"id lookups verified            : {', '.join(looked_up)}")
 print(f"painting placeholders replaced : {n_plate}")
 print(f"scene files                    : {', '.join(SCENE_FILES)}")
 print(f"scene blocks found             : {len(re.findall(r'class=.scene s-', page))}")
-print(f"read.html patches              : id fallback {_n_id}, preload {_n_pre}")
+print(f"read.html patches              : id fallback {_n_id}, preload {_n_pre}, end-card cta {_n_cta}")
 for name, txt in (("build/story.html", site_page),
                   ("build/artifact_story.html", art_page)):
     print(f"{name:30s} {len(txt)//1024}KB")
 _CANON_RE = re.compile(r'<link rel="canonical" href="([^"]+)">')
-for name, txt in _written:
+for name, txt, asks in _written:
     _c = _CANON_RE.search(txt)
-    print(f"{name:30s} {len(txt)//1024}KB  canonical -> {_c.group(1) if _c else '??'}")
+    print(f"{name:30s} {len(txt)//1024}KB  canonical -> {_c.group(1) if _c else '??'}"
+          f"  cta -> {END_CTA + ' -> /join?from=story' if asks else 'Continue'}")
 missing = [c for c in ("s-door", "s-painting", "s-fleet", "s-afternoon",
                        "s-scroll", "s-coil", "s-basket", "s-pharos")
            if f"s-{c.split('s-')[-1]}" not in page]
