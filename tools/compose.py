@@ -81,18 +81,30 @@ art_page = re.sub(r'<!doctype html>\s*|<html[^>]*>\s*|</html>\s*', "", art_page,
 
 looked_up = check_ids(site_page, "story.html")
 site_page = cleanlinks(rootify(site_page))
-(SITE / "story.html").write_text(site_page)
 
-# The illustrated story lives at three paths on purpose: /story is what has
-# already been shared, /cleopatra is the one to put in a bio, and /firststory
-# is the generic alias. Real pages rather than redirects — a stub that shadows
-# a real page is what broke sign-in, and SPEC.md §2.4 now forbids it.
+# THIS NO LONGER WRITES TO THE SITE.
+#
+# /story, /cleopatra and /firststory used to be this composed page: CSS scenes
+# and animation instead of the museum plates every other story is told on. It
+# reads as a different product, and the decision is that the flagship is not
+# shown that way unless it is carrying the real paintings.
+#
+# Those three URLs are still real pages — /story is already out in the world
+# and /cleopatra is the one in the bio, so 404ing them was never an option and
+# SPEC.md 2.4 forbids a redirect stub. They are built from read.html now, with
+# window.FB_STORY set to "01", and they show the reader on ten real plates.
+#
+# The build is kept because it still runs, still passes its checks, and is the
+# thing to come back to if the scenes are ever redrawn on the artwork. It
+# writes to build/ only. Nothing under build/ is served.
+(BUILD_EARLY := SITE / "build").mkdir(exist_ok=True)
+(BUILD_EARLY / "story.html").write_text(site_page)
 for _name, _canon in (("cleopatra.html", "/cleopatra"), ("firststory.html", "/firststory")):
     _t = re.sub(r'<link rel="canonical" href="https://factbox\.app/[^"]*">',
                 f'<link rel="canonical" href="https://factbox.app{_canon}">', site_page)
     _t = re.sub(r'<meta property="og:url" content="https://factbox\.app/[^"]*">',
                 f'<meta property="og:url" content="https://factbox.app{_canon}">', _t)
-    (SITE / _name).write_text(_t)
+    (BUILD_EARLY / _name).write_text(_t)
 # The front page is the shelf now, not the story: someone arriving cold from a
 # search sees fifty-one covers, and the story is the thing you link to.
 
@@ -103,7 +115,7 @@ print(f"id lookups verified            : {', '.join(looked_up)}")
 print(f"painting placeholders replaced : {n_plate}")
 print(f"scene files                    : {', '.join(SCENE_FILES)}")
 print(f"scene blocks found             : {len(re.findall(r'class=.scene s-', page))}")
-for name, txt in (("story.html (site)", site_page), ("build/artifact_story.html", art_page)):
+for name, txt in (("build/story.html", site_page), ("build/artifact_story.html", art_page)):
     print(f"{name:22s} {len(txt)//1024}KB")
 missing = [c for c in ("s-door", "s-painting", "s-fleet", "s-afternoon",
                        "s-scroll", "s-coil", "s-basket", "s-pharos")

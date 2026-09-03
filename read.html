@@ -71,7 +71,12 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
   /* Not URLSearchParams: it is absent on the older in-app webviews this site
      targets, and it sat on a top-level line, so its absence emptied the page. */
   var m = /[?&]s=([^&#]*)/.exec(location.search);
-  var id = m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
+  /* No ?s= means the page was reached by one of the story's own URLs —
+     /cleopatra, /story, /firststory — which are real pages built from this
+     one and set FB_STORY before it runs. Those paths were the composed
+     animated page until now; they are the reader on the real paintings. */
+  var id = m ? decodeURIComponent(m[1].replace(/\+/g, " "))
+             : String(window.FB_STORY || "");
 
   /* Which cards carry the second artwork. Nearly every card in a stack shares
      the hero plate, which is why a stack costs one image to read; the
@@ -154,8 +159,41 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     });
   }
 
-  Promise.all([FB.load(), accessSettled()]).then(function (r) {
-    var stacks = r[0];
+  /* Decide from the index; fetch the season only to render cards.
+
+     This page opened on FB.load() — data/stacks.json, every card of all
+     fifty-one stories, 413KB — before it could draw anything at all. A LOCKED
+     story spent the whole download to discover it was locked and then drew a
+     paywall: a third of a megabyte, on cellular, to be told no.
+
+     data/index.json is 16KB and carries what the decision needs — the story
+     exists, its title, whether it is free. So the wall is drawn from that and
+     the season is never requested. A reader who CAN read pays for it, once,
+     on the branch that is about to put words on the screen.
+
+     The second step re-finds the story in the full data rather than trusting
+     the record from the index: they are different objects and only one has
+     card bodies on it. */
+  Promise.all([FB.loadIndex(), accessSettled()]).then(function (r) {
+    var idx = r[0] || [];
+    var w = String(id == null ? "" : id).toUpperCase(), meta = null, m;
+    for (m = 0; m < idx.length; m++) {
+      if (String(idx[m].id).toUpperCase() === w) { meta = idx[m]; break; }
+    }
+    if (meta && !meta.free && !FB.unlocked()) {
+      document.title = meta.title + " · Factbox";
+      deck.innerHTML = paywall(meta);
+      var payBtn = document.getElementById("pay");
+      if (payBtn) payBtn.addEventListener("click", function () {
+        FB.checkout(this, "paywall");
+      });
+      FB.track("paywall_view", { stack: meta.id });
+      try { if (window.FBX && FBX.correct) FBX.correct(false); } catch (e) {}
+      return null;
+    }
+    return FB.load();
+  }).then(function (stacks) {
+    if (!stacks) return;
     var want = String(id == null ? "" : id).toUpperCase();
     var i = -1;
     for (var q = 0; q < stacks.length; q++) {
