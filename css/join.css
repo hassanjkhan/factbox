@@ -67,6 +67,15 @@
   padding:var(--top-safe) 18px calc(var(--bottom-safe) + 8px);
   display:flex; flex-direction:column;
 }
+/* The rule this file's own header (point 3) says every hideable thing must
+   ship — and the one place it was forgotten, on the container that matters
+   most. `display:flex` above is (0,1,0) and beats the user agent's
+   `[hidden]{display:none}`, so `stop()` setting the attribute changed
+   nothing: the onboarding stayed 932px tall with hidden="true" on it, and
+   "Already have an account? Sign in" opened the sign-in panel 1279px further
+   down the page, below the fold, behind an onboarding that had not moved.
+   The reader tapped, saw the same screen, and concluded the button was dead. */
+.ob[hidden]{display:none !important}
 
 /* --- chrome: a wordmark, a thin bar, and a Back arrow. Nothing else. ------ */
 
@@ -507,3 +516,28 @@ body.ob-on .lib{padding:0; max-width:none}
   .ob{padding-top:calc(var(--top-safe) + 24px)}
   .ob-stage{padding-top:clamp(24px, 9vh, 90px)}
 }
+
+/* ==========================================================================
+   The [hidden] twins, for every class in this file that sets a display.
+
+   Point 3 of this file's own header says each one must ship with its class,
+   and one was missed — `.ob` — which is how "Already have an account? Sign
+   in" came to do nothing visible: the attribute was set, `display:flex` beat
+   the user agent's `[hidden]{display:none}`, and the onboarding stayed on
+   screen with the sign-in panel opening below the fold behind it.
+
+   So the rest are declared here rather than left to be remembered one at a
+   time. An element that never carries the attribute is unaffected; the cost
+   of a rule that never matches is nothing, and the cost of the missing one
+   was a dead-looking button on the way into the funnel.
+   ========================================================================== */
+.ob-arc[hidden],
+.ob-centre[hidden],
+.ob-opts[hidden],
+.ob-row[hidden],
+.ob-stage[hidden],
+.ob-steps[hidden],
+.ob-swap[hidden],
+.ob-tick[hidden],
+.ob-top[hidden]{display:none !important}
+
