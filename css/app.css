@@ -310,6 +310,13 @@ html.is-endcard .fb-sound-note{
   display:none !important;
 }
 
+/* The account pill goes too. Everything else on this pane points at the next
+   story; "Sign in" is the one control that points away from it, and it is
+   floating over a screen built to carry a single action. It is still on every
+   other pane of the reader, and on every other page. No !important here —
+   nothing writes this one inline, unlike the save button. */
+html.is-endcard .topbar-r{display:none}
+
 /* End-of-stack card and the paywall share a centred column. */
 .pane{
   height:100vh; height:100dvh;
