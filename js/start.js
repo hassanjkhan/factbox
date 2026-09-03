@@ -207,6 +207,40 @@ var FBSTART = (function () {
     p.appendChild(el("p", "st-sub",
       "Factbox turns the people and events you want to know into short, " +
       "addictive stories you can finish in minutes."));
+
+    /* The proof block.
+
+       EVERY FIGURE BELOW IS UNSOURCED. Nothing in this repo measures recall,
+       confidence or knowledge, and no survey has been run — so until these
+       come from something real they are a claim about customers made without
+       evidence, which is a different thing from a promise about the product.
+       See the note in the commit; do not ship this screen as-is. */
+    var proof = el("div", "st-proof");
+    proof.appendChild(el("p", "st-proof-h",
+      "Factbox users remember 4.2\u00d7 more of what they learn."));
+
+    var rows = [
+      { fig: "92%",  pct: 92, label: "feel more knowledgeable" },
+      { fig: "87%",  pct: 87, label: "feel more confident in conversations" },
+      { fig: "4.2\u00d7", pct: 100, label: "more information remembered", big: true }
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var row = el("div", "st-proof-r" + (r.big ? " is-big" : ""));
+      row.appendChild(el("b", null, r.fig));
+      var t = el("div", "st-proof-t");
+      t.appendChild(el("span", null, r.label));
+      var track = el("div", "st-proof-bar");
+      var fill = el("i");
+      fill.style.width = r.pct + "%";
+      track.appendChild(fill);
+      track.setAttribute("aria-hidden", "true");
+      t.appendChild(track);
+      row.appendChild(t);
+      proof.appendChild(row);
+    }
+    p.appendChild(proof);
+
     p.appendChild(el("div", "st-spacer"));
     var go = el("button", "go", "Continue");
     go.type = "button";
@@ -246,8 +280,8 @@ var FBSTART = (function () {
         setTimeout(function () {
           h.textContent = "Your personalised feed is ready.";
           line.textContent = "";
-          try { setTimeout(function () { location.href = "/join"; }, 700); }
-          catch (e2) { location.href = "/join"; }
+          try { setTimeout(function () { location.href = "/today"; }, 700); }
+          catch (e2) { location.href = "/today"; }
         }, 1900);
       } catch (e) { location.href = "/join"; }
     };

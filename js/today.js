@@ -50,7 +50,16 @@ var FBT = (function () {
     var whole = Math.floor(m), half = (m - whole) >= .5;
     return (whole ? whole : "") + (half ? (whole ? "½" : "½") : "") + " min";
   }
-  function href(s) { return "/read?s=" + encodeURIComponent(str(s.id)); }
+  /* The site's own convention, copied rather than reinvented: js/explore.js,
+     stories.html, js/library.js and js/recommend.js all link this way, and
+     story 01 is not a deck at all — it is the composed page at /cleopatra.
+     Linking it to /read?s=01 sent readers to a second, thinner copy of the
+     flagship story. */
+  function href(s) {
+    var id = str(s.id);
+    if (id === "01") return "/cleopatra";
+    return "/read?s=" + encodeURIComponent(id);
+  }
 
   /* ---- the taxonomy -------------------------------------------------------
      js/explore.js publishes the group names on window.FBTAX; this mirror is
@@ -60,7 +69,7 @@ var FBT = (function () {
   var TOPICS = [
     { key: "cleopatra",       name: "Cleopatra" },
     { key: "new_testament",   name: "The New Testament" },
-    { key: "church_history",  name: "Devils, saints and heresies" },
+    { key: "church_history",  name: "Saints and sinners" },
     { key: "old_testament",   name: "The Old Testament" },
     { key: "us_history",      name: "America" },
     { key: "ancient_world",   name: "The ancient world" },

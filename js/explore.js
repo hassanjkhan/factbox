@@ -94,7 +94,7 @@
       note: "her death, her tomb, her reputation" },
     { key: "new_testament",  name: "The New Testament",      lower: "the New Testament",
       note: "Jesus, Paul, Peter, Mary Magdalene" },
-    { key: "church_history", name: "Devils, saints and heresies", lower: "devils, saints and heresies",
+    { key: "church_history", name: "Saints and sinners", lower: "saints and sinners",
       note: "what the early church argued about" },
     { key: "old_testament",  name: "The Old Testament",      lower: "the Old Testament",
       note: "the Ark, the scrolls, the kings" },
