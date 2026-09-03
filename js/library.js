@@ -271,7 +271,9 @@
       fail("Could not load the stories. Reload the page.");
       return;
     }
-    G.load().then(function (stacks) {
+    /* Covers only, so the covers index is enough; it falls back to the full
+       corpus on its own if the split files are not deployed. */
+    (G.loadIndex ? G.loadIndex() : G.load()).then(function (stacks) {
       try {
         _stacks = (stacks && stacks.length) ? stacks : [];
         render(_stacks);

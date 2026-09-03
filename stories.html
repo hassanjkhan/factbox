@@ -78,113 +78,230 @@
 (function () {
   var shelf = document.getElementById("shelf");
   var bar   = document.getElementById("buybar");
-  var open = false;
 
-  /* One clock. FBX.ready() settles when access is genuinely knowable — after
-     the subscription snapshot, not just after sign-in. Rendering before it
-     paints padlocks over stories the reader has paid for. */
-  function whenAccess() {
-    try { if (window.FBX && FBX.ready) return FBX.ready(); } catch (e) {}
-    return Promise.resolve();
+  /* ----------------------------------------------------------------------
+     A cover does not depend on who is asking. A padlock does.
+
+     This used to be Promise.all([data, FBX.ready()]) — every cover, every
+     title, every thumbnail held back until the account had answered. For a
+     signed-in reader that answer waits on the Firebase module downloading
+     from gstatic, an auth handshake and a Firestore subscription snapshot.
+     Measured on this machine with the gate answering in six seconds, the
+     first cover appeared at 13.0s. None of that is needed to draw a picture
+     and a title.
+
+     So the shelf draws itself the moment the index lands, with NO padlocks,
+     and the access answer only decorates it afterwards. The direction
+     matters and is not symmetric: starting with no padlock and adding one
+     when the answer says "locked" is safe, because the failure mode is a
+     reader briefly seeing a cover they cannot open yet. Starting with
+     padlocks and removing them is the bug this file has already shipped
+     twice — a paying reader looking at locks on stories they bought.
+
+     Nothing here reflows when the answer lands for a signed-out reader:
+     .lock and .freetag are absolutely positioned inside .plate, .buybar is
+     fixed, and the meta line stays one line either way. See css/app.css.
+     ---------------------------------------------------------------------- */
+
+  var STACKS = null;
+  var drewOpen = false;     /* what the thing on screen was actually built from */
+  var settledOnce = false;
+
+  function metaLine(s) {
+    return s.cards.length + " cards · " + FB.minutes(s.secs);
   }
 
-
+  /* Drawn open: no padlock on anything. The access answer adds them. */
   function card(s) {
-    var locked = !s.free && !open;
     var st = FBP.state(s.id, s.cards.length);
     var href = "/read?s=" + encodeURIComponent(s.id);
     /* Stack 01 is the fully illustrated version and lives at the front page,
        so its cover points there rather than at the generic reader. */
     if (s.id === "01") href = "/cleopatra";
     return '' +
-      '<a class="card is-' + st.status + (locked ? " locked" : "") + '" href="' + href + '">' +
+      '<a class="card is-' + st.status + '" href="' + href + '"' +
+         ' data-id="' + FB.esc(s.id) + '"' +
+         ' data-free="' + (s.free ? "1" : "") + '"' +
+         ' data-meta="' + FB.esc(metaLine(s)) + '">' +
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
                'src="/img/thumbs/' + FB.esc(s.img) + '.webp">' +
-          (locked
-            ? '<span class="lock" aria-hidden="true">🔒</span>'
-            : (s.free ? '<span class="freetag">FREE</span>' : '')) +
-          (!locked && st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
+          (s.free ? '<span class="freetag">FREE</span>' : '') +
+          (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + FB.esc(s.title) + '</h3>' +
-        '<p class="meta">' + (!locked && st.label ? FB.esc(st.label)
-            : s.cards.length + ' cards · ' + FB.minutes(s.secs)) + '</p>' +
+        '<p class="meta">' + (st.label ? FB.esc(st.label) : FB.esc(metaLine(s))) + '</p>' +
       '</a>';
   }
 
-  function section(title, note, items) {
+  function section(id, title, note, items) {
     if (!items.length) return "";
-    return '<div class="sechead"><h2>' + FB.esc(title) + '</h2>' +
+    return '<div class="sechead" id="sechead-' + id + '"><h2>' + FB.esc(title) + '</h2>' +
            '<span>' + FB.esc(note) + '</span></div>' +
-           '<div class="grid">' + items.map(card).join("") + '</div>';
+           '<div class="grid" id="grid-' + id + '">' + items.map(card).join("") + '</div>';
   }
 
-  Promise.all([FB.load(), whenAccess()]).then(function (_r) {
-    var stacks = _r[0];
-    open = FB.unlocked();
-    var free   = stacks.filter(function (s) { return s.free; });
-    var rest   = stacks.filter(function (s) { return !s.free; });
+  function resumeHTML() {
+    /* One answer to "where was I". continueReading already filters stacks the
+       reader cannot open, so this can never offer a locked story. */
+    var cont = null;
+    try { cont = FBP.continueReading(STACKS); } catch (e) { cont = null; }
+    if (!cont) return "";
+    var href = cont.id === "01" ? "/cleopatra" : cont.href;
+    return '<a class="resume" href="' + href + '">' +
+      '<div class="plate"><img alt="" src="/img/thumbs/' + FB.esc(cont.stack.img) + '.webp"></div>' +
+      '<div class="t"><b>' + FB.esc(cont.stack.title) + '</b>' +
+      '<span>' + FB.esc(cont.label) + '</span></div>' +
+    '</a>';
+  }
 
-    /* One answer to "where was I". continueReading already filters locked
-       stacks, so this can never offer something the reader cannot open. */
-    var cont = FBP.continueReading(stacks);
-    var resume = "";
-    if (cont) {
-      var href = cont.id === "01" ? "/cleopatra" : cont.href;
-      resume =
-        '<a class="resume" href="' + href + '">' +
-          '<div class="plate"><img alt="" src="/img/thumbs/' + FB.esc(cont.stack.img) + '.webp"></div>' +
-          '<div class="t"><b>' + FB.esc(cont.stack.title) + '</b>' +
-          '<span>' + FB.esc(cont.label) + '</span></div>' +
-        '</a>';
-    }
+  /* The first paint. Free stories first, then the rest — which is also the
+     order the stacks already come in, so the open view is the same grid with
+     one heading instead of two and nothing moves. */
+  function draw() {
+    var free = STACKS.filter(function (s) { return s.free; });
+    var rest = STACKS.filter(function (s) { return !s.free; });
+    shelf.innerHTML = resumeHTML() +
+      section("free", "Start here", "free", free) +
+      section("rest", "The rest of season one", rest.length + " stories", rest);
+  }
 
-    if (open) {
-      shelf.innerHTML = resume + section("All stories", stacks.length + " in season one", stacks);
-      bar.hidden = true;
-      document.getElementById("blurb").textContent =
-        "You have all fifty-one. New stories are added through the season.";
+  function cards() {
+    try { return [].slice.call(shelf.querySelectorAll(".card")); } catch (e) { return []; }
+  }
 
-      /* The buyer's only bridge to another browser. Access lives in this
-         browser's storage, so without this link a reader who paid in the
-         Instagram browser and later opens Safari has lost it. */
-      var url = FBP.restoreURL();
-      if (url) {
-        var box = document.createElement("div");
-        box.className = "keep";
-        box.innerHTML =
-          '<b>Keep this link</b>' +
-          '<p>It re-opens your stories on any phone or browser. Email it to yourself.</p>' +
-          '<input readonly aria-label="Your restore link" value="' + FB.esc(url) + '">' +
-          '<button type="button" id="cp">Copy link</button>' +
-          '<p class="fine">' + FB.esc(FBP.RESTORE_NOTE) + '</p>' +
-          '<p class="fine" style="margin-top:10px">' +
-            'Manage or cancel your subscription in the ' +
-            '<a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">billing portal</a>.</p>';
-        shelf.parentNode.insertBefore(box, shelf);
-        box.querySelector("#cp").addEventListener("click", function () {
-          var self = this, inp = box.querySelector("input");
-          try {
-            inp.select();
-            if (navigator.clipboard) navigator.clipboard.writeText(url);
-            else document.execCommand("copy");
-            self.textContent = "Copied";
-          } catch (e) { self.textContent = "Select and copy the link above"; }
-        });
+  /* The answer came back "not a subscriber". Decorate, in place. */
+  function applyLocked() {
+    var list = cards();
+    for (var i = 0; i < list.length; i++) {
+      var a = list[i];
+      if (a.getAttribute("data-free")) continue;
+      if (a.className.indexOf("locked") !== -1) continue;
+      a.className += " locked";
+      var plate = a.querySelector(".plate");
+      if (plate && !plate.querySelector(".lock")) {
+        var lock = document.createElement("span");
+        lock.className = "lock";
+        lock.setAttribute("aria-hidden", "true");
+        lock.textContent = "🔒";
+        plate.appendChild(lock);
       }
-    } else {
-      shelf.innerHTML = resume +
-        section("Start here", "free", free) +
-        section("The rest of season one", rest.length + " stories", rest);
-      bar.hidden = false;
+      /* A locked cover shows neither progress bar nor progress label — the
+         same rule the one-shot render used. */
+      var rb = a.querySelector(".readbar");
+      if (rb && rb.parentNode) rb.parentNode.removeChild(rb);
+      var meta = a.querySelector(".meta");
+      if (meta) meta.textContent = a.getAttribute("data-meta") || "";
     }
-    /* Only now — with the shelf actually drawn — may the page ask to be
-       corrected. FBX.correct() takes the answer this render was built from and
-       owns the rest: better answer only, once per tab, ever. Registering it up
-       at the top of this script instead is what made /stories reload forever. */
-    try { if (window.FBX && FBX.correct) FBX.correct(open); } catch (e) {}
+    try { bar.hidden = false; } catch (e) {}
+  }
 
+  /* The answer came back "may read everything". Consolidate the two headings
+     into the one the open shelf has always shown, by MOVING the cards rather
+     than rebuilding them — the thumbnails on screen are never re-requested. */
+  function applyOpen() {
+    try { bar.hidden = true; } catch (e) {}
+    var g1 = document.getElementById("grid-free");
+    var g2 = document.getElementById("grid-rest");
+    var h1 = document.getElementById("sechead-free");
+    var h2 = document.getElementById("sechead-rest");
+    if (g1 && g2) {
+      while (g2.firstChild) g1.appendChild(g2.firstChild);
+      if (g2.parentNode) g2.parentNode.removeChild(g2);
+    }
+    if (h1) {
+      var t = h1.querySelector("h2"), n = h1.querySelector("span");
+      if (t) t.textContent = "All stories";
+      if (n) n.textContent = STACKS.length + " in season one";
+    }
+    if (h2 && h2.parentNode) h2.parentNode.removeChild(h2);
+
+    try {
+      var blurb = document.getElementById("blurb");
+      if (blurb) blurb.textContent =
+        "You have all fifty-one. New stories are added through the season.";
+    } catch (e) {}
+
+    /* A subscriber's "continue reading" may have been filtered out of the
+       first paint, because at that moment the answer was not yet known. */
+    try {
+      if (!shelf.querySelector(".resume")) {
+        var html = resumeHTML();
+        if (html) {
+          var holder = document.createElement("div");
+          holder.innerHTML = html;
+          if (holder.firstChild) shelf.insertBefore(holder.firstChild, shelf.firstChild);
+        }
+      }
+    } catch (e) {}
+
+    keepBox();
+  }
+
+  /* The buyer's only bridge to another browser. Access lives in this browser's
+     storage, so without this link a reader who paid in the Instagram browser
+     and later opens Safari has lost it. */
+  function keepBox() {
+    try {
+      if (document.querySelector(".keep")) return;
+      var url = FBP.restoreURL();
+      if (!url) return;
+      var box = document.createElement("div");
+      box.className = "keep";
+      box.innerHTML =
+        '<b>Keep this link</b>' +
+        '<p>It re-opens your stories on any phone or browser. Email it to yourself.</p>' +
+        '<input readonly aria-label="Your restore link" value="' + FB.esc(url) + '">' +
+        '<button type="button" id="cp">Copy link</button>' +
+        '<p class="fine">' + FB.esc(FBP.RESTORE_NOTE) + '</p>' +
+        '<p class="fine" style="margin-top:10px">' +
+          'Manage or cancel your subscription in the ' +
+          '<a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">billing portal</a>.</p>';
+      shelf.parentNode.insertBefore(box, shelf);
+      box.querySelector("#cp").addEventListener("click", function () {
+        var self = this, inp = box.querySelector("input");
+        try {
+          inp.select();
+          if (navigator.clipboard) navigator.clipboard.writeText(url);
+          else document.execCommand("copy");
+          self.textContent = "Copied";
+        } catch (e) { self.textContent = "Select and copy the link above"; }
+      });
+    } catch (e) {}
+  }
+
+  /* The shelf draws covers, not card text: data/index.json, a quarter the
+     size, with the same fallback to the full corpus. */
+  (FB.loadIndex ? FB.loadIndex() : FB.load()).then(function (stacks) {
+    STACKS = (stacks && stacks.length) ? stacks : [];
+    if (!STACKS.length) throw new Error("no stacks");
+
+    draw();                       /* covers on screen now, no padlocks */
     FB.track("library_view");
+
+    /* And now the access answer, whenever it turns up, in place. Both
+       directions are repaired here, so no page reload is needed and none is
+       registered: FBX.correct() exists for pages that CANNOT repair
+       themselves, and reloading a shelf that has already corrected itself
+       would only throw away the covers it just drew. */
+    function settle(allowed) {
+      if (settledOnce && allowed === drewOpen) return;
+      settledOnce = true;
+      drewOpen = allowed;
+      if (allowed) applyOpen(); else applyLocked();
+    }
+
+    var painted = false;
+    try {
+      if (window.FBX && FBX.paint) {
+        painted = true;
+        FBX.paint(function (allowed) { settle(!!allowed); });
+      }
+    } catch (e) { painted = false; }
+    /* No FBX at all — an old cached access.js, or a webview that dropped it.
+       Fall back to the synchronous answer rather than leaving the shelf in
+       its undecided state forever. */
+    if (!painted) { try { settle(!!FB.unlocked()); } catch (e) { settle(false); } }
   }).catch(function (e) {
     shelf.innerHTML = '<p class="fine" style="margin-top:28px">' +
       "Could not load the stories. Check your connection and reload." + '</p>';

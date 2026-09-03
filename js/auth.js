@@ -313,6 +313,28 @@
   var billingD = defer();
   var sdkD     = defer();   /* resolves with sdk, or with null on failure */
 
+  /* Settles once, on the first billing answer this page ever gets, and is
+     never replaced.
+
+     billingD IS replaced: onUser() swaps in a fresh deferred every time the
+     signed-in identity changes, so a caller asking afterwards waits for that
+     user's entitlement rather than the previous one's. That is correct, and
+     it is also what made every page on this site take exactly CAP_MS.
+
+     billingReady() used to hand out billingD.promise. access.js grabs it as
+     soon as window.FBU exists — about 50ms in, long before Firebase has
+     reported an auth state. onUser() then threw that deferred away and
+     resolved its replacement. The promise access.js was still holding was
+     left dangling forever, FBX.ready() fell through to its 7-second cap, and
+     the first card of every story waited the full seven seconds behind a
+     gate that had in fact answered at about 600ms.
+
+     A promise already handed to a caller has to keep resolving after the
+     internals move on underneath it, so billingReady() returns this one.
+     Later changes of answer were never this promise's job: they arrive
+     through onPremium(), which is what FBX.onChange() listens to. */
+  var billingFirstD = defer();
+
   function settleReady() {
     authKnown = true;
     readyD.resolve(curUser);
@@ -320,13 +342,14 @@
   function settleBilling() {
     billingKnown = true;
     billingD.resolve(premiumFlag);
+    billingFirstD.resolve(premiumFlag);
   }
 
   try { W.setTimeout(function () {
     if (!readyD.done) { timedOut = true; settleReady(); }
     /* The pathological case: the SDK loaded but never reported an auth
        state. Nothing may wait on billingReady() forever either. */
-    if (!billingD.done) { settleBilling(); }
+    if (!billingD.done || !billingFirstD.done) { settleBilling(); }
   }, READY_MS); } catch (e) {}
 
   /* ======================================================================
@@ -929,7 +952,8 @@
     try { readyD.promise.then(function (u) { try { fn(u); } catch (e) {} }); }
     catch (e) { try { fn(null); } catch (e2) {} }
   }
-  function billingReady() { return billingD.promise; }
+  /* The one that survives onUser() replacing billingD underneath it. */
+  function billingReady() { return billingFirstD.promise; }
 
   var FBU = {
     __factbox: true,

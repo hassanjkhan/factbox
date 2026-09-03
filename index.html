@@ -110,7 +110,9 @@
            '<div class="grid">' + items.map(card).join("") + '</div>';
   }
 
-  FB.load().then(function (stacks) {
+  /* The shelf draws covers, not card text: data/index.json, a quarter the
+     size, with the same fallback to the full corpus. */
+  (FB.loadIndex ? FB.loadIndex() : FB.load()).then(function (stacks) {
     var free   = stacks.filter(function (s) { return s.free; });
     var rest   = stacks.filter(function (s) { return !s.free; });
 

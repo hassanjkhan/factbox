@@ -537,9 +537,20 @@
     busy(eOut, "Signing out…");
     try {
       FBU.signOut().then(function () {
-        idle(eOut);
-        try { if (window.FB && FB.track) FB.track("signout"); } catch (x) {}
-        paint();
+      /* Out means out, and out means gone from here.
+
+         Two things had to change. The browser-level unlock in localStorage
+         survives a Firebase sign-out — nothing about signing out touches
+         localStorage — so a browser that had ever been unlocked stayed
+         unlocked: every story readable, no padlock on any cover. FBX owns
+         that flag, so FBX clears it.
+
+         And staying on this page after signing out leaves the reader looking
+         at their own account, which is the one screen that has nothing left
+         to say. replace(), not href, so Back does not return to it. */
+      try { if (window.FBX && FBX.forgetLegacy) FBX.forgetLegacy(); } catch (x) {}
+      try { if (window.FB && FB.track) FB.track("signout"); } catch (x) {}
+      try { location.replace("/"); } catch (x) { location.href = "/"; }
       }, function () { idle(eOut); paint(); });
     } catch (e) { idle(eOut); paint(); }
   });

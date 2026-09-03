@@ -1066,7 +1066,8 @@
   function loadFirstStory() {
     try {
       if (!window.FB || !FB.load) return;
-      FB.load().then(function (stacks) {
+      /* One title, off the covers index rather than the whole corpus. */
+      (FB.loadIndex ? FB.loadIndex() : FB.load()).then(function (stacks) {
         try {
           if (!stacks || !stacks.length) return;
           var pick = null, i;

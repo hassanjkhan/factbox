@@ -6,6 +6,36 @@
 <title>Factbox</title>
 <meta name="theme-color" content="#0E0B12">
 <meta name="robots" content="noindex">
+<!-- The story's own file, requested from the first line of the head.
+
+     A <link rel=preload as=fetch> was tried here first and measured as a
+     second download: a preload only serves a request whose mode matches it,
+     and the one FB.loadStory() makes does not. So this issues the real
+     request instead and hands the promise on. gate.js adopts it rather than
+     asking again, which is one request, started before gate.js has even been
+     fetched — a whole round trip earlier on a cold webview.
+
+     Nothing depends on this. No fetch, no match, a rejection: gate.js falls
+     through to asking for itself, and then to the full corpus. -->
+<script>
+(function () {
+  try {
+    if (!window.fetch) return;
+    var m = /[?&]s=([A-Za-z0-9_-]{1,24})(?:&|#|$)/.exec(location.search || "");
+    if (!m) return;
+    var id = m[1].toUpperCase();
+    var p = fetch("/data/story/" + id + ".json", { cache: "force-cache" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      });
+    /* A rejection nobody has subscribed to yet is still a rejection, and an
+       unhandled one logs an error in the console of a page that is fine. */
+    p["catch"](function () {});
+    window.FB_STORY_PRE = { id: id, p: p };
+  } catch (e) {}
+})();
+</script>
 <link rel="stylesheet" href="/css/app.css">
 <link rel="stylesheet" href="/css/recommend.css">
 <link rel="stylesheet" href="/css/scenes.css">
@@ -156,43 +186,52 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     });
   }
 
-  Promise.all([FB.load(), accessSettled()]).then(function (r) {
-    var stacks = r[0];
-    var want = String(id == null ? "" : id).toUpperCase();
-    var i = -1;
-    for (var q = 0; q < stacks.length; q++) {
-      if (String(stacks[q].id).toUpperCase() === want) { i = q; break; }
-    }
+  /* --------------------------------------------------------------------
+     What has to be in hand before the first card can be read — and what
+     does not.
+
+     This was Promise.all([FB.load(), accessSettled()]): the entire 413KB
+     corpus AND the access gate, both resolved, before a single word was
+     drawn. Both were the wrong thing to wait for.
+
+     The corpus: one story is 12KB. FB.loadStory() fetches only that, and
+     falls back to the monolith if the split file is not there.
+
+     The gate: two of the fifty-one stories are free, and they are the two
+     every new reader arrives on. Nothing about a free story depends on who
+     is asking, so a free story no longer waits for the account to answer at
+     all. A locked story still waits — drawing its text before the gate has
+     spoken is exactly the bug this wait exists to prevent, and it stays
+     prevented.
+     -------------------------------------------------------------------- */
+
+  function notInSeason() {
     /* A wrong id used to replace() straight to the shelf, which also ate the
        back entry, so the reader could not undo their own typo. */
-    if (i === -1) {
-      deck.innerHTML =
-        '<section class="pane"><h1>That story is not in this season.</h1>' +
-        '<p>The link may be mistyped.</p>' +
-        '<a class="ghost" href="/stories">All stories</a></section>';
-      return;
-    }
-    var s = stacks[i];
-    document.title = s.title + " · Factbox";
+    deck.innerHTML =
+      '<section class="pane"><h1>That story is not in this season.</h1>' +
+      '<p>The link may be mistyped.</p>' +
+      '<a class="ghost" href="/stories">All stories</a></section>';
+  }
 
-    /* Asked after the wait above, so this is the account's answer and not a
-       guess made before it arrived. */
-    if (!s.free && !FB.unlocked()) {
-      deck.innerHTML = paywall(s);
-      document.getElementById("pay").addEventListener("click", function () {
-        FB.checkout(this, "paywall");
-      });
-      FB.track("paywall_view", { stack: s.id });
+  function showPaywall(s) {
+    deck.innerHTML = paywall(s);
+    document.getElementById("pay").addEventListener("click", function () {
+      FB.checkout(this, "paywall");
+    });
+    FB.track("paywall_view", { stack: s.id });
 
-      /* Belt and braces. If premium lands after the wait gave up — a slow
-         snapshot, a cold Firestore, a phone that just woke up — the reader is
-         looking at a wall they have already paid to pass. The wall is what was
-         drawn, so that is what gets passed in; FBX.correct owns the rest, and
-         owns it for every page, so this cannot become a reload loop the way
-         the hand-rolled version on the shelf did. */
-      try { if (window.FBX && FBX.correct) FBX.correct(false); } catch (e) {}
-      return;
-    }
+    /* Belt and braces. If premium lands after the wait gave up — a slow
+       snapshot, a cold Firestore, a phone that just woke up — the reader is
+       looking at a wall they have already paid to pass. The wall is what was
+       drawn, so that is what gets passed in; FBX.correct owns the rest, and
+       owns it for every page, so this cannot become a reload loop the way
+       the hand-rolled version on the shelf did. */
+    try { if (window.FBX && FBX.correct) FBX.correct(false); } catch (e) {}
+  }
+
+  function render(s) {
+    var io = null;
 
     /* One plate per card. The stack hero is only the fallback for a card the
        manifest did not cover, so a missing row degrades to the old behaviour
@@ -202,18 +241,12 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
                    : beat(c, s.img, s.cap, s.cr, n, s);
     }).join("");
 
-    /* The end of a story is the highest-intent moment on the site, so it is
-       a real panel of recommendations rather than one arbitrary next story. */
     var h1 = document.createElement("h1");
     h1.className = "sr-title";
     h1.textContent = s.title;
     document.body.insertBefore(h1, document.body.firstChild);
 
     deck.innerHTML = html;
-    if (window.FBR && FBR.endPanel) {
-      var panel = FBR.endPanel(s, stacks, { n: 3 });
-      if (panel) deck.appendChild(panel);
-    }
     FB.track("stack_open", { stack: s.id });
 
     /* Saving lives beside the back button: the two things you do to a story
@@ -250,7 +283,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
        nothing that can throw runs before this point. */
     var beats = [].slice.call(deck.querySelectorAll(".beat, .pane"));
     if (window.IntersectionObserver) {
-      var io = new IntersectionObserver(function (es) {
+      io = new IntersectionObserver(function (es) {
         for (var k = 0; k < es.length; k++) {
           es[k].target.classList.toggle("live", es[k].isIntersecting);
         }
@@ -301,6 +334,55 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
       if (!d) return;
       e.preventDefault();
       goTo(deck.scrollTop + d * deck.clientHeight);
+    });
+
+    /* The end of a story is the highest-intent moment on the site, so it is
+       a real panel of recommendations rather than one arbitrary next story.
+
+       It needs every stack to choose from, and it sits below a dozen
+       full-screen cards, so it is the one thing here worth fetching after
+       the deck is on screen rather than before. The index is a quarter the
+       size of the corpus it replaced, and nothing above this line waits for
+       it. If it never arrives the story still reads to the end; only the
+       recommendations are missing. */
+    if (window.FBR && FBR.endPanel && FB.loadIndex) {
+      FB.loadIndex().then(function (stacks) {
+        var panel = FBR.endPanel(s, stacks, { n: 3 });
+        if (!panel) return;
+        deck.appendChild(panel);
+        if (io) { try { io.observe(panel); } catch (e) {} }
+        else panel.classList.add("live");
+      }).catch(function () {});
+    }
+  }
+
+  /* Guarded, like every other entry point on this site: an HTML file can be
+     fresh while a cached gate.js is not, and a missing helper must cost a
+     reader a slower page, never a blank one. */
+  function storyPromise() {
+    if (FB.loadStory) return FB.loadStory(id);
+    var want = String(id == null ? "" : id).toUpperCase();
+    return FB.load().then(function (stacks) {
+      for (var q = 0; q < stacks.length; q++) {
+        if (String(stacks[q].id).toUpperCase() === want) return stacks[q];
+      }
+      return null;
+    });
+  }
+
+  storyPromise().then(function (s) {
+    if (!s) { notInSeason(); return; }
+    document.title = s.title + " · Factbox";
+
+    /* Free is free for everyone. There is no question for the gate to answer,
+       so nothing here asks it. */
+    if (s.free) { render(s); return; }
+
+    /* Locked. Asked after the wait, so this is the account's answer and not a
+       guess made before it arrived. */
+    return accessSettled().then(function () {
+      if (!FB.unlocked()) { showPaywall(s); return; }
+      render(s);
     });
   }).catch(function () {
     deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +

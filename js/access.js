@@ -49,7 +49,30 @@ var FBX = (function () {
     try { return localStorage.getItem(k); } catch (e) { return null; }
   }
 
-  function legacy() { return store("fb_unlocked_v1") === "1"; }
+  var LEGACY_KEY = "fb_unlocked_v1";
+  function legacy() { return store(LEGACY_KEY) === "1"; }
+
+  /* Signing out has to take this with it.
+
+     `legacy` means "this browser bought access before accounts existed" — it
+     is a flag in localStorage, and nothing about signing out of Firebase
+     touches localStorage. So a browser that had ever been unlocked stayed
+     unlocked forever: sign out, and every story was still readable and no
+     cover on the shelf wore a padlock, because the account was gone but the
+     flag was not.
+
+     Only ever called from an explicit sign-out. NOT from "the current identity
+     is signed out", which is also true for the first ~600ms of every page load
+     before Firebase has answered — clearing on that would wipe the flag of a
+     genuine legacy reader who has no account to sign into.
+
+     Someone who really did buy before accounts existed and has now signed out
+     of one gets their access back from their restore link, which is what that
+     link is for. */
+  function forgetLegacy() {
+    try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+    announce();
+  }
 
   function fbu() {
     try { return (window.FBU && window.FBU.premium) ? window.FBU : null; }
@@ -203,9 +226,14 @@ var FBX = (function () {
      ------------------------------------------------------------------------ */
   var ONCE = "fbx_corrected_v1";
   function correct(drew) {
-    if (drew) return;                    /* already the best answer there is  */
+    drew = !!drew;
     onChange(function (allowed) {
-      if (!allowed) return;
+      /* Both directions. Locked -> unlocked is a reader looking at a wall they
+         have paid to pass. Unlocked -> locked is the other one, and it is the
+         one that costs us money: sign out on a story and the page kept the
+         text on screen, because nothing redrew it. Anything that still agrees
+         with what was drawn is not a correction and must not reload. */
+      if (allowed === drew) return;
       try {
         if (sessionStorage.getItem(ONCE) === "1") return;
         sessionStorage.setItem(ONCE, "1");
@@ -233,6 +261,7 @@ var FBX = (function () {
     isSubscriber: isSubscriber,
     isLegacy: legacy,
     onChange: onChange,
+    forgetLegacy: forgetLegacy,
     settled: function () { return settled; },
     CAP_MS: CAP_MS
   };

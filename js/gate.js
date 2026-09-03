@@ -167,7 +167,17 @@ var FB = (function () {
        may reach the URL. Anything else never gets fetched. */
     if (!want || !/^[A-Z0-9_-]{1,24}$/.test(want)) return fromAll();
     if (_cache) return fromAll();       /* already paid for the monolith */
-    return getJSON("/data/story/" + want + ".json")
+
+    /* read.html issues this exact request from its <head>, before this file
+       has been fetched. Adopting that promise is a round trip earlier on a
+       cold webview, and it is the same request rather than a second one. */
+    var pre = null;
+    try {
+      if (window.FB_STORY_PRE && window.FB_STORY_PRE.id === want
+          && window.FB_STORY_PRE.p) pre = window.FB_STORY_PRE.p;
+    } catch (e) {}
+
+    return (pre || getJSON("/data/story/" + want + ".json"))
       .then(function (d) {
         if (!d || !d.stack || !d.stack.cards || !d.stack.cards.length) {
           throw new Error("empty story");
@@ -204,7 +214,7 @@ var FB = (function () {
        reader came here for — it reads as a disclaimer on work we chose. The
        artist still gets their name.
 
-       The other 33 plates are CC BY or CC BY-SA, where naming and linking the
+       The other 34 plates are CC BY or CC BY-SA, where naming and linking the
        licence is the term that makes using them lawful. That stays, on the
        card, not just on the credits page. Removing it would not be a tidier
        design, it would be using someone's photograph against its terms. */

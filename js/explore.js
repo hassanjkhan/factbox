@@ -11,7 +11,7 @@
      FB/FBP is guarded, and a failure renders a sentence a reader can act on
      rather than an empty page. This site has shipped blank twice.
    - ES5 only: var and function. No modules, no build step, no network beyond
-     FB.load()'s one fetch of data/stacks.json.
+     FB.loadIndex()'s one fetch of data/index.json.
    - It does not define or redefine FB or FBP. If progress.js never loaded,
      every cover simply renders unread.
    ========================================================================== */
@@ -529,19 +529,51 @@
       } catch (e) {}
     }
 
-    var _wait = (window.FBX && FBX.ready) ? FBX.ready() : Promise.resolve();
-    Promise.all([FB.load(), _wait]).then(function (_r) {
-      var stacks = _r[0];
+    /* Covers and a headline search index — data/index.json carries both and
+       leaves the card bodies on the server. Falls back to the full corpus.
+
+       This is the same file the shelf fetches, at the same URL, so a reader
+       arriving here from /stories inside the ten minutes GitHub Pages allows
+       gets it from the disk cache rather than the network. That is the whole
+       of "reuse what the home page loaded": one URL, fetched once.
+
+       It is no longer gated on the account. Explore is a browse-and-search
+       surface — the search box has to answer on the first keystroke, and
+       neither a cover nor a search result depends on who is asking. The whole
+       corpus this page searches is in hand as soon as this resolves, so no
+       keystroke ever waits on a fetch.
+
+       OPEN starts true so nothing is padlocked before the answer arrives.
+       Locks are added when it lands, never removed — a reader briefly seeing
+       a cover they cannot open yet is a smaller wrong than a paying reader
+       looking at padlocks on stories they bought. */
+    (FB.loadIndex ? FB.loadIndex() : FB.load()).then(function (stacks) {
       try {
-        OPEN = unlocked();
-        if (buybar) buybar.hidden = OPEN;
         STACKS = (stacks && stacks.length) ? stacks : [];
         if (!STACKS.length) { fail(); return; }
+        OPEN = true;
+        if (buybar) buybar.hidden = true;
         buildIndex();
         if (chips) { chips.innerHTML = chipHTML(); syncChips(); }
         render();
         track("explore_view");
-      } catch (e) { fail(); }
+      } catch (e) { fail(); return; }
+
+      /* The account's answer, whenever it turns up, as one more redraw. This
+         surface already redraws on every keystroke and every chip, so the
+         redraw costs nothing anyone can perceive. */
+      function settle(allowed) {
+        try {
+          if (OPEN === !!allowed) return;
+          OPEN = !!allowed;
+          if (buybar) buybar.hidden = OPEN;
+          render();
+        } catch (e) {}
+      }
+      try {
+        if (window.FBX && FBX.paint) FBX.paint(function (a) { settle(!!a); });
+        else settle(!!unlocked());
+      } catch (e) { try { settle(!!unlocked()); } catch (e2) {} }
     })["catch"](function () { fail(); });
   }
 
