@@ -61,9 +61,13 @@ body{background:var(--ground); color:var(--parchment)}
   width:100%; max-width:520px; margin:18px auto 0;
   min-height:52px; padding:14px 18px;
   border:0; border-radius:var(--pill); cursor:pointer;
-  background:var(--parchment); color:#221A2A;
-  font-family:var(--ui); font-size:1.02rem; font-weight:700;
-  box-shadow:0 8px 26px rgba(0,0,0,.42);
+  /* Light blue, not --parchment. That token used to be near-white, which is
+     what a Google button wants; on paper it is navy, so the button turned into
+     dark text on a dark ground. The shadow lightened with it — a 42% black
+     glow was drawn for a button floating on night. */
+  background:var(--butter); color:var(--parchment);
+  font-family:var(--ui); font-size:1.02rem; font-weight:600;
+  box-shadow:0 6px 18px rgba(29,49,89,.18);
   transition:transform .15s ease, filter .15s ease;
 }
 .au-prov:active{transform:translateY(1px) scale(.99)}
