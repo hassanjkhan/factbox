@@ -77,7 +77,6 @@
       <a href="/library">Library</a>
       <span class="acct" id="fb-acct"></span></nav>
     <h1>Account</h1>
-    <p id="ac-blurb">How you sign in, what your plan is, and when it renews.</p>
   </header>
 
   <div class="au-wait" id="ac-wait" role="status" hidden>
@@ -101,32 +100,12 @@
         <dt>Signed in as</dt>
         <dd id="ac-email">your account</dd>
       </div>
-      <div class="au-row">
-        <dt>How you sign in</dt>
-        <dd id="ac-prov">Email and password</dd>
-      </div>
-      <div class="au-row">
-        <dt>Plan</dt>
-        <dd>
-          <span class="au-pill is-off" id="ac-pill">FREE</span>
-          <small id="ac-plan">The two free stories. The other forty-nine are locked.</small>
-        </dd>
-      </div>
-      <div class="au-row" id="ac-when-row" hidden>
-        <dt id="ac-when-t">Renews</dt>
-        <dd id="ac-when">—</dd>
-      </div>
-      <div class="au-row" id="ac-cost-row" hidden>
-        <dt>Price</dt>
-        <dd id="ac-cost">—</dd>
-      </div>
     </dl>
 
     <p class="au-say" id="ac-note" hidden role="status"></p>
     <p class="jn-err" id="ac-err" hidden role="alert"></p>
 
-    <a class="go" id="ac-read" href="/explore"
-       style="text-align:center;text-decoration:none;line-height:1.2;margin-top:18px">Read all fifty-one stories</a>
+
 
     <!-- Cancelling is Stripe's job, on Stripe's page, with Stripe's record of
          what was charged. A cancel button here that only sets a flag would be
@@ -137,11 +116,7 @@
     <!-- A reader who came looking for the privacy policy nearly always wants
          one of the other two within the next thirty seconds, so all three sit
          together, above the sign-out button rather than below it. -->
-    <p class="fine" id="ac-legal" style="text-align:center;justify-content:center">
-      <a href="/privacy">Privacy policy</a> ·
-      <a href="/terms">Terms</a> ·
-      <a href="/support">Support</a>
-    </p>
+
 
     <button class="au-2nd" id="ac-out" type="button">Sign out</button>
   </section>
@@ -285,17 +260,8 @@
 
   var eName  = el("ac-name");
   var eEmail = el("ac-email");
-  var eProv  = el("ac-prov");
-  var ePill  = el("ac-pill");
-  var ePlan  = el("ac-plan");
-  var eWhenR = el("ac-when-row");
-  var eWhenT = el("ac-when-t");
-  var eWhen  = el("ac-when");
-  var eCostR = el("ac-cost-row");
-  var eCost  = el("ac-cost");
   var eNote  = el("ac-note");
   var eErr   = el("ac-err");
-  var eRead  = el("ac-read");
   var ePortal= el("ac-portal");
   var eOut   = el("ac-out");
 
@@ -345,75 +311,29 @@
      three: the billing read did not come back at all — offline, denied, or
      Firestore slow. That says so, rather than reporting "Free" to somebody
      who is paying. */
+  /* All that is left of the plan block: which billing button to show.
+
+     The pill, the plan sentence and the renewal and price rows are gone. They
+     were this page's own retelling of what Stripe already knows, and a second
+     telling can only ever disagree with the first — a reader who wants the
+     detail taps Manage billing and gets Stripe's record of what was actually
+     charged, which is the only version that can be right. */
   function paintPlan() {
-    var prem = false, sub = null, known = false;
+    var sub = null, prem = false, known = false;
     try { prem = !!FBU.premium(); } catch (e) {}
     try { sub = FBU.subscription(); } catch (e) {}
     try { known = !!FBU.billingKnown(); } catch (e) {}
 
-    show(eWhenR, false);
-    show(eCostR, false);
     show(ePortal, false);
-
-    if (!known) {
-      cls(ePill, "au-pill is-off");
-      text(ePill, "CHECKING");
-      text(ePlan, "Looking up your plan…");
-      return;
-    }
-
+    if (!known) return;
     if (!prem) {
-      cls(ePill, "au-pill is-off");
-      text(ePill, "FREE");
-      text(ePlan, "Two stories are open. The other forty-nine unlock with a subscription — three days free first.");
-      text(eRead, "Read the free stories");
-      /* Somebody who cancelled still has a subscription row for a while. If
-         they are between "cancelled" and "period end", the portal is still
-         the right button to show them. With no subscription at all there is
-         nothing to cancel, and the honest offer is the plans. */
+      /* Cancelled but still inside the paid period still has something to
+         manage. With no subscription at all there is nothing to cancel. */
       if (sub) { text(ePortal, "Cancel plan or manage billing"); show(ePortal, true); }
       return;
     }
-
-    text(eRead, "Read all fifty-one stories");
-    /* "Cancel" is only true when there is a subscription to cancel. A premium
-       account with no subscription row — comped, or granted by hand — still
-       gets the portal, because a paying reader must never be left without a
-       route to their own billing, but it does not promise a cancel button
-       that Stripe will not show them. */
     text(ePortal, sub ? "Cancel plan or manage billing" : "Manage billing");
     show(ePortal, true);
-
-    if (sub && sub.trialing) {
-      cls(ePill, "au-pill is-trial");
-      text(ePill, "TRIAL");
-      text(ePlan, "All fifty-one stories. Your free trial is running and nothing has been charged yet.");
-      var te = dateText(sub.trialEnd || sub.currentPeriodEnd);
-      if (te) {
-        text(eWhenT, sub.cancelAtPeriodEnd ? "Trial ends" : "Trial ends, first charge");
-        text(eWhen, te);
-        show(eWhenR, true);
-      }
-    } else if (sub) {
-      cls(ePill, "au-pill is-on");
-      text(ePill, "SUBSCRIBED");
-      text(ePlan, sub.cancelAtPeriodEnd
-        ? "All fifty-one stories. Your plan is set to end and will not renew."
-        : "All fifty-one stories, and everything added through the season.");
-      var ce = dateText(sub.currentPeriodEnd);
-      if (ce) {
-        text(eWhenT, sub.cancelAtPeriodEnd ? "Ends" : "Renews");
-        text(eWhen, ce);
-        show(eWhenR, true);
-      }
-    } else {
-      cls(ePill, "au-pill is-on");
-      text(ePill, "SUBSCRIBED");
-      text(ePlan, "All fifty-one stories. There is no renewal date on file for this account, which is normal for an account opened by hand.");
-    }
-
-    var m = moneyText(sub);
-    if (m) { text(eCost, m); show(eCostR, true); }
   }
 
   function paint() {
@@ -446,11 +366,9 @@
 
     var mail = "", prov = "";
     try { mail = FBU.email() || "your account"; } catch (e) { mail = "your account"; }
-    try { prov = FBU.providerText(); } catch (e) { prov = "Email and password"; }
 
     text(eName, nameText());
     text(eEmail, mail);
-    text(eProv, prov);
 
     /* No verification row. A reader whose email is unverified can already read
        everything they have paid for, so the row only ever reported a fact
