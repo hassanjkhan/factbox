@@ -31,7 +31,7 @@
   -webkit-backdrop-filter:blur(16px) saturate(1.2);
   backdrop-filter:blur(16px) saturate(1.2);
   color:rgba(255,255,255,.94);
-  font-size:.8rem;font-weight:700;letter-spacing:.01em;
+  font-size:.8rem;font-weight:600;letter-spacing:.01em;
   transition:background .2s ease, border-color .2s ease,
              transform .12s ease, opacity .3s ease;
 }
@@ -104,7 +104,7 @@
   -webkit-backdrop-filter:blur(18px) saturate(1.2);
   backdrop-filter:blur(18px) saturate(1.2);
   color:rgba(255,255,255,.88);
-  font-size:.74rem;font-weight:600;line-height:1.4;letter-spacing:.005em;
+  font-size:.74rem;font-weight:500;line-height:1.4;letter-spacing:.005em;
   text-align:right;
   pointer-events:none;
   opacity:0;transform:translateY(-6px);

@@ -24,7 +24,13 @@
   --dim:rgba(255,247,237,.62);
   --dimmer:rgba(255,247,237,.52);
 
-  --ui:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  /* DM Sans, four weights: 700 headlines and card titles, 600 buttons,
+     500 labels and metadata, 400 body. The fallbacks are the rounded stack it
+     replaced, so a webview that blocks the font request still gets a face
+     rather than Times. display=swap, because the words are the product: they
+     appear immediately in the fallback instead of after a round trip on
+     cellular. */
+  --ui:"DM Sans",ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
 
   /* The bottom of an in-app webview is not ours. Nothing tappable and nothing
      that must be read sits below this line. */
@@ -61,11 +67,11 @@ img{max-width:100%;display:block}
 
 .mast{padding:22px 2px 6px}
 .mark{
-  font-size:.82rem; font-weight:900; letter-spacing:.34em;
+  font-size:.82rem; font-weight:700; letter-spacing:.34em;
   color:var(--coral); margin:0 0 14px;
 }
 .mast h1{
-  font-size:clamp(1.9rem,7vw,2.5rem); font-weight:850; margin:0 0 10px;
+  font-size:clamp(1.9rem,7vw,2.5rem); font-weight:700; margin:0 0 10px;
   line-height:1.08; letter-spacing:-.015em; text-wrap:balance;
 }
 .mast p{margin:0; color:var(--dim); font-size:1rem; line-height:1.5; max-width:44ch}
@@ -74,8 +80,8 @@ img{max-width:100%;display:block}
   display:flex; align-items:baseline; gap:10px;
   margin:34px 2px 14px; padding-top:18px; border-top:1px solid var(--hair);
 }
-.sechead h2{font-size:1.05rem; font-weight:800; margin:0; letter-spacing:-.01em}
-.sechead span{font-size:.82rem; color:var(--dimmer); font-weight:600}
+.sechead h2{font-size:1.05rem; font-weight:700; margin:0; letter-spacing:-.01em}
+.sechead span{font-size:.82rem; color:var(--dimmer); font-weight:500}
 
 /* Two up on a phone, more as the window allows. The cover is the pitch, so it
    gets the room; the title sits under it rather than over it, because a title
@@ -101,11 +107,11 @@ img{max-width:100%;display:block}
   width:100%; height:100%; object-fit:cover; object-position:center 32%;
 }
 .card h3{
-  font-size:.94rem; font-weight:750; margin:0; line-height:1.26;
+  font-size:.94rem; font-weight:600; margin:0; line-height:1.26;
   letter-spacing:-.008em;
 }
 .meta{
-  font-size:.76rem; color:var(--dimmer); font-weight:600;
+  font-size:.76rem; color:var(--dimmer); font-weight:500;
   font-variant-numeric:tabular-nums;
 }
 
@@ -124,7 +130,7 @@ img{max-width:100%;display:block}
   position:absolute; left:8px; top:8px;
   padding:3px 8px; border-radius:var(--pill);
   background:var(--coral); color:#2A1109;
-  font-size:.64rem; font-weight:900; letter-spacing:.09em;
+  font-size:.64rem; font-weight:700; letter-spacing:.09em;
 }
 
 /* The buy bar. Fixed, above the webview toolbar, and it never covers the last
@@ -141,7 +147,7 @@ img{max-width:100%;display:block}
   display:block; width:100%; max-width:520px; margin:0 auto;
   border:0; border-radius:var(--pill); cursor:pointer;
   background:var(--coral); color:#2A1109;
-  font-family:var(--ui); font-size:1.02rem; font-weight:850;
+  font-family:var(--ui); font-size:1.02rem; font-weight:600;
   padding:16px 20px; min-height:var(--tap);
   box-shadow:0 8px 26px rgba(232,95,65,.34);
   transition:transform .15s ease, filter .15s ease;
@@ -150,7 +156,7 @@ img{max-width:100%;display:block}
 .go[disabled]{background:var(--raise); color:var(--dim); box-shadow:none; cursor:default}
 .fine{
   margin:9px auto 0; max-width:520px; text-align:center;
-  font-size:.75rem; color:var(--dimmer); line-height:1.45;
+  font-size:.75rem; color:var(--dimmer); line-height:1.55; font-weight:400;
 }
 
 /* ==========================================================================
@@ -204,16 +210,17 @@ img{max-width:100%;display:block}
   .deck .copy{padding-right:62px}
 }
 .copy .eyebrow{
-  font-size:.7rem; font-weight:900; letter-spacing:.2em;
+  font-size:.7rem; font-weight:500; letter-spacing:.2em;
   color:var(--coral); margin:0 0 10px;
 }
 .copy h2{
-  font-size:clamp(1.35rem,5.2vw,1.7rem); font-weight:800; margin:0;
+  font-size:clamp(1.35rem,5.2vw,1.7rem); font-weight:700; margin:0;
   line-height:1.2; letter-spacing:-.014em; text-wrap:balance;
   text-shadow:0 2px 18px rgba(0,0,0,.55);
 }
 .copy p{
-  margin:12px 0 0; font-size:clamp(1rem,3.9vw,1.08rem); line-height:1.52;
+  margin:12px 0 0; font-size:clamp(1rem,3.9vw,1.08rem); line-height:1.62;
+  font-weight:400;
   color:rgba(255,247,237,.88); max-width:42ch;
   text-shadow:0 2px 14px rgba(0,0,0,.5);
 }
@@ -225,7 +232,7 @@ img{max-width:100%;display:block}
 .beat.is-landing .copy{bottom:calc(var(--bottom-safe) + 4vh)}
 
 .cite{
-  margin:14px 0 0; font-size:.74rem; line-height:1.45;
+  margin:14px 0 0; font-size:.74rem; line-height:1.55; font-weight:400;
   color:rgba(255,247,237,.5);
 }
 .cite a{color:rgba(255,247,237,.66)}
@@ -263,7 +270,7 @@ img{max-width:100%;display:block}
   min-height:38px; padding:0 14px 0 11px; border-radius:var(--pill);
   background:rgba(14,11,18,.6); backdrop-filter:blur(10px);
   box-shadow:inset 0 0 0 1px var(--hair);
-  font-size:.83rem; font-weight:700; text-decoration:none;
+  font-size:.83rem; font-weight:600; text-decoration:none;
   color:var(--parchment);
 }
 
@@ -320,10 +327,10 @@ html.is-endcard .fb-sound-note{
   max-width:560px; margin:0 auto; text-align:center;
 }
 .pane h2{
-  font-size:clamp(1.6rem,6.4vw,2.1rem); font-weight:850; margin:0;
+  font-size:clamp(1.6rem,6.4vw,2.1rem); font-weight:700; margin:0;
   line-height:1.14; letter-spacing:-.015em; text-wrap:balance;
 }
-.pane p{margin:0; color:var(--dim); font-size:1rem; line-height:1.55}
+.pane p{margin:0; color:var(--dim); font-size:1rem; line-height:1.62; font-weight:400}
 .pane .go{margin-top:8px}
 
 .nextrow{
@@ -332,12 +339,12 @@ html.is-endcard .fb-sound-note{
 }
 .nextrow .plate{width:78px; flex:0 0 78px; border-radius:11px}
 .nextrow .t{text-align:left}
-.nextrow .t b{display:block; font-size:.95rem; font-weight:780; line-height:1.25}
+.nextrow .t b{display:block; font-size:.95rem; font-weight:700; line-height:1.25}
 .nextrow .t span{font-size:.78rem; color:var(--dimmer)}
 
 .ghost{
   display:inline-block; margin-top:4px;
-  font-size:.9rem; font-weight:700; color:var(--dim);
+  font-size:.9rem; font-weight:600; color:var(--dim);
   text-decoration:none; padding:10px; min-height:var(--tap);
 }
 
@@ -354,7 +361,7 @@ html.is-endcard .fb-sound-note{
    these set at body scale and read as a paragraph, not a shouted headline. */
 .beat.is-long .copy h2{
   font-size:clamp(1.02rem,4vw,1.14rem);
-  font-weight:700; line-height:1.45; letter-spacing:0;
+  font-weight:600; line-height:1.45; letter-spacing:0;
   color:rgba(255,247,237,.93);
 }
 .beat.is-hook.is-long .copy h2{font-size:clamp(1.25rem,4.9vw,1.45rem); line-height:1.32}
@@ -375,10 +382,10 @@ html.is-endcard .fb-sound-note{
   content:"✓"; position:absolute; right:8px; bottom:8px;
   width:22px; height:22px; border-radius:var(--pill);
   background:var(--coral); color:#2A1109;
-  font-size:.72rem; font-weight:900; display:grid; place-items:center;
+  font-size:.72rem; font-weight:700; display:grid; place-items:center;
   box-shadow:0 2px 8px rgba(0,0,0,.4);
 }
-.card.is-reading .meta{color:var(--coral); font-weight:700}
+.card.is-reading .meta{color:var(--coral); font-weight:600}
 
 /* "Pick up where you left off" — one wide cover, not a grid cell, because it
    is a single answer to a single question. */
@@ -391,8 +398,8 @@ html.is-endcard .fb-sound-note{
 }
 .resume .plate{width:64px; flex:0 0 64px; border-radius:10px; aspect-ratio:3/4}
 .resume .t{min-width:0}
-.resume .t b{display:block; font-size:.98rem; font-weight:780; line-height:1.25}
-.resume .t span{font-size:.8rem; color:var(--coral); font-weight:650}
+.resume .t b{display:block; font-size:.98rem; font-weight:700; line-height:1.25}
+.resume .t span{font-size:.8rem; color:var(--coral); font-weight:500}
 
 /* --------------------------------------------------------------------------
    The restore link. Access lives in one browser's storage, so this link is the
@@ -403,7 +410,7 @@ html.is-endcard .fb-sound-note{
   border-radius:16px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
 }
-.keep b{display:block; font-size:.98rem; font-weight:800; margin-bottom:5px}
+.keep b{display:block; font-size:.98rem; font-weight:700; margin-bottom:5px}
 .keep p{margin:0 0 11px; font-size:.86rem; line-height:1.5; color:var(--dim)}
 .keep input{
   width:100%; margin-bottom:9px; padding:11px 12px;
@@ -414,7 +421,7 @@ html.is-endcard .fb-sound-note{
 .keep button{
   width:100%; min-height:var(--tap); border:0; border-radius:var(--pill);
   background:var(--coral); color:#2A1109; cursor:pointer;
-  font-family:var(--ui); font-size:.94rem; font-weight:800;
+  font-family:var(--ui); font-size:.94rem; font-weight:700;
 }
 .keep .fine{margin:9px 0 0; text-align:left}
 
@@ -436,18 +443,18 @@ html.is-endcard .fb-sound-note{
   position:relative; text-decoration:none;
   padding:10px 0; min-height:var(--tap);
   display:inline-flex; align-items:center;
-  font-size:.95rem; font-weight:700; letter-spacing:-.01em;
+  font-size:.95rem; font-weight:600; letter-spacing:-.01em;
   color:var(--dimmer);
   transition:color .16s ease;
 }
 .tabs a:hover{color:var(--dim)}
-.tabs a[aria-current="page"]{color:var(--parchment); font-weight:800}
+.tabs a[aria-current="page"]{color:var(--parchment); font-weight:700}
 .tabs a[aria-current="page"]::after{
   content:""; position:absolute; left:0; right:0; bottom:4px; height:2px;
   border-radius:2px; background:var(--coral);
 }
 .tabs .count{
-  margin-left:auto; font-size:.76rem; font-weight:650; color:var(--dimmer);
+  margin-left:auto; font-size:.76rem; font-weight:500; color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
 
@@ -476,7 +483,7 @@ html.is-endcard .fb-sound-note{
 .fbq-notice button{
   flex:none; border:0; cursor:pointer; border-radius:var(--pill);
   background:var(--coral); color:#2A1109;
-  font-family:var(--ui); font-size:.82rem; font-weight:800;
+  font-family:var(--ui); font-size:.82rem; font-weight:700;
   padding:9px 14px; min-height:var(--tap);
 }
 
@@ -508,7 +515,7 @@ html.fb-hdr .acct{visibility:hidden}
 .acct a{
   display:inline-flex; align-items:center; justify-content:center;
   min-height:var(--tap); padding:10px 0;
-  font-size:.88rem; font-weight:700; letter-spacing:-.01em;
+  font-size:.88rem; font-weight:600; letter-spacing:-.01em;
   color:var(--dimmer); text-decoration:none; white-space:nowrap;
 }
 /* `.tabs a` sets a display, which beats the UA stylesheet's rule for
@@ -522,14 +529,14 @@ html.fb-hdr .acct{visibility:hidden}
 .acct .acct-up{
   padding:0 13px; border-radius:var(--pill);
   box-shadow:inset 0 0 0 1px var(--hair);
-  color:var(--coral); font-weight:800;
+  color:var(--coral); font-weight:700;
 }
 /* The name is text, brighter than a tab, truncated rather than allowed to
    push the tabs sideways on a 390px screen. */
 .acct .acct-me{
   display:block; padding:0;
   min-height:var(--tap); line-height:var(--tap);
-  color:var(--parchment); font-weight:800;
+  color:var(--parchment); font-weight:700;
   max-width:14ch; overflow:hidden; text-overflow:ellipsis;
 }
 
@@ -570,7 +577,7 @@ html.fb-hdr .acct{visibility:hidden}
   -webkit-tap-highlight-color:transparent;
   box-shadow:inset 0 0 0 1px var(--hair);
   transition:color .16s ease, box-shadow .16s ease;
-}
+  font-weight:600;}
 .acct-btn:hover{color:var(--parchment)}
 .acct-wrap.is-open .acct-btn{color:var(--parchment); box-shadow:inset 0 0 0 1px rgba(255,247,237,.3)}
 .acct-btn:focus-visible{outline:2px solid var(--coral); outline-offset:3px}
@@ -584,13 +591,13 @@ html.fb-hdr .acct{visibility:hidden}
 }
 .acct-who{
   margin:0; padding:8px 12px 6px;
-  font-size:.72rem; font-weight:800; letter-spacing:.12em;
+  font-size:.72rem; font-weight:500; letter-spacing:.12em;
   text-transform:uppercase; color:var(--dimmer);
 }
 .acct-menu a{
   display:flex; align-items:center; min-height:var(--tap);
   padding:0 12px; border-radius:11px;
-  font-size:.96rem; font-weight:750; color:var(--parchment); text-decoration:none;
+  font-size:.96rem; font-weight:600; color:var(--parchment); text-decoration:none;
 }
 .acct-menu a:hover{background:rgba(255,247,237,.07); color:var(--parchment)}
 .acct-menu a:active{background:rgba(255,247,237,.1)}
@@ -605,7 +612,7 @@ html.fb-hdr .acct{visibility:hidden}
   min-height:38px; padding:0 13px; border-radius:var(--pill);
   background:rgba(14,11,18,.6); backdrop-filter:blur(10px);
   box-shadow:inset 0 0 0 1px var(--hair);
-  color:var(--parchment); font-size:.83rem; font-weight:700;
+  color:var(--parchment); font-size:.83rem; font-weight:600;
 }
 .acct.is-float .acct-me{
   min-height:38px; line-height:38px; max-width:11ch;

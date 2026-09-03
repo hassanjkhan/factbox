@@ -15,17 +15,17 @@
 .td{display:flex; flex-direction:column; gap:22px}
 
 .td-h1{
-  font-size:clamp(1.62rem,6.2vw,2.15rem); font-weight:850; margin:0;
+  font-size:clamp(1.62rem,6.2vw,2.15rem); font-weight:700; margin:0;
   line-height:1.13; letter-spacing:-.022em; text-wrap:balance;
 }
-.td-sub{margin:0; font-size:1rem; line-height:1.5; color:var(--dim); max-width:62ch}
+.td-sub{margin:0; font-size:1rem; line-height:1.62; font-weight:400; color:var(--dim); max-width:62ch}
 
 /* The streak line. Numbers a reader collects, stated once, small. */
 .td-stats{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .td-streak{display:inline-flex; align-items:center; gap:6px; color:var(--coral);
-  font-size:.95rem; font-weight:850}
+  font-size:.95rem; font-weight:700}
 .td-dot{width:3px; height:3px; border-radius:999px; background:rgba(255,247,237,.3)}
-.td-stat{font-size:.95rem; font-weight:750; color:var(--dim)}
+.td-stat{font-size:.95rem; font-weight:600; color:var(--dim)}
 
 /* --------------------------------------------------------------------------
    The hero. One story, given room: art, then the words under it.
@@ -52,14 +52,14 @@
 .td-hero-art img{width:100%; height:100%; object-fit:cover; object-position:center 30%}
 .td-hero-body{padding:18px 20px 20px; display:flex; flex-direction:column; gap:9px}
 .td-eyebrow{
-  font-size:.72rem; font-weight:850; letter-spacing:.16em; text-transform:uppercase;
+  font-size:.72rem; font-weight:500; letter-spacing:.16em; text-transform:uppercase;
   color:var(--coral); margin:0;
 }
 .td-hook{
-  margin:0; font-size:1.24rem; font-weight:850; line-height:1.2; letter-spacing:-.015em;
+  margin:0; font-size:1.24rem; font-weight:700; line-height:1.2; letter-spacing:-.015em;
 }
 .td-meta{
-  margin:0; font-size:.84rem; font-weight:650; color:var(--dimmer);
+  margin:0; font-size:.84rem; font-weight:500; color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
 .td-hero .go{
@@ -67,7 +67,7 @@
   /* .go is a <button> rule in app.css and this is a <span> inside a link, so
      it inherits the page's left alignment instead of centring its own label. */
   text-align:center;
-}
+  font-weight:600;}
 
 /* Resume: the same hero with a bar across it. */
 .td-bar{display:flex; align-items:center; gap:10px; margin-top:2px}
@@ -80,9 +80,9 @@
    -------------------------------------------------------------------------- */
 .td-sec{display:flex; flex-direction:column; gap:12px}
 .td-sec h2{
-  margin:0; font-size:1.16rem; font-weight:850; letter-spacing:-.012em;
+  margin:0; font-size:1.16rem; font-weight:700; letter-spacing:-.012em;
 }
-.td-sec h2 span{font-size:.84rem; font-weight:700; color:var(--dimmer); margin-left:9px}
+.td-sec h2 span{font-size:.84rem; font-weight:600; color:var(--dimmer); margin-left:9px}
 
 .td-shelf{
   display:flex; gap:13px; overflow-x:auto; overflow-y:hidden;
@@ -95,12 +95,12 @@
 .td-tile .plate img{object-position:center 32%}
 .td-cat{
   display:block; margin-top:8px;
-  font-size:.66rem; font-weight:850; letter-spacing:.15em; text-transform:uppercase;
+  font-size:.66rem; font-weight:500; letter-spacing:.15em; text-transform:uppercase;
   color:var(--coral);
 }
 .td-tile b{
   display:block; margin-top:4px;
-  font-size:1.04rem; font-weight:800; line-height:1.24; letter-spacing:-.008em;
+  font-size:1.04rem; font-weight:700; line-height:1.24; letter-spacing:-.008em;
   /* Three lines, then ellipsis. The hook is the sell, so it gets the room the
      title used to have, but a 300-character hook cannot own the shelf. */
   display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
@@ -116,7 +116,7 @@
 .td-chips{display:flex; flex-wrap:wrap; gap:9px; margin-left:-14px}
 .td-chip{
   display:inline-flex; align-items:center; min-height:46px; padding:0 14px;
-  border-radius:var(--pill); font-size:.98rem; font-weight:780;
+  border-radius:var(--pill); font-size:.98rem; font-weight:600;
   color:var(--parchment); text-decoration:none;
   box-shadow:inset 0 0 0 1px var(--hair);
 }
@@ -131,14 +131,14 @@
 }
 .td-row .plate{width:64px; flex:0 0 64px; border-radius:11px}
 .td-row-t{display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 1 auto}
-.td-row-t b{font-size:1.06rem; font-weight:830; line-height:1.2; letter-spacing:-.01em}
+.td-row-t b{font-size:1.06rem; font-weight:700; line-height:1.2; letter-spacing:-.01em}
 .td-chev{flex:0 0 auto; color:var(--dimmer)}
 
 /* Search, last: it is for someone who already knows what they want. */
 .td-search{
   display:flex; align-items:center; gap:10px; min-height:var(--tap); padding:0 16px;
   border-radius:var(--pill); color:var(--dimmer); text-decoration:none;
-  box-shadow:inset 0 0 0 1px var(--hair); font-size:.94rem; font-weight:650;
+  box-shadow:inset 0 0 0 1px var(--hair); font-size:.94rem; font-weight:500;
 }
 
 /* --------------------------------------------------------------------------
