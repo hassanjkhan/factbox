@@ -8,6 +8,12 @@ plain static server measures the server, not the site.
 import http.server, functools, os, sys
 class H(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
+        # Strip the query and fragment before resolving. SimpleHTTPRequestHandler
+        # already does this for a path that exists, but the /foo -> foo.html
+        # fallback below was seeing "read?s=44" as a filename and 404ing, which
+        # made a working page look broken for a whole agent run. Pages resolves
+        # the path and hands the query to the page; so does this now.
+        path = path.split("?", 1)[0].split("#", 1)[0]
         p = super().translate_path(path)
         if not os.path.exists(p) and not p.endswith(".html"):
             cand = p.rstrip("/") + ".html"

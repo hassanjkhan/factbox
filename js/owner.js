@@ -29,6 +29,25 @@ var FBO = (function () {
   var DIGEST = "4cd9f2f343df76be7e393eef9da6c7041e163724a80aacce7d636a54cace9de6";
   var MARK   = "fb_owner_v1";
 
+  /* When the mark was granted, and how long it stands.
+
+     Owner mode used to be permanent. It set the same fb_unlocked_v1 flag a
+     real purchase sets and then never expired, so a laptop that once typed
+     the passphrase was, to the rest of the site, indistinguishable from
+     somebody who had paid — for good. js/access.js now reports it as `owner`
+     rather than `legacy` and excludes it from FBX.owns(), and this is the
+     other half: a convenience for getting past your own paywall on a new
+     phone does not need to outlive the phone.
+
+     OWNER_DAYS is duplicated in js/access.js, which is the file that enforces
+     it. Two constants rather than a dependency, because access.js ships on
+     every page and this file ships on one; if they ever disagree, access.js
+     wins and the worst case is unlock.html saying "owner mode is on" about a
+     mark access.js has already stopped honouring. Change both. */
+  var MARK_AT    = "fb_owner_at_v1";
+  var OWNER_DAYS = 30;
+  var DAY_MS     = 86400000;
+
   function store(k, v) {
     try {
       if (v === undefined) return localStorage.getItem(k);
@@ -93,24 +112,53 @@ var FBO = (function () {
     catch (e) { return false; }
   }
 
-  /* Unlocking reuses the normal access path, so owner mode and a real purchase
-     are the same state to every other part of the site. */
+  /* Unlocking reuses the normal access path, so owner mode opens the site
+     exactly the way a purchase does. It is no longer the SAME state, though:
+     the mark below is what tells js/access.js to answer `owner` instead of
+     `legacy`, so nothing on the site tells the owner they bought a season
+     they wrote. */
   function grant() {
     try {
       if (window.FBP && FBP.unlock) FBP.unlock();
       localStorage.setItem("fb_unlocked_v1", "1");
     } catch (e) {}
     store(MARK, "1");
+    store(MARK_AT, String(Date.now()));
     return isOwner();
   }
 
-  function isOwner() { return store(MARK) === "1"; }
+  function granted() {
+    try {
+      var n = Number(store(MARK_AT));
+      return (isFinite(n) && n > 0) ? n : 0;
+    } catch (e) { return 0; }
+  }
+
+  /* An unstamped mark is a browser that was in owner mode before there was a
+     clock. It is stamped now rather than back-dated, so shipping this does
+     not lock the owner out of their own site mid-session. */
+  function isOwner() {
+    if (store(MARK) !== "1") return false;
+    var at = granted();
+    if (!at) { store(MARK_AT, String(Date.now())); return true; }
+    var age = Date.now() - at;
+    if (age < 0) { store(MARK_AT, String(Date.now())); return true; }
+    return age < OWNER_DAYS * DAY_MS;
+  }
 
   function revoke() {
     try {
       localStorage.removeItem(MARK);
+      localStorage.removeItem(MARK_AT);
       localStorage.removeItem("fb_unlocked_v1");
+      localStorage.removeItem("fb_unlocked_at_v1");
       if (window.FBP && FBP.lock) FBP.lock();
+      /* FBP.lock() clears the cookie mirror as well, and FBP is on every page
+         this file ships with — but "if it is loaded" is not a guarantee, and
+         a stale cookie heals fb_unlocked_v1 straight back into localStorage
+         on the next page load. Belt and braces, matching FBX.forgetLegacy(). */
+      document.cookie =
+        "fb_unlocked_v1=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
     } catch (e) {}
   }
 
@@ -127,5 +175,6 @@ var FBO = (function () {
   }
 
   return { check: check, grant: grant, revoke: revoke, isOwner: isOwner,
+           granted: granted, OWNER_DAYS: OWNER_DAYS,
            claimFromURL: claimFromURL, sha256: sha256 };
 })();
