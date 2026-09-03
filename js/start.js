@@ -126,10 +126,14 @@ var FBSTART = (function () {
     p.appendChild(el("p", "st-sub",
       "Five minutes a day. Addictive stories. The people, scandals, wars, and " +
       "ideas you’ll actually remember."));
-    /* Three real covers with their real hooks. A promise about "addictive
+  /* Three real covers with their titles. A promise about "addictive
        stories" is worth nothing next to three of them, and this is the only
-       screen in the flow where the reader has been given nothing yet. Filled
-       in after the fetch; if it never lands the screen is exactly what it was. */
+       screen in the flow where the reader has been given nothing yet.
+
+       Titles, not hooks: a hook is a sentence and three of them stacked in a
+       row this size is a paragraph the reader has to work through before they
+       have agreed to anything. A title is the thing being offered. Filled in
+       after the fetch; if it never lands the screen is exactly what it was. */
     var peek = el("div", "st-peek");
     p.appendChild(peek);
     fillPeek(peek);
@@ -150,6 +154,17 @@ var FBSTART = (function () {
   /* The three covers on the opening screen. Free stories first — the shelf a
      reader can actually open is the honest sample — and the hook rather than
      the title, because the hook is what the product sounds like. */
+  /* A trailing parenthetical is a disambiguator for a shelf full of Cleopatra
+     stories; on a card this size it is the difference between a title and an
+     ellipsis. Exactly one title in the catalogue has one — "How did Cleopatra
+     die? (the snake)" — and this drops it for THIS card only. The title in
+     data/stacks.json is untouched, it still reads in full everywhere else, and
+     changing it there is a content edit with two homes rather than a design one. */
+  function shortTitle(s) {
+    var t = String(s.title || s.hook || "");
+    return t.replace(/\s*\([^()]*\)\s*$/, "");
+  }
+
   function fillPeek(box) {
     try {
       if (!window.FB || !FB.load) return;
@@ -182,7 +197,7 @@ var FBSTART = (function () {
               this.src = "/img/stacks/" + String(s.img) + ".webp";
             };
             card.appendChild(img);
-            card.appendChild(el("p", null, String(s.hook || s.title)));
+            card.appendChild(el("p", null, shortTitle(s)));
             box.appendChild(card);
           }
           if (picks.length) box.className = "st-peek is-on";

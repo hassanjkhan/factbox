@@ -58,10 +58,11 @@
   box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 0 0 1px var(--hair);
 }
 .st-peek-c p{
-  margin:0; font-size:.78rem; font-weight:750; line-height:1.3;
-  letter-spacing:-.005em; color:var(--dim);
-  /* Three lines each, so the row stays level whatever the hooks run to. */
-  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  margin:0; font-size:.82rem; font-weight:800; line-height:1.28;
+  letter-spacing:-.008em; color:var(--parchment);
+  /* Two lines is enough for a title, and it keeps the row level whichever
+     three the catalogue hands over. */
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .st-q{
   margin:0; font-size:clamp(1.4rem,5.6vw,1.75rem); font-weight:850;
