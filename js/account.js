@@ -434,6 +434,8 @@ var FBA = (function () {
                                          howWeGotHere, tiktok)
        RELATES ← enum RelatableStatement (noTime, unfinished, stories)
        GOALS   ← enum DailyGoal          (5, 10, 20, 45 = "as long as it takes")
+                                         plus 15, which iOS does not have —
+                                         see the block above GOALS
        STREAKS ← enum StreakCommitment   (7, 14, 30, 50)
 
      The key names are shortened for the byte budget; the mapping is written
@@ -463,7 +465,39 @@ var FBA = (function () {
      mistaken for. js/profile-sync.js only mirrors a goal above zero, so this
      sentinel never reaches Firestore, where the rules require >= 0. */
   var GOAL_AUTO = -1;
-  var GOALS   = [GOAL_AUTO, 5, 10, 20, 45];
+
+  /* 15 IS NOT IN THE iOS DailyGoal ENUM. It is here anyway, and this is the
+     reason, written down because the next person to diff the two files will
+     otherwise "fix" it back out.
+
+     The web onboarding offers 5 / 10 / 15 minutes. The flow before it offered
+     20 instead of 15 for exactly one reason: 15 was not in this list, so
+     pickFrom() clamped it to 0 — this store's word for "nobody answered". A
+     screen that asks a question and silently discards the answer is worse
+     than a screen that does not ask it, and worse here than elsewhere,
+     because afterwards 0 and a skipped step are the same value.
+
+     There were two ways to make the stored number equal the tapped number.
+     Offering 20 makes the SCREEN follow the store; adding 15 makes the store
+     follow the reader. The reader wins, for three reasons that are checkable:
+
+       * It is additive. Every record already written (-1, 5, 10, 20, 45 and
+         0) parses exactly as it did, and no caller of goal() changes
+         behaviour for any value it could already be handed.
+       * firestore.rules bounds this field with smallInt("goalMinutes", 1440),
+         not an enum, so 15 mirrors through js/profile-sync.js with no rules
+         change and no denied write.
+       * The cost is one number of divergence from the phone app's enum, in
+         one direction only: the web can now store a minute count iOS does not
+         offer. Anything over there reading goalMinutes has always had to
+         treat it as minutes rather than as a case of DailyGoal, because the
+         rules have always allowed 1..1440.
+
+     EVERY MAP IN THIS REPO KEYED BY A GOAL NEEDS A "15" ROW, or a lookup
+     misses and a screen prints a number the reader did not pick. Today that
+     is GOAL_LABEL in js/start.js and GOAL_TEXT / GOAL_REINF in join.html.
+     Adding a value here means adding it there. */
+  var GOALS   = [GOAL_AUTO, 5, 10, 15, 20, 45];
   var STREAKS = [7, 14, 30, 50];
 
   var MOTIVES  = ["smarter", "understand", "conversation", "less_scrolling",

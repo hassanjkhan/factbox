@@ -23,12 +23,31 @@
       zero. The entitlement check is deliberately NOT cached: a cancelled
       subscriber should lose access on their next open, not ten minutes later.
       One read to be right about money is worth paying every time.
+
+   3. "Today's Factbox is free for everybody" is now a rule this function
+      enforces, not a claim the browser makes. It used to be worked out only in
+      js/access.js, from the reader's own clock — which is fine for drawing a
+      page and worthless as a boundary, because moving a device clock moved
+      which story was free. today.js owns the answer now: the server's clock,
+      the catalogue order, and an editorial override document nobody's browser
+      can write. This function asks that module rather than keeping a second
+      copy of the arithmetic, so the story the front page offers and the story
+      this function will hand over are the same story, by construction.
+
+      Nothing in the REQUEST touches that answer. Not a query parameter, not a
+      header, not a cookie, not a body, not a token. The only way to make a
+      different story free is to write `daily/{date}` in Firestore, which
+      firestore.rules denies to every browser in the world.
    ========================================================================== */
 
 const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const zlib = require("zlib");
+/* Which story is free today. NOT a second copy of the arithmetic — the module
+   that owns the answer, so this function and the /today endpoint cannot
+   disagree about what the front page just offered the reader. */
+const daily = require("./today");
 
 /* index.js initialises first when this is loaded through it; the guard is for
    the case where some future entry point loads this module on its own. */
@@ -175,6 +194,17 @@ async function getCatalogue(reads) {
   return remember("catalogue", snap.data());
 }
 
+/* Ids in filed order, handed to today.js so it uses the copy this function has
+   already paid for rather than reading `catalogue/v1` a second time. On a warm
+   instance that makes today's pick cost one read (the override document) and
+   often zero, because today.js memoises the whole answer for ten minutes. */
+async function catalogueIds(reads) {
+  const cat = await getCatalogue(reads);
+  const stacks = cat && Array.isArray(cat.stacks) ? cat.stacks : null;
+  if (!stacks || !stacks.length) return null;
+  return stacks.map((x) => String((x && x.id != null) ? x.id : "").toUpperCase());
+}
+
 async function getStory(reads, id) {
   const hit = cached("s:" + id);
   if (hit) return hit;
@@ -236,6 +266,38 @@ exports.story = onRequest(
          so — but never let a bad token turn a free story into an error. */
       res.set("Cache-Control", "public, max-age=300, s-maxage=300");
       return sendJSON(req, res, reads, 200, { ok: true, id: id, access: "free", story: story });
+    }
+
+    /* ---- today's story, free to everybody ------------------------------
+       The rule that used to live only in the browser. js/access.js still works
+       the pick out for itself so the front page paints instantly, but THIS is
+       the answer that decides whether text leaves the building, and it is
+       derived from the server's clock, the catalogue order and an editorial
+       override document — never from anything in this request. A reader who
+       moves their device clock changes what their own page draws and changes
+       nothing here.
+
+       Placed after the permanent `free` check and before the entitlement one,
+       so 01 and 02 keep their old cheap path and a paid story is still refused
+       on every day that is not its day. */
+    let todaysId = null;
+    try {
+      todaysId = await daily.todayId(reads, catalogueIds);
+    } catch (err) {
+      /* A failure here must not lock the reader out of a story they have paid
+         for: fall through to the entitlement check, which is the answer that
+         was correct before this block existed. It can only ever cost the free
+         reader today's story, never the subscriber theirs. */
+      logger.warn("today lookup failed", { message: err && err.message });
+    }
+
+    if (todaysId && id === todaysId) {
+      /* Cacheable, but never past the moment it stops being true. At UTC
+         midnight this story is paid again, and a shared cache holding a
+         200 for it would be giving away tomorrow's product. */
+      const ttl = Math.min(300, daily.secondsToMidnight());
+      res.set("Cache-Control", "public, max-age=" + ttl + ", s-maxage=" + ttl);
+      return sendJSON(req, res, reads, 200, { ok: true, id: id, access: "today", story: story });
     }
 
     let who = null;

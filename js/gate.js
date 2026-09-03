@@ -60,6 +60,91 @@ var FB = (function () {
     return store(KEY) === "1";
   }
 
+  /* --- Back, ten seconds after paying ------------------------------------
+
+     REPORTED: buy, land on the shelf with all fifty-one open, tap Back inside
+     the first few seconds — and the browser hands back the pre-purchase page,
+     every padlock and "Trade five minutes of scrolling" included. The
+     purchase looks undone. A refresh brings it back, which is worse than
+     useless: by then the reader has decided the site took their money.
+
+     Nothing on that page is stale in the ordinary sense. The back/forward
+     cache does not re-run a page, it thaws one: the DOM, the heap, and every
+     answer this file worked out at load are exactly as they were when the
+     reader left, and no script gets a turn to notice that the world moved
+     underneath them. The single event that does fire is pageshow with
+     event.persisted true. That is the whole hook, and this is it.
+
+     So the gate is ASKED AGAIN there — of storage, which is live, rather than
+     of the painted DOM, which is a photograph — and the page is corrected
+     only when the answer has actually got better since it was painted:
+
+       painted locked, now unlocked   the purchase, or a restore link opened
+                                      in another tab. Correct it.
+       anything else                  leave the page alone.
+
+     That is the site's render-then-correct rule in its bfcache form: the
+     direction this fires in is towards showing MORE, never less. It cannot
+     put a padlock on a page that is not wearing one.
+
+     WHY A RELOAD AND NOT A REPAINT IN PLACE. The padlocks belong to the shelf
+     that drew them, and this file does not own that markup. Reaching into it
+     from here would put a second, competing renderer on the page, which is
+     the exact shape of bug js/access.js exists to end. A reload is the same
+     correction FBX.correct() makes when a better answer lands late, and it is
+     what the reader already gets by pulling to refresh — measured working.
+
+     WHY THIS DOES NOT COST EVERYONE THEIR BACK BUTTON. bfcache is not turned
+     off. A pageshow listener does not disqualify a page from it; an unload or
+     beforeunload listener would, and there is none anywhere on this site. So
+     every ordinary back-navigation still thaws instantly. The only reader who
+     ever pays for a reload here is the one whose access changed while the
+     page was frozen, and they are paying it to be given what they bought.
+
+     IT CANNOT LOOP, and the guard is not a flag anybody has to remember to
+     set. `painted` is read once, at parse time, from the same storage: after
+     the reload it is true, so the condition is dead for the life of that
+     page. Reaching it a second time needs the flag to go back to 0 and up
+     again, which is a sign-out followed by a fresh unlock — a correction that
+     is owed. ES5 and wrapped throughout: a webview that fires no pageshow, or
+     refuses a reload, is one where nothing here happens at all. */
+
+  function unlockedRaw() {
+    /* Deliberately NOT unlocked() above. That one asks js/access.js, whose
+       answer is computed from an account state frozen at the same instant as
+       the DOM — it would say "no" on exactly the page this is here to fix.
+       The stored flag is the thing that actually changed under the snapshot,
+       and FBP reads both stores, so a webview that kept only the cookie still
+       gets its answer. */
+    try {
+      if (window.FBP && FBP.unlocked) return !!FBP.unlocked();
+    } catch (e) {}
+    return store(KEY) === "1";
+  }
+
+  var painted = unlockedRaw();
+
+  /* Exported so the behaviour can be driven in a harness that has no back
+     button. recheck(true) is "the browser just thawed this page". */
+  function recheck(persisted) {
+    if (!persisted) return false;
+    if (painted) return false;              /* nothing has changed */
+    if (!unlockedRaw()) return false;       /* still no access; leave it be */
+    painted = true;                         /* one correction per page, ever */
+    try {
+      setTimeout(function () { try { location.reload(); } catch (e) {} }, 0);
+    } catch (e2) {
+      try { location.reload(); } catch (e3) {}
+    }
+    return true;
+  }
+
+  try {
+    addEventListener("pageshow", function (ev) {
+      try { recheck(!!(ev && ev.persisted)); } catch (e) {}
+    }, false);
+  } catch (e) {}
+
   /* joinURL(from) — the funnel entrance, with a note of where the reader was
      when they asked. Relative, so it works on factbox.app, on a preview
      origin and on a local server without a build step.
@@ -241,7 +326,7 @@ var FB = (function () {
   }
 
   return { PAY_URL: PAY_URL, JOIN_URL: JOIN_URL, joinURL: joinURL,
-           unlocked: unlocked, checkout: checkout,
+           unlocked: unlocked, recheck: recheck, checkout: checkout,
            track: track, load: load, loadIndex: loadIndex, loadStory: loadStory,
            esc: esc, creditLine: creditLine,
            minutes: minutes };

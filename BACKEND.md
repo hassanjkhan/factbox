@@ -40,6 +40,8 @@ stories/{id}      51 docs   the full story, cards and all — no browser may rea
 catalogue/v1       1 doc    51 covers, titles, hooks, lengths, credits — public
 meta/content       1 doc    corpus version and counts — public
 customers/{uid}             unchanged; written by the Stripe webhook, read by the gate
+daily/{YYYY-MM-DD}          editorial override: which story is free that day — public read,
+                            no client write. Absent = the deterministic pick. §4b
 ```
 
 ### One document per story, not nine
@@ -268,6 +270,268 @@ immediately, or wait.
 
 ---
 
+## 4b. Which story is free today
+
+Today's Factbox is free to everybody, signed in or not. Until now that sentence lived only
+in `js/access.js`: the browser worked the pick out from its own UTC clock and the catalogue
+order, and `functions/story.js` knew nothing about it. That is fine for **drawing** a page
+and useless as a boundary — move the device clock and a different day's story unlocks — and
+it meant the one function that actually guards story text could not honour the one rule that
+gives text away.
+
+The answer now lives on the server. `functions/today.js` decides it; `functions/story.js`
+asks that same module rather than keeping a second copy; `js/access.js` consumes it and
+never depends on it.
+
+```
+https://us-central1-factbox-7cb97.cloudfunctions.net/today
+```
+
+### The request has no inputs
+
+That is the security property, so it is stated first. There is no `?date=`, no `?id=`, no
+header, no body, no cookie and no token that changes the answer. `GET /today` is a nullary
+function of the server's clock, `catalogue/v1`, and `daily/{YYYY-MM-DD}`. A debugging
+`?date=` was deliberately not built: on a public endpoint it is an attack surface with a
+friendly name.
+
+### Response
+
+```http
+GET /today
+```
+
+```json
+{
+  "ok": true,
+  "date": "2026-09-03",
+  "id": "38",
+  "index": 38,
+  "n": 51,
+  "source": "deterministic",
+  "until": 3623,
+  "story": {
+    "id": "38",
+    "title": "What killed Alexander the Great?",
+    "hook": "Alexander the Great died at 32, and nobody can agree on what killed him.",
+    "img": "s38",
+    "cap": "The Azara herm, Roman copy of a portrait of Alexander the Great by Lysippos, Musee du Louvre",
+    "secs": 183, "words": 260, "topic": "ancient_world", "free": false
+  }
+}
+```
+
+415 bytes. `source` is `"deterministic"` or `"editorial"`. `until` is seconds to the next UTC
+midnight, when the answer stops being true. `story` is the cover — a closed allowlist of nine
+fields, every one of which is already in `data/index.json` on the public web — so the front
+page needs no second round trip to draw the hero.
+
+Failures: `503 not_seeded` (uncached, `private, no-store`, because a cached 503 would keep a
+client on its fallback after the cause was fixed), `405 method_not_allowed`, `429 too_many`.
+
+### How the pick is made
+
+1. **The deterministic pick, always computed first.** UTC day number × a stride coprime with
+   the catalogue size, modulo it. n = 51 gives stride 31, so all 51 stories are visited
+   exactly once in 51 days with nothing to seed. Byte-for-byte the arithmetic in
+   `js/access.js`, which is what makes the client's guess and the server's ruling agree on
+   an ordinary day. **If you change one, change both.**
+2. **Then the editorial override**, if `daily/{YYYY-MM-DD}` exists and names a story that is
+   actually in the corpus. A missing document, a malformed one, a typo'd id, or a Firestore
+   failure all leave the deterministic pick standing and log a warning. A curation feature
+   must never be able to take down the thing it decorates.
+
+### Editorial override — how the owner uses it
+
+No deploy, no code, no CLI. In the [Firestore console](https://console.firebase.google.com/project/factbox-7cb97/firestore/data/~2Fdaily):
+
+1. Collection **`daily`**.
+2. Document ID: the **UTC date**, `YYYY-MM-DD`. Not the local date — the site's day rolls
+   over at UTC midnight, and `until` in the response says how long that is.
+3. One field, **`id`**, type **string**, the story id: `"44"`, `"07B"`, `"05"`. A string,
+   never a number (SPEC.md §5 — `07B` is not a number and `01` is not `1`).
+4. Optional: a `note` field for your future self. Nothing reads it.
+
+It takes effect within **two minutes** (`MEMO_TTL_MS`), on both `/today` and the `story`
+function. Delete the document and the deterministic pick returns, within the same two
+minutes. Measured end to end below.
+
+Filing tomorrow's row today is safe — the function only ever looks up the document whose id
+is today's date, so a row for a future date does nothing until that date.
+
+`firestore.rules`: **`match /daily/{date}` is `read: if true`, `write: if false`.** Readable
+by anyone because the answer is announced on the front page anyway; writable by no browser,
+because a client that could write here could nominate any of the 51 stories and then demand
+it from the `story` function — which honours this collection — and be handed the text for
+nothing. Verified: an unauthenticated `PATCH` to `daily/2026-09-03` returns
+`403 PERMISSION_DENIED`.
+
+### What `functions/story.js` now enforces
+
+The order in the handler is: permanently free (`01`, `02`) → **today's pick** → entitlement.
+
+| request | before | now |
+|---|---|---|
+| `GET /story?id=38` (today), no `Authorization` | `401 auth_required` | **`200`, `"access":"today"`, 8,631 bytes, full card text** |
+| `GET /story?id=44` (not today), no `Authorization` | `401 auth_required` | `401 auth_required` |
+| `GET /story?id=01`, no `Authorization` | `200 "access":"free"` | `200 "access":"free"` |
+| paid story, subscriber token | `200 "access":"subscriber"` | unchanged |
+
+Cache-Control on a `"today"` response is `public, max-age=min(300, seconds-to-UTC-midnight)`
+— cacheable, but never past the moment it stops being true, so no shared cache can be
+serving yesterday's free story into today.
+
+If the `today` lookup throws, `story.js` logs and falls through to the entitlement check —
+the answer that was correct before this existed. That failure can cost a signed-out reader
+today's story; it can never cost a subscriber theirs.
+
+### What an attacker can and cannot do
+
+**Can:**
+
+- Learn which story is free today. It is on the front page. It is not a secret and is not
+  defended as one.
+- Read today's story in full, without an account. That is the product decision this whole
+  section implements.
+- Read `daily/{date}` for any date directly out of Firestore, and so learn a curated pick
+  before it lands. Deemed acceptable: it is a public-domain painting and a headline.
+- Make **their own browser** draw an unlocked hero, by editing `localStorage.fbx_today_v1`
+  in dev tools. That was already true of every flag on this site and it buys them nothing:
+  `story.js` reads nothing the client sends when it decides which story is today's.
+
+**Cannot:**
+
+- Induce either function to declare a different story free. Every one of these was tried
+  against production and refused: `?id=44&today=44`, `?id=44&free=1&access=today`,
+  `?id=44&date=2026-09-14`, `X-Today: 44`, `X-Free: 1`, a spoofed `Date:` header, a JSON
+  body on a GET, a `Cookie: fb_today=44`, and `POST`/`PUT` (both `405`). The request carries
+  no input the answer is derived from, so there is nothing to smuggle.
+- Move the answer by moving a clock. The server reads its own clock. A reader with a wrong
+  device clock changes what their own page draws — and, because the client prefers a server
+  answer whenever it has one, usually not even that.
+- Forge entitlement. `bad_token` on a self-signed JWT; the `premium` read is unchanged.
+- Write `daily/{date}`. `403 PERMISSION_DENIED` from every browser, signed in or not.
+- Run up an unbounded bill. `maxInstances: 5` is the ceiling; per-IP 300/minute stops one
+  laptop in a loop; the memo means Firestore sees at most two reads per instance per two
+  minutes however hard the endpoint is hit.
+
+The per-IP limit is deliberately loose — carrier-grade NAT puts thousands of real readers
+behind one address and this endpoint is asked once per reader per **day**. A 429 is harmless
+anyway: the client treats it exactly like a timeout and falls back.
+
+### Cache strategy, and what it costs
+
+Three layers, in order of how much work each actually does.
+
+| layer | what it holds | lifetime |
+|---|---|---|
+| **`localStorage`, `fbx_today_v1`** | `{"d":"2026-09-03","id":"38"}`, keyed on the UTC date | the day |
+| **HTTP `Cache-Control`** | `public, max-age=120, s-maxage=120, stale-while-revalidate=86400` | 2 min fresh, 24 h stale-usable |
+| **in-instance memo** | the whole answer, and the catalogue for an hour | 2 min |
+
+The `localStorage` layer is the one that matters, and it is why this is not a per-page-load
+function invocation: the day's answer is read back **synchronously when `js/access.js`
+parses** — a memory read, not a request — so on every page load after the first of a new UTC
+day the endpoint is not called at all. Measured, second load of the day with the network
+blocked entirely: **0 calls to `/today`**, hero correct from the first frame.
+
+`s-maxage` and `stale-while-revalidate` are written correctly but do little today: there is
+**no Google-managed CDN in front of a bare `cloudfunctions.net` URL**. They are honoured by
+browsers and in-app webview caches, and putting Firebase Hosting or the Cloudflare worker in
+`cloudflare/` in front changes nothing but the hit rate. `stale-while-revalidate=86400` is
+the availability line: any shared cache that already holds an answer serves it instantly for
+a further day and refreshes underneath, so a slow or dead function is invisible behind one.
+
+Two minutes rather than "until midnight" is the deliberate compromise, and it is priced
+rather than guessed: the deterministic half of the answer changes once a day and could be
+held for hours, but the editorial half is a person typing into a console and reloading to
+see whether it worked. Two reads per instance per two minutes, across the worst case of
+every instance both functions may run (5 + 20), is 36,000 Firestore reads a day against a
+free allowance of 50,000 a day — so the whole editorial loop still costs nothing.
+
+**Cost at 1,000 readers a day** — 30,000 reader-days a month:
+
+| line | usage | free allowance | cost |
+|---|---|---|---|
+| `/today` invocations | 1,000/day = 30,000/mo | 2,000,000/mo | $0 |
+| `/today` egress | 415 B × 1,000/day ≈ 12.5 MB/mo | 1 GiB/mo | $0 |
+| Firestore reads (memo-bounded) | ≤ 2 per instance per 2 min; ≤ 36,000/day at max instances | 50,000/**day** | $0 |
+| compute (~120 ms × 30,000, 256 MiB) | ~900 GiB-s/mo | 360,000 GiB-s/mo | $0 |
+
+**$0.00/month.** The nearest line is 1.5% of its allowance. It stays $0 to roughly 65,000
+readers a day, where invocations reach 2M/month; past that they cost $0.40 per million, so
+100,000 readers a day is about **$0.40/month**.
+
+Measured live, off `X-Firestore-Reads`:
+
+| call | cold instance | warm instance |
+|---|---|---|
+| `GET /today` | 2 (catalogue + override doc) | **0** |
+| `GET /story?id=<today>` | 3 (story + catalogue + override) | **0** |
+| `GET /story?id=<paid>` anonymous | 1 | 1 |
+
+Latency: 1.35 s cold, **0.11 s** warm (five consecutive calls: 0.107, 0.125, 0.113, 0.123 s).
+
+### The fallback, and proof it holds
+
+**A backend that can break the front page is worse than the client calculation it
+replaces.** So `js/access.js` keeps the deterministic arithmetic, computes it first, and
+uses a server answer only when it actually has one in hand.
+
+- `todayOf()`, `todayId()` and `isToday()` stay **synchronous** and always return something.
+  They prefer a server answer already in memory (primed from `localStorage` at parse) and
+  fall back to the arithmetic. Neither ever waits on a request.
+- `canRead(id)` is the only thing that waits, and only on the path that would otherwise
+  answer **no** — `can()` and the permanently-free check both short-circuit before it. The
+  wait is capped at `ASK_MS` (2,500 ms), is started in parallel with `FBX.ready()` rather
+  than after it, and resolves instantly once the day is cached.
+- A server answer naming a story that is not in the catalogue, a malformed body, a
+  wrong-shaped payload — each is discarded and the arithmetic stands.
+- Nothing runs before or during first paint. The network call happens once per browser per
+  UTC day, on a 600 ms timer, and only on a cache miss.
+
+Proven in a real DOM (jsdom over the real local server, `index.html`, signed out), with the
+endpoint made unreachable four different ways:
+
+| `/today` is… | script errors | covers drawn | `todayId()` | free to a signed-out reader | earliest `canRead("44")` |
+|---|---|---|---|---|---|
+| rejected (offline) | none | 63 | `38` | `01, 02, 38` | 1,829 ms → `false` |
+| `503` | none | 63 | `38` | `01, 02, 38` | — |
+| hung, never answers | none | 63 | `38` | `01, 02, 38` | **2,501 ms** → `false` |
+| live | none | 63 | `38` | `01, 02, 38` | 1,830 ms → `false` |
+| answering `44` | none | 63 | `44` | `01, 02, 44` | — |
+| answering `44`, **cached, network blocked** | none | 63 | `44` | `01, 02, 44` | 0 calls made |
+
+Every row renders — 3,680 characters of body text, hero present — picks a story, and frees
+**exactly one** beyond the two permanently-free ones. 2,501 ms is `ASK_MS` exactly; 1,829 ms
+is `FBX.ready()`, unchanged from before any of this existed, which is what an offline
+browser costs.
+
+**Client and server agree.** On 2026-09-03 the client computes day number 20699, index 38,
+id `38`; `/today` returns `"index":38,"id":"38"`; `/story?id=38` serves it anonymously.
+
+### The one line `js/today.js` still wants
+
+`js/access.js` exports `FBX.onToday(fn)` — its own listener list, deliberately not the access
+listeners, because today's pick changing is not an access change and pushing a non-event
+through every padlock pass and through `FBX.correct()` on every page would be a reload bug
+waiting to happen.
+
+Nothing subscribes to it yet. `js/today.js` is owned elsewhere; the line it wants, next to
+its existing `FBX.paint` registration in `decorate()`, is:
+
+```js
+try { if (window.FBX && FBX.onToday) FBX.onToday(function () { draw(); }); } catch (e) {}
+```
+
+Without it, the **first** page load of a new UTC day draws the hero from the deterministic
+pick even when an editorial override says otherwise; the padlocks and `read.html` follow the
+server correctly either way, and every load after the first is correct from the first frame
+because the answer is already in `localStorage`. With it, the front page redraws in place the
+moment the server answers.
+
+---
+
 ## 5. Audio, and the trade
 
 31 ambience beds, 4.0 MB, now in `factbox-7cb97.firebasestorage.app` under `audio/`.
@@ -402,18 +666,37 @@ fix, not an instant lockout. That is inherited behaviour, unchanged here, and co
 this document changes that or depends on it; the gate was tested by writing the flag
 directly, the way the webhook will.
 
-**Node 20 is deprecated** and decommissions 2026-10-30. Both functions will need Node 22
-before then. `firebase-functions` is a major version behind.
+**Node 20 is deprecated** and decommissions **2026-10-30**. All three functions will need
+Node 22 before then; the deploy already warns on every run. `firebase-functions` is a major
+version behind. Noted, not fixed here.
+
+**An editorial override is up to two minutes late**, in both directions, for the same reason
+a re-seed is ten. §4b. Redeploy `today` to clear the memo immediately, or wait.
+
+**Nothing subscribes to `FBX.onToday` yet**, so on the first page load of a new UTC day the
+front-page hero can show the deterministic pick while the padlocks and the reader show the
+override. One line in `js/today.js`, quoted in §4b.
 
 ---
 
 ## 8. Verification
 
 ```
-node --check functions/index.js functions/story.js tools/seed-firebase.js tools/check-backend.js
+node --check functions/index.js functions/story.js functions/today.js              tools/seed-firebase.js tools/check-backend.js
 node tools/seed-firebase.js --dry-run
 node tools/check-backend.js
 ```
+
+For the free-story rule specifically:
+
+```
+curl -s https://us-central1-factbox-7cb97.cloudfunctions.net/today            # the answer
+curl -s "https://us-central1-factbox-7cb97.cloudfunctions.net/story?id=$(     # today, anonymous
+  curl -s https://us-central1-factbox-7cb97.cloudfunctions.net/today   | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)" | head -c 120
+```
+
+The second should print `{"ok":true,"id":"…","access":"today"` and the same request with any
+other paid id should print `{"ok":false,"error":"auth_required"`.
 
 `check-backend.js` creates a throwaway Firebase user, flips `premium` on it the way the
 webhook would, and deletes both afterwards. It asserts the webhook still rejects an unsigned
@@ -421,4 +704,12 @@ POST, that free stories serve anonymously, that paid ones do not, that access ap
 disappears with the flag, that `firestore.rules` refuses a signed-in reader direct access to
 story text while allowing the catalogue, that a reader cannot grant themselves premium, that
 audio works only with its token, and that all 51 stories and 450 cards are present. 39
-assertions, all passing.
+assertions, all passing (re-run after §4b shipped: 39 passed, 0 failed).
+
+**One trap in it, dated.** `check-backend.js` uses `05` as its example of a paid story, in
+six assertions. `05` sits at index 4 in the catalogue, so once every 51 days it IS today's
+Factbox — and on that day `story.js` will correctly serve it to an anonymous caller and the
+check will correctly report a failure for a system that is working. The fix is one line: ask
+`/today` first and pick any id that is not the one it names. It has not been applied here
+because `tools/` belongs to another hand. `05` is next due on **2026-09-20** (UTC day
+20716), and every 51 days after.

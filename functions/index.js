@@ -226,3 +226,11 @@ exports.story = require("./story").story;
    has already run by the time this line executes.
    -------------------------------------------------------------------------- */
 exports.support = require("./support").support;
+
+/* --------------------------------------------------------------------------
+   Which story is free today. Its own file for the same reason as the two
+   above, and loaded here so it deploys alongside them. `story` requires it
+   directly rather than through this file, so the two agree on the answer even
+   if some future entry point loads one without the other.
+   -------------------------------------------------------------------------- */
+exports.today = require("./today").today;

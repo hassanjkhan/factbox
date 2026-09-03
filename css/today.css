@@ -36,6 +36,14 @@ body{background:var(--ground); color:var(--parchment)}
    rather than instead of it. The rule is kept as a comment rather than
    deleted so the next person does not reinvent the swap. */
 
+/* The standfirst is the one line on this page that is not the same for
+   everybody, and it is replaced once — when the billing answer arrives, which
+   is between a quarter of a second and a second and a half after first paint.
+   js/today.js fades it across rather than swapping it under the reader's eye;
+   this is the 160ms that makes that a fade rather than a cut. It only ever
+   runs pitch -> owned, because the pitch is what the markup ships. */
+.lib.today #tdy-blurb{transition:opacity .16s ease}
+
 /* --------------------------------------------------------------------------
    The greeting. Two versions of the same slot: the pitch for someone who has
    never read anything, and their own numbers for someone who has.
@@ -216,6 +224,223 @@ body{background:var(--ground); color:var(--parchment)}
 .tdy-serie.locked b{color:var(--dim)}
 .tdy-serie .lock{right:4px; top:4px; width:20px; height:20px; font-size:.58rem}
 
+/* --------------------------------------------------------------------------
+   All stories — the mosaic.
+
+   Everything above this on the page is curated: one story chosen by the date,
+   twelve picked for the week, one row per subject. They are spaced, they have
+   room, and the title sits under the picture where it is easy to read. This
+   section is the opposite object — the whole catalogue, all fifty-one — and it
+   is drawn the opposite way, so that the two cannot be mistaken for each
+   other: tiles packed with no gutter at all, in four sizes, the title burned
+   into the bottom left of the painting and the reader's place in the story on
+   a pill in the top right.
+
+   The tile is app.css's .card, unchanged. Same element, same classes, same
+   .plate with the read bar and the padlock inside it. js/today.js adds one
+   thing to it — a span — and everything else here is CSS over the cover the
+   rest of the site already draws, which is why applyLocked() and applyOpen()
+   go on finding these without being told the section was rebuilt.
+
+   The two hard parts are solved in js/today.js and are worth knowing about
+   from here, because a change on this side can undo them:
+
+   - The row height is written onto the element as an explicit length. It is
+     NOT derived from the tiles. A grid row sizes itself from what STARTS in
+     it, and this layout has rows that hold nothing but the lower halves of
+     tiles that began in the row above — those rows collapse to nothing and
+     take the page with them. So do not put grid-auto-rows back in here.
+   - The spans and that row height are written in the same pass, so one can
+     never exist without the other. If the script does not run, neither is
+     written, and the rules below draw fifty-one plain squares: aspect-ratio
+     is on the plate purely as that floor.
+   -------------------------------------------------------------------------- */
+
+/* The zero-alpha end of the glass fade. app.css carries --ground-0 and
+   --raise-0 for exactly this reason — `transparent` is rgba(0,0,0,0), and a
+   gradient running towards it goes grey through the middle rather than simply
+   thinning out. app.css has no --glass-0 and app.css is not this file's to
+   edit, so it is declared here, from the same rgb as --glass. */
+:root{--glass-0:rgba(14,11,18,0)}
+
+.tdy-mosaic{
+  display:grid;
+  /* Overwritten by js/today.js with the real column count. This is the value
+     the page holds before the script runs and if it never does. */
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:0;
+  /* Full bleed. .lib pads the page 18px and the catalogue runs out past it to
+     the edges of the phone, which is what makes it read as a wall rather than
+     as one more shelf. Negative margin only, and exactly the padding: the
+     element ends up the width of the viewport, so nothing scrolls sideways. */
+  margin:0 -18px;
+  /* Behind the tiles, so a sub-pixel seam between two of them is a dark
+     hairline rather than a bright one. */
+  background:var(--night);
+}
+
+.tdy-mosaic > .card{
+  position:relative;
+  display:block;                 /* app.css stacks a cover; here it is one tile */
+  height:100%; min-width:0; min-height:0;
+  border-radius:0;
+  transition:transform .16s ease;
+}
+/* Pressed, a tile lifts over its neighbours instead of opening a hole between
+   them — with no gutter there is nothing behind it to see. */
+.tdy-mosaic > .card:active{transform:scale(.965); z-index:3}
+
+.tdy-mosaic .plate{
+  /* width AND height, both, and the width is not optional: a tall tile is 125
+     wide and 250 high, and a plate given only the height resolves its auto
+     width from aspect-ratio — 250px of painting in a 125px column, hanging a
+     whole cell past the right edge of the phone. Measured: the page scrolled
+     sideways to 500px at a 375px viewport. */
+  width:100%; height:100%;
+  /* Only ever bites when the row height is auto, which means the script did
+     not run. Then every tile is a square and the section still reads. */
+  aspect-ratio:1;
+  border-radius:0;
+  /* app.css lifts a cover off the page with a drop shadow. Edge to edge there
+     is no page between them to cast onto, and fifty-one of them stack into a
+     grey haze. */
+  box-shadow:none;
+}
+
+/* The scrim under the title.
+
+   ::before, not ::after: app.css puts the finished tick on .plate::after and
+   that has to go on working. z-index is not decoration either — the <img> is
+   in flow and a positioned pseudo-element with z-index:auto paints under it. */
+.tdy-mosaic .plate::before{
+  content:""; position:absolute; z-index:1; pointer-events:none;
+  left:0; right:0; bottom:0;
+  /* Measured, not guessed, and measured against the worst plate rather than a
+     typical one. These are museum photographs and several of them are close to
+     white — s48, the Beast of Revelation woodcut, is the palest in the season
+     and a locked cover is faded a further 48% towards the cream of the page,
+     so the title sits on something around rgb(240,240,240) before the scrim
+     touches it.
+
+     A scrim that starts fading where the type starts is therefore no good: the
+     first version of this ramped straight off --glass-deep and the top line of
+     a two-line title came out at 2.3:1 on s48. So the gradient holds
+     --glass-deep flat all the way past the top of the title box and only then
+     thins out. The plateau is the accessible bit; the ramp above it is the
+     part that stops the tile looking like a card with a bar across the foot. */
+  height:max(96px,46%);
+  background:linear-gradient(to top,
+              var(--glass-deep) 0%, var(--glass-deep) 50%,
+              var(--glass) 68%, var(--glass-0) 100%);
+}
+/* A two-column tile sets its title bigger, so its plateau has further to
+   reach. */
+.tdy-mosaic > .card[data-w="2"] .plate::before{height:max(116px,40%)}
+
+/* The title. Bottom left, over the painting, clamped to two lines — a museum
+   plate is not a caption bed and a five-line title over one is neither. The
+   words stay in the document, so the link's accessible name is still the name
+   of the story followed by where the reader is in it. */
+.tdy-mosaic > .card h3{
+  position:absolute; z-index:2;
+  left:10px; right:10px; bottom:9px;
+  margin:0;
+  color:var(--on-glass);
+  font-size:var(--fs-meta); font-weight:var(--w-head);
+  line-height:1.24; letter-spacing:var(--ls-title);
+  text-shadow:0 1px 3px var(--glass-deep);
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden;
+}
+/* A tile two columns wide is twice the painting, so it can carry the title at
+   the size the rest of the site sets a card title in. */
+.tdy-mosaic > .card[data-w="2"] h3{
+  font-size:var(--fs-sub); left:13px; right:13px; bottom:12px;
+}
+/* app.css dims a locked title to --dim, which is a navy for the cream page.
+   Over a painting it is the one thing that must not be dimmed: the padlock
+   and the faded plate already say "not yet", and an unreadable title says
+   nothing at all. */
+.tdy-mosaic > .card.locked h3{color:var(--on-glass)}
+/* app.css's finished tick lives in the bottom right corner. Give it the room
+   rather than run the title underneath it. */
+.tdy-mosaic > .card.is-done h3{right:38px}
+
+/* Card 6 of 9, top right, on its own glass so it is legible over a white
+   painting as well as a dark one. Unread, this line is the card count and the
+   runtime instead — the same element either way, which is the element
+   applyLocked() and applyOpen() rewrite. */
+.tdy-mosaic > .card .meta{
+  position:absolute; z-index:2;
+  top:7px; right:7px; max-width:calc(100% - 14px);
+  padding:3px 8px;
+  border-radius:var(--pill);
+  background:var(--glass-deep);
+  -webkit-backdrop-filter:saturate(1.15) blur(7px);
+  backdrop-filter:saturate(1.15) blur(7px);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  color:var(--on-glass);
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  /* No --ls-badge. That token is for a filled badge with a word on it; this is
+     a line of numbers, and .08em of tracking added 14px to it — enough to run
+     "8 cards · 3½ min" past the end of a 125px tile and lose the last two
+     characters to the ellipsis. Measured at 375: seventeen of the fifty-one
+     were being cut. */
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* app.css writes a part-read cover's line in --accent-ink, which is the blue
+   you may write in ON CREAM. On the glass pill it is 1.1:1 — invisible.
+   --accent-lift is the same accent from the light end of the scale.
+
+   It is also the one colour on this page with a thin margin: --accent-lift on
+   one --glass-deep layer over s48, the palest plate in the season, measured
+   4.74:1 against a 4.5 floor. So the pill that carries it gets a second layer
+   of --glass under the first — same token, no new colour — which takes the
+   same measurement to 8.9:1 and, being the story you are in the middle of,
+   is worth being the one pill that reads a shade heavier. */
+.tdy-mosaic > .card.is-reading .meta{
+  color:var(--accent-lift); font-weight:var(--w-strong);
+  background:linear-gradient(var(--glass),var(--glass)), var(--glass-deep);
+}
+
+/* The pill has the top right corner, so the padlock takes the other one. */
+.tdy-mosaic .lock{left:8px; right:auto; top:8px}
+
+/* Everything that sits ON the tile has to sit on the scrim as well.
+
+   .plate::before is z-index:1, because that is the only way a pseudo-element
+   gets above an <img> that is in flow. Every other mark inside the plate is
+   position:absolute with z-index:auto, which paints BELOW a z-index:1 sibling
+   — so without this the read bar, the padlock, the FREE ribbon and the
+   finished tick would all be under 72% of near-black. */
+.tdy-mosaic .lock,
+.tdy-mosaic .freetag,
+.tdy-mosaic .readbar{z-index:2}
+.tdy-mosaic > .card.is-done .plate::after{z-index:2}
+
+/* The FREE ribbon. app.css owns what it looks like — --coral fill, --on-accent
+   type, which is the pair that measures 5.9:1; white on --coral is 2.8:1 and
+   is not a legible badge, it is a blue badge with a suggestion of type on it.
+   All this does is move it to the corner the owner asked for.
+
+   Which means the pill and the ribbon both want the top right. The ribbon
+   wins it — it is the rarer and the louder of the two — and the pill gets out
+   of the way. HOW it gets out of the way depends on the tile, and this was
+   measured rather than guessed: side by side on a one-column tile they
+   overlap by 45px at a 375px viewport, because 125px of tile does not hold a
+   45px ribbon and "11 cards · 4½ min" at the same time. So on a narrow tile
+   the line drops underneath the ribbon, right-aligned with it, and only a
+   two-column tile — which measured 80px of clear space between them — puts
+   them side by side. Nothing is ever truncated and nothing ever overlaps. */
+.tdy-mosaic .freetag{left:auto; right:7px; top:7px}
+.tdy-mosaic > .card.is-free .meta{top:33px}
+.tdy-mosaic > .card.is-free[data-w="2"] .meta{top:7px; right:auto; left:7px}
+
+/* Wider, because it is now a mark on a photograph rather than a rule under
+   one, and it has the full width of the tile to be seen across. */
+.tdy-mosaic .readbar{height:4px}
+
 /* The failure state. Never a blank column: a sentence, and a way out that is
    one tap rather than a reload the reader has to think of. */
 .tdy-void{
@@ -269,9 +494,17 @@ body{background:var(--ground); color:var(--parchment)}
   .tdy-today a.go{width:auto; min-width:250px; margin-left:0; margin-right:0}
 
   .tdy-cont .plate{width:88px; flex:0 0 88px}
+
+  /* The mosaic stops being the page and goes back to being a section of one.
+     Full bleed across a 1440px window is a wall with no room around it; inside
+     the column it is a wall you are standing in front of. */
+  .tdy-mosaic{margin:0; border-radius:18px; overflow:hidden}
 }
 
 @media (prefers-reduced-motion:reduce){
   .tdy-shelf{scroll-behavior:auto}
-  .tdy-cont, .tdy-serie{transition:none}
+  .tdy-cont, .tdy-serie, .tdy-mosaic > .card{transition:none}
+  /* js/today.js swaps the standfirst with no dip at all under this setting;
+     the transition is removed here so the two cannot half-apply. */
+  .lib.today #tdy-blurb{transition:none}
 }

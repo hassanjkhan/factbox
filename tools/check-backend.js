@@ -64,7 +64,30 @@ async function req(url, opts) {
   return { status: r.status, text, json, headers: r.headers };
 }
 
+/* Which story to use as "a paid story a stranger must not get".
+   It cannot be a fixed id any more: today's Factbox is free to everyone, and
+   it moves every day. `05` sits at index 4, so on 2026-09-20 — and every 51
+   days after — the old hard-coded `05` would have failed a working system.
+   So ask the server which one is free today, and pick round it. */
+let PAID = ["03", "05", "26", "50", "07B"];
+let TODAY_ID = null;
+async function pickPaid() {
+  try {
+    const r = await req(FN + "/today");
+    TODAY_ID = ((r.json || {}).id) || null;
+  } catch (e) { TODAY_ID = null; }
+  if (!TODAY_ID) return;                       /* endpoint down: the list stands */
+  PAID = PAID.filter((id) => id !== TODAY_ID);
+  if (PAID.length < 5) {
+    for (const alt of ["11", "23", "34", "47", "19"]) {
+      if (PAID.length >= 5) break;
+      if (alt !== TODAY_ID && PAID.indexOf(alt) === -1) PAID.push(alt);
+    }
+  }
+}
+
 async function main() {
+  await pickPaid();
   const OWNER = ownerToken();
   const admin = (extra) => Object.assign(
     { Authorization: "Bearer " + OWNER, "Content-Type": "application/json" }, extra || {}
@@ -100,7 +123,7 @@ async function main() {
     ok("story 02 is served", free2.status === 200 && !!(free2.json || {}).ok,
        "HTTP " + free2.status);
 
-    for (const id of ["03", "05", "26", "50", "07B"]) {
+    for (const id of PAID) {
       const r = await req(FN + "/story?id=" + id);
       ok(`story ${id} is refused`,
          r.status === 401 && (r.json || {}).error === "auth_required",
@@ -112,7 +135,7 @@ async function main() {
     ok("an unknown id 404s", bogus.status === 404, "HTTP " + bogus.status);
     const junk = await req(FN + "/story?id=../../customers");
     ok("a path-traversal id is refused", junk.status === 400, "HTTP " + junk.status);
-    const badtok = await req(FN + "/story?id=05", { headers: { Authorization: "Bearer nonsense" } });
+    const badtok = await req(FN + "/story?id=" + PAID[0], { headers: { Authorization: "Bearer nonsense" } });
     ok("a forged ID token is refused",
        badtok.status === 401 && (badtok.json || {}).error === "bad_token",
        `HTTP ${badtok.status} ${(badtok.json || {}).error}`);
@@ -138,7 +161,7 @@ async function main() {
   const asReader = { Authorization: "Bearer " + ID_TOKEN };
 
   try {
-    let r = await req(FN + "/story?id=05", { headers: asReader });
+    let r = await req(FN + "/story?id=" + PAID[0], { headers: asReader });
     ok("story 05 is refused to a non-subscriber",
        r.status === 403 && (r.json || {}).error === "subscription_required",
        `HTTP ${r.status} ${(r.json || {}).error}, ` +
@@ -154,7 +177,7 @@ async function main() {
       method: "PATCH", headers: admin(),
       body: JSON.stringify({ fields: { premium: { booleanValue: true }, uid: { stringValue: UID } } })
     });
-    r = await req(FN + "/story?id=05", { headers: asReader });
+    r = await req(FN + "/story?id=" + PAID[0], { headers: asReader });
     const paidCards = r.json && r.json.story && r.json.story.cards;
     ok("story 05 is now served",
        r.status === 200 && (r.json || {}).access === "subscriber" && Array.isArray(paidCards),
@@ -167,7 +190,7 @@ async function main() {
        r.headers.get("cache-control"));
 
     /* the read count for a warm second open */
-    const warm = await req(FN + "/story?id=05", { headers: asReader });
+    const warm = await req(FN + "/story?id=" + PAID[0], { headers: asReader });
     console.log(`  reads on a warm repeat open of a paid story: ` +
                 `${warm.headers.get("x-firestore-reads")}`);
     const warmFree = await req(FN + "/story?id=01");
@@ -180,7 +203,7 @@ async function main() {
       method: "PATCH", headers: admin(),
       body: JSON.stringify({ fields: { premium: { booleanValue: false } } })
     });
-    r = await req(FN + "/story?id=05", { headers: asReader });
+    r = await req(FN + "/story?id=" + PAID[0], { headers: asReader });
     ok("access is withdrawn immediately",
        r.status === 403 && (r.json || {}).error === "subscription_required",
        `HTTP ${r.status} ${(r.json || {}).error}`);

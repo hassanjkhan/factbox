@@ -10,7 +10,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Five minutes of history a day</title>
 <meta name="description" content="One history story a day, chosen by the date, told one card at a time on paintings from the world's museums.">
-<meta name="theme-color" content="#0E0B12">
+<!-- The paper ground, matching what body actually paints. It was the
+     retired night value on all thirteen paper pages, which puts a
+     near-black bar above a cream page in Android Chrome and iOS
+     Safari. Only the four reader/story pages are #0E0B12. -->
+<meta name="theme-color" content="#DCD5C8">
+<!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
+     so it is the one that must exist; the rest are the better versions for the
+     places that look for them. The .ico packs 16, 32 and 48. Before these the
+     site declared no icon anywhere and every cold load spent a request on a
+     404 for /favicon.ico. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- site.webmanifest's theme_color is #DCD5C8, the same cream the meta above
+     declares and the same cream body paints. The three must not disagree. -->
+<link rel="manifest" href="/site.webmanifest">
 <link rel="canonical" href="https://factbox.app/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
@@ -45,7 +61,18 @@
      five minutes. -->
 <main class="lib today">
   <header class="mast">
-    <p class="mark">FACTBOX</p>
+    <!-- The wordmark is the way home: /explore is the shelf. The anchor sits
+         inside the <p> so the header keeps the box, the margin and the baseline
+         it already had, and so the target is the word rather than the width of
+         the row. aria-label because a screen reader reading FACTBOX as all
+         capitals may spell it; the accessible name is the product name.
+     The tile is alt="" and inside the anchor: the word is right beside it,
+     so a screen reader saying "Factbox logo Factbox" is worse than silent,
+     and one lockup should be one target. width/height are on the tag so the
+     masthead does not reflow when it lands — this is the first thing on the
+     page. -->
+    <p class="mark"><a href="/explore" aria-label="Factbox"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
     <nav class="tabs" aria-label="Sections">
       <!-- The Explore tab leads to this same experience, so it is the current
            one here too. There is no Home tab anywhere: the page you land on is
@@ -64,6 +91,11 @@
   <!-- The greeting slot. Empty for a first-time reader, whose greeting is the
        headline above; filled by js/today.js for anyone with reading memory. -->
   <div class="tdy-say" id="tdy-say"></div>
+
+  <!-- Where js/progress.js mounts a restore-link or restore-failed panel.
+       Empty on an ordinary visit; it only ever has content on the load that
+       comes back from checkout, or after a broken restore link. -->
+  <div id="fb-notice"></div>
 
   <div id="view">
     <!-- Filled by js/today.js. If the season cannot be fetched, that script
@@ -90,6 +122,112 @@
 <script src="/js/progress.js"></script>
 <script src="/js/access.js"></script>
 <script src="/js/gate.js"></script>
+
+<!-- ======================================================================
+     RETURNING A BUYER TO THE STORY THEY WERE READING.
+
+     A reader three cards into a story hits the paywall, buys, and Stripe
+     returns them to factbox.app/stories?unlocked=1&session_id=... That URL is
+     set in the Stripe dashboard, not here; stories.html forwards it to
+     /explore carrying the query, gate.js claims the unlock — and until this
+     block the trail ended there, on the front page, with the reader left to
+     find their own way back to the story they had already paid to finish.
+
+     The handoff is one localStorage key, written by the reader before it hands
+     anyone to the funnel:
+
+         fb_return_v1 = {"s":"<story id>","at":<ms since epoch>}
+
+     WHY IT SITS HERE, AFTER gate.js AND NOT BEFORE IT.
+     gate.js's claim() is what turns ?unlocked=1 into stored access. Jumping to
+     the reader before that runs lands the buyer on the same paywall they just
+     paid to get past. Order is the whole thing.
+
+     FOUR GUARDS, and every one of them is a reason this cannot hijack a normal
+     visit to Explore:
+
+       1. One hour. A key from last week must not turn the front page into a
+          random story weeks later — intermittent, and horrible to diagnose.
+       2. The reader must be able to read THAT STORY now. The key is written
+          at the paywall, so it is also sitting there for someone who saw the
+          price and said no, and bouncing them back to the paywall they just
+          walked away from is worse than doing nothing. FBX.canRead(id), not
+          FBX.can(): the per-story answer is the one that decides whether the
+          destination is a story or a price, and it is the only guard that
+          cannot send a reader somewhere they will be stopped.
+       3. The story has to exist. The id is checked against the catalogue
+          that is already in the HTTP cache (the <link rel=preload> in the
+          head), so a corrupt or renamed id renders Explore instead of a
+          reader with nothing in it.
+       4. location.replace, never location.href: with href, Back returns to
+          Explore, which sends them forward again, and they are trapped.
+
+     The key is cleared before anything else happens, so it is one-shot even if
+     the jump fails. Absent, malformed, expired, unknown, or no fetch on this
+     webview: nothing happens and Explore renders as it always does. This is a
+     nicety on top of a working page, never a gate in front of one.
+
+     ES5 only — no URL, no URLSearchParams, no arrow functions, no let. The
+     webviews this site is read in are the reason.
+     ====================================================================== -->
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "fb_return_v1";
+  var TTL = 60 * 60 * 1000;          /* one hour, in ms */
+  var ID  = /^[A-Za-z0-9_-]{1,24}$/; /* the same shape read.html accepts */
+
+  var raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) { return; }
+  if (!raw) return;
+
+  /* One shot. Cleared before the work, not after it, so a throw anywhere
+     below cannot leave a key that fires again on the next page. */
+  try { localStorage.removeItem(KEY); } catch (e) {}
+
+  var want;
+  try { want = JSON.parse(raw); } catch (e) { return; }
+  if (!want || typeof want !== "object") return;
+
+  var id = String(want.s || "");
+  var at = Number(want.at);
+  if (!ID.test(id)) return;
+  if (!isFinite(at) || at <= 0) return;
+  if (Date.now() - at > TTL) return;
+  /* A clock that has been set backwards, or a key written in the future.
+     Neither is a buyer coming back from Stripe. */
+  if (at - Date.now() > TTL) return;
+
+  if (!window.fetch || !window.FBX || !FBX.canRead) return;
+
+  /* Can they read this one now? js/access.js is the single place that answers
+     that; it settles against the account, the catalogue and the day, and caps
+     its own wait, so it always resolves rather than hanging the page. */
+  FBX.canRead(id).then(function (ok) {
+    if (!ok) return;
+
+    /* Already preloaded in the head, so this is a cache read, not a request.
+       If it misses, Explore is already on screen and nothing moves. */
+    fetch("/data/index.json", { cache: "force-cache" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.stacks || !d.stacks.length) return;
+        var i, found = false;
+        for (i = 0; i < d.stacks.length; i++) {
+          if (String(d.stacks[i].id) === id) { found = true; break; }
+        }
+        if (!found) return;
+        /* Deliberately not instrumented. Every event name on this site is a
+           literal in js/analytics.js and check-analytics.js guards that; a new
+           one belongs in that file, with the other forty-nine, not invented
+           inline here. */
+        location.replace("/read?s=" + encodeURIComponent(id));
+      })["catch"](function () {});
+  })["catch"](function () {});
+})();
+</script>
+
 <script src="/js/explore.js"></script>
 <script src="/js/today.js"></script>
 <!-- js/auth.js is a module, so the browser defers it: it runs after the

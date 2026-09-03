@@ -6,6 +6,11 @@
 <title>Factbox</title>
 <meta name="theme-color" content="#0E0B12">
 <meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <!-- The story's own file, requested from the first line of the head.
 
      A <link rel=preload as=fetch> was tried here first and measured as a
@@ -117,6 +122,12 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
 <script src="/js/progress.js"></script>
 <script src="/js/access.js"></script>
 <script src="/js/gate.js"></script>
+<!-- The price ladder. Nothing on this page may contain a dollar figure: the
+     completion screen's offer line and every number on the paywall are read
+     out of FBA, which is the one place that knows what Stripe charges. Without
+     it js/recommend.js draws both screens with no amounts on them rather than
+     with invented ones. -->
+<script src="/js/account.js"></script>
 <script src="/js/saves.js"></script>
 <script src="/js/recommend.js"></script>
 <script src="/js/scenes.js" defer></script>
@@ -183,16 +194,63 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     else d.scrollTop = top;
   }
 
-  function paywall(s) {
+  /* --------------------------------------------------------------------
+     Sending the buyer back to the story they were reading.
+
+     Stripe returns every buyer to
+       https://factbox.app/stories?unlocked=1&session_id=...
+     and that URL lives in the Stripe dashboard, not here (STRIPE.md 7).
+     /stories forwards to /explore carrying the query string. So nothing on
+     the return path is this file, and the only honest thing this page can do
+     is write down where the reader was before handing them to checkout.
+
+     Reading it back belongs on the page they land on. That is /explore, and
+     this change does not own it, so TODAY THIS KEY IS WRITTEN AND NOTHING
+     READS IT. The four lines that finish it, and where they go, are in
+     tools/README.md under "Returning a buyer to their story".
+     -------------------------------------------------------------------- */
+  var RETURN_KEY = "fb_return_v1";
+  function rememberStory(st) {
+    try {
+      if (!st || st.id == null) return;
+      localStorage.setItem(RETURN_KEY,
+        JSON.stringify({ s: String(st.id), at: Date.now() }));
+    } catch (e) {}
+  }
+
+  /* The wall itself is built by js/recommend.js, which owns both it and the
+     completion screen that leads to it, and which reads every price out of
+     js/account.js. This is the fallback for a page whose recommend.js never
+     arrived: the same two sentences, the same cover, a way in and a way out,
+     and not one number it cannot price. */
+  function paywallFallback(s) {
     return '' +
-      '<section class="pane paywall">' +
-        '<div class="plate"><img alt="" src="/img/thumbs/' + FB.esc(s.img) + '.webp"></div>' +
-        '<h2>' + FB.esc(s.title) + '</h2>' +
-        '<p>' + FB.esc(s.hook) + '</p>' +
-        '<button class="go" id="pay" type="button">Read the rest of this story</button>' +
-        '<p class="fine">Two stories are free. The rest needs an account — three days free first.</p>' +
+      '<section class="pane paywall pw">' +
+        '<h2>Keep learning.</h2>' +
+        '<p class="pw-sub">Your next story is already waiting.</p>' +
+        '<div class="plate"><img alt="" src="/img/thumbs/' + FB.esc(s.img) + '.webp"' +
+          ' data-fallback="/img/stacks/' + FB.esc(s.img) + '.webp"' +
+          ' onerror="this.onerror=null;this.src=this.getAttribute(\'data-fallback\')"></div>' +
+        '<p>' + FB.esc(s.title) + '</p>' +
+        '<a class="go" href="/join?from=paywall&amp;s=' + encodeURIComponent(s.id) +
+          '" role="button">Keep reading</a>' +
         '<a class="ghost" href="/explore">Back to stories</a>' +
       '</section>';
+  }
+
+  /* opts is passed straight through to FBR.paywall: where the reader came
+     from, what "Maybe later" does, and what to remember before checkout. */
+  function buildPaywall(s, from, later) {
+    try {
+      if (window.FBR && FBR.paywall) {
+        return FBR.paywall(s, {
+          from: from,
+          onLater: later,
+          onStart: function () { rememberStory(s); }
+        });
+      }
+    } catch (e) {}
+    return null;
   }
 
   /* Both the story list and the answer to "is this reader a subscriber".
@@ -256,11 +314,15 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
   }
 
   function showPaywall(s) {
-    fin(deck, function () { deck.innerHTML = paywall(s); });
-    document.getElementById("pay").addEventListener("click", function () {
-      FB.checkout(this, "paywall");
+    var pane = buildPaywall(s, "paywall", function () {
+      location.href = "/explore";
     });
-    FB.track("paywall_view", { stack: s.id });
+    fin(deck, function () {
+      if (pane) { deck.innerHTML = ""; deck.appendChild(pane); }
+      else deck.innerHTML = paywallFallback(s);
+    });
+    /* FBR.paywall reports its own view. Only the fallback has to. */
+    if (!pane) FB.track("paywall_view", { stack: s.id });
 
     /* Belt and braces. If premium lands after the wait gave up — a slow
        snapshot, a cold Firestore, a phone that just woke up — the reader is
@@ -423,6 +485,11 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     }
 
     var total = s.cards.length + 1, deepest = 0, reported = false;
+    /* The completion screen, once js/recommend.js has built it, and the
+       paywall pane if the reader taps Keep learning with nothing left they
+       may open. Declared here because onScroll below is what knows the
+       reader has actually arrived at them. */
+    var endPane = null, payPane = null;
 
     /* The end card is the pane after the last card, so any index at or past
        cards.length is it. The rail comes off there: that pane is the way out
@@ -466,6 +533,12 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
       if (n > deepest) deepest = n;
       railFor(n);
       if (P) P.mark(s.id, deepest, s.cards.length);
+      /* The end card is built a dozen cards before anyone reaches it, so it
+         cannot report itself seen at build time. reveal() is once-only, so
+         calling it on every scroll frame past the last card is free. */
+      if (endPane && endPane.reveal && n >= s.cards.length) {
+        try { endPane.reveal(); } catch (e) {}
+      }
     }
     deck.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -517,11 +590,46 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
            So the panel records the answer it was built from and is rebuilt if
            the answer changes — the same render-then-correct the shelf, the home
            page and the library use, rather than a fourth opinion. */
+        /* The wall, reached from the completion screen rather than instead of
+           it. It is appended as one more pane and scrolled to, not swapped in
+           over the deck: the reader arrived here having just finished a story,
+           and swiping back up to that has to keep working. "Maybe later" is
+           that same swipe, done for them.
+
+           It is dropped whenever the card above it is rebuilt, because the
+           access answer changing is exactly the case where a wall may no
+           longer be the right thing to be sitting under. */
+        function dropWall() {
+          try { if (payPane && payPane.parentNode) payPane.parentNode.removeChild(payPane); } catch (e) {}
+          payPane = null;
+        }
+
+        function wall(st) {
+          var target = (st && st.id != null) ? st : s;
+          if (payPane) { goTo(deck.scrollHeight); return; }
+          var pane = buildPaywall(target, "endcard", function () {
+            goTo(Math.max(0, deck.scrollTop - deck.clientHeight));
+          });
+          /* No recommend.js, no appended pane — the fallback replaces the
+             deck, which is worse and is still a way in. */
+          if (!pane) { showPaywall(target); return; }
+          payPane = pane;
+          deck.appendChild(pane);
+          onScroll();
+          goTo(deck.scrollHeight);
+        }
+
         function build(allowed) {
           if (panel && builtFor === allowed) return;
           var fresh = FBR.endPanel(s, stacks, { n: 3 });
           if (!fresh) return;
           builtFor = allowed;
+          /* What Keep learning does when the next story is not this reader's
+             to open. Set after the call, not through it: tools/compose.py
+             matches that call verbatim and an extra option in it fails the
+             build of /cleopatra. */
+          fresh.onLocked = wall;
+          dropWall();
           if (panel && panel.parentNode) {
             if (io) { try { io.unobserve(panel); } catch (e) {} }
             panel.parentNode.replaceChild(fresh, panel);
@@ -529,6 +637,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
             deck.appendChild(fresh);
           }
           panel = fresh;
+          endPane = fresh;
           if (io) { try { io.observe(panel); } catch (e) {} }
           else panel.classList.add("live");
           /* A reader can already be sitting on the last card when this lands. */
@@ -538,6 +647,28 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
         build(FB.unlocked());
         try {
           if (window.FBX && FBX.paint) FBX.paint(function (a) { build(!!a); });
+        } catch (e) {}
+
+        /* The card also depends on the reader's own record — how many stories
+           they have finished, which days they read on, and therefore which
+           story Keep learning should offer next. js/progress.js answers "is
+           this record this viewer's?" twice: a synchronous hint at load, then
+           the real answer once Firebase has said who is holding the phone. So
+           the same render-then-correct the access gate gets.
+
+           Only the four reasons that mean the OWNER changed. "local" fires
+           from FBP.mark() on every scroll frame, and rebuilding the end card
+           a hundred times on the way down a story is how this becomes the
+           reload loop /stories once had. */
+        try {
+          if (window.FBP && FBP.onChange) {
+            FBP.onChange(function (why) {
+              if (why !== "show" && why !== "hide" &&
+                  why !== "clear" && why !== "replace") return;
+              builtFor = null;
+              build(FB.unlocked());
+            });
+          }
         } catch (e) {}
       }).catch(function () {});
     }
@@ -567,8 +698,18 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
 
     /* Locked. Asked after the wait, so this is the account's answer and not a
        guess made before it arrived. */
+    /* Locked, and "locked" is now a per-STORY question rather than a
+       per-reader one: js/access.js's canRead(id) is true when this reader has
+       access, OR the story is permanently free, OR it is today's Factbox,
+       which is free for everybody every day. FB.unlocked() only answers the
+       first of the three, so asking it alone would put a wall in front of
+       today's story. Guarded, because an older cached access.js has can()
+       and not canRead(). */
     return accessSettled().then(function () {
-      if (!FB.unlocked()) { showPaywall(s); return; }
+      if (window.FBX && FBX.canRead) return FBX.canRead(s.id);
+      return FB.unlocked();
+    }).then(function (ok) {
+      if (!ok) { showPaywall(s); return; }
       render(s);
     });
   }).catch(function () {

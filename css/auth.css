@@ -143,7 +143,11 @@ body{background:var(--ground); color:var(--parchment)}
   margin:10px 2px 0; font-size:var(--fs-note); font-weight:var(--w-strong);
   line-height:1.45;
   /* --teal is the sage FILL and reads 1.9:1 as type on cream. --teal-ink is
-     the same colour taken to 4.7:1, which is what a sentence needs. */
+     the same colour taken down until it clears — and on THIS surface, a panel
+     on --ground, that is 6.07:1. The 4.7:1 this used to quote was the old
+     token's figure on bare cream, and it was quoted a second time on
+     .au-pill.is-trial below, for a sage wash the colour is not used on. Quote
+     the surface, not the token. */
   color:var(--teal-ink);
 }
 .au-say[hidden]{display:none}
@@ -201,7 +205,13 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .au-pill.is-on{background:var(--coral); color:var(--on-accent)}
 /* Sage, written out rather than taken from --teal: the wash is a background
-   and the word on it is type, so the two cannot be the same value. */
+   and the word on it is type, so the two cannot be the same value.
+
+   And the pair is measured on THIS wash, not on the page. The 4.7:1 quoted
+   above was --teal-ink's figure on bare cream; the .30 sage wash sits between
+   it and the type, and the word measured 3.99:1 against the 4.5:1 a 12px/700
+   badge needs. The token moved — see the note in css/app.css — and on this
+   wash it is now 5.09:1. */
 .au-pill.is-trial{background:rgba(140,167,93,.30); color:var(--teal-ink)}
 .au-pill.is-off{background:var(--tint); color:var(--dim)}
 
@@ -221,6 +231,21 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .au-2nd:active{transform:scale(.99)}
 .au-2nd[disabled]{color:var(--dimmer); cursor:default}
+
+/* Sign out is the one destructive action on this page, and it sat directly
+   under "Manage billing" looking exactly like it. Red is the convention for
+   that and it costs one declaration.
+
+   The COLOUR only. Not a fill: a red button competes with the blue primary
+   action above it and turns signing out into an alarm, when the reader is
+   signing out, not deleting an account. Same shape, same weight, same ground.
+   --crimson on --raise measures 5.90:1, against the 4.5:1 that 15px/600 needs.
+
+   The disabled state is restated because .au-2nd[disabled] above carries the
+   same (0,1,1) weight as .au-2nd.is-danger and comes first: a button that is
+   greyed out must not also be shouting. */
+.au-2nd.is-danger{color:var(--crimson)}
+.au-2nd.is-danger[disabled]{color:var(--dimmer)}
 
 /* --------------------------------------------------------------------------
    Panels. Same contract as .jn-panel: every one of them ships in the markup

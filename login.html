@@ -5,7 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Sign in</title>
 <meta name="description" content="Sign in to Factbox to read all fifty-one stories on any phone. Google or email.">
-<meta name="theme-color" content="#0E0B12">
+<!-- The paper ground, matching what body actually paints. It was the
+     retired night value on all thirteen paper pages, which puts a
+     near-black bar above a cream page in Android Chrome and iOS
+     Safari. Only the four reader/story pages are #0E0B12. -->
+<meta name="theme-color" content="#DCD5C8">
+<!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
+     so it is the one that must exist; the rest are the better versions for the
+     places that look for them. The .ico packs 16, 32 and 48. Before these the
+     site declared no icon anywhere and every cold load spent a request on a
+     404 for /favicon.ico. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- site.webmanifest's theme_color is #DCD5C8, the same cream the meta above
+     declares and the same cream body paints. The three must not disagree. -->
+<link rel="manifest" href="/site.webmanifest">
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="https://factbox.app/login">
 <meta property="og:type" content="website">
@@ -63,7 +79,12 @@
 
 <main class="lib">
   <header class="mast">
-    <p class="mark">FACTBOX</p>
+    <!-- The wordmark is the way home: /explore is the shelf. The anchor sits
+         inside the <p> so the header keeps the box, the margin and the baseline
+         it already had, and so the target is the word rather than the width of
+         the row. aria-label because a screen reader reading FACTBOX as all
+         capitals may spell it; the accessible name is the product name. -->
+    <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
     <nav class="tabs" aria-label="Sections">
       <a href="/explore">Explore</a>
       <a href="/library">Library</a>
@@ -226,24 +247,63 @@
   function clear(node) { text(node, ""); show(node, false); }
 
   /* --- where to go afterwards ------------------------------------------
-     ?next= is a return address, and a return address a stranger can set is
-     an open redirect unless it is checked. Only a bare page on this site is
-     accepted — no scheme, no host, no leading slash, no "..". Anything else
-     silently becomes the shelf, which is where a reader wanted to be anyway.
+     ?next= is a return address, and a return address a stranger can set is an
+     open redirect unless it is checked. It stays a WHITELIST: anything that is
+     not plainly a path on this site becomes the shelf, which is where the
+     reader wanted to be anyway.
+
+     WHAT WAS WRONG WITH IT. The old test was
+
+         /^[a-z0-9._-]+\.html(\?...)?$/i
+
+     — it accepted only destinations ending in ".html", and SPEC.md §6 says
+     this site serves clean URLs. All three callers pass clean ones:
+
+         account.html          ?next=account
+         story/cleopatra/
+         firststory            ?next=%2Fexplore
+         join.html             ?next=%2Fstories
+         js/acct.js            ?next=<pathname, slashes stripped>
+
+     Every one of them failed the regex and fell through to /explore, silently.
+     Signed in, /login?next=account landed on /explore — so "Sign in" on the
+     account page never returned anyone to the account page, and the sign-in
+     link at the foot of the paywall never returned anyone to their story.
+
+     WHAT IS ACCEPTED NOW: one optional leading slash, then a path that starts
+     with a letter or a digit, made only of letters, digits, dot, underscore,
+     hyphen and slash, with an optional query and fragment. Clean or .html,
+     both work.
+
+     WHAT IS STILL REFUSED, and each of these is a real attack shape:
+       //evil.example          protocol-relative — the second character is not
+                               [A-Za-z0-9], so it cannot match
+       https://evil.example    ":" is in no character class here
+       /\evil.example          backslash is in no character class here, and
+                               some browsers normalise "\" to "/"
+       ..%2f..%2f              ".." refused outright, and "%" cannot appear in
+                               the path portion, so a second decode has nothing
+                               to work with
+       login, /login.html      the page we are already on — a redirect loop
+
+     The result is normalised to a leading slash before it is used, so the
+     destination never depends on what /login resolves a relative path against.
 
      Not URLSearchParams: it is missing on the older in-app webviews this
      site targets, and this runs on a top-level-reachable path. */
   var HOME = "/explore";
+  var NEXT_OK = /^\/?[A-Za-z0-9][A-Za-z0-9._\/-]{0,63}(\?[A-Za-z0-9_%=&.,+-]{0,120})?(#[A-Za-z0-9._-]{0,40})?$/;
   function nextURL() {
     try {
       var q = String(location.search || "");
       var m = q.match(/[?&]next=([^&]*)/);
       if (!m) return HOME;
       var raw = decodeURIComponent(m[1] || "");
-      if (!/^[a-z0-9._-]+\.html(\?[A-Za-z0-9_%=&.,+-]*)?$/i.test(raw)) return HOME;
+      if (!NEXT_OK.test(raw)) return HOME;
       if (raw.indexOf("..") !== -1) return HOME;
-      if (/^login\.html/i.test(raw)) return HOME;
-      return raw;
+      if (raw.indexOf("\\") !== -1) return HOME;
+      if (/^\/?login(\.html)?(\?|#|$)/i.test(raw)) return HOME;
+      return raw.charAt(0) === "/" ? raw : "/" + raw;
     } catch (e) { return HOME; }
   }
   function leave() {

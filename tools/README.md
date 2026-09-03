@@ -21,7 +21,7 @@ node check-regressions.js                            # bugs that must not come b
 node check-analytics.js                              # the instrumentation is still there
 node check-page.js  "stories.html"   ".card"    "Be disgustingly"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
-node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
+node check-page.js  "read.html?s=44" ".paywall" "Your next story is already waiting"
 node check-page.js  "index.html"     ".card"    "Be disgustingly"
 node check-page.js  "start.html"     "button"   "Remember history"
 node check-page.js  "credits.html"   "table tr" "Share-alike"
@@ -32,6 +32,51 @@ elements, or on missing expected text.
 
 `compose.py` carries the cheaper half of the same idea: it refuses to build a
 page whose script looks up an id the page does not contain.
+
+**If you change the paywall's copy, change the assertion above with it.** It
+used to read `"Two stories are free"`, which was the fine print under a button
+that said "Read the rest of this story". That pane is now the trial paywall —
+"Keep learning." over the cover of the story being unlocked, then what happens
+today and in three days — and neither the sentence nor the button survives. A
+check asserting text that no longer exists fails for the wrong reason and then
+gets ignored, so the same string is written down in three places and all three
+have to move together: here, `ONBOARDING.md` §2, and the
+`the paywall check asserts text the paywall renders` entry in
+`check-regressions.js`, which exists to make forgetting one of them fail loudly.
+
+## Returning a buyer to their story
+
+**Not finished, and it cannot be finished from the reader page.** A reader who
+taps "Start my 3 days free" was trying to read one particular story, and the
+right thing after checkout is that story rather than a shelf.
+
+`read.html` writes down which one, into `localStorage.fb_return_v1`, as
+`{"s":"<stack id>","at":<ms>}`, immediately before it hands the reader to the
+funnel. **Nothing reads that key yet.**
+
+It cannot be read here. Stripe's three Payment Links redirect to
+`https://factbox.app/stories?unlocked=1&session_id=...`, that URL lives in the
+Stripe dashboard (`STRIPE.md` §7 step 6), and `stories.html` forwards to
+`/explore` carrying the query string. So the buyer lands on `/explore`, and
+nothing on that path belongs to the reader. Finishing it is four lines on
+`explore.html`, after `js/gate.js` has claimed `?unlocked=1`:
+
+```js
+try {
+  var r = JSON.parse(localStorage.getItem("fb_return_v1") || "null");
+  localStorage.removeItem("fb_return_v1");
+  if (r && r.s && Date.now() - r.at < 3600000) location.replace("/read?s=" + encodeURIComponent(r.s));
+} catch (e) {}
+```
+
+One hour, so a key left over from a checkout that was abandoned days ago never
+hijacks a shelf. `location.replace`, so Back does not bounce off it. And it has
+to run **after** the claim, or the reader is redirected away from the page that
+was about to unlock them.
+
+The alternative is Hassan's, not a coding session's: change each Payment Link's
+redirect to a URL that carries the story, which is `STRIPE.md` §7 step 6 done
+three times.
 
 ## Structure
 

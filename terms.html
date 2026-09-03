@@ -5,7 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Terms of Use · Factbox</title>
 <meta name="description" content="The terms for reading Factbox at factbox.app: what the subscription is, how billing works, and how to stop.">
-<meta name="theme-color" content="#0E0B12">
+<!-- The paper ground, matching what body actually paints. It was the
+     retired night value on all thirteen paper pages, which puts a
+     near-black bar above a cream page in Android Chrome and iOS
+     Safari. Only the four reader/story pages are #0E0B12. -->
+<meta name="theme-color" content="#DCD5C8">
+<!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
+     so it is the one that must exist; the rest are the better versions for the
+     places that look for them. The .ico packs 16, 32 and 48. Before these the
+     site declared no icon anywhere and every cold load spent a request on a
+     404 for /favicon.ico. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- site.webmanifest's theme_color is #DCD5C8, the same cream the meta above
+     declares and the same cream body paints. The three must not disagree. -->
+<link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
@@ -20,6 +36,12 @@
   .doc li{margin:0 0 7px}
   .doc strong{color:var(--parchment);font-weight:750}
   .doc a{color:var(--parchment);text-decoration:underline;text-underline-offset:3px}
+  /* The wordmark is a wordmark, not body copy and not a link in a sentence.
+     `.doc a` ties `.mark a` on specificity and wins on order, so the wordmark
+     came out underlined in the reading colour;
+     (0,2,1) restores it. Same defect as the one unlock.html carries a note
+     about: a class-plus-type selector quietly outranks a bare class. */
+  .doc p.mark a{color:var(--accent-ink);text-decoration:none}
   .dateline{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 18px;font-size:.74rem;color:var(--dimmer)}
   .lead{font-size:1rem}
   .note{margin:16px 0 6px;padding:14px 16px;border-radius:14px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--hair)}
@@ -33,7 +55,12 @@
 </head>
 <body>
 <main class="doc">
-  <p class="mark">FACTBOX</p>
+  <!-- The wordmark is the way home: /explore is the shelf. The anchor sits
+       inside the <p> so the header keeps the box, the margin and the baseline
+       it already had, and so the target is the word rather than the width of
+       the row. aria-label because a screen reader reading FACTBOX as all
+       capitals may spell it; the accessible name is the product name. -->
+  <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
   <h1>Terms of Use</h1>
   <p class="dateline">
     <span>Effective 2 September 2026</span>

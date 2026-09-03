@@ -32,17 +32,35 @@
 
      --coral is a FILL, never type. At 2.0:1 on cream it is a colour you put
      words on, not a colour you write words in. --accent-ink is the same blue
-     taken down to 4.8:1 on the page and 5.8:1 on a card, and it is what every
-     link, eyebrow and coloured label uses.
+     taken down until it clears on the page, on a card AND on the washes, and
+     it is what every link, eyebrow and coloured label uses.
+
+     THE TWO INKS ARE MEASURED ON THE WASHES, NOT ONLY ON THE GROUNDS.
+     Both used to stop at --ground and --raise, which is the mistake the note
+     below --dim describes and did not finish. A wash is a fill laid over the
+     page, so it is LIGHTER than --ground for --accent-wash and DARKER for the
+     sage one, and a token tuned on the page alone lands under 4.5:1 the moment
+     something is written on either. Both were taken down until the worst of
+     the four surfaces clears 4.5:1. The four, measured:
+
+       --accent-ink #1D5288   ground 5.52  raise 6.58  --accent-wash 4.93
+                              --menu 7.16
+       --teal-ink   #3B5119   ground 6.07  raise 7.24  --accent-wash 5.43
+                              sage wash rgba(140,167,93,.30) 5.09
+
+     The sage wash is the binding constraint on --teal-ink and --accent-wash on
+     --accent-ink. Anything new laid on a wash is measured on the wash.
      ---------------------------------------------------------------------- */
   --parchment:#1D3159;                 /* navy — the reading colour */
   --ink:#443A3A; --ink-soft:#6E625F;   /* dark brown, and it softened */
   --coral:#4C9BE8;                     /* bright blue — fills and buttons */
   --coral-deep:#3B82CC;
-  --accent-ink:#215A97;                /* the blue you may WRITE in */
-  --crimson:#A81F38;
+  --accent-ink:#1D5288;                /* the blue you may WRITE in */
+  --crimson:#A81F38;                   /* the one colour that means STOP: 4.94:1
+                                          on the page, 5.90:1 on a card */
   --teal:#8CA75D;                      /* sage — the second accent, as a fill */
-  --teal-ink:#476220;                  /* sage you may write in: 4.7:1 on cream */
+  --teal-ink:#3B5119;                  /* sage you may write in: 6.1:1 on cream,
+                                          5.1:1 on its own .30 wash */
   --butter:#95C8F7;                    /* light blue — bars and washes */
   --lilac:#B79CED;
   /* Not repainted. --night is the backstop BEHIND a plate — .beat and .tdy-art
@@ -92,6 +110,32 @@
   --glass:rgba(14,11,18,.62);
   --glass-deep:rgba(14,11,18,.72);
   --on-glass:#FFF7ED;
+  /* The quieter line on the same glass: a source credit, never a sentence.
+     Alpha rather than opacity, because opacity would fade the text-shadow the
+     words are relying on at the same time. */
+  --on-glass-soft:rgba(255,247,237,.76);
+
+  /* ---- The focus ring ----------------------------------------------------
+     ONE token, because four rules each picked their own colour and three of
+     them picked --coral, which the note at the top of this file calls a FILL,
+     never type — and a 2px ring is thinner than type. Measured on --ground it
+     was 2.01:1 against a 3:1 requirement.
+
+     --ring is a var() indirection on purpose. css/reader-rail.css repaints
+     --accent-ink for night (#FF7A5C, 6.5:1 on #0E0B12), and a custom property
+     resolves where it is USED, so the reader gets its own ring from this one
+     declaration with nothing to keep in step.
+
+     --ring-night is for the one surface that is night INSIDE a paper page:
+     the Explore mosaic, whose ground is --night behind the tiles. Set --ring
+     on any such container and everything focusable inside it inherits the
+     right ring — see .tdy-mosaic below. Measured:
+
+       --ring (=--accent-ink)  --ground 5.52  --raise 6.58  --menu 7.16
+       --ring-night            --night 10.40
+     ---------------------------------------------------------------------- */
+  --ring:var(--accent-ink);
+  --ring-night:var(--accent-lift);
 
   /* Shadow is a light source, and on cream the light is coming from the same
      place — so these are navy at low alpha, not black at .45, which on paper
@@ -170,7 +214,15 @@ body{
 }
 a{color:inherit}
 img{max-width:100%;display:block}
-:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px;border-radius:6px}
+:focus-visible{outline:2px solid var(--ring);outline-offset:3px;border-radius:6px}
+
+/* The Explore mosaic is a wall of paintings on --night, inside a cream page.
+   Set the ring here, on the container, and every tile inherits it: the ring is
+   the only thing on that wall that is not artwork, and --accent-ink — correct
+   everywhere else on this page — measured 2.52:1 against the mosaic's own
+   ground. This declaration lives in app.css rather than css/today.css because
+   the ring is app.css's to own; today.css paints the wall. */
+.tdy-mosaic{--ring:var(--ring-night)}
 
 /* ==========================================================================
    Library
@@ -195,6 +247,41 @@ img{max-width:100%;display:block}
 .mark{
   font-size:var(--fs-meta); font-weight:var(--w-head); letter-spacing:var(--ls-mark);
   color:var(--accent-ink); margin:0 0 14px;
+  /* A flex row so the tile sits on the wordmark's optical centre rather than
+     on its baseline, where a 24px square hangs a descender's worth low. The
+     row is the same height as the text alone on the ten pages that carry no
+     tile, so this costs those pages nothing. */
+  display:flex; align-items:center;
+}
+/* The wordmark is the way home. Tapping "Factbox" anywhere in the app goes to
+   /explore, which is the shelf — the anchor lives INSIDE the <p> rather than
+   replacing it so the header's box, its margin and its baseline are the ones
+   that were already measured, and so the hit target is the word rather than
+   the full width of the row.
+
+   It is a wordmark, not a nav link: no underline, no link colour of its own,
+   no visited state. The hover darkens to the reading colour (9.01:1 on cream)
+   rather than lightening to --coral-deep, which measures 2.75:1 and would make
+   the one thing on the page you are pointing at the least legible thing on it.
+   The ring is the site's ring, from :focus-visible. */
+.mark a{
+  display:inline-flex; align-items:center;
+  /* 7px, not 8. --ls-mark is .32em and letter-spacing is added AFTER every
+     character, the last one included — so the gap the eye sees between the
+     tile and the F is the flex gap plus nothing, while the gap after the X is
+     the flex gap's worth of tracking. Measured side by side, 8px read wide;
+     7px reads as the 8 it is meant to be. */
+  gap:7px;
+  color:inherit; text-decoration:none; border-radius:6px;
+  transition:color .16s ease;
+}
+.mark a:hover{color:var(--parchment)}
+/* No border-radius here. The PNG's corners are already rounded and
+   transparent; a radius on top clips them a second time and flattens them.
+   width/height are on the <img> tag as well, so the masthead reserves the box
+   before the file lands. */
+.mark img{
+  flex:0 0 auto; width:24px; height:24px; display:block;
 }
 .mast h1{
   font-size:var(--fs-hero); font-weight:var(--w-head); margin:0 0 10px;
@@ -271,15 +358,14 @@ img{max-width:100%;display:block}
   font-size:var(--fs-micro); font-weight:var(--w-head); letter-spacing:var(--ls-badge);
 }
 
-/* The buy bar. Fixed, above the webview toolbar, and it never covers the last
-   row because .lib already reserves its height in padding-bottom. */
-.buybar{
-  position:fixed; left:0; right:0; bottom:0; z-index:40;
-  padding:12px 16px calc(env(safe-area-inset-bottom,0px) + var(--toolbar) - 12px);
-  background:linear-gradient(to top,var(--ground) 62%,var(--ground-0));
-  pointer-events:none;
-}
-.buybar > *{pointer-events:auto}
+/* .buybar was removed here. There is no buy bar on any page — .lib's own note
+   above records the day its padding reservation went too — and no markup or
+   script referenced either rule. tools/check-shelf.js still asserts the bar;
+   that check is stale, not this deletion.
+
+   .copy .eyebrow went the same way: nothing writes an .eyebrow inside a .copy.
+   The eyebrows that do exist are .tdy-eyebrow and .ob-eyebrow, in their own
+   stylesheets. */
 
 .go{
   display:block; width:100%; max-width:520px; margin:0 auto;
@@ -340,10 +426,6 @@ img{max-width:100%;display:block}
   padding:0 20px;
   max-width:620px; margin:0 auto;
 }
-.copy .eyebrow{
-  font-size:var(--fs-micro); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
-  color:var(--coral); margin:0 0 10px;
-}
 .copy h2{
   font-size:var(--fs-h2); font-weight:var(--w-head); margin:0;
   line-height:1.2; letter-spacing:var(--ls-head); text-wrap:balance;
@@ -362,11 +444,29 @@ img{max-width:100%;display:block}
 /* The landing wants air under it, not another paragraph crammed to the edge. */
 .beat.is-landing .copy{bottom:calc(var(--bottom-safe) + 4vh)}
 
-.cite{
-  margin:14px 0 0; font-size:var(--fs-fine); font-weight:var(--w-body);
-  line-height:var(--lh-body); color:rgba(255,247,237,.5);
+/* The source line under a card, and it is the whole point of this site that
+   it does not read as the author's own words. It has to out-specify .copy p:
+   `.cite` is (0,1,0) and `.copy p` is (0,1,1), so for as long as this rule was
+   written as `.cite` it lost every one of its five declarations and every
+   citation rendered at the prose size, weight and colour — measured 18.06px
+   /400, identical to the paragraph above it, on all 20 cards carrying one.
+
+   And .copy p is not the only thing it has to beat. `.beat.is-hook .copy p`
+   is (0,3,1) and raises the hook card's prose to clamp(1.05rem,4.2vw,1.15rem)
+   — that is where the 18.06px the audit measured came from, on a 430px phone.
+   So the rule is written twice: (0,2,1) for every ordinary card and (0,4,1)
+   for the hook, which is the card whose citation is read first.
+
+   text-shadow is deliberately NOT re-declared: .copy p's scrim still applies
+   to this element and the words need it as much as the prose does. */
+.copy p.cite,
+.beat.is-hook .copy p.cite{
+  margin:14px 0 0; font-size:var(--fs-fine); font-weight:var(--w-label);
+  line-height:var(--lh-body); letter-spacing:var(--ls-title);
+  color:var(--on-glass-soft);
 }
-.cite a{color:rgba(255,247,237,.66)}
+.copy p.cite a,
+.beat.is-hook .copy p.cite a{color:var(--on-glass); text-decoration:underline; text-underline-offset:2px}
 
 /* Artwork credit. Small, always present, never in the way. Licence terms on
    the non-public-domain plates require it, and it costs one line. */
@@ -421,13 +521,27 @@ img{max-width:100%;display:block}
      descender's worth. align-items:center is the whole fix. */
   display:flex; align-items:center; gap:8px;
 }
+/* The way out of a story. It sits on a painting, never on the page, so it is
+   glass — and the two things that make glass legible are the scrim's depth and
+   a colour that does not change with the palette.
+
+   It used to take --parchment, which is the READING colour and inverts with
+   the ground: near-white in the reader, navy on paper. Navy on a dark scrim is
+   1.8:1, so the rule was one `<link>` away from unreadable and nothing in it
+   said so. --on-glass is the token for exactly this — type on glass over
+   artwork — and it is the same value on both palettes.
+
+   --glass-deep rather than --glass because the scrim is what carries the
+   words, not the colour: over the brightest plate in the corpus the .62 scrim
+   composites to a floor of 5.22:1 and the .72 one to 7.58:1. Measured over the
+   real plates it is 11.05:1 at its worst. */
 .back{
   display:inline-flex; align-items:center; gap:7px;
   min-height:38px; padding:0 14px 0 11px; border-radius:var(--pill);
-  background:var(--glass); backdrop-filter:blur(10px);
+  background:var(--glass-deep); backdrop-filter:blur(10px);
   box-shadow:inset 0 0 0 1px var(--hair);
   font-size:var(--fs-meta); font-weight:var(--w-strong); text-decoration:none;
-  color:var(--parchment);
+  color:var(--on-glass);
 }
 
 /* End-of-stack card and the paywall share a centred column. */
@@ -713,7 +827,10 @@ html.no-motion .fbload-fill{
 }
 .acct-btn:hover{background:var(--tint-2)}
 .acct-btn:active{transform:scale(.94)}
-.acct-btn:focus-visible{outline:2px solid var(--coral); outline-offset:3px}
+/* No colour of its own. The ring is --ring, from the one rule at the top of
+   this file; this used to name --coral and measured 2.01:1 on --ground. The
+   circle keeps its border-radius because .acct-btn's own 50% is declared
+   later in this file than :focus-visible's 6px. */
 .acct-btn.is-in{
   background:var(--accent-wash);
   box-shadow:inset 0 0 0 1px var(--accent-edge);
@@ -762,4 +879,7 @@ html.no-motion .fbload-fill{
   font-size:var(--fs-sub); font-weight:var(--w-strong); line-height:1.2;
 }
 .acct-item:hover{background:var(--tint)}
-.acct-item:focus-visible{outline:2px solid var(--coral); outline-offset:-2px}
+/* The offset is negative on purpose — the menu clips at its own padding, so a
+   ring drawn outside the item is a ring drawn under the popover's edge. Only
+   the colour was wrong: --coral measured 2.77:1 on --menu. */
+.acct-item:focus-visible{outline:2px solid var(--ring); outline-offset:-2px}

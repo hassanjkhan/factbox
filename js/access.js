@@ -462,14 +462,31 @@ var FBX = (function () {
      So the calculation is here, once, and js/today.js reads its own hero back
      out of FBX.todayOf(). One arithmetic, two callers, nothing to drift.
 
-     WHAT IT IS DERIVED FROM, AND WHAT IT IS NOT.
+     WHERE THE ANSWER COMES FROM NOW.
+     The server, when it can be reached, and the arithmetic below when it
+     cannot. `functions/today.js` decides — from ITS clock, the catalogue
+     order and an editorial override document the owner can file — and
+     `functions/story.js` honours the same answer, which is what turns "today
+     is free" from a thing the browser believes into a thing the backend
+     enforces. Story text for today's pick leaves the server without an
+     account; text for any other paid story does not, whatever this file
+     thinks.
+
+     THE FALLBACK IS NOT OPTIONAL. A backend that can break the front page is
+     worse than the client calculation it replaces, so every path below works
+     with the network absent: the deterministic pick is computed first and
+     used unless a server answer is actually in hand. Slow, down, blocked,
+     offline, CORS-refused, or the reader is on a plane — the site picks a
+     story, frees exactly one, and renders exactly as it did before any of
+     this existed.
+
+     WHAT THE DETERMINISTIC PICK IS DERIVED FROM, AND WHAT IT IS NOT.
      The UTC date and the catalogue — its length and its filed order. Nothing
-     else. No query parameter, no localStorage, no hash, no header, no
-     referrer. There is deliberately no setter and no override: a reader
-     cannot nominate a story as today's, because nothing in here ever reads
-     anything a reader can write. The only input a reader can touch at all is
-     their own device clock, and moving it still yields exactly one free story
-     — a different day's, not an extra one.
+     else. No query parameter, no hash, no header, no referrer. There is
+     deliberately no setter: a reader cannot nominate a story as today's. The
+     only input a reader can touch is their own device clock, and moving it
+     still yields exactly one free story — a different day's, not an extra
+     one, and one the server will refuse to hand over.
 
      UTC, so "today" means one thing for everybody, and a permutation rather
      than a shuffle — a stride coprime with the catalogue size visits all 51
@@ -548,13 +565,10 @@ var FBX = (function () {
 
   function todayId() {
     if (!CAT || !CAT.length) return "";
+    var t = serverId();
+    if (t) return t;
     var i = todayIndex(CAT.length);
     return (i >= 0 && CAT[i]) ? CAT[i].id : "";
-  }
-
-  function isToday(id) {
-    var t = todayId();
-    return !!t && norm(id) === t;
   }
 
   /* today.js's hero, chosen here so the two cannot disagree. Registers the
@@ -564,6 +578,18 @@ var FBX = (function () {
     catalogue(stacks);
     try {
       if (!stacks || !stacks.length) return null;
+      /* The server's answer if one is already in hand — it is primed from
+         localStorage synchronously at parse time, so on every day after the
+         first this costs no network and no wait, and the hero is the curated
+         pick from the very first frame. Otherwise the arithmetic, immediately.
+         Either way this function returns before it returns; nothing here can
+         make a page wait on a request. */
+      var t = serverId(), j;
+      if (t) {
+        for (j = 0; j < stacks.length; j++) {
+          if (stacks[j] && norm(stacks[j].id) === t) return stacks[j];
+        }
+      }
       var i = todayIndex(stacks.length);
       return (i >= 0) ? (stacks[i] || null) : null;
     } catch (e) { return null; }
@@ -575,6 +601,202 @@ var FBX = (function () {
     for (i = 0; i < CAT.length; i++) { if (CAT[i].id === want) return CAT[i].free; }
     return false;
   }
+
+  /* ========================================================================
+     The server's answer, and why this file still works without it.
+
+     `functions/today.js` is the authority: it derives the day's pick from the
+     server's clock, the catalogue order and an editorial override document,
+     and `functions/story.js` refuses to hand out text for any other paid
+     story. This is the client half. It has exactly one job and one rule.
+
+     THE JOB. Confirm or correct the arithmetic above, so the padlocks and the
+     hero agree with the thing that will actually serve the text.
+
+     THE RULE. It may never be on a critical path. Concretely:
+
+       - Nothing here runs before or during first paint. The answer for THIS
+         UTC day is read out of localStorage synchronously when this file
+         parses, which is a memory read, not a request; the network call only
+         happens on the first visit of a new day, and it is deferred by a
+         timer so it cannot compete with the parser or the first frame.
+       - todayOf(), todayId() and isToday() stay synchronous and always return
+         something. They prefer a server answer that is already in hand and
+         fall back to the arithmetic otherwise. Neither ever waits.
+       - canRead() is the only thing that waits, and only when the answer it
+         would otherwise give is "no". Capped at ASK_MS, resolved instantly
+         from the day cache after the first call, and a timeout, a 500, a
+         blocked request, an ad blocker, a captive portal or no network at all
+         all land in the same place: the deterministic pick, unchanged.
+
+     A SERVER ANSWER IS ONLY EVER ACCEPTED IF IT NAMES A STORY WE HAVE. A
+     malformed body, a story id that is not in the catalogue, a wrong-shaped
+     payload — each is discarded and the arithmetic stands. The failure mode
+     of a curation feature must not be an empty front page.
+
+     WHAT THIS DOES NOT PRETEND TO BE. The cached answer lives in localStorage,
+     which the reader owns; somebody with dev tools can edit it and make their
+     own browser draw an unlocked hero. That was already true of every flag on
+     this site and it buys them nothing, because `functions/story.js` never
+     reads anything the client sends when it decides which story is today's.
+     The client half is for drawing the right page. The server half is the
+     rule.
+     ======================================================================== */
+
+  var TODAY_URL = "https://us-central1-factbox-7cb97.cloudfunctions.net/today";
+  var TODAY_KEY = "fbx_today_v1";
+
+  /* Long enough that a phone on a bad connection still gets the real answer,
+     short enough that nobody stares at a reader page waiting for it. Only
+     canRead() can ever spend it, and only once per day per browser. */
+  var ASK_MS = 2500;
+
+  var SERVER = null;      /* { d: "YYYY-MM-DD", id: "38" } once known */
+  var ASK_P = null;       /* the in-flight or finished request, shared */
+  var todayListeners = [];
+
+  /* This browser's idea of the UTC date, in the same form the server sends
+     back. The cache is keyed on it, so a reader who moves their clock simply
+     misses the cache and re-asks — and the server answers with the real day.
+     Failing toward one extra request is the right direction to fail. */
+  function utcDate() {
+    try {
+      var d = new Date();
+      var m = d.getUTCMonth() + 1, day = d.getUTCDate();
+      return d.getUTCFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" +
+             (day < 10 ? "0" : "") + day;
+    } catch (e) { return ""; }
+  }
+
+  /* The server's pick, or "" — and "" is a complete, working answer, because
+     every caller falls back to the arithmetic. Cross-checked against the
+     catalogue whenever we have one: an id we do not recognise is not an
+     instruction, it is a bug, and the arithmetic is what stands. */
+  function serverId() {
+    if (!SERVER || !SERVER.id) return "";
+    if (SERVER.d !== utcDate()) return "";
+    if (CAT && CAT.length) {
+      var i;
+      for (i = 0; i < CAT.length; i++) { if (CAT[i].id === SERVER.id) return SERVER.id; }
+      return "";
+    }
+    return SERVER.id;
+  }
+
+  function isToday(id) {
+    var t = todayId();
+    return !!t && norm(id) === t;
+  }
+
+  /* Anything that wants to redraw when the server corrects the arithmetic.
+     Deliberately its OWN list rather than the access listeners: today's pick
+     changing is not an access change, why() has not moved, and firing the
+     general listeners would push a non-event through every padlock pass and
+     through FBX.correct() on every page on the site. */
+  function onToday(fn) {
+    if (typeof fn !== "function") return;
+    todayListeners.push(fn);
+    var t = todayId();
+    if (t) { try { fn(t); } catch (e) {} }
+  }
+
+  function announceToday(before) {
+    var now = todayId(), i;
+    if (now === before) return;
+    for (i = 0; i < todayListeners.length; i++) {
+      try { todayListeners[i](now, before); } catch (e) {}
+    }
+  }
+
+  /* --- the day cache ------------------------------------------------------
+     One localStorage entry, holding one date and one story id. Read
+     synchronously at parse; written once per day. This is what keeps the
+     endpoint down to roughly one call per reader per UTC day rather than one
+     per page load. */
+  function loadCached() {
+    try {
+      var raw = store(TODAY_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || typeof o !== "object") return null;
+      if (!o.d || !o.id) return null;
+      if (String(o.d) !== utcDate()) return null;
+      return { d: String(o.d), id: norm(o.id) };
+    } catch (e) { return null; }
+  }
+
+  function saveCached(o) {
+    try { put(TODAY_KEY, JSON.stringify({ d: o.d, id: o.id })); } catch (e) {}
+  }
+
+  /* Read the cache before anything on the page has rendered. No request, no
+     await, no failure mode: a miss simply leaves SERVER null. */
+  (function primeToday() {
+    var hit = loadCached();
+    if (hit) SERVER = hit;
+  })();
+
+  /* --- the request --------------------------------------------------------
+     Resolves. Always. There is no rejection path out of this function, on
+     purpose: every caller's error handler and success handler would do the
+     same thing, and a promise that can reject is a promise somebody forgets
+     to catch. */
+  function askServer() {
+    if (ASK_P) return ASK_P;
+    ASK_P = new Promise(function (done) {
+      /* Already answered for today, out of the cache or a previous call. */
+      if (serverId()) { done(serverId()); return; }
+      if (!window.fetch) { done(""); return; }
+
+      var settled = false;
+      var before = todayId();
+      function finish(id) {
+        if (settled) return;
+        settled = true;
+        done(id || "");
+      }
+      /* The cap is a plain timer rather than only an AbortController, so a
+         browser that has neither still cannot hold canRead() open. */
+      setTimeout(function () { finish(""); }, ASK_MS);
+
+      var ctl = null;
+      try { if (window.AbortController) ctl = new AbortController(); } catch (e) { ctl = null; }
+      if (ctl) setTimeout(function () { try { ctl.abort(); } catch (e) {} }, ASK_MS);
+
+      var opts = { method: "GET", credentials: "omit", cache: "default" };
+      if (ctl) opts.signal = ctl.signal;
+
+      try {
+        window.fetch(TODAY_URL, opts).then(function (r) {
+          if (!r || !r.ok) { finish(""); return null; }
+          return r.json();
+        }).then(function (j) {
+          if (!j || j.ok !== true) { finish(""); return; }
+          var id = norm(j.id);
+          var d = String(j.date || "");
+          if (!/^[0-9]{2}[A-Z]?$/.test(id) || !/^\d{4}-\d{2}-\d{2}$/.test(d)) { finish(""); return; }
+          SERVER = { d: d, id: id };
+          /* Only cache what we would also accept on the way back in. */
+          if (serverId()) saveCached(SERVER); else SERVER = null;
+          finish(serverId());
+          announceToday(before);
+        }, function () { finish(""); });
+      } catch (e) { finish(""); }
+    });
+    return ASK_P;
+  }
+
+  /* Warm the answer on the first visit of a new UTC day, off the critical
+     path. A timer rather than a straight call so the request is issued after
+     the parser is done with this file, and never before the first frame. It
+     is one 300-byte GET per browser per day; every page load after it is
+     answered out of localStorage with no network at all. */
+  (function warmToday() {
+    try {
+      if (serverId()) return;                 /* cached; nothing to fetch */
+      setTimeout(function () { try { askServer(); } catch (e) {} }, 600);
+    } catch (e) {}
+  })();
 
   /* One fetch, shared, and it is the same request js/gate.js already makes
      with cache:"force-cache" — not a second one. A page with no FB, or a
@@ -602,11 +824,29 @@ var FBX = (function () {
      not knowable at parse time and pretending otherwise is what padlocked
      paying readers three times. */
   function canRead(id) {
+    /* Started HERE, before the wait below and not after it. The day's answer
+       and the account's answer are independent questions, and asking them in
+       series would stack a network round trip on top of a wait that was
+       already the slowest thing on the page. Measured, with the endpoint hung
+       and never answering: 3,095 ms in series, 2,501 ms in parallel — which
+       is ASK_MS exactly. And 1,829 ms, unchanged from before any of this
+       existed, whenever the request fails fast, which is what an offline
+       browser does. */
+    var asked = askServer();
     return ready().then(function () {
       if (can()) return true;
       return needCatalogue().then(function () {
-        if (isToday(id)) return true;
-        return isFreeStory(id);
+        /* Permanently free is a fact in the catalogue and needs nobody's
+           opinion. Answered first so 01 and 02 never wait on anything. */
+        if (isFreeStory(id)) return true;
+        /* Everything else hinges on which story is today's, and that is the
+           server's to say. Waited on HERE and nowhere else, because this is
+           the only place the answer changes an outcome — and the wait is
+           capped, resolves instantly once the day's answer is cached, and
+           falls through to the arithmetic on any failure. A reader offline
+           gets exactly the behaviour they got before this existed. */
+        return asked.then(function () { return isToday(id); },
+                          function () { return isToday(id); });
       });
     });
   }
@@ -633,6 +873,8 @@ var FBX = (function () {
     todayOf: todayOf,
     todayId: todayId,
     isToday: isToday,
+    onToday: onToday,
+    askToday: askServer,
     dayNumber: dayNumber,
     todayIndex: todayIndex,
 

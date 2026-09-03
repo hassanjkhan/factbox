@@ -54,7 +54,7 @@ python3 -m http.server 8899 &
 cd tools
 node check-page.js  "stories.html"   ".card"    "Be disgustingly"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
-node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
+node check-page.js  "read.html?s=44" ".paywall" "Your next story is already waiting"
 node check-story.js ../story.html
 node check-backend.js
 cd .. && python3 tools/check-structure.py

@@ -923,11 +923,235 @@ var FBP = (function () {
     } catch (e) { return null; }
   }
 
+  /* --- the two things the buyer is owed, in words -------------------------
+
+     TWO DEFECTS, ONE MECHANISM, both of which were written down here and
+     never put on a screen.
+
+     1. A BROKEN RESTORE LINK SAID NOTHING. The check digit forty lines up
+        exists, in its own words, "so the buyer gets 'that link looks wrong'
+        instead of a page that silently does nothing". Nothing read
+        restoreFailed(). A buyer whose mail client folded the link across two
+        lines landed on the ordinary padlocked shelf and concluded they had
+        been robbed. Silence is the worst possible answer here: the reader
+        cannot tell a truncated link from a refused one.
+
+     2. THE RESTORE LINK WAS NEVER SHOWN. restoreURL() is minted at purchase
+        and rebuildable forever, and /join's sign-in panel tells the reader in
+        so many words that it is "the link shown on the home shelf after you
+        paid — the one worth emailing to yourself". It was not shown on the
+        home shelf or anywhere else, so that sentence pointed at nothing.
+
+     WHY THE MARKUP IS BUILT HERE RATHER THAN LEFT TO EACH PAGE. Twelve pages
+     carry this file and any of them can be the one a buyer lands on: Stripe
+     returns to /stories, which forwards to /explore carrying the query, and
+     /join's paste box posts a bad token to the same pair. A slot in one
+     page's HTML would be the slot the next return path misses.
+
+     STYLED FROM INSIDE, like resumeChip above and for the same reason: this
+     needs no rule from any stylesheet another agent owns, so it cannot be
+     turned invisible by an edit somewhere else. Colours are inherited rather
+     than declared, so the panel is legible on the cream pages and on the
+     night ones without knowing which it is on.
+
+     IT IS ADDITIVE AND IT IS SILENT BY DEFAULT. notice() returns null unless
+     this exact page load either failed a restore or came back from a
+     checkout, so nothing here can appear on an ordinary visit, and nothing
+     here can take anything away from a page that is already rendering. */
+
+  var SUPPORT_URL = "/support";
+  var SIGNIN_URL  = "/login";
+
+  function noticeInfo() {
+    try {
+      if (_restoreBad) return { kind: "restore-failed", already: unlocked() };
+      /* Q is captured before gate.js rewrites the URL, so "did this load come
+         back from checkout" is still answerable here and nowhere else. */
+      if (Q.unlocked === "1" && unlocked()) {
+        var u = restoreURL();
+        if (u) return { kind: "restore-link", url: u };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function nEl(tag, css, txt) {
+    var n = document.createElement(tag);
+    if (css) n.style.cssText = css;
+    if (txt != null) n.appendChild(document.createTextNode(String(txt)));
+    return n;
+  }
+
+  var S_PANEL =
+    "margin:16px 0;padding:14px 16px;border-radius:14px;" +
+    "border:1px solid rgba(255,122,92,.55);background:rgba(255,122,92,.10);" +
+    "color:inherit;max-width:62ch;" +
+    "font:400 .94rem/1.55 -apple-system,BlinkMacSystemFont,'DM Sans','Segoe UI',sans-serif;";
+  var S_HEAD = "margin:0 0 6px;font-size:1rem;font-weight:800;color:inherit;";
+  var S_P    = "margin:0 0 8px;color:inherit;";
+  var S_FINE = "margin:8px 0 0;font-size:.82rem;opacity:.8;color:inherit;";
+  var S_URL  =
+    "display:block;margin:10px 0 0;padding:9px 10px;border-radius:9px;" +
+    "border:1px solid rgba(128,128,128,.45);background:rgba(128,128,128,.10);" +
+    "font:400 .8rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;" +
+    "word-break:break-all;-webkit-user-select:all;user-select:all;color:inherit;";
+  var S_BTN =
+    "margin:10px 8px 0 0;min-height:44px;padding:0 16px;border-radius:999px;" +
+    "border:1px solid currentColor;background:none;color:inherit;cursor:pointer;" +
+    "font:600 .9rem/1 inherit;";
+
+  function link(href, text) {
+    var a = nEl("a", "color:inherit;text-decoration:underline;", text);
+    a.setAttribute("href", href);
+    return a;
+  }
+
+  /* The copy button is a convenience on top of text that is already there and
+     already selectable. Every failure path leaves the address on screen and
+     says what to do instead, because a button that quietly does nothing is
+     the thing this whole panel exists to stop. */
+  function copier(url) {
+    var b = nEl("button", S_BTN, "Copy link");
+    b.type = "button";
+    function said(t) { try { b.textContent = t; } catch (e) {} }
+    try {
+      b.addEventListener("click", function () {
+        var ok = false;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url);
+            ok = true;
+          }
+        } catch (e) { ok = false; }
+        if (!ok) {
+          try {
+            var t = document.createElement("textarea");
+            t.value = url;
+            t.style.cssText = "position:fixed;left:-9999px;top:0;";
+            document.body.appendChild(t);
+            t.select();
+            ok = !!document.execCommand("copy");
+            if (t.parentNode) t.parentNode.removeChild(t);
+          } catch (e2) { ok = false; }
+        }
+        said(ok ? "Copied" : "Select the link above and copy it");
+      }, false);
+    } catch (e) {}
+    return b;
+  }
+
+  function buildNotice(info) {
+    var box = nEl("div", S_PANEL);
+    box.className = "fbp-notice";
+    box.setAttribute("role", "status");
+
+    if (info.kind === "restore-failed") {
+      box.setAttribute("data-notice", "restore-failed");
+      box.appendChild(nEl("p", S_HEAD, "That restore link did not work."));
+      box.appendChild(nEl("p", S_P,
+        "It arrived incomplete, or a character of it changed on the way, so " +
+        "there was nothing to open. A restore link ends in a dash and four " +
+        "more characters, and mail apps often break a long one across two " +
+        "lines. Go back to the email and copy the whole address, to the very " +
+        "last character."));
+      /* Somebody tapping their own broken link on the phone that already
+         works must not be told they have lost something. */
+      if (info.already) {
+        box.appendChild(nEl("p", S_P,
+          "You still have access on this phone, so nothing here has changed."));
+      }
+      var p2 = nEl("p", S_P, "Nothing has been lost. ");
+      p2.appendChild(link(SIGNIN_URL, "Sign in with the email you paid with"));
+      p2.appendChild(document.createTextNode(", or "));
+      p2.appendChild(link(SUPPORT_URL, "ask us and we will send a fresh link"));
+      p2.appendChild(document.createTextNode("."));
+      box.appendChild(p2);
+      return box;
+    }
+
+    box.setAttribute("data-notice", "restore-link");
+    box.appendChild(nEl("p", S_HEAD, "You are in. Here is your restore link."));
+    box.appendChild(nEl("p", S_P, RESTORE_NOTE));
+    box.appendChild(nEl("code", S_URL, info.url));
+    box.appendChild(copier(info.url));
+    box.appendChild(nEl("p", S_FINE,
+      "Email it to yourself. It is the one thing that carries your access to " +
+      "another phone or another browser."));
+    return box;
+  }
+
+  /* mountNotice(host) — put the panel somewhere a reader will see it.
+
+     A page that wants to place it exactly gives us #fb-notice. A page that
+     does not gets it under its masthead anyway, because the alternative is
+     the silence these two defects were: the buyer must not depend on twelve
+     pages each remembering to add a slot. Returns the element, or null when
+     there is nothing to say — which is almost every page load. */
+  var _notice = null;
+
+  function noticeHost(host) {
+    try {
+      if (host && host.nodeType === 1) return host;
+      if (typeof host === "string") {
+        var byId = document.getElementById(host);
+        if (byId) return byId;
+      }
+      var slot = document.getElementById("fb-notice");
+      if (slot) return slot;
+      var main = document.getElementsByTagName("main")[0];
+      if (main) return main;
+      return document.body || null;
+    } catch (e) { return null; }
+  }
+
+  function mountNotice(host) {
+    try {
+      if (_notice) return _notice;
+      if (typeof document === "undefined" || !document.createElement) return null;
+      var info = noticeInfo();
+      if (!info) return null;
+      var at = noticeHost(host);
+      if (!at) return null;
+      var box = buildNotice(info);
+      /* An empty #fb-notice is filled; anything else is written into after
+         its header, so the panel lands where the page's own greeting does
+         rather than above the wordmark. */
+      if (at.id === "fb-notice" || (host && host.nodeType === 1)) {
+        at.appendChild(box);
+      } else {
+        var head = at.getElementsByTagName("header")[0];
+        if (head && head.parentNode === at && head.nextSibling) {
+          at.insertBefore(box, head.nextSibling);
+        } else if (head && head.parentNode === at) {
+          at.appendChild(box);
+        } else {
+          at.insertBefore(box, at.firstChild);
+        }
+      }
+      _notice = box;
+      return box;
+    } catch (e) { return null; }
+  }
+
+  (function () {
+    try {
+      if (typeof document === "undefined" || !document.addEventListener) return;
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          try { mountNotice(); } catch (e) {}
+        }, false);
+      } else {
+        mountNotice();
+      }
+    } catch (e) {}
+  })();
+
   return {
     /* access */
     unlocked: unlocked, unlock: unlock, lock: lock,
     token: token, restoreURL: restoreURL, source: source,
     restoreFailed: restoreFailed, RESTORE_NOTE: RESTORE_NOTE,
+    notice: noticeInfo, mountNotice: mountNotice,
     /* reading memory */
     mark: mark, complete: complete, flush: flush,
     get: get, all: all, state: state,

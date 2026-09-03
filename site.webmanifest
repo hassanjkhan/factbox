@@ -1,0 +1,28 @@
+{
+  "name": "Factbox",
+  "short_name": "Factbox",
+  "description": "One history story a day, told one card at a time on paintings from the world's museums.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#DCD5C8",
+  "theme_color": "#DCD5C8",
+  "icons": [
+    {
+      "src": "/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/img/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

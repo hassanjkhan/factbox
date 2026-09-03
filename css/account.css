@@ -80,17 +80,41 @@ body{background:var(--ground); color:var(--parchment)}
 /* A placeholder is still text a reader has to parse, so it gets --dimmer's
    4.6:1 rather than the .38 wash it carried, which measured 1.9:1 on paper. */
 .jn-field input::placeholder{color:var(--dimmer)}
-.jn-field input:focus{box-shadow:inset 0 0 0 1px var(--coral); outline:none}
+/* A REAL focus indicator on the two fields a keyboard user needs it on most.
+
+   This rule used to be `box-shadow:inset 0 0 0 1px var(--coral); outline:none`
+   — it removed the site's ring and replaced it with a 1px inset hairline in a
+   colour app.css calls a FILL, never type. On the sign-in page that is the one
+   place where "where am I?" has to be answerable without a mouse, and it was
+   not: a 1px inset line inside a filled field, at 2.0:1.
+
+   The outline is back, in --ring, and the inset line stays as the field's own
+   "this one is live" fill. :focus, not :focus-visible, because a text field
+   shows its ring on a tap as well: the caret is inside it either way. */
+.jn-field input:focus{
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
+  outline:2px solid var(--ring); outline-offset:2px;
+}
 .jn-opt-note{
   margin:7px 2px 0; font-size:var(--fs-meta); font-weight:var(--w-label);
   color:var(--dimmer); line-height:1.45;
 }
 
 /* An error is a sentence, in the one colour that means "look here", and it is
-   never the only signal: the field keeps focus and the button stays live. */
-.jn-err{
+   never the only signal: the field keeps focus and the button stays live.
+
+   --crimson, not --accent-ink. In link-blue an error read as one more piece of
+   the page's own furniture — the same colour as every link and eyebrow on it.
+   4.94:1 on --ground, 5.90:1 on --raise.
+
+   The selector carries .au-panel because css/auth.css loads after this file
+   and its `.au-panel > p` is (0,2,0) against this rule's (0,1,0): on
+   /login every one of these five declarations lost, and the error rendered as
+   16px/400 body copy in --dim. Same specificity defect as .cite. */
+.jn-err,
+.au-panel > p.jn-err{
   margin:10px 2px 0; font-size:var(--fs-note); font-weight:var(--w-strong);
-  line-height:1.45; color:var(--accent-ink);
+  line-height:1.45; color:var(--crimson);
 }
 .jn-err[hidden]{display:none}
 

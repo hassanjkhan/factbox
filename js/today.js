@@ -232,9 +232,48 @@
     return stacks[i] || null;
   }
 
+  /* Today's story, and there is only one answer to that question on this site.
+
+     It is not only what goes in the hero: today's pick is readable by
+     everybody, every day, so it is also the answer to "does this cover wear a
+     padlock", which js/access.js has to give on pages this file never runs on.
+     Two files working the date out separately is two files that will disagree
+     on a leap second or a refactor, and the reader who loses that argument is
+     looking at a padlock on the story the front page just told them to read.
+
+     So js/access.js OWNS it and this file asks. FBX.todayOf(stacks) is the
+     entry point built for exactly this call: it hands back today's story AND
+     registers the catalogue on the way past, which is what makes FBX.isToday()
+     and FBX.canRead() answer synchronously for every cover drawn afterwards —
+     including on the reader page, which never loads this file. FBX.todayIndex
+     is the same answer without the registration, and is only used if some
+     future access.js has one and not the other.
+
+     The local arithmetic at the bottom is reached only when there is no
+     js/access.js at all, which is the same condition under which this page
+     falls back to FB.unlocked(). It is the same three lines as access.js's
+     indexAt(); if you change one, change both. */
+  function todayPick(stacks) {
+    var n = stacks ? stacks.length : 0, i = -1, s;
+    if (!n) return null;
+    try {
+      if (window.FBX && FBX.todayOf) {
+        s = FBX.todayOf(stacks);
+        if (s && s.id) return s;
+      }
+      if (window.FBX && FBX.todayIndex) i = Math.floor(FBX.todayIndex(n));
+    } catch (e) { i = -1; }
+    if (!(i >= 0 && i < n)) i = ((dayNumber() * strideFor(n)) % n + n) % n;
+    return stacks[i] || null;
+  }
+
   /* --- state -------------------------------------------------------------- */
 
   var STACKS = [];
+  /* The id of today's pick, set by build() before a single cover is written.
+     Every cover of it on the page — the hero, the shelf, a subject row, the
+     mosaic tile — is marked from this one value, so they cannot disagree. */
+  var TODAY_ID = "";
   var view = null, say = null;
   var drewOpen = null;         /* what the thing on screen was built from */
 
@@ -248,22 +287,35 @@
      element itself, so nothing is ever re-rendered and no thumbnail is ever
      re-requested. */
 
+  /* data-free is the padlock pass's question, and the honest name for it is
+     "can this be read without paying, right now" — which is true of the two
+     permanently free stories AND of today's pick, every day. Widening the
+     attribute rather than adding a second one is what keeps applyLocked()
+     unchanged and keeps the hero, the shelf and the mosaic in step.
+
+     The FREE ribbon is a different claim. It says the story is free FOREVER,
+     so it is drawn from s.free and never from the attribute — today's pick is
+     open today and locked on Thursday, and a badge that promised otherwise
+     would be a lie with a date on it. */
+  function openNow(s) { return !!(s && (s.free || (TODAY_ID && s.id === TODAY_ID))); }
+
   function cover(s) {
     if (!s || !s.id) return "";
     var total = cardCount(s);
     var st = pstate(s.id, total);
     var facts = total + " cards · " + mins(s.secs);
     return '' +
-      '<a class="card is-' + st.status + '"' +
+      '<a class="card is-' + st.status + (s.free ? " is-free" : "") + '"' +
          ' href="' + esc(href(s)) + '"' +
          ' data-id="' + esc(s.id) + '"' +
-         ' data-free="' + (s.free ? "1" : "") + '"' +
+         ' data-free="' + (openNow(s) ? "1" : "") + '"' +
          ' data-meta="' + esc(facts) + '"' +
          ' data-label="' + esc(st.label || "") + '"' +
          ' data-pct="' + (st.pct || 0) + '">' +
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" width="420" height="560" ' +
                'src="/img/thumbs/' + esc(s.img) + '.webp"' + heroFallback(s.img) + '>' +
+          (s.free ? '<span class="freetag">FREE</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +
@@ -393,7 +445,10 @@
     var total = cardCount(s);
     var slot = esc(s.img);
     return '' +
-      '<section class="tdy-today" id="tdy-box" data-free="' + (s.free ? "1" : "") + '">' +
+      /* Always "1": this section IS today's pick, and today's pick is free for
+         everybody every day. It used to carry (s.free ? "1" : ""), which put a
+         padlock on the one story the whole page is built to get read. */
+      '<section class="tdy-today" id="tdy-box" data-free="1">' +
         '<div class="tdy-art">' +
           '<img loading="eager" decoding="async" alt="" width="1280" height="800" ' +
                'src="/img/thumbs/' + slot + '.webp" ' +
@@ -473,7 +528,7 @@
       '<a class="tdy-serie' + (next.fresh ? "" : " is-done") + '"' +
          ' href="' + esc(href(next.stack)) + '"' +
          ' data-id="' + esc(next.stack.id) + '"' +
-         ' data-free="' + (next.stack.free ? "1" : "") + '">' +
+         ' data-free="' + (openNow(next.stack) ? "1" : "") + '">' +
         '<div class="plate"><img loading="lazy" decoding="async" alt="" ' +
              'src="/img/thumbs/' + esc(next.stack.img) + '.webp"' +
              heroFallback(next.stack.img) + '></div>' +
@@ -500,20 +555,155 @@
       '</section>';
   }
 
-  /* --- Everything there is -------------------------------------------------
+  /* --- Everything there is: the mosaic -------------------------------------
 
      Eight subject rows told a reader how the season is organised. A wall of
      fifty-one covers tells them how much of it there is, which is the more
-     useful thing to know on the page you land on — and it is the same grid the
-     shelf already used, so nothing new had to be designed for it.
+     useful thing to know on the page you land on.
 
-     Deliberately the whole catalogue in id order, not a filtered or ranked
-     slice: Today's Factbox and Trending have already made a case for six
-     stories, and this section's job is the opposite one of showing the rest
-     exist. `.grid` and `.card` come from css/app.css unchanged, so a cover
-     here is the same object as a cover on any other shelf, padlocks and read
-     bars included — applyLocked() and applyOpen() find these without knowing
-     they were added. */
+     This one is not the shelf grid. Today's Factbox, Trending and Binge are
+     curated — a card each, spaced, titled underneath. The catalogue is the
+     opposite kind of object, and it is drawn the opposite way: tiles packed
+     edge to edge with no gutter, in four sizes, title burned into the bottom
+     left over a scrim and the reader's place in the story on a pill top
+     right. The contrast is the point. If this section looked like the shelves
+     above it, the shelves would stop reading as chosen.
+
+     Two things had to be solved before any of it could ship, and the first
+     attempt at this section was thrown away because it solved neither.
+
+     1. COLLAPSED ROWS. A CSS grid sizes an implicit row from the tallest
+        thing that STARTS in it. A row made only of the lower halves of tiles
+        that began in the row above has nothing to size it, so it collapses to
+        zero and the mosaic folds up. Sizing rows from the tiles is therefore
+        the wrong direction entirely. layoutMosaic() measures the mosaic once,
+        divides by the column count and writes that back as --m-row, so
+        grid-auto-rows is an explicit length and NO row can depend on its
+        contents. Spans and --m-row are written in the same pass and never
+        exist without each other: if the script never runs, or the element has
+        no width to measure, nothing is written and css/today.css draws fifty-
+        one plain squares, which is a duller page and not a broken one.
+
+     2. THE RAGGED TAIL. Fifty-one does not divide by three, four, five or
+        six, and no repeating block of mixed sizes lands flush on it either —
+        so the last row ends mid-way and the grid finishes with a bite out of
+        it. The fix is to stop hoping and check: mosAttempt() lays every tile
+        into a real occupancy grid and then REFUSES to return a layout unless
+        the cells used come to exactly rows x columns and every one of them is
+        covered. mosPlanFor() calls it with a rising number of double-width
+        tiles in the tail until one comes back clean. The last 2n tiles carry
+        no 2x2 and no tall tile for exactly this reason: they are the slack
+        the arithmetic is taken out of, so the mosaic settles into plain
+        squares at the bottom rather than leaving a hole. A plan that cannot
+        be made flush is discarded rather than drawn.
+
+     The rhythm is a function of the story's index in the catalogue, not of
+     chance and not of where the tile happens to land, so story 27 is the same
+     shape on every load and the page does not reflow differently on a second
+     visit. A shape that will not fit where the packer has reached steps down
+     — 2x2 to tall, wide to square — which is also deterministic, because the
+     packer is fed the same tiles in the same order every time.
+
+     `.card` is unchanged from the shelves', deliberately: same element, same
+     classes, same data-free / data-meta / data-label / data-pct, same .plate
+     with the read bar inside it. applyLocked() and applyOpen() find these
+     without knowing the section was rebuilt, and the whole mosaic is CSS over
+     that one contract. The only thing this file adds to a tile is its span,
+     and it adds that to the element rather than to the markup, so a redraw
+     and a padlock pass cannot fight over it. */
+
+  var MOS_TILE_MIN = 3;      /* columns on a phone */
+
+  /* Measured on the mosaic, not the window: on a wide screen this element is
+     inside the content column, not the viewport. */
+  function mosColsFor(w) {
+    if (!(w > 0)) return MOS_TILE_MIN;
+    if (w < 540) return 3;
+    if (w < 820) return 4;
+    if (w < 1100) return 5;
+    return 6;
+  }
+
+  /* The rhythm. Nine is coprime with two, three and four, so the feature
+     tiles do not line up into a column whatever the grid is that day.
+       0 -> 2x2   4 -> tall   6 -> wide   everything else square */
+  function mosDesire(i) {
+    var m = i % 9;
+    if (m === 0) return 4;
+    if (m === 4) return 3;
+    if (m === 6) return 2;
+    return 1;
+  }
+
+  /* One packing attempt. Returns a plan only if the result is a complete
+     rectangle — no holes anywhere, and none at the end. */
+  function mosAttempt(count, n, extra, plain) {
+    var grid = [], out = [], r = 0, c = 0, i = 0, used = 0, wides = 0;
+    var tail = count - 2 * n;
+    var w, h, d, y, x, a, b;
+
+    function taken(yy, xx) { var row = grid[yy]; return !!(row && row[xx]); }
+    function room(yy, xx, ww) {
+      if (xx + ww > n) return false;
+      var k;
+      for (k = xx; k < xx + ww; k++) { if (taken(yy, k)) return false; }
+      return true;
+    }
+
+    while (i < count && r < 400) {
+      for (c = 0; c < n && i < count; c++) {
+        if (taken(r, c)) continue;
+        w = 1; h = 1;
+        d = plain ? 1 : mosDesire(i);
+        if (i >= tail) {
+          /* The slack. Squares, plus however many double-width tiles it takes
+             to make the total land on a whole number of rows. */
+          if (wides < extra && room(r, c, 2)) { w = 2; wides++; }
+        } else if (d === 4) {
+          h = 2;
+          if (room(r, c, 2)) w = 2;          /* 2x2, or tall if it will not fit */
+        } else if (d === 3) {
+          h = 2;
+        } else if (d === 2 && room(r, c, 2)) {
+          w = 2;
+        }
+        out[i] = [w, h];
+        for (a = r; a < r + h; a++) {
+          if (!grid[a]) grid[a] = [];
+          for (b = c; b < c + w; b++) grid[a][b] = 1;
+        }
+        used += w * h;
+        i++;
+      }
+      r++;
+    }
+    if (i < count) return null;              /* ran out of rows: not a layout */
+
+    var rows = grid.length;
+    if (used !== rows * n) return null;      /* the last row is short */
+    for (y = 0; y < rows; y++) {
+      for (x = 0; x < n; x++) { if (!taken(y, x)) return null; }
+    }
+    return { shapes: out, cols: n, rows: rows };
+  }
+
+  /* The rhythm first; plain squares as the answer that always exists. A plan
+     of `count` squares with k = (n - count % n) % n of them widened is a full
+     rectangle for every n, so the second loop cannot come back empty. */
+  function mosPlanFor(count, n) {
+    var extra, p;
+    if (!(count > 0) || !(n > 0)) return null;
+    for (extra = 0; extra <= 2 * n; extra++) {
+      p = mosAttempt(count, n, extra, false);
+      if (p) return p;
+    }
+    for (extra = 0; extra <= 2 * n; extra++) {
+      p = mosAttempt(count, n, extra, true);
+      if (p) return p;
+    }
+    return null;
+  }
+
   function allHTML(stacks) {
     if (!stacks || !stacks.length) return "";
     var out = "", i;
@@ -522,14 +712,16 @@
       '<section class="row">' +
         '<div class="sechead"><h2>All stories</h2>' +
         '<span>' + stacks.length + ' to read</span></div>' +
-        '<div class="grid">' + out + '</div>' +
+        '<div class="tdy-mosaic" id="tdy-all">' + out + '</div>' +
       '</section>';
   }
 
   /* --- the page ----------------------------------------------------------- */
 
   function build(back) {
-    var today = pickAt(STACKS, dayNumber());
+    var today = todayPick(STACKS);
+    /* Before anything is drawn, because every cover reads it. */
+    TODAY_ID = (today && today.id) ? today.id : "";
     var cont = continueOf(STACKS);
     return continueHTML(cont) +
            todayHTML(today) +
@@ -568,13 +760,43 @@
 
      Called from the access correction, not at first paint: before the answer
      arrives the honest line is the one already in the markup. */
+  /* The swap is a change of claim, not a flicker, so it fades.
+
+     It happens once, when the billing answer lands — measured at 247ms, 631ms
+     and 1535ms after paint — and only ever pitch -> owned, because the pitch
+     is what the markup ships. So nobody is ever shown the wrong sentence; they
+     are shown a sentence that changes under them, and an unannounced change
+     reads as a glitch. 160ms of fade is the whole treatment.
+
+     There is no version of this that predicts the answer and avoids the swap.
+     The only way would be to cache "this browser belonged to a subscriber last
+     time", which is the browser-level entitlement claim that was just taken
+     out of this site for being wrong. */
+  function fades() {
+    try {
+      return !!(window.matchMedia &&
+                !window.matchMedia("(prefers-reduced-motion:reduce)").matches);
+    } catch (e) { return false; }
+  }
+
   function pitchFor(open) {
     try {
       var p = document.getElementById("tdy-blurb");
       if (!p) return;
-      p.textContent = open
+      var next = open
         ? "You have all fifty-one. New stories are added through the season."
         : "Trade five minutes of scrolling for something worth remembering.";
+      /* Called again after any redraw. Re-running the fade on a sentence that
+         is not changing is the flicker this is meant to prevent. */
+      if (p.textContent === next) return;
+      /* Reduced motion gets the swap with no dip: 160ms at zero opacity with
+         nothing to ease it is a blink, which is the thing that setting asks
+         not to be shown. */
+      if (!fades()) { p.textContent = next; return; }
+      p.style.opacity = "0";
+      setTimeout(function () {
+        try { p.textContent = next; p.style.opacity = "1"; } catch (e) {}
+      }, 170);
     } catch (e) {}
   }
 
@@ -595,6 +817,90 @@
     } catch (e) {}
   }
 
+  /* --- laying the mosaic out ----------------------------------------------
+
+     Measure, plan, write the spans and the row height. Called after every
+     draw and on every resize, and it is the only place either half is
+     written, so a tile can never be spanning two rows on a grid whose rows
+     are auto — which is the failure that collapses the layout.
+
+     The plan is only recomputed when the column count or the number of tiles
+     changes. --m-row is rewritten every time, because it is a length in
+     pixels and the window can be dragged without crossing a breakpoint. */
+
+  var mosCols = 0;          /* the column count the spans on screen assume */
+  var mosPlan = null;
+
+  function layoutMosaic() {
+    var host, box, w, n, tiles, i, t, sh;
+    try {
+      host = el("tdy-all");
+      if (!host) { mosCols = 0; mosPlan = null; return; }
+      /* getBoundingClientRect, not clientWidth, so the row height matches the
+         fractional width the 1fr columns actually resolve to. */
+      w = 0;
+      try { box = host.getBoundingClientRect(); w = box && box.width; } catch (e) {}
+      if (!(w > 0)) w = host.clientWidth || 0;
+      /* Not laid out yet — display:none, or a detached render. Leave the
+         squares css/today.css already draws rather than divide by nothing. */
+      if (!(w > 0)) return;
+
+      n = mosColsFor(w);
+      tiles = host.children;
+      /* Written straight onto the element rather than through a custom
+         property: `repeat(var(--n),1fr)` is legal CSS and is a whole
+         declaration lost to `none` — one column, fifty-one tiles down the
+         page — the moment a browser disagrees about substitution inside
+         repeat(). This cannot fail that way.
+
+         The row is the column: an explicit length, so the grid's rows never
+         ask the tiles how tall they are. */
+      host.style.gridTemplateColumns = "repeat(" + n + ",minmax(0,1fr))";
+      host.style.gridAutoRows = (w / n) + "px";
+
+      if (n === mosCols && mosPlan && mosPlan.shapes.length === tiles.length) return;
+      mosCols = n;
+      mosPlan = mosPlanFor(tiles.length, n);
+
+      for (i = 0; i < tiles.length; i++) {
+        t = tiles[i];
+        sh = (mosPlan && mosPlan.shapes[i]) || [1, 1];
+        try {
+          t.style.gridColumnEnd = "span " + sh[0];
+          t.style.gridRowEnd = "span " + sh[1];
+          t.setAttribute("data-w", String(sh[0]));
+          t.setAttribute("data-h", String(sh[1]));
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  /* One listener, wired once, and it never rebuilds anything: a resize moves
+     spans and a number, so no thumbnail is re-requested and no padlock is
+     lost. ResizeObserver where there is one, because the mosaic's width can
+     change without the window's — the account popover taking a scrollbar, for
+     instance — and resize as the floor everywhere else. */
+  var mosTimer = 0, mosWired = false;
+
+  function mosSoon() {
+    try {
+      if (mosTimer) clearTimeout(mosTimer);
+      mosTimer = setTimeout(function () { mosTimer = 0; layoutMosaic(); }, 90);
+    } catch (e) { layoutMosaic(); }
+  }
+
+  function wireMosaic() {
+    if (mosWired) return;
+    mosWired = true;
+    try { window.addEventListener("resize", mosSoon, false); } catch (e) {}
+    try { window.addEventListener("orientationchange", mosSoon, false); } catch (e) {}
+    try {
+      if (window.ResizeObserver) {
+        new ResizeObserver(function () { mosSoon(); }).observe(view);
+      }
+    } catch (e) {}
+  }
+
   function draw() {
     var map = memory();
     var back = false;
@@ -605,7 +911,19 @@
         standDownPitch();
       }
     } catch (e) {}
-    fin(view, function () { view.innerHTML = build(back); });
+    fin(view, function () {
+      view.innerHTML = build(back);
+      /* Everything on screen is new markup, so the spans and the padlocks
+         both have to be put back. drewOpen is what settle() checks to avoid
+         doing the same pass twice; after a redraw the pass has NOT been done,
+         and leaving it set is how a signed-out reader ends up looking at a
+         wall of unlocked covers. */
+      mosCols = 0; mosPlan = null;
+      layoutMosaic();
+      wireMosaic();
+      var was = drewOpen;
+      if (was !== null) { drewOpen = null; settle(was); }
+    });
   }
 
   /* --- the account's answer, afterwards -----------------------------------
@@ -692,9 +1010,17 @@
     if (drewOpen === allowed) return;
     drewOpen = allowed;
     try { if (allowed) applyOpen(); else applyLocked(); } catch (e) {}
-    /* Same moment the padlocks resolve, for the same reason: this is the
-       first point at which the page knows who it is talking to. */
-    pitchFor(!!allowed);
+    /* Same moment the padlocks resolve, for the same reason: this is the first
+       point at which the page knows who it is talking to.
+
+       But it is not the same question. The padlocks above ask can() — may this
+       person read? — which is true for an admin, for owner mode and for a
+       legacy buyer, and all of them should see the season unlocked. The
+       subtitle claims the reader OWNS the fifty-one, and that is owns():
+       subscriber or legacy, nothing else. Told apart, an admin gets everything
+       open and is not congratulated on a purchase they did not make. */
+    try { pitchFor(!!(window.FBX && FBX.owns ? FBX.owns() : allowed)); }
+    catch (e) { pitchFor(!!allowed); }
   }
 
   function decorate() {
@@ -712,6 +1038,27 @@
       try { settle(!!(window.FB && FB.unlocked && FB.unlocked())); }
       catch (e) { settle(false); }
     }
+
+    /* Reading memory that arrives from the account after first paint. The
+       page used to have no answer for it and the fallback was a reload; this
+       redraws in place instead, which keeps the scroll position and the
+       mosaic. "local" is this browser's own write, already on screen. */
+    try {
+      if (window.FBP && FBP.onChange) FBP.onChange(function (why) { if (why !== "local") draw(); });
+    } catch (e) {}
+
+    /* Today's pick, once the server has answered. The page draws immediately
+       from the deterministic pick, which is right on every day nobody has
+       overridden; this redraws the hero on the days somebody has. Only the
+       first load of a new UTC day can disagree — after that the answer is in
+       localStorage and the first frame is already right.
+
+       A separate listener list from FBX.paint on purpose: today's pick moving
+       is not an access change. Pushing it through FBX.correct() would be a
+       reload loop, which is the bug /stories had. */
+    try {
+      if (window.FBX && FBX.onToday) FBX.onToday(function () { draw(); });
+    } catch (e) {}
   }
 
   /* --- failure ------------------------------------------------------------

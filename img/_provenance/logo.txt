@@ -1,0 +1,45 @@
+favicon.ico, apple-touch-icon.png, img/icon-*.png, img/logo-96.png
+──────────────────────────────────────────────────────────────────
+Source    logo-source.png in this folder — supplied by the owner, 1254x1254
+          PNG. Not a museum image and not under the CC0 note that governs the
+          paintings: this is the Factbox mark.
+
+Built by  tools/build-icons.swift, from that file. Re-run it if the mark
+          changes; do not hand-edit the outputs.
+
+Why the icons are redrawn rather than resized
+  The source cannot be scaled down as-is, for three measured reasons:
+
+  1. It is not square. Its opaque tile is 1172 x 1130 — 3.7% wider than tall.
+     Any square export stretches the mark; any centre-crop to square cuts
+     through the rounded corners.
+  2. The navy is a diagonal gradient, #08397E at the upper left to #001A46 at
+     the lower right, sampled in 61x61 patches. Below about 48px that reads as
+     an uneven smudge rather than as depth.
+  3. It carries an outer drop shadow. The file's alpha bbox is 1222 x 1208
+     against the tile's 1172 x 1130, so the shadow is roughly 25px of
+     half-transparent grey on every side. At 16px that is a dirty fringe and
+     nothing else.
+
+  So the build lifts the cream mark out as an anti-aliased mask (a luminance
+  ramp, not a threshold, so the edges stay smooth) and redraws it on a square
+  tile in one flat navy. The mark's geometry is the original's, untouched and
+  untraced; only the parts that do not survive scaling are rebuilt.
+
+Colours   Tile  #022A65 — the area-weighted mean of the source tile's 1,055,399
+                navy pixels, so the flat fill sits where the gradient averaged.
+          Mark  #FAF6EF — sampled inside the mark's left bar.
+          Cream on navy measures 12.8:1, which is why the mark still reads at
+          16px.
+
+Sizes     16, 32, 48   favicon PNGs, and the three packed into favicon.ico.
+          180          apple-touch-icon. Square with NO rounding: iOS applies
+                       its own mask, and a pre-rounded icon puts transparent
+                       corners inside Apple's rounding.
+          192, 512     site.webmanifest, for Add to Home Screen.
+          96           img/logo-96.png, the masthead lockup at 24px CSS.
+
+  The mark is scaled UP as the icon gets smaller — 56% of the tile at 512px,
+  74% at 16px. Its left bar is 7% of the mark's width, which at 16px is one
+  device pixel; a single pixel of cream with padding around it is a smudge,
+  so the padding gives way first.

@@ -210,6 +210,29 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- The editorial calendar -------------------------------------------
+    // One document per date, id `YYYY-MM-DD`, holding `id: "44"` — the story
+    // the owner wants free that day. Absent means "no opinion", and the
+    // deterministic pick in functions/today.js stands.
+    //
+    // READ is open because the answer is open: today's free story is announced
+    // on the front page the moment anybody loads it, and there is nothing in
+    // here but a story id and, optionally, a note to the owner's future self.
+    // A stranger reading tomorrow's row learns which public-domain painting is
+    // on the front page tomorrow. Being public also means the site could read
+    // it directly if the function were ever unavailable.
+    //
+    // WRITE is closed to every browser, without exception, and that is the
+    // whole point of the feature. A client that could write here could
+    // nominate any of the fifty-one stories as today's and then demand it
+    // from the `story` function — which honours this collection — and be
+    // handed the text for nothing. The only writers are the Firebase console
+    // and anything holding admin credentials.
+    match /daily/{date} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // --- Seed metadata ----------------------------------------------------
     // Corpus version and counts, so a client can bust its own cache without
     // downloading the catalogue to find out whether it changed.

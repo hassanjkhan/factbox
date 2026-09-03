@@ -119,6 +119,98 @@ const CHECKS = [
     },
   },
   {
+    name: "the paywall check asserts text the paywall renders",
+    why: "tools/README.md and ONBOARDING.md both document a check-page.js run " +
+         "against .paywall with an expected sentence in it. That sentence used " +
+         "to be 'Two stories are free', under a button reading 'Read the rest " +
+         "of this story'; the pane is now the trial paywall and neither " +
+         "survives. A check asserting text that no longer exists fails for the " +
+         "wrong reason and then gets ignored, which is how a real failure hides " +
+         "behind a stale one. So the string is read out of the docs and looked " +
+         "for in the two files that can actually draw it.",
+    pass: () => {
+      const re = /check-page\.js\s+"read\.html\?s=44"\s+"\.paywall"\s+"([^"]+)"/;
+      const want = [];
+      for (const f of ["tools/README.md", "ONBOARDING.md"]) {
+        const m = re.exec(read(f));
+        if (!m) return f + " no longer documents the paywall check";
+        want.push([f, m[1]]);
+      }
+      if (want[0][1] !== want[1][1]) {
+        return "the two docs assert different text: " +
+               want.map(w => w[0] + ' -> "' + w[1] + '"').join(", ");
+      }
+      /* js/recommend.js draws the real paywall; read.html carries the
+         fallback for a page whose recommend.js never arrived. Both have to
+         contain it, or the assertion passes only on one of the two paths. */
+      const text = want[0][1];
+      for (const f of ["js/recommend.js", "read.html"]) {
+        if (!read(f).includes(text)) return f + ' never renders "' + text + '"';
+      }
+      return true;
+    },
+  },
+  {
+    name: "the paywall carries no price of its own",
+    why: "Stripe charges USD 35.88 a year, not 35.00. A dollar figure typed " +
+         "into a screen is a figure that stops tracking what the till takes " +
+         "the moment js/account.js changes, and the reader is then charged " +
+         "something other than the number they agreed to. Every amount on the " +
+         "reader's two money screens is derived from FBA.",
+    pass: () => {
+      for (const f of ["js/recommend.js", "css/recommend.css", "read.html"]) {
+        const s = read(f).replace(/\/\*[\s\S]*?\*\//g, "");
+        if (/\$\s?\d/.test(s)) return f + " contains a typed price";
+      }
+      /* perMonthText quotes a flat per-month figure. $35.88 divides into
+         exactly $2.99 so it is true today; $35.00 rounds to $2.92, twelve of
+         which is $35.04. perMonthAbout is the one that stays true. */
+      if (/perMonthText/.test(read("js/recommend.js").replace(/\/\*[\s\S]*?\*\//g, ""))) {
+        return "js/recommend.js uses perMonthText; it must use perMonthAbout";
+      }
+      return true;
+    },
+  },
+  {
+    name: "an existing subscriber is never sold to on the end card",
+    why: "The offer line under Keep learning is acquisition. A reader who " +
+         "already pays seeing it is being asked for money they are already " +
+         "giving, and the end card is rebuilt when the access answer lands " +
+         "precisely so that never shows for more than a frame.",
+    pass: () => /if \(!open\) \{[\s\S]{0,200}offerLine\(\)/.test(read("js/recommend.js")) &&
+                /FBX\.paint/.test(read("read.html")),
+  },
+  {
+    name: "the end card never sends a reader backwards",
+    why: "Reported live: 'you read the first one, go to continue, then the " +
+         "second story, then it goes back to the first.' The end card used to " +
+         "pick its next story by SCORE, and on Cleopatra 02 signed out the " +
+         "story just read scored +204 while the story that actually follows " +
+         "it scored -1068 for being locked — so Continue pointed backwards, " +
+         "and with two free stories that is a loop. What comes next is a " +
+         "sequence, not a ranking: runOrder() is catalogue order, forward " +
+         "first, pickNext() skips anything already finished, and when there " +
+         "is nothing left the button says so.",
+    pass: () => {
+      const s = read("js/recommend.js");
+      if (/var ranked = next\(current/.test(s)) return "the end card is scoring again";
+      for (const need of ["function runOrder(", "function pickNext(",
+                          "function finished(", "Back to Explore"]) {
+        if (!s.includes(need)) return "js/recommend.js has lost " + need;
+      }
+      return true;
+    },
+  },
+  {
+    name: "today's story is free to everyone, on the reader too",
+    why: "js/access.js answers three ways now — access, permanently free, or " +
+         "today's Factbox — and canRead(id) is the only one that knows all " +
+         "three. Asking FB.unlocked() alone puts a paywall in front of the " +
+         "one story that is deliberately open to everybody, every day.",
+    pass: () => /FBX\.canRead\(s\.id\)/.test(read("read.html")) &&
+                /FBX\.isToday/.test(read("js/recommend.js")),
+  },
+  {
     name: "the story pages still carry the sign-up ask",
     why: "Those three URLs are the marketing funnel. Retiring the illustrated " +
          "deck must not take its call to action with it.",
@@ -133,12 +225,20 @@ const CHECKS = [
   },
 ];
 
+/* A check returns `true`, or a STRING saying what it found. It used to be
+   read as `!!c.pass()`, which made every string a pass — including the ones
+   written specifically to say what had broken, because a non-empty string is
+   truthy. Three checks in this file reported "ok" while returning their own
+   failure message. tools/check-analytics.js already had the right rule; this
+   is the same one, and the reason is now printed. */
 let bad = 0;
 for (const c of CHECKS) {
-  let ok = false;
-  try { ok = !!c.pass(); } catch (e) { ok = false; }
-  if (!ok) { bad++; console.log("FAIL  " + c.name + "\n      " + c.why + "\n"); }
-  else console.log("ok    " + c.name);
+  let r;
+  try { r = c.pass(); } catch (e) { r = "threw: " + e.message; }
+  if (r === true) { console.log("ok    " + c.name); continue; }
+  bad++;
+  console.log("FAIL  " + c.name + "\n      " + c.why +
+              (typeof r === "string" ? "\n      -> " + r : "") + "\n");
 }
 console.log("\n" + CHECKS.length + " regressions guarded, " + bad + " reintroduced");
 process.exit(bad ? 1 : 0);

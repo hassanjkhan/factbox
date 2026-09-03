@@ -5,36 +5,90 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Owner access</title>
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#0E0B12">
+<!-- The paper ground, matching what body actually paints. It was the
+     retired night value on all thirteen paper pages, which puts a
+     near-black bar above a cream page in Android Chrome and iOS
+     Safari. Only the four reader/story pages are #0E0B12. -->
+<meta name="theme-color" content="#DCD5C8">
+<!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
+     so it is the one that must exist; the rest are the better versions for the
+     places that look for them. The .ico packs 16, 32 and 48. Before these the
+     site declared no icon anywhere and every cold load spent a request on a
+     404 for /favicon.ico. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- site.webmanifest's theme_color is #DCD5C8, the same cream the meta above
+     declares and the same cream body paints. The three must not disagree. -->
+<link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css">
 <style>
+  /* THIS PAGE WAS NEVER REPAINTED.
+
+     Everything below used to be the night palette written out by hand — a
+     rgba(255,247,237,.07) wash, which means "a little lighter than whatever is
+     behind it" and on cream is a little lighter than cream; #FF9E86 for the
+     error; and var(--mint,#8FDCA8) for the success line, where --mint is
+     defined in NEITHER palette, so the fallback was not a fallback, it was the
+     value. Measured on the cream ground: the error line 1.37:1 and the success
+     line 1.11:1. Both were invisible, and the success one is the sentence that
+     tells the owner the unlock worked.
+
+     Tokens only now, and the two message colours are the two the site already
+     has for exactly these jobs: --crimson means stop, --teal-ink means it
+     worked. The weights were 850 / 800 / 650, none of which is one of the four
+     faces this page asks Google for — DM Sans at 400, 500, 600 and 700 — so
+     each of them snapped or was synthesised. They are the four weight tokens.
+
+     ("this page" rather than the tag name on purpose: tools/check-structure.py
+     counts tag openings on the raw text and strips HTML comments, not CSS
+     ones, so the word written as a tag here reads as a second one.) */
   .doc{max-width:460px;margin:0 auto;padding:var(--top-safe) 20px var(--bottom-safe);
        min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;gap:14px}
-  .doc h1{font-size:clamp(1.6rem,6vw,2rem);font-weight:850;margin:0;letter-spacing:-.015em}
-  .doc p{margin:0;color:var(--dim);line-height:1.55;font-size:.95rem}
+  .doc h1{font-size:var(--fs-h1);font-weight:var(--w-head);margin:0;letter-spacing:var(--ls-head)}
+  /* `.doc p` is (0,1,1) and `.mark` is (0,1,0), so this rule quietly repainted
+     the wordmark: FACTBOX rendered in --dim on this page and in --accent-ink
+     on every other one. The restore is `.doc p.mark`, (0,2,1), and NOT
+     `.doc p:not(.mark)` — that is also (0,2,1) and it then outranks .msg.bad
+     and .msg.good, which are (0,2,0), so the two message colours this page
+     exists to show would go grey. Measured both ways before choosing. */
+  .doc p{margin:0;color:var(--dim);line-height:var(--lh-body);font-size:var(--fs-sub)}
+  .doc p.mark{color:var(--accent-ink);font-size:var(--fs-meta)}
   form{display:flex;flex-direction:column;gap:10px;margin-top:6px}
   input[type=password],input[type=text]{
     width:100%;padding:14px;border:0;border-radius:12px;
-    background:rgba(255,247,237,.07);color:var(--parchment);
-    font-family:var(--ui);font-size:1rem;min-height:var(--tap);
+    background:var(--raise);color:var(--parchment);
+    box-shadow:inset 0 0 0 1px var(--hair);
+    font-family:var(--ui);font-size:var(--fs-body);min-height:var(--tap);
+    -webkit-appearance:none;appearance:none;
   }
-  .msg{font-size:.9rem;font-weight:650;min-height:1.2em}
-  .msg.bad{color:#FF9E86}
-  .msg.good{color:var(--mint,#8FDCA8)}
+  /* A placeholder is text a reader has to read. With no rule at all the UA
+     default applied and measured 3.23:1 on this field. */
+  input[type=password]::placeholder,
+  input[type=text]::placeholder{color:var(--dimmer)}
+  .msg{font-size:var(--fs-note);font-weight:var(--w-strong);min-height:1.2em}
+  .msg.bad{color:var(--crimson)}
+  .msg.good{color:var(--teal-ink)}
   .note{margin-top:20px;padding:14px;border-radius:14px;background:var(--raise);
         box-shadow:inset 0 0 0 1px var(--hair)}
-  .note b{display:block;font-size:.9rem;font-weight:800;margin-bottom:6px}
-  .note p{font-size:.83rem;color:var(--dimmer);line-height:1.55}
+  .note b{display:block;font-size:var(--fs-note);font-weight:var(--w-head);margin-bottom:6px}
+  .note p{font-size:var(--fs-meta);color:var(--dimmer);line-height:var(--lh-body)}
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .row a{flex:1;text-align:center}
 </style>
 </head>
 <body>
 <main class="doc">
-  <p class="mark">FACTBOX</p>
+  <!-- The wordmark is the way home: /explore is the shelf. The anchor sits
+       inside the <p> so the header keeps the box, the margin and the baseline
+       it already had, and so the target is the word rather than the width of
+       the row. aria-label because a screen reader reading FACTBOX as all
+       capitals may spell it; the accessible name is the product name. -->
+  <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
   <h1 id="head">Owner access</h1>
   <p id="lede">Enter the owner passphrase to read everything without paying.</p>
 

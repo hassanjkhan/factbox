@@ -5,7 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · The shelf is now Explore</title>
 <meta name="description" content="The Factbox story shelf now lives at /explore. This page forwards you there.">
-<meta name="theme-color" content="#0E0B12">
+<!-- The paper ground, matching what body actually paints. It was the
+     retired night value on all thirteen paper pages, which puts a
+     near-black bar above a cream page in Android Chrome and iOS
+     Safari. Only the four reader/story pages are #0E0B12. -->
+<meta name="theme-color" content="#DCD5C8">
+<!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
+     so it is the one that must exist; the rest are the better versions for the
+     places that look for them. The .ico packs 16, 32 and 48. Before these the
+     site declared no icon anywhere and every cold load spent a request on a
+     404 for /favicon.ico. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- site.webmanifest's theme_color is #DCD5C8, the same cream the meta above
+     declares and the same cream body paints. The three must not disagree. -->
+<link rel="manifest" href="/site.webmanifest">
 
 <!-- Canonical points at the destination, not at this path. /stories is
      deprecated: it must keep resolving, but it should not be the URL a search
@@ -88,7 +104,12 @@
 
 <main class="lib">
   <header class="mast">
-    <p class="mark">FACTBOX</p>
+    <!-- The wordmark is the way home: /explore is the shelf. The anchor sits
+         inside the <p> so the header keeps the box, the margin and the baseline
+         it already had, and so the target is the word rather than the width of
+         the row. aria-label because a screen reader reading FACTBOX as all
+         capitals may spell it; the accessible name is the product name. -->
+    <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
     <nav class="tabs" aria-label="Sections">
       <a href="/explore">Explore</a>
       <a href="/library">Library</a></nav>
