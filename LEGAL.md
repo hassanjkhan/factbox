@@ -304,12 +304,11 @@ scroll at any of them.
 - The exact storage names PostHog, Google Analytics and Firebase use in a
   browser. The page says each keeps storage "under names they choose rather than
   ones written here" rather than naming keys that could be wrong.
-- `/support` — at the time of writing, the submit path in the tree is still a
-  `mailto:` handoff (`support.html:306-323`): pressing Send composes a message in
-  the reader's own mail app and nothing is posted anywhere. §08 describes exactly
-  that. **If the support form is given a real endpoint, §08's last paragraph and
-  the `support_send` / `support_idea` bullet in §05 both become false and must be
-  rewritten in the same commit.**
+- Whether the `support` function is deployed. `support.html` posts to
+  `https://us-central1-factbox-7cb97.cloudfunctions.net/support` and
+  `functions/support.js` implements it; neither proves it is live. §08 describes
+  the behaviour the code implements, and the page's own fallback covers the case
+  where the endpoint does not answer.
 
 ### 8.7 What `terms.html` now gets wrong (not mine to edit)
 
@@ -321,3 +320,30 @@ scroll at any of them.
 - `terms.html` also still carries the "not reviewed by a lawyer" disclosure that
   has just been removed from `privacy.html`. Two documents on the same site now
   disagree about whether that is worth saying.
+
+### 8.8 Late change: `/support` stopped being a `mailto:` while this was being written
+
+Read at 14:05 the two boxes composed a `mailto:` and posted nothing. Re-read at
+14:30 — `support.html` and `functions/support.js` had both landed — they POST to
+a Cloud Function that writes a document into a `support` collection. That is the
+first free text a reader types which is stored on our side, so the policy had to
+change with it:
+
+- §02 gained `fb_support_last_v1` (`support.html:341`), the timestamp that stops
+  a double tap sending twice.
+- §08 was retitled "Your reading, and the one box that does leave" and gained a
+  subsection naming the six fields the function writes — `at`, `from`, `kind`,
+  `message`, `page`, `uid` (`functions/support.js:262-269`) — the 4,000-character
+  cap, the mail-app fallback, and the signed-in prefill. It states that **no IP
+  address and no hash of one is stored**, which the function's own header comment
+  commits to and its code keeps: `clientIp()` feeds an in-memory throttle only
+  (`functions/support.js:69,139-162`) and is never written.
+- §05's `support_send` / `support_idea` bullet now says a message was *sent*
+  rather than *composed*, and that the event carries nothing else.
+- §09 gained `us-central1-factbox-7cb97.cloudfunctions.net`.
+- §10 and §11 now name a support message as a thing that can be deleted on
+  request.
+- The short version gained a bullet for it.
+
+`support.html`'s own footer still reads "Last updated 2 September 2026", which is
+that page's line to change, not mine.
