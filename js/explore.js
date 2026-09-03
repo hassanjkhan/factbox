@@ -184,9 +184,7 @@
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
                'src="/img/thumbs/' + esc(s.img) + '.webp">' +
-          (locked
-            ? '<span class="lock" aria-hidden="true">🔒</span>'
-            : (s.free ? '<span class="freetag">FREE</span>' : '')) +
+          (locked ? '<span class="lock" aria-hidden="true">\U0001F512</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +

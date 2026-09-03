@@ -6,7 +6,7 @@
 <title>Factbox · Explore</title>
 <meta name="description" content="Browse all fifty-one Factbox stories by subject, by the kind of story they are, or by searching for a name.">
 <meta name="theme-color" content="#0E0B12">
-<link rel="canonical" href="https://factbox.app/explore">
+<link rel="canonical" href="https://factbox.app/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Explore">
@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://factbox.app/explore">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/app.css">
-<link rel="stylesheet" href="/css/explore.css">
+<link rel="stylesheet" href="/css/today.css">
 <!-- The header's account control must not flash. This class makes its slot
      invisible without collapsing it, so the row keeps its height from the
      first paint and nothing shifts when auth finally answers. The timer
@@ -39,138 +39,36 @@
 <main class="lib">
   <header class="mast">
     <p class="mark">FACTBOX</p>
+    <!-- Two tabs. "Home" and "Explore" were two answers to one question and
+         Explore was the better of them, so its shelves moved to the bottom of
+         this page and the tab went. Account is one icon: from the reader's
+         side "sign in" and "sign up" are the same errand, and the page behind
+         it works out which of the two they need. -->
     <nav class="tabs" aria-label="Sections">
-      <a href="/stories">Home</a>
-      <a href="/explore" aria-current="page">Explore</a>
+      <a href="/" aria-current="page">Explore</a>
       <a href="/library">Library</a>
-      <!-- Account. Signed out this is two links; signed in it is the reader's
-           name. Never both: the script sets hidden on every branch. -->
-      <span class="acct" id="fb-acct">
-        <a class="acct-in" id="fb-acct-in" href="/login?next=explore">Sign in</a>
-        <a class="acct-up" id="fb-acct-up" href="/login?next=explore">Sign up</a>
-        <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
-      </span>
+      <span class="acct" id="fb-acct"></span>
     </nav>
-    <h1>Explore</h1>
-    <p id="blurb">Fifty-one stories, sorted by what they are about and by what kind of story they are. Search for a name, or just scroll.</p>
   </header>
 
-  <!-- Search is a plain input, filtered in the browser. There is no server to
-       ask, and a spinner over 51 rows would be theatre. -->
-  <form class="find" id="find" role="search" action="#" onsubmit="return false">
-    <label class="vh" for="q">Search stories</label>
-    <span class="glass" aria-hidden="true">⌕</span>
-    <input id="q" name="q" type="search" autocomplete="off" autocorrect="off"
-           autocapitalize="none" spellcheck="false" enterkeyhint="search"
-           placeholder="Cleopatra, Lincoln, Rome…">
-    <button type="button" class="x" id="qx" aria-label="Clear search" hidden>×</button>
-  </form>
-
-  <div id="chips" class="chipwrap"></div>
-  <p class="tally" id="tally" aria-live="polite"></p>
-
-  <div id="view"></div>
-
-  <noscript>
-    <p class="void" style="margin-top:24px">
-      <b>This page needs JavaScript.</b>
-      All fifty-one stories are still listed on the <a href="/stories">home shelf</a>.
-    </p>
-  </noscript>
-
-  <p class="fine" style="margin-top:34px;text-align:left">
-    <a href="/stories">All stories</a> · <a href="/account">Account</a> ·
-    <a href="/credits">Artwork credits</a> ·
-    <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
-    <a href="/support">Support</a>
-  </p>
+  <!-- Real copy, replaced by the render. Never a blank shell: if every script
+       below fails, this is still a page with words and a way out. -->
+  <div id="td">
+    <h1 class="td-h1">Be disgustingly well-informed.</h1>
+    <p class="td-sub">Trade five minutes of scrolling for something worth
+      remembering. <a href="/stories">Start with season one</a>.</p>
+  </div>
 </main>
-
-<div class="buybar" id="buybar" hidden>
-  <button class="go" id="pay" type="button">Read all 51 stories</button>
-  <p class="fine">Sign up first — three days free before anything is charged.</p>
-</div>
 
 <script src="/js/progress.js"></script>
 <script src="/js/access.js"></script>
 <script src="/js/gate.js"></script>
-<script src="/js/explore.js"></script>
-<!-- js/auth.js is a module, so the browser defers it: it runs after the
-     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
-     is in. The ES5 block below therefore cannot read window.FBU at the moment
-     it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
-<script type="module" src="/js/auth.js"></script>
+<script src="/js/today.js"></script>
 <script>
-/* The header account control. ES5, every lookup guarded, and it cannot throw:
-   the worst case is the signed-out pair staying on screen, which is what the
-   markup already says. */
-(function () {
-  "use strict";
-
-  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
-
-  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
-  function reveal() {
-    try {
-      var h = document.documentElement;
-      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
-                                      .replace(/^\s+|\s+$/g, "");
-    } catch (e) {}
-  }
-
-  /* A display name is text the reader typed, going straight into the header,
-     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
-     rule the rest of the site follows: no error code, ever, on screen. */
-  function label(FBU) {
-    var s = "";
-    try { s = String(FBU.name() || ""); } catch (e) {}
-    if (!s) {
-      var m = "";
-      try { m = String(FBU.email() || ""); } catch (e2) {}
-      var at = m.indexOf("@");
-      s = at > 0 ? m.slice(0, at) : "";
-    }
-    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
-    if (!s) return "Account";
-    if (s.indexOf("auth/") !== -1) return "Account";
-    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
-    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
-  }
-
-  function paint(FBU) {
-    var inNow = false;
-    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
-    if (inNow) {
-      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
-      hide(aIn, true); hide(aUp, true); hide(aMe, false);
-    } else {
-      hide(aMe, true); hide(aIn, false); hide(aUp, false);
-    }
-    reveal();
-  }
-
-  function whenFBU(cb) {
-    var done = false;
-    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
-    if (window.FBU) { go(); return; }
-    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
-    try {
-      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
-      else setTimeout(go, 0);
-    } catch (e) {}
-    try { setTimeout(go, 4000); } catch (e) { go(); }
-  }
-
-  whenFBU(function (FBU) {
-    /* No FBU at all — the file 404'd, or this webview ignores type="module".
-       That is the signed-out header, which links to a page that explains it. */
-    if (!FBU) { paint(null); return; }
-    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
-    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
-  });
-})();
+(function () { try { FBT.boot("td"); } catch (e) {} })();
 </script>
+<script type="module" src="/js/auth.js"></script>
+<script src="/js/acct.js"></script>
 <script src="/js/analytics.js"></script>
 </body>
 </html>

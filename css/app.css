@@ -553,14 +553,47 @@ html.fb-hdr .acct{visibility:hidden}
    the top bar. The control mirrors that pill on the opposite side, at the
    same 38px height the back button already uses, and shows one link rather
    than two so the two bars never meet in the middle of a phone. */
-/* Today's account control is one icon, not a word, so it needs a box rather
-   than a text baseline — the same fix .topbar got when Save lost its label. */
-.td-acct{
+/* --------------------------------------------------------------------------
+   The account control. One insignia, top right, on every page.
+
+   js/acct.js builds all of this into #fb-acct. It replaced a pair of text
+   links reading "Sign in" and "Sign up": from the reader's side that is one
+   errand printed twice, and it was the only thing in the header not about
+   reading. The choice between the two now lives inside the menu, where it is
+   a choice rather than a decision the header makes for you.
+   -------------------------------------------------------------------------- */
+.acct-wrap{position:relative; display:inline-flex}
+.acct-btn{
   display:inline-flex; align-items:center; justify-content:center;
-  width:42px; height:42px; padding:0; border-radius:var(--pill);
-  box-shadow:inset 0 0 0 1px var(--hair); color:var(--dim);
+  width:42px; height:42px; padding:0; border:0; border-radius:var(--pill);
+  background:transparent; color:var(--dim); cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--hair);
+  transition:color .16s ease, box-shadow .16s ease;
 }
-.td-acct:hover{color:var(--parchment)}
+.acct-btn:hover{color:var(--parchment)}
+.acct-wrap.is-open .acct-btn{color:var(--parchment); box-shadow:inset 0 0 0 1px rgba(255,247,237,.3)}
+.acct-btn:focus-visible{outline:2px solid var(--coral); outline-offset:3px}
+
+.acct-menu{
+  position:absolute; top:calc(100% + 8px); right:0; z-index:60;
+  min-width:196px; padding:7px;
+  display:flex; flex-direction:column;
+  border-radius:16px; background:#171220;
+  box-shadow:0 18px 40px rgba(0,0,0,.6), inset 0 0 0 1px var(--hair);
+}
+.acct-who{
+  margin:0; padding:8px 12px 6px;
+  font-size:.72rem; font-weight:800; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dimmer);
+}
+.acct-menu a{
+  display:flex; align-items:center; min-height:var(--tap);
+  padding:0 12px; border-radius:11px;
+  font-size:.96rem; font-weight:750; color:var(--parchment); text-decoration:none;
+}
+.acct-menu a:hover{background:rgba(255,247,237,.07); color:var(--parchment)}
+.acct-menu a:active{background:rgba(255,247,237,.1)}
 
 .topbar-r{
   position:fixed; top:var(--top-safe); right:12px; z-index:31;
