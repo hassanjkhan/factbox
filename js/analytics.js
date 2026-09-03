@@ -44,7 +44,53 @@
   "use strict";
 
   var KEY  = "phc_CzcoLdwsVBHS8WwahoCcZW49vyWQ2VzvYWYra5TUDaPP";
-  var HOST = "https://us.i.posthog.com";
+
+  /* ---- Where PostHog is reached --------------------------------------- *
+     Two answers, tried in that order.
+
+     FIRST-PARTY. Blocker lists match PostHog by hostname — *.i.posthog.com
+     and *-assets.i.posthog.com are on EasyPrivacy, on uBlock's default set,
+     in Brave, and in the lists the Instagram and TikTok in-app browsers
+     carry. PostHog's own dashboard puts the resulting loss at 10-25% of
+     events, and nearly every reader here arrives through one of those two
+     in-app browsers on a phone, so that is the case to design for rather
+     than the average. Requests to factbox.app/ink/... match no list, because
+     no list can block them without blocking the site.
+
+     PROXY_PATH is deliberately not /analytics, /tracking or /posthog —
+     PostHog's own docs say those get matched on the path instead. It is
+     served by the Cloudflare Worker in cloudflare/posthog-proxy.js, which
+     forwards /ink/static/* and /ink/array/* to the asset host and everything
+     else to the ingestion host. Change the path here and change it there.
+
+     Built from location.origin rather than hardcoded, so it is correct on
+     both factbox.app and www.factbox.app with one Worker per route and no
+     cross-origin request from either.
+
+     DIRECT, if the proxy does not answer. A proxy that quietly swallows
+     every event is worse than the blocking it was meant to fix: blocked
+     analytics loses a known 10-25%, a broken proxy loses 100% and looks
+     exactly like "nobody visited today". So the loader below watches the
+     first script load and falls back to PostHog's own hosts if it fails. */
+  var PROXY_PATH = "/ink";
+  var HOST       = "https://us.i.posthog.com";        /* direct ingestion  */
+  var ASSET_HOST = "https://us-assets.i.posthog.com"; /* direct assets     */
+
+  /* posthog-js derives its dashboard links from api_host by string
+     replacement (".i.posthog.com" -> ".posthog.com"). Through the proxy that
+     replacement no longer matches and every link would point at
+     factbox.app/ink/project/..., which does not exist. ui_host is the
+     documented answer. Set unconditionally: for the direct host it is
+     byte-identical to what the replacement produces, so it changes nothing
+     there. */
+  var UI_HOST = "https://us.posthog.com";
+
+  /* How long to let the proxy's array.js be in flight before giving up on it.
+     Generous on purpose: a blocked or missing path fails instantly through
+     the script's error event, so this timer only ever covers a hang, and a
+     phone on a bad connection must not be mistaken for a broken proxy.
+     Events fired meanwhile queue on the snippet stub and are replayed. */
+  var PROXY_WAIT_MS = 8000;
 
   /* ---- Sink two: Google Analytics 4, through Firebase ------------------ *
      The same project js/auth.js signs readers into. This config is public by
@@ -133,16 +179,125 @@
   /* ---- PostHog loader (their published snippet, unmodified) ------------- */
   !function(t,e){var o,n,p,r;e.__SV||(window.posthog&&window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}p||((p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",p.onerror=function(){p=null},(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r));var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once unregister identify setPersonProperties reset group opt_in_capturing opt_out_capturing has_opted_out_capturing get_distinct_id get_session_id onFeatureFlags isFeatureEnabled getFeatureFlag debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
 
-  try {
-    posthog.init(KEY, {
-      api_host: HOST,
+  /* ---- Start it, on the proxy, with a way back ------------------------- *
+     The snippet above inserts <api_host>/static/array.js the moment init() is
+     called, and its only failure handling is to null its own private handle.
+     So the fallback is built around three facts about array.js 1.425.1, all
+     read out of the shipped bundle rather than assumed:
+
+       1. With an api_host that is not a posthog.com host, its request router
+          reports region "custom" and routes EVERY path — /static/, /array/
+          and ingestion alike — at api_host. That is why the Worker has to
+          answer all three, and why nothing else here needs configuring.
+
+       2. On load it walks window.posthog._i and calls init() once per entry.
+          init() returns immediately if it has already run ("Re-initializing
+          is a no-op"), so the FIRST entry wins. A fallback therefore has to
+          REPLACE _i, not append to it.
+
+       3. That same walk is what replays the calls queued on the stub. So
+          init() must be called before the script is loaded, not after, or
+          everything captured during the load is dropped on the floor.
+
+     Hence: init on the proxy now, watch that one script element, and if it
+     fails, rewrite _i and load PostHog's own copy instead. Whichever lands
+     first wins; a second array.js arriving later is a complete no-op, because
+     its bootstrap runs only while window.posthog is still an array stub. */
+
+  function phConfig(host) {
+    return {
+      api_host: host,
+      ui_host: UI_HOST,
       defaults: "2026-05-30",
       person_profiles: "identified_only",
       /* The reader is mid-story on a phone; a lost event costs less than a
          stalled main thread. */
       capture_pageleave: true,
       opt_out_capturing_by_default: OPT_IN_REQUIRED
-    });
+    };
+  }
+
+  function proxyHost() {
+    try {
+      if (location.origin) return location.origin + PROXY_PATH;
+      return location.protocol + "//" + location.host + PROXY_PATH;
+    } catch (e) { return "https://factbox.app" + PROXY_PATH; }
+  }
+
+  /* The real SDK sets __loaded on init; the stub never has the property. */
+  function phLoaded() {
+    try { return !!(window.posthog && window.posthog.__loaded === true); }
+    catch (e) { return false; }
+  }
+
+  /* Still the un-loaded snippet stub, i.e. _i is an array waiting to be
+     walked. Guards the fallback against clobbering a pre-installed
+     window.posthog — the seam the render checks use. */
+  function phIsStub() {
+    try {
+      return !!window.posthog &&
+             Object.prototype.toString.call(window.posthog._i) === "[object Array]";
+    } catch (e) { return false; }
+  }
+
+  function phInsert(src, onFail) {
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    s.crossOrigin = "anonymous";
+    s.async = true;
+    s.src = src;
+    if (onFail) s.onerror = onFail;
+    try {
+      var f = document.getElementsByTagName("script")[0];
+      if (f && f.parentNode) { f.parentNode.insertBefore(s, f); return s; }
+    } catch (e) {}
+    try { (document.head || document.documentElement).appendChild(s); return s; }
+    catch (e) { return null; }
+  }
+
+  var phVia  = "";      /* "proxy" | "direct" | "" once anything is loaded  */
+  var phTried = false;  /* the fallback runs at most once                   */
+
+  function phFallback() {
+    if (phTried || phLoaded() || !phIsStub()) return;
+    phTried = true;
+    try { window.posthog._i = [[KEY, phConfig(HOST), "posthog"]]; }
+    catch (e) { return; }
+    phVia = "direct";
+    phInsert(ASSET_HOST + "/static/array.js", function () { phVia = ""; });
+  }
+
+  var PH_PROXY = proxyHost();
+  try {
+    posthog.init(KEY, phConfig(PH_PROXY));
+    phVia = "proxy";
+  } catch (e) {}
+
+  /* Find the element the snippet just inserted — it did so synchronously,
+     inside that init() — and watch it. addEventListener rather than .onerror,
+     so the snippet's own handler is left intact. */
+  try {
+    var phSrc = PH_PROXY + "/static/array.js";
+    var phEl  = null, phAll = document.getElementsByTagName("script"), phI;
+    for (phI = phAll.length - 1; phI >= 0; phI--) {
+      if (String(phAll[phI].src || "") === phSrc) { phEl = phAll[phI]; break; }
+    }
+    if (phEl && phEl.addEventListener) {
+      /* A 404 from GitHub Pages — the Worker route missing or misspelled —
+         and a blocked request both arrive here. */
+      phEl.addEventListener("error", function () { phFallback(); }, false);
+      /* 200 with something that is not the SDK: the script "loads" fine and
+         never fires error. Its bootstrap is synchronous, so by this event
+         __loaded is either true or never coming. */
+      phEl.addEventListener("load", function () {
+        if (!phLoaded()) phFallback();
+      }, false);
+    } else if (!phEl) {
+      /* init threw, or the snippet was already satisfied. */
+      phFallback();
+    }
+    /* Neither event fires for a request that simply hangs. */
+    setTimeout(function () { if (!phLoaded()) phFallback(); }, PROXY_WAIT_MS);
   } catch (e) {}
 
   /* ======================================================================
@@ -532,6 +687,17 @@
     /* The GA4 name a given event is reported under — the mapping, callable,
        so FIREBASE-ANALYTICS.md can be checked rather than believed. */
     gaName: gaName,
-    MEASUREMENT_ID: MEASUREMENT_ID
+    MEASUREMENT_ID: MEASUREMENT_ID,
+
+    /* Which PostHog host actually served the SDK: "proxy" while the
+       first-party path is working, "direct" once it has fallen back, ""
+       if neither arrived. sinks() deliberately still answers the older
+       question — is there something to capture into — so nothing that
+       checks it changes meaning. */
+    phVia: function () { return phLoaded() ? phVia : ""; },
+    phHost: function () {
+      if (!phLoaded()) return "";
+      return phVia === "direct" ? HOST : PH_PROXY;
+    }
   };
 })();
