@@ -14,7 +14,8 @@ python3 -m http.server 8899 --directory .. &
 
 node check-story.js ../build/story.html                # the illustrated deck
 node check-page.js  "story.html"      ".beat"  "Cleopatra"
-node check-page.js  "cleopatra.html"  ".endask" "Read the rest of season one"
+node check-page.js  "cleopatra.html"  ".beat"  "Cleopatra"
+node check-page.js  "firststory.html" ".beat"  "Cleopatra"
 node check-plates.js "index.html"     ".card"        # every cover has a fallback
 node check-regressions.js                            # bugs that must not come back
 node check-analytics.js                              # the instrumentation is still there

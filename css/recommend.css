@@ -189,13 +189,25 @@ a.ec-go{
      this height     44px                <- one --tap target, no more
      this bottom     73% + 76px
 
-   The floor is --bottom-safe, max(13vh, inset + 60px toolbar + 4px). The
-   worst case is a short phone where 13vh wins: on 568px that floor is at
-   494px and this line ends at 491px. It fits, and it only ever gets roomier
-   as the viewport grows, because 73% + 76px grows slower than 87%. */
+   The floor is --bottom-safe, max(13vh, inset + 60px toolbar + 4px). Where
+   13vh wins that floor is 87% and 73% + 76px clears it — but only above
+   about 543px of viewport, because 76px is a fixed number and 14vh is not.
+   Below that (a phone turned sideways) the line would land under the
+   in-app toolbar, so the whole group is clamped to sit 8px above the floor
+   instead. 84px is what the clamp has to reserve: 26 half-button + 6 gap +
+   44 tap target + 8 clear. Written as two declarations rather than a custom
+   property, so a browser without min() drops the second at parse time and
+   keeps the plain 73% instead of resolving to `auto` and stacking the two
+   controls on top of each other. */
+.pane.rec.has-ask .ec-go{
+  top:73%;
+  top:min(73%, calc(100% - var(--bottom-safe) - 84px));
+}
 .pane.rec .ec-signin{
   position:absolute; left:22px; right:22px;
-  top:73%; margin:32px auto 0;
+  top:73%;
+  top:min(73%, calc(100% - var(--bottom-safe) - 84px));
+  margin:32px auto 0;
   /* flex, not a plain line box: an inline-block with a 44px tap height inside
      a <p> sits on the text baseline and drags the block taller than 44px,
      which is what would push it through the floor above. */
