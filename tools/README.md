@@ -16,6 +16,8 @@ node check-story.js ../story.html                      # illustrated story
 node check-page.js  "stories.html"   ".card"    "Season one"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
 node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
+node check-page.js  "index.html"     ".card"    "Be disgustingly"
+node check-page.js  "start.html"     "button"   "Remember history"
 node check-page.js  "credits.html"   "table tr" "Share-alike"
 ```
 
@@ -24,3 +26,26 @@ elements, or on missing expected text.
 
 `compose.py` carries the cheaper half of the same idea: it refuses to build a
 page whose script looks up an id the page does not contain.
+
+## Structure
+
+```sh
+python3 check-structure.py          # audit every page
+python3 check-structure.py --save   # record the current counts as the baseline
+```
+
+Counts the things that must balance in every page: comment delimiters, `<body>`,
+`<head>`, one navigation bar, `<script>`/`</script>`, and the number of
+`<link rel="preload">` tags, which is compared against a recorded baseline.
+
+It exists because a script removing an inline block from nine pages located the
+block by prose in the comment ABOVE it, walked back to the previous `<script`
+tag, and cut everything in between — six preload links and the opening `<!--`
+of a comment whose `-->` was left behind. An unterminated comment does not
+fail: the browser swallows the rest of the document. The page rendered nothing,
+and the HTML validated, `node --check` passed, the URL returned 200, and
+`check-page.js` said "script errors: none" — because there was no longer a
+script for it to find.
+
+Run it before every push. It takes about a tenth of a second.
+

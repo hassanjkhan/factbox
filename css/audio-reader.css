@@ -6,21 +6,24 @@
    the deck. It defines only .fb-sound and .fb-sound-note, both of which are
    created by js/audio-reader.js and exist nowhere else in the site.
 
-   WHERE IT SITS, and why it is not negotiable
-   -------------------------------------------
-   * TOP-RIGHT. The reader's "← Stories" pill is fixed top-LEFT (.topbar, z 31
-     in app.css). This is its mirror: same rail (--top-safe), same glass, same
-     pill radius, same press. Two affordances, one visual family, no collision
-     at any width — .topbar is left-anchored and auto-width, this is
-     right-anchored and about 8em wide, and the two only meet below ~320px,
-     where the label drops (see the narrow-viewport rule at the bottom).
-   * NOT the bottom. --bottom-safe in app.css is max(13vh, toolbar + inset) for
-     one reason: the Instagram and TikTok in-app browsers draw their own
-     toolbar over the bottom of the viewport, and ~all of our traffic is in
-     one of them. A control down there is a control that cannot be tapped.
+   WHERE IT SITS
+   -------------
+   * TOP-RIGHT by default, which is where the composed story pages
+     (story.html and its copies) still put it: the reader's "← Stories" pill
+     is fixed top-LEFT (.topbar, z 31 in app.css) and this is its mirror —
+     same rail (--top-safe), same glass, same pill radius, same press.
+   * ON read.html it is a flex item in .fb-rail instead, the column at the
+     foot of the right edge it now shares with the Save bookmark. That rule
+     lives in css/reader-rail.css, which read.html loads after this file and
+     which owns the rail's geometry; nothing here has to know about it beyond
+     leaving position:fixed overridable. js/audio-reader.js picks the mount.
+   * NOT the bottom of the viewport, in either home. --bottom-safe in app.css
+     is max(13vh, toolbar + inset) for one reason: the Instagram and TikTok
+     in-app browsers draw their own toolbar over the bottom of the viewport,
+     and ~all of our traffic is in one of them. A control below that line is a
+     control that cannot be tapped. The rail's floor sits ON the line.
    * z-index 32 — one above .topbar (31) and the progress bar (30), so a card's
-     own stacking context can never bury it. It is the only element on the page
-     above the back button, and it is 44px from the top of it.
+     own stacking context can never bury it.
    ========================================================================== */
 
 .fb-sound{

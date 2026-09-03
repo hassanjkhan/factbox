@@ -57,6 +57,7 @@ node check-page.js  "read.html?s=02" ".beat"    "seductress"
 node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
 node check-story.js ../story.html
 node check-backend.js
+cd .. && python3 tools/check-structure.py
 ```
 
 Each exits non-zero on a script error, on finding none of the expected elements,

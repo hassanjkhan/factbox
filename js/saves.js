@@ -217,9 +217,10 @@ var FBS = (function () {
      invisible to a screen reader and unreachable from a keyboard.
 
      A bookmark, not the word "Save". This button lives on the reader, pinned
-     over a painting, next to "← Stories" and the sound control — and the
-     bookmark is the one icon every phone already teaches: Instagram, TikTok
-     and X all save with it, all in the same corner, all filled-when-saved.
+     over a painting, at the foot of the right edge under the sound control —
+     and the bookmark is the one icon every phone already teaches: Instagram,
+     TikTok and X all save with it, all in that same corner, all
+     filled-when-saved.
      A word there is a caption competing with the picture; the icon is read
      without being read. The outline fills with coral when the story is in
      the library, which is the whole state model, visible at a glance.
@@ -249,9 +250,9 @@ var FBS = (function () {
       b.className = "fbs-save";
       b.stackId = k;
 
-      /* 38px circle: the same rail carries .back (38px, app.css) on the left
-         and .fb-sound (38px) on the right, and three controls at three
-         heights across one strip of glass is the thing you notice instead of
+      /* 38px circle: the rail above it carries .fb-sound at 38px and the
+         "← Stories" pill opposite is 38px too, and controls at three
+         different sizes over one painting is the thing you notice instead of
          the painting. Under the 44px guideline, matching what this page has
          always shipped for the other two. */
       var BASE =

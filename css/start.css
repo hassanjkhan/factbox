@@ -1,0 +1,226 @@
+/* ==========================================================================
+   Factbox — /start, the six-question onboarding.
+
+   Loaded after css/app.css and uses its tokens (--ground, --raise, --hair,
+   --coral, --bottom-safe). Nothing here redefines an app.css rule; every
+   selector is prefixed .st- so this file cannot reach another page.
+
+   THE TWO LAYOUT RULES THIS FILE EXISTS TO KEEP:
+
+   1. Nothing tappable below --bottom-safe. Every reader is in the Instagram
+      or TikTok webview and the bottom ~13vh of the viewport is a toolbar
+      drawn over the page. The screen is a column with that much padding
+      under it, and every screen is short enough to fit above the line on a
+      430x932 phone without scrolling.
+
+   2. One screen at a time, and the rest are display:none — not
+      visibility:hidden, not opacity:0. A hidden answer button that still
+      takes a tap is the bug that made the old Back arrow go forwards.
+   ========================================================================== */
+
+.st{
+  min-height:100vh; min-height:100dvh;
+  max-width:560px; margin:0 auto;
+  padding:var(--top-safe) 18px calc(var(--bottom-safe) + 10px);
+  display:flex; flex-direction:column;
+}
+
+/* --- the bar across the top: back, then where you are -------------------- */
+
+.st-top{
+  display:flex; align-items:center; gap:12px;
+  min-height:var(--tap); margin:6px 0 10px;
+}
+
+.st-back{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; gap:6px;
+  min-height:var(--tap); min-width:var(--tap);
+  padding:0 12px 0 8px; margin-left:-8px;
+  background:transparent; border:0; border-radius:var(--pill);
+  color:var(--parchment); font-family:var(--ui); font-size:.92rem; font-weight:700;
+  cursor:pointer;
+}
+.st-back i{font-style:normal; font-size:1.15rem; line-height:1}
+.st-back[hidden]{display:none}
+
+.st-dots[hidden]{display:none !important}
+.st-count[hidden]{display:none !important}
+.st-dots{
+  display:flex; gap:5px; list-style:none; margin:0; padding:0;
+  flex:1 1 auto; justify-content:flex-end;
+}
+.st-dots li{
+  width:16px; height:4px; border-radius:2px;
+  background:rgba(255,247,237,.18);
+}
+.st-dots li.on{background:var(--coral)}
+.st-count{
+  margin:0; font-size:.76rem; font-weight:700; letter-spacing:.02em;
+  color:var(--dimmer); white-space:nowrap;
+}
+
+/* --- a screen ------------------------------------------------------------ */
+
+.st-screen[hidden]{display:none}
+.st-screen{
+  flex:1 1 auto;
+  animation:st-in .22s ease-out both;
+}
+@keyframes st-in{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+@media (prefers-reduced-motion:reduce){
+  .st-screen{animation:none}
+}
+
+.st-mark{
+  font-size:.78rem; font-weight:900; letter-spacing:.34em;
+  color:var(--coral); margin:0 0 12px;
+}
+.st-eyebrow{
+  font-size:.74rem; font-weight:800; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--teal); margin:0 0 8px;
+}
+.st h1{
+  font-size:clamp(1.8rem,6.6vw,2.3rem); font-weight:850; line-height:1.08;
+  letter-spacing:-.015em; margin:0 0 10px; text-wrap:balance;
+}
+.st h2{
+  font-size:clamp(1.35rem,5.2vw,1.7rem); font-weight:850; line-height:1.14;
+  letter-spacing:-.012em; margin:0 0 8px; text-wrap:balance;
+}
+.st-sub{
+  margin:0 0 18px; color:var(--dim); font-size:.95rem; line-height:1.45;
+  max-width:40ch;
+}
+
+/* --- the answers --------------------------------------------------------- */
+
+.st-opts{display:grid; grid-template-columns:1fr; gap:10px; margin:0}
+.st-opts.is-grid{grid-template-columns:1fr 1fr}
+
+.st-opt{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; text-align:left;
+  min-height:var(--tap);
+  padding:13px 15px;
+  background:var(--raise); border:1px solid var(--hair); border-radius:16px;
+  color:var(--parchment); font-family:var(--ui); cursor:pointer;
+  transition:border-color .12s ease, background .12s ease, transform .12s ease;
+}
+/* A rule that sets a display beats the UA stylesheet's [hidden], exactly as
+   app.css notes for .tabs a. Every element this file hides from script needs
+   its own line here or it stays on screen and stays tappable. */
+.st-opt[hidden]{display:none !important}
+.st-covers li[hidden]{display:none !important}
+#st-building[hidden],#st-ready[hidden]{display:none !important}
+
+.st-opt b{display:block; font-size:.98rem; font-weight:800; line-height:1.2}
+.st-opts.is-grid .st-opt b{font-size:.92rem}
+.st-opt span{
+  display:block; margin-top:4px; font-size:.8rem; line-height:1.3;
+  color:var(--dim); font-weight:600;
+}
+.st-opt.on{
+  border-color:var(--coral);
+  background:linear-gradient(rgba(255,122,92,.16),rgba(255,122,92,.16)),var(--raise);
+  transform:translateY(-1px);
+}
+
+/* --- the forward controls ------------------------------------------------ */
+
+.st-go{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; min-height:52px;
+  margin:18px 0 0; padding:15px 18px;
+  background:var(--coral); color:#20121C;
+  border:0; border-radius:var(--pill);
+  font-family:var(--ui); font-size:1.02rem; font-weight:850; letter-spacing:-.01em;
+  text-align:center; text-decoration:none; cursor:pointer;
+}
+a.st-go{display:block}
+.st-ghost{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:100%; min-height:var(--tap); margin-top:8px;
+  color:var(--dim); font-size:.9rem; font-weight:700; text-decoration:none;
+}
+
+/* --- the open screen's covers -------------------------------------------- */
+
+.st-covers{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+  list-style:none; margin:18px 0 0; padding:0;
+}
+.st-covers li{min-width:0}
+.st-covers img{
+  /* height:auto matters. The markup carries width/height attributes so the
+     browser reserves the box before the plate arrives, and a specified height
+     makes aspect-ratio inert — the cover came out 320px tall, which pushed
+     the last control on this screen under the webview toolbar. */
+  width:100%; height:auto; aspect-ratio:3/4; object-fit:cover;
+  border-radius:12px; background:var(--raise);
+  border:1px solid var(--hair);
+}
+.st-covers b{
+  display:block; margin-top:7px;
+  font-size:.72rem; font-weight:700; line-height:1.25; color:var(--dim);
+}
+
+/* --- the turn ------------------------------------------------------------ */
+
+.st-facts{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+  list-style:none; margin:16px 0 0; padding:14px 6px;
+  border:1px solid var(--hair); border-radius:18px; background:var(--raise);
+  text-align:center;
+}
+.st-facts li{min-width:0}
+.st-facts strong{
+  display:block; font-size:1.45rem; font-weight:900; letter-spacing:-.02em;
+  color:var(--butter); line-height:1.05;
+}
+.st-facts span{
+  display:block; margin-top:5px; font-size:.72rem; font-weight:700;
+  line-height:1.25; color:var(--dim);
+}
+.st-note{
+  margin:14px 0 0; font-size:.92rem; line-height:1.45; color:var(--dim);
+}
+
+/* --- the wait ------------------------------------------------------------ */
+
+.st-picks{
+  list-style:none; margin:16px 0 0; padding:0;
+  border-top:1px solid var(--hair);
+}
+.st-picks li{
+  display:flex; align-items:baseline; gap:10px;
+  padding:11px 2px; border-bottom:1px solid var(--hair);
+  font-size:.92rem; line-height:1.3;
+}
+.st-picks i{
+  font-style:normal; color:var(--dimmer); font-size:.74rem; font-weight:800;
+  letter-spacing:.1em; text-transform:uppercase; flex:0 0 5.6em;
+}
+.st-picks b{font-weight:800}
+
+.st-bar{
+  height:6px; border-radius:3px; margin:20px 0 0;
+  background:rgba(255,247,237,.14); overflow:hidden;
+}
+.st-bar i{
+  display:block; height:100%; width:8%; border-radius:3px;
+  background:var(--coral);
+  animation:st-fill 1.4s cubic-bezier(.16,.84,.32,1) forwards;
+}
+@keyframes st-fill{ from{width:8%} to{width:92%} }
+.st-bar.is-done i{width:100%; animation:none}
+
+.st-feed{list-style:none; margin:16px 0 0; padding:0}
+.st-feed li{
+  padding:11px 2px; border-bottom:1px solid var(--hair);
+  font-size:.94rem; font-weight:700; line-height:1.3;
+}
+.st-feed li em{
+  display:block; font-style:normal; margin-top:3px;
+  font-size:.76rem; font-weight:600; color:var(--dimmer);
+}

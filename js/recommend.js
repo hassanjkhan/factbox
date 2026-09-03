@@ -44,7 +44,7 @@ var FBR = (function () {
     TOPICS: [
       { key: "cleopatra",       name: "Cleopatra",                   lower: "Cleopatra" },
       { key: "new_testament",   name: "The New Testament",           lower: "the New Testament" },
-      { key: "church_history",  name: "Devils, saints and heresies", lower: "devils, saints and heresies" },
+      { key: "church_history",  name: "Saints and sinners",          lower: "saints and sinners" },
       { key: "old_testament",   name: "The Old Testament",           lower: "the Old Testament" },
       { key: "us_history",      name: "America",                     lower: "America" },
       { key: "ancient_world",   name: "The ancient world",           lower: "the ancient world" },
@@ -256,169 +256,186 @@ var FBR = (function () {
     try { if (window.FB && typeof FB.track === "function") FB.track(name, props); } catch (e) {}
   }
 
-  function cover(s) {
-    var plate = el("div", "plate");
-    var img = document.createElement("img");
-    img.alt = "";
-    img.decoding = "async";
-    img.loading = "lazy";
-    img.src = "/img/thumbs/" + str(s.img) + ".webp";
-    img.onerror = function () {
-      this.onerror = null;                                  /* one retry, never a loop */
-      this.src = "/img/stacks/" + str(s.img) + ".webp";
-    };
-    plate.appendChild(img);
-    if (s.locked) {
-      /* The glyph is decoration: the meta line already says "· locked", so
-         without this the link's accessible name ends in "lock". */
-      var lk = el("span", "lock", "\ud83d\udd12");
-      lk.setAttribute("aria-hidden", "true");
-      plate.appendChild(lk);
+  /* ======================================================================
+     The end card.
+
+     What this used to be: three covers, a Save beside each, a buy button and
+     three links to a shelf the "← Stories" pill already reaches. Nine taps at
+     the one moment on the site where the reader has just said yes to a whole
+     story — a menu, at the exact second a menu is the wrong thing.
+
+     What it is now: where they are, one cover with a tick on it, and Continue.
+     One story, one button.
+     ====================================================================== */
+
+  /* "Cleopatra", the heading form of a TOPIC, for the progress line. */
+  function topicName(key) { return form("TOPICS", key, "name"); }
+
+  /* Where this story sits in its subject: catalogue order, 1-based, and how
+     many the subject holds. {n:0, of:0} when the subject cannot be worked out
+     — the caller then prints no progress line at all rather than "0 OF 0". */
+  function place(list, cur) {
+    var out = { n: 0, of: 0 };
+    try {
+      if (!cur) return out;
+      var t = str(cur.topic), id = str(cur.id), i;
+      if (!t) return out;
+      for (i = 0; i < list.length; i++) {
+        if (!list[i] || str(list[i].topic) !== t) continue;
+        out.of++;
+        if (str(list[i].id) === id) out.n = out.of;
+      }
+      /* Ranked against an index this story is not in — it still has a subject
+         and the subject still has a length, so say the honest half. */
+      if (!out.n) out.n = 1;
+      if (out.of < out.n) out.of = out.n;
+    } catch (e) { return { n: 0, of: 0 }; }
+    return out;
+  }
+
+  /* CLEOPATRA · 1 OF 8, and a segment per story under it. The segments are
+     decoration — the sentence above them already says the same thing — so the
+     strip is aria-hidden and the label carries the meaning. */
+  function progressRow(label, n, of) {
+    var wrap = el("div", "ec-prog");
+    wrap.appendChild(el("span", "ec-where", label));
+    var segs = el("div", "ec-segs");
+    segs.setAttribute("aria-hidden", "true");
+    for (var i = 1; i <= of; i++) {
+      segs.appendChild(el("i", i < n ? "is-done" : (i === n ? "is-now" : null)));
     }
-    return plate;
-  }
-
-  function saveBtn(s) {
-    if (!window.FBS || typeof FBS.toggle !== "function") return null;
-    var on = false;
-    try { on = !!(FBS.saved && FBS.saved(str(s.id))); } catch (e) {}
-    var name = str(s.title) ? ": " + str(s.title) : "";
-    var b = el("button", "rec-save", on ? "Saved" : "Save");
-    b.type = "button";
-    b.setAttribute("aria-pressed", on ? "true" : "false");
-    b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
-    b.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      var now = on;
-      try { var r = FBS.toggle(str(s.id)); now = (typeof r === "boolean") ? r : !on; }
-      catch (e) { return; }
-      on = now;
-      b.textContent = on ? "Saved" : "Save";
-      b.setAttribute("aria-pressed", on ? "true" : "false");
-      b.setAttribute("aria-label", (on ? "Remove from library" : "Save to library") + name);
-      track("rec_save", { stack: str(s.id), on: on ? "1" : "0" });
-    });
-    return b;
-  }
-
-  /* One recommendation. The link and the save button are siblings — a button
-     nested inside an anchor is invalid and swallows the tap on some webviews. */
-  function row(s, slot) {
-    var wrap = el("div", "rec-row" + (s.locked ? " is-locked" : ""));
-    var a = el("a", "rec-link");
-    a.href = s.href;
-    a.appendChild(cover(s));
-
-    var t = el("div", "t");
-    t.appendChild(el("b", null, str(s.title)));
-    t.appendChild(el("span", "rec-why", str(s.why)));
-    var cards = (s.cards && s.cards.length) ? s.cards.length + " cards · " : "";
-    t.appendChild(el("span", "rec-meta", cards + minutes(s.secs) + (s.locked ? " · locked" : "")));
-    a.appendChild(t);
-
-    a.addEventListener("click", function () {
-      track("rec_click", { stack: str(s.id), why: str(s.whyKey), slot: String(slot + 1) });
-    });
-
-    wrap.appendChild(a);
-    var b = saveBtn(s);
-    if (b) wrap.appendChild(b);
+    wrap.appendChild(segs);
     return wrap;
   }
 
+  /* The cover they just finished. 4:3, a tick, the title and the runtime on
+     the plate. No save control: this pane is the way out of the story, and a
+     second thing to tap here is the thing the reader taps instead of Continue.
+     The 4:3 box is a padding-top ratio rather than aspect-ratio, which is
+     iOS 15+; a lot of this traffic is not. */
+  function finishedPlate(s) {
+    var fig = el("figure", "ec-plate");
+    var img = document.createElement("img");
+    img.alt = "";
+    img.decoding = "async";
+    img.src = "/img/thumbs/" + str(s.img) + ".webp";
+    img.onerror = function () {
+      this.onerror = null;                                /* one retry, never a loop */
+      this.src = "/img/stacks/" + str(s.img) + ".webp";
+    };
+    fig.appendChild(img);
+
+    var tick = el("span", "ec-tick");
+    tick.setAttribute("aria-hidden", "true");
+    tick.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" ' +
+           'stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M5 12.5l4.6 4.6L19 7.2"/>' +
+      '</svg>';
+    fig.appendChild(tick);
+
+    var cap = el("figcaption", "ec-cap");
+    cap.appendChild(el("b", null, str(s.title)));
+    cap.appendChild(el("span", "ec-min", minutes(s.secs)));
+    fig.appendChild(cap);
+    return fig;
+  }
+
   /* endPanel(current, stacks, opts) -> a .pane element for the end of a story.
-     opts: { n:3, heading:"...", explore:true, library:true }
+     opts: { heading, sub, cta }
      Always returns an element. Never throws. */
   function endPanel(current, stacks, opts) {
     var sec;
     try {
       opts = opts || {};
-      sec = el("section", "pane rec");
-      var open = unlocked();
-      var want = Math.max(2, Math.min(4, Math.floor(+opts.n) || 3));
-      var ranked = next(current, stacks, 999), i;
+      sec = el("section", "pane rec endcard");
 
-      /* A locked reader gets everything they can open, plus at most one
-         locked cover as a marked teaser. Six padlocks in a row is a nag. */
-      var pool = ranked, teaser = null;
-      if (!open) {
-        var canOpen = [], shut = [];
-        for (i = 0; i < ranked.length; i++) (ranked[i].locked ? shut : canOpen).push(ranked[i]);
-        pool = canOpen;
-        teaser = shut.length ? shut[0] : null;
+      var list = listOf(stacks);
+      var curId = idOf(current);
+      var cur = (current && typeof current === "object" && current.id != null)
+        ? current : find(list, curId);
+
+      /* The one story we are sending them to: the best-ranked one this reader
+         can actually open. next() already sinks the locked ones by 1200, so
+         the first unlocked row IS the top pick, not a consolation. */
+      var ranked = next(current, stacks, 999), target = null, i;
+      for (i = 0; i < ranked.length; i++) {
+        if (!ranked[i].locked) { target = ranked[i]; break; }
       }
-      var picks = pool.slice(0, want);
 
-      /* Three rows reading "More on Cleopatra, More on Cleopatra, More on
-         Cleopatra" is one door, printed three times. When every pick shares a
-         reason, the last slot goes to the best candidate with a different one
-         — still ranked, still deterministic, but it offers a second way out. */
-      if (picks.length === want && want >= 3) {
-        var same = true;
-        for (i = 1; i < picks.length; i++) if (picks[i].whyKey !== picks[0].whyKey) same = false;
-        if (same) {
-          for (i = want; i < pool.length; i++) {
-            if (pool[i].whyKey !== picks[0].whyKey) { picks[want - 1] = pool[i]; break; }
-          }
+      /* --- where they are ------------------------------------------------ */
+      var pl = place(list, cur);
+      if (pl.of) {
+        var subject = topicName(cur && cur.topic) ||
+                      str(cur && cur.topic).replace(/_/g, " ");
+        if (subject) {
+          sec.appendChild(progressRow(
+            subject.toUpperCase() + " · " + pl.n + " OF " + pl.of, pl.n, pl.of));
         }
       }
-      if (picks.length < want && teaser) picks.push(teaser);
 
-      sec.appendChild(el("h2", null, str(opts.heading) || "That is the whole story"));
+      /* --- the question and the answer ------------------------------------
+         "There's more to X", never "X's story". The subject phrase is
+         generated for all eight groups and several of them end in a plural
+         that will not take a possessive: "saints and sinners's story" and
+         "disasters's story" are not sentences. A preposition reads for every
+         one of the eight and says the same thing. Checked against all eight
+         lower forms in the table at the top of this file. */
+      sec.appendChild(el("h2", null,
+        str(opts.heading) || "Want to know what happened next?"));
 
-      var openable = 0;
-      for (var j = 0; j < picks.length; j++) if (!picks[j].locked) openable++;
-      var lede = picks.length
-        ? (open || openable ? "Read another one." : "That was the last free story.")
-        : "That is every story for now.";
-      sec.appendChild(el("p", "rec-lede", lede));
-
-      if (picks.length) {
-        var listEl = el("div", "rec-list");
-        for (var k = 0; k < picks.length; k++) listEl.appendChild(row(picks[k], k));
-        sec.appendChild(listEl);
+      var phrase = topicPhrase(cur && cur.topic);
+      /* One subject holds exactly one story (disaster). Telling that reader
+         there is more of it is a lie they can check in one tap, so we name
+         the subject they are actually being sent to instead. */
+      if (pl.of < 2 && target && str(target.topic)) {
+        phrase = topicPhrase(str(target.topic)) || phrase;
       }
+      if (!phrase) phrase = "the rest of season one";
+      sec.appendChild(el("p", "ec-sub", str(opts.sub) ||
+        "Keep going. There’s more to " + phrase + ", and it gets stranger."));
 
-      /* The route to the rest, stated once, plainly. No countdown, no nag. */
-      if (!open) {
-        var buy = el("button", "go", "Read the rest of season one");
-        buy.type = "button";
-        buy.addEventListener("click", function () {
+      /* --- the cover they finished ---------------------------------------- */
+      if (cur && cur.img) sec.appendChild(finishedPlate(cur));
+
+      /* --- one button ------------------------------------------------------
+         A link when there is somewhere to go, a button when the only thing
+         left is the offer. Either way it is one control, and it is never
+         dead. */
+      var label = str(opts.cta) || "Continue";
+      var go;
+      if (target) {
+        go = el("a", "go ec-go", label);
+        go.href = target.href;
+        go.setAttribute("role", "button");
+        go.addEventListener("click", function () {
+          track("rec_click", { stack: str(target.id), why: str(target.whyKey), slot: "1" });
+        });
+      } else {
+        go = el("button", "go ec-go", label);
+        go.type = "button";
+        go.addEventListener("click", function () {
           try {
-            if (window.FB && typeof FB.checkout === "function") { FB.checkout(buy, "endcard"); return; }
+            if (window.FB && typeof FB.checkout === "function") { FB.checkout(go, "endcard"); return; }
           } catch (e) {}
           location.href = "/stories";
         });
-        sec.appendChild(buy);
-        sec.appendChild(el("p", "fine", "Cancel any time."));
       }
+      sec.appendChild(go);
 
-      var links = el("div", "rec-links");
-      if (opts.explore !== false) links.appendChild(link("/explore", "Explore by topic"));
-      if (opts.library !== false) links.appendChild(link("/library", "Your library"));
-      links.appendChild(link("/stories", "All stories"));
-      sec.appendChild(links);
-
-      track("rec_view", { stack: idOf(current), n: String(picks.length) });
+      track("rec_view", { stack: curId, n: target ? "1" : "0" });
       return sec;
     } catch (e) {
       /* Last resort: a pane with a way out is still a working end of story. */
       try {
-        var f = el("section", "pane rec");
-        f.appendChild(el("h2", null, "That is the whole story"));
-        var l = el("div", "rec-links");
-        l.appendChild(link("/stories", "All stories"));
-        f.appendChild(l);
+        var f = el("section", "pane rec endcard");
+        f.appendChild(el("h2", null, "Want to know what happened next?"));
+        var a = el("a", "go ec-go", "Continue");
+        a.href = "/stories";
+        f.appendChild(a);
         return f;
       } catch (e2) { return sec || null; }
     }
-  }
-
-  function link(h, text) {
-    var a = el("a", "ghost", text);
-    a.href = h;
-    return a;
   }
 
   return {

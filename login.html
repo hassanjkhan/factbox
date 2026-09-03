@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Sign in</title>
-<meta name="description" content="Sign in to Factbox to read season one on any phone. Google, email or your phone number.">
+<meta name="description" content="Sign in to Factbox to read season one on any phone. Google or email.">
 <meta name="theme-color" content="#0E0B12">
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="https://factbox.app/login">
@@ -39,23 +39,7 @@
   } catch (e) {}
 })();
 </script>
-<!-- The header's account control must not flash. This class makes its slot
-     invisible without collapsing it, so the row keeps its height from the
-     first paint and nothing shifts when auth finally answers. The timer
-     removes it unconditionally: a script that never runs, or throws, still
-     leaves a readable header rather than a hidden one. See css/app.css. -->
-<script>
-(function () {
-  try {
-    var h = document.documentElement;
-    if (!h) return;
-    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
-    setTimeout(function () {
-      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
-    }, 4000);
-  } catch (e) {}
-})();
-</script>
+
 </head>
 <body>
 
@@ -72,42 +56,17 @@
 
     2. Email and password, because it is the one that always works, including
        for the reader who does not want Google anywhere near this.
-
-    3. Phone, last, because it costs an SMS and a robot check and is the
-       slowest of the three — but it is the only one that works for a reader
-       with no email on their phone at all.
-
-  UNVERIFIED EMAIL ADDRESSES CAN READ. Signing up sends a verification email
-  and nothing waits for it. The reasoning is written out in AUTH.md; the short
-  version is that access is decided by `customers/{uid}.premium`, which a
-  Stripe webhook writes and a browser cannot, so an unverified address gains
-  nothing by being unverified — while blocking on a mail that Gmail filed
-  under Promotions costs us a reader who has already paid.
-
-  EVERY PANEL BELOW SHIPS ITS REAL COPY IN THE MARKUP. The script hides the
-  ones it is not showing. If the script never runs, this page is a long
-  readable sign-in form with working links out of it, which is a bad page —
-  but it is a page. Blank is not on the menu.
 -->
 
 <main class="lib">
   <header class="mast">
     <p class="mark">FACTBOX</p>
     <nav class="tabs" aria-label="Sections">
-      <a href="/stories">Home</a>
       <a href="/explore">Explore</a>
       <a href="/library">Library</a>
-      <!-- Account. Signed out this is two links; signed in it is the reader's
-           name. Never both: the script sets hidden on every branch. -->
-      <span class="acct" id="fb-acct">
-        <a class="acct-in" id="fb-acct-in" href="/login?next=stories">Sign in</a>
-        <a class="acct-up" id="fb-acct-up" href="/login?next=stories">Sign up</a>
-        <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
-      </span>
-    </nav>
+      <span class="acct" id="fb-acct"></span></nav>
     <h1 id="au-title">Sign in to Factbox</h1>
-    <p id="au-blurb">Your subscription follows your account, not this phone.
-    Sign in and season one opens wherever you read it.</p>
+    <p id="au-blurb">One account. Season one, wherever you read it.</p>
   </header>
 
   <!-- Shown by the script while FBU.ready() is still settling. Hidden in the
@@ -184,42 +143,6 @@
       <button class="jn-skip" id="au-swap" type="button">Create an account</button>
     </div>
 
-    <p class="au-or">or</p>
-
-    <!-- 3 · phone ------------------------------------------------------ -->
-    <div id="au-phone">
-      <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 6px">Use your phone number</h2>
-      <p class="fine" style="text-align:left;margin:0">We text you a six-digit
-      code. Include the country code — a plain ten-digit number is read as
-      North American.</p>
-
-      <form id="au-phone-form" action="#" novalidate>
-        <label class="jn-field" for="au-tel">
-          <span>Phone number</span>
-          <input id="au-tel" name="tel" type="tel" inputmode="tel"
-                 autocomplete="tel" autocorrect="off" spellcheck="false"
-                 enterkeyhint="send" placeholder="+1 555 123 4567">
-        </label>
-        <p class="jn-err" id="au-tel-err" hidden role="alert"></p>
-        <p class="au-say" id="au-tel-say" hidden role="status"></p>
-        <button class="au-2nd" id="au-tel-go" type="submit" style="margin-top:14px">Text me a code</button>
-      </form>
-
-      <form id="au-code-form" action="#" novalidate hidden>
-        <label class="jn-field" for="au-code">
-          <span>The six-digit code</span>
-          <input id="au-code" name="code" type="text" inputmode="numeric"
-                 autocomplete="one-time-code" autocorrect="off" spellcheck="false"
-                 enterkeyhint="go" maxlength="6" placeholder="123456">
-        </label>
-        <p class="jn-err" id="au-code-err" hidden role="alert"></p>
-        <button class="go" id="au-code-go" type="submit" style="margin-top:14px">Confirm code</button>
-      </form>
-    </div>
-
-    <p class="fine" style="margin-top:22px;text-align:left">
-      By signing in you agree to the <a href="/terms">terms</a> and the
-      <a href="/privacy">privacy notice</a>.</p>
   </section>
 
   <!-- ===== sign-in could not start ====================================== -->
@@ -238,10 +161,6 @@
       <b>Signing in needs JavaScript.</b> The
       <a href="/stories">two free stories</a> read fine without it.</p>
   </noscript>
-
-  <!-- The invisible robot check for phone sign-in. It has to be in the
-       document before the first code is requested and has to stay there. -->
-  <div id="au-captcha" class="au-captcha" aria-hidden="true"></div>
 
   <p class="fine" style="margin-top:34px;text-align:left">
     <a href="/stories">Season one</a> · <a href="/account">Account</a> ·
@@ -388,16 +307,6 @@
   var go       = el("au-go");
   var forgot   = el("au-forgot");
 
-  var telForm  = el("au-phone-form");
-  var tel      = el("au-tel");
-  var telErr   = el("au-tel-err");
-  var telSay   = el("au-tel-say");
-  var telGo    = el("au-tel-go");
-  var codeForm = el("au-code-form");
-  var code     = el("au-code");
-  var codeErr  = el("au-code-err");
-  var codeGo   = el("au-code-go");
-
   var title    = el("au-title");
   var blurb    = el("au-blurb");
 
@@ -420,7 +329,7 @@
     text(title, up ? "Create your Factbox account" : "Sign in to Factbox");
     text(blurb, up
       ? "One account, every phone. It takes about twenty seconds and nothing is charged for it."
-      : "Your subscription follows your account, not this phone. Sign in and season one opens wherever you read it.");
+      : "One account. Season one, wherever you read it.");
     text(gT, up ? "Sign up with Google" : "Continue with Google");
     show(forgot, !up);
     try { if (pass) pass.setAttribute("autocomplete", up ? "new-password" : "current-password"); } catch (e) {}
@@ -594,43 +503,6 @@
     } catch (e) { gIdle(); fail(gErr, errText(e)); }
   });
 
-  /* --- phone -------------------------------------------------------------- */
-  var handle = null;
-
-  on(telForm, "submit", function (ev) {
-    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
-    clear(telErr); clear(telSay);
-    if (!FBU) { fail(telErr, "Sign-in has not started in this browser. Reload the page."); return; }
-    var n = val(tel);
-    busy(telGo, "Sending the code…");
-    try {
-      FBU.startPhone(n, "au-captcha").then(function (h) {
-        idle(telGo);
-        handle = h;
-        var shown = "";
-        try { shown = (h && h.phone) ? h.phone : n; } catch (x) { shown = n; }
-        text(telSay, "Code sent to " + shown + ". It usually arrives inside a minute.");
-        show(telSay, true);
-        show(codeForm, true);
-        focus(code);
-      }, function (e) { idle(telGo); fail(telErr, errText(e)); });
-    } catch (e) { idle(telGo); fail(telErr, errText(e)); }
-  });
-
-  on(codeForm, "submit", function (ev) {
-    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
-    clear(codeErr);
-    if (!FBU) { fail(codeErr, "Sign-in has not started in this browser. Reload the page."); return; }
-    busy(codeGo, "Checking…");
-    try {
-      FBU.confirmPhone(handle, val(code)).then(function () {
-        idle(codeGo);
-        try { if (window.FB && FB.track) FB.track("signin_phone"); } catch (x) {}
-        leave();
-      }, function (e) { idle(codeGo); fail(codeErr, errText(e)); });
-    } catch (e) { idle(codeGo); fail(codeErr, errText(e)); }
-  });
-
   /* --- signed-in actions --------------------------------------------------- */
   on(resend, "click", function () {
     if (!FBU) return;
@@ -696,81 +568,8 @@
   });
 })();
 </script>
-<!-- The header account control. js/auth.js is already loaded above, and it is
-     a module, so it has run by DOMContentLoaded and not necessarily before
-     this: the block below reaches it through the whenFBU() bridge, AUTH.md §2,
-     the same way the page script above does. -->
-<script>
-/* The header account control. ES5, every lookup guarded, and it cannot throw:
-   the worst case is the signed-out pair staying on screen, which is what the
-   markup already says. */
-(function () {
-  "use strict";
 
-  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
-
-  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
-  function reveal() {
-    try {
-      var h = document.documentElement;
-      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
-                                      .replace(/^\s+|\s+$/g, "");
-    } catch (e) {}
-  }
-
-  /* A display name is text the reader typed, going straight into the header,
-     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
-     rule the rest of the site follows: no error code, ever, on screen. */
-  function label(FBU) {
-    var s = "";
-    try { s = String(FBU.name() || ""); } catch (e) {}
-    if (!s) {
-      var m = "";
-      try { m = String(FBU.email() || ""); } catch (e2) {}
-      var at = m.indexOf("@");
-      s = at > 0 ? m.slice(0, at) : "";
-    }
-    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
-    if (!s) return "Account";
-    if (s.indexOf("auth/") !== -1) return "Account";
-    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
-    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
-  }
-
-  function paint(FBU) {
-    var inNow = false;
-    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
-    if (inNow) {
-      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
-      hide(aIn, true); hide(aUp, true); hide(aMe, false);
-    } else {
-      hide(aMe, true); hide(aIn, false); hide(aUp, false);
-    }
-    reveal();
-  }
-
-  function whenFBU(cb) {
-    var done = false;
-    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
-    if (window.FBU) { go(); return; }
-    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
-    try {
-      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
-      else setTimeout(go, 0);
-    } catch (e) {}
-    try { setTimeout(go, 4000); } catch (e) { go(); }
-  }
-
-  whenFBU(function (FBU) {
-    /* No FBU at all — the file 404'd, or this webview ignores type="module".
-       That is the signed-out header, which links to a page that explains it. */
-    if (!FBU) { paint(null); return; }
-    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
-    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
-  });
-})();
-</script>
 <script src="/js/analytics.js"></script>
+<script src="/js/acct.js"></script>
 </body>
 </html>

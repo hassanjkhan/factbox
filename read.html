@@ -76,39 +76,20 @@
 <link rel="stylesheet" href="/css/recommend.css">
 <link rel="stylesheet" href="/css/scenes.css">
 <link rel="stylesheet" href="/css/audio-reader.css">
-<!-- The header's account control must not flash. This class makes its slot
-     invisible without collapsing it, so the row keeps its height from the
-     first paint and nothing shifts when auth finally answers. The timer
-     removes it unconditionally: a script that never runs, or throws, still
-     leaves a readable header rather than a hidden one. See css/app.css. -->
-<script>
-(function () {
-  try {
-    var h = document.documentElement;
-    if (!h) return;
-    h.className = (h.className ? h.className + " " : "") + "fb-hdr";
-    setTimeout(function () {
-      try { h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " "); } catch (e) {}
-    }, 4000);
-  } catch (e) {}
-})();
-</script>
+<link rel="stylesheet" href="/css/reader-rail.css">
 </head>
 <body>
 
 <div class="prog" aria-hidden="true"><i id="bar"></i></div>
 <div class="topbar"><a class="back" href="/stories">← Stories</a></div>
-<!-- Account, mirroring the back button on the other side. read.html has no
-     .tabs row — it is a full-bleed deck — so the control takes the same
-     floating pill the back button already uses, and carries one link rather
-     than two: the back button, the save button and this all share a 390px
-     line, and sign-up is one tap further on the page this points at. -->
-<div class="topbar-r">
-  <span class="acct is-float" id="fb-acct">
-    <a class="acct-in" id="fb-acct-in" href="/login?next=stories">Sign in</a>
-    <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
-  </span>
-</div>
+
+<!-- The reader's own two controls, as one column at the foot of the right
+     edge: sound on top, the Save bookmark on the bottom. Empty markup — the
+     save button is put here by the script below once a story renders, and the
+     sound button by js/audio-reader.js once the deck has a card worth
+     sounding. Neither is drawn on the paywall, and an empty rail paints
+     nothing. Its floor sits on --bottom-safe; see css/reader-rail.css. -->
+<div class="fb-rail" id="fb-rail"></div>
 
 <main class="deck" id="deck" tabindex="-1">
   <section class="pane">
@@ -298,14 +279,18 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     fin(deck, function () { deck.innerHTML = html; });
     FB.track("stack_open", { stack: s.id });
 
-    /* Saving lives beside the back button: the two things you do to a story
-       from outside the story itself. */
+    /* Saving lives at the foot of the right edge, under the sound button, in
+       the rail every app this reader arrives from puts it in. It used to sit
+       beside the back button, top-left — the furthest point on the screen
+       from the thumb holding the phone. The behaviour is unchanged: the same
+       FBS.button(), the same bookmark, the same aria-pressed. Only the
+       address is new. */
+    var rail = document.getElementById("fb-rail");
     if (window.FBS) {
       var save = FBS.button(s.id, function (isSaved) {
         FB.track(isSaved ? "save_add" : "save_remove", { stack: s.id });
       }, s.title);
-      var topbar = document.querySelector(".topbar");
-      if (save && topbar) topbar.appendChild(save);
+      if (save && rail) rail.appendChild(save);
     }
 
     /* Offer to pick up where they stopped rather than jumping there. A silent
@@ -413,11 +398,26 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     }
 
     var total = s.cards.length + 1, deepest = 0, reported = false;
+
+    /* The end card is the pane after the last card, so any index at or past
+       cards.length is it. The rail comes off there: that pane is the way out
+       of the story rather than part of it, it carries its own single button,
+       and two floating controls land on its words.
+
+       This rides the scroll handler rather than the IntersectionObserver
+       because the no-observer path marks every card live at once, and a rail
+       that hides itself for the whole story is worse than one that never
+       hides. Scroll is the coarser, always-true signal. */
+    function railFor(n) {
+      try { if (rail) rail.classList.toggle("is-off", n >= s.cards.length); } catch (e) {}
+    }
+
     function onScroll() {
       var h = deck.clientHeight || 1;
       var n = Math.round(deck.scrollTop / h);
       bar.style.width = Math.min(100, (n + 1) / total * 100) + "%";
       if (n > deepest) deepest = n;
+      railFor(n);
       if (P) P.mark(s.id, deepest, s.cards.length);
     }
     deck.addEventListener("scroll", onScroll, { passive: true });
@@ -466,6 +466,8 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
         deck.appendChild(panel);
         if (io) { try { io.observe(panel); } catch (e) {} }
         else panel.classList.add("live");
+        /* A reader can already be sitting on the last card when this lands. */
+        onScroll();
       }).catch(function () {});
     }
   }
@@ -506,94 +508,18 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
 })();
 </script>
 <script src="/js/audio-reader.js"></script>
-<!-- js/auth.js is a module, so the browser defers it: it runs after the
-     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
-     is in. The ES5 block below therefore cannot read window.FBU at the moment
-     it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
+<!-- No account control on this page. The reader is the story and the next
+     one; a "Sign in" pill floating over a painting is a second offer at the
+     moment the reader is inside the first. Sign-in lives on the pages that
+     are about the account, and the paywall already carries the way in.
+
+     js/auth.js stays, and is not the header: it publishes window.FBU, which
+     js/access.js reads to answer "may this person read this". Removing it
+     would lock a paying subscriber out of a story they have paid for. It is a
+     module, so the browser defers it — it runs after the document is parsed
+     and before DOMContentLoaded, whatever position this tag is in, and
+     access.js reaches it through the whenFBU() bridge in AUTH.md §2. -->
 <script type="module" src="/js/auth.js"></script>
-<script>
-/* The header account control. ES5, every lookup guarded, and it cannot throw:
-   the worst case is the signed-out pair staying on screen, which is what the
-   markup already says. */
-(function () {
-  "use strict";
-
-  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
-
-  function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
-  function reveal() {
-    try {
-      var h = document.documentElement;
-      if (h) h.className = h.className.replace(/(^|\s)fb-hdr(\s|$)/g, " ")
-                                      .replace(/^\s+|\s+$/g, "");
-    } catch (e) {}
-  }
-
-  /* A display name is text the reader typed, going straight into the header,
-     so it is trimmed, capped and scrubbed before it reaches the DOM — the same
-     rule the rest of the site follows: no error code, ever, on screen. */
-  function label(FBU) {
-    var s = "";
-    try { s = String(FBU.name() || ""); } catch (e) {}
-    if (!s) {
-      var m = "";
-      try { m = String(FBU.email() || ""); } catch (e2) {}
-      var at = m.indexOf("@");
-      s = at > 0 ? m.slice(0, at) : "";
-    }
-    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
-    if (!s) return "Account";
-    if (s.indexOf("auth/") !== -1) return "Account";
-    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "Account";
-    return s.length > 18 ? (s.slice(0, 17) + "\u2026") : s;
-  }
-
-  function paint(FBU) {
-    var inNow = false;
-    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
-    if (inNow) {
-      try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
-      hide(aIn, true); hide(aUp, true); hide(aMe, false);
-    } else {
-      hide(aMe, true); hide(aIn, false); hide(aUp, false);
-    }
-    reveal();
-  }
-
-  function whenFBU(cb) {
-    var done = false;
-    function go() { if (done) return; done = true; try { cb(window.FBU || null); } catch (e) {} }
-    if (window.FBU) { go(); return; }
-    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
-    try {
-      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, false);
-      else setTimeout(go, 0);
-    } catch (e) {}
-    try { setTimeout(go, 4000); } catch (e) { go(); }
-  }
-
-  whenFBU(function (FBU) {
-    /* No FBU at all — the file 404'd, or this webview ignores type="module".
-       That is the signed-out header, which links to a page that explains it. */
-    if (!FBU) { paint(null); return; }
-    try { FBU.onReady(function () { paint(FBU); }); } catch (e) { paint(FBU); }
-    try { FBU.onChange(function () { paint(FBU); }); } catch (e) {}
-  });
-})();
-</script>
-<script>
-/* Back to the story, not to the shelf. Only a plain stack id is accepted into
-   the return address; anything else leaves the link exactly as it shipped. */
-(function () {
-  try {
-    var m = /^\?s=([A-Za-z0-9_-]{1,24})$/.exec(String(location.search || ""));
-    if (!m) return;
-    var a = document.getElementById("fb-acct-in");
-    if (a) a.setAttribute("href", "/login?next=" + encodeURIComponent("/read?s=" + m[1]));
-  } catch (e) {}
-})();
-</script>
 <script src="/js/analytics.js"></script>
 </body>
 </html>

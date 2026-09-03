@@ -428,102 +428,19 @@ img{max-width:100%;display:block}
   padding:9px 14px; min-height:var(--tap);
 }
 
-/* --------------------------------------------------------------------------
-   The account control. Top right of the .tabs row on every page, and the only
-   route to signing in from anywhere on the site. Signed out it is two links;
-   signed in it is the reader's name, pointing at Account.
+/* The old account control is gone, and so are its rules.
 
-   IT MUST NOT FLASH. `FBU.ready()` settles asynchronously, and rendering
-   "Sign in" and then swapping it for a name is worse than rendering nothing
-   for that moment. So the head snippet puts `fb-hdr` on <html>, which makes
-   the slot INVISIBLE WITHOUT COLLAPSING IT: the row keeps its height from the
-   first paint, the tabs keep their place, and the slot is right-aligned so
-   whatever width it settles on moves nothing else. A four-second timer removes
-   the class unconditionally — same shape, and same reason, as `au-js`: a
-   script that never runs must leave a readable header, not a hidden one.
-   -------------------------------------------------------------------------- */
-.acct{
-  margin-left:auto; flex:0 1 auto; min-width:0; overflow:hidden;
-  display:flex; align-items:center; gap:10px;
-  min-height:var(--tap);
-}
-/* If the row ever runs out of room it is the account slot that gives, never
-   the section nav, and it gives by clipping rather than by widening the body:
-   SPEC §3 says the page never scrolls sideways. */
-.tabs > a{flex:none}
-html.fb-hdr .acct{visibility:hidden}
+   It was three links in the nav row — Sign in, a Sign up chip, and the
+   reader's name — with `hidden` toggled between them, a truncation width per
+   breakpoint, a floating variant for the reader, and a class on <html> that
+   hid the lot until auth answered so it would not flash. Nine pages each
+   carried their own copy of the script driving it.
 
-.acct a{
-  display:inline-flex; align-items:center; justify-content:center;
-  min-height:var(--tap); padding:10px 0;
-  font-size:.88rem; font-weight:700; letter-spacing:-.01em;
-  color:var(--dimmer); text-decoration:none; white-space:nowrap;
-}
-/* `.tabs a` sets a display, which beats the UA stylesheet's rule for
-   [hidden]. Without this line the hidden half of the control would still be
-   on screen and the header would say "Sign in" next to a reader's name. */
-.acct a[hidden]{display:none !important}
-
-/* Sign up is a chip with a hairline, not a coral capsule: a filled pill here
-   would compete with the one real button on the page, and SPEC §4 already
-   says why a coloured capsule in a nav row reads wrong. */
-.acct .acct-up{
-  padding:0 13px; border-radius:var(--pill);
-  box-shadow:inset 0 0 0 1px var(--hair);
-  color:var(--coral); font-weight:800;
-}
-/* The name is text, brighter than a tab, truncated rather than allowed to
-   push the tabs sideways on a 390px screen. */
-.acct .acct-me{
-  display:block; padding:0;
-  min-height:var(--tap); line-height:var(--tap);
-  color:var(--parchment); font-weight:800;
-  max-width:14ch; overflow:hidden; text-overflow:ellipsis;
-}
-
-/* Every phone this site runs on is between 320 and 430 CSS pixels wide, and on
-   all of them the three tabs and this control share one line — so the
-   breakpoint is the whole phone range rather than a narrow-screen
-   afterthought. Type comes down, the gaps come in, and the slot above still
-   clips rather than widening the row if a long word ever lands in it. */
-@media (max-width:430px){
-  .tabs{gap:16px}
-  .acct{gap:8px}
-  .acct a{font-size:.82rem}
-  .acct .acct-me{max-width:11ch}
-}
-@media (max-width:359px){
-  .tabs{gap:13px}
-  .acct .acct-me{max-width:8ch}
-}
-
-/* read.html has no .tabs — it is a full-bleed deck with one floating pill in
-   the top bar. The control mirrors that pill on the opposite side, at the
-   same 38px height the back button already uses, and shows one link rather
-   than two so the two bars never meet in the middle of a phone. */
-.topbar-r{
-  position:fixed; top:var(--top-safe); right:12px; z-index:31;
-  display:flex; align-items:center; gap:8px;
-}
-
-/* The ambient-sound button is created by js/audio-reader.js, which puts it in
-   this rail when the page has one. Both used to be position:fixed at
-   right:12px — two elements given the same corner and no way to see each
-   other, so the speaker sat on top of the reader's own name. In here it is a
-   flex item like the account pill beside it, and the row does the arranging.
-   On the composed story pages there is no rail and it stays fixed; that rule
-   still lives in css/audio-reader.css. */
-.topbar-r .fb-sound{position:static; top:auto; right:auto}
-.acct.is-float{min-height:0}
-.acct.is-float a{
-  min-height:38px; padding:0 13px; border-radius:var(--pill);
-  background:rgba(14,11,18,.6); backdrop-filter:blur(10px);
-  box-shadow:inset 0 0 0 1px var(--hair);
-  color:var(--parchment); font-size:.83rem; font-weight:700;
-}
-.acct.is-float .acct-me{
-  min-height:38px; line-height:38px; max-width:11ch;
-}
+   All of that is one circle now, drawn by js/acct.js, styled at the bottom of
+   this file. Nothing here referenced it any more: .topbar-r, .acct.is-float,
+   .acct a, .acct .acct-up, .acct .acct-me and html.fb-hdr had no users left
+   in any page or script. A stylesheet full of rules for markup that no longer
+   exists is the next person's afternoon. */
 
 /* ==========================================================================
    The waiting state — js/loader.js
@@ -586,3 +503,76 @@ html.no-motion .fbload-fill{
 @media (prefers-reduced-motion: reduce){
   .fbload-fill{ animation:fbload-grow 4.5s linear forwards; }
 }
+
+/* ==========================================================================
+   The account insignia — js/acct.js
+
+   One circle, top right of every page that has a header, replacing the
+   Sign in / Sign up pair that used to sit in the nav row. It is the same
+   circle signed in or out, so nothing moves when auth answers a beat after
+   first paint; only the letter inside it changes.
+   ========================================================================== */
+.acct{margin-left:auto; position:relative; display:flex; align-items:center}
+
+.acct-btn{
+  appearance:none;-webkit-appearance:none; cursor:pointer;
+  width:34px; height:34px; padding:0; border:0; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:rgba(255,247,237,.09);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  color:var(--parchment);
+  font:800 .86rem/1 var(--ui, inherit);
+  -webkit-tap-highlight-color:transparent;
+  transition:background .18s ease, box-shadow .18s ease, transform .12s ease;
+}
+.acct-btn:hover{background:rgba(255,247,237,.14)}
+.acct-btn:active{transform:scale(.94)}
+.acct-btn:focus-visible{outline:2px solid var(--coral); outline-offset:3px}
+.acct-btn.is-in{
+  background:rgba(255,122,92,.16);
+  box-shadow:inset 0 0 0 1px rgba(255,122,92,.5);
+  color:var(--coral);
+}
+
+/* Signed out there is no letter, so the circle carries a plain figure drawn in
+   CSS rather than an emoji — an emoji renders as somebody else's artwork at a
+   different size on every platform, and this sits beside our own wordmark. */
+.acct-ini.is-anon{
+  width:13px; height:13px; position:relative; display:block;
+}
+.acct-ini.is-anon::before{
+  content:""; position:absolute; left:50%; top:0; width:6.5px; height:6.5px;
+  margin-left:-3.25px; border-radius:50%;
+  box-shadow:inset 0 0 0 1.6px currentColor;
+}
+.acct-ini.is-anon::after{
+  content:""; position:absolute; left:50%; bottom:0; width:13px; height:6.5px;
+  margin-left:-6.5px; border-radius:7px 7px 0 0;
+  box-shadow:inset 0 0 0 1.6px currentColor;
+}
+
+.acct-menu{
+  position:absolute; top:calc(100% + 9px); right:0; z-index:60;
+  min-width:11.5rem; padding:6px;
+  border-radius:14px;
+  background:rgba(20,16,26,.97);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2);
+  backdrop-filter:blur(18px) saturate(1.2);
+  box-shadow:inset 0 0 0 1px var(--hair), 0 14px 40px rgba(0,0,0,.55);
+  display:flex; flex-direction:column; gap:2px;
+}
+.acct-menu[hidden]{display:none}
+
+.acct-who{
+  margin:0; padding:8px 10px 6px;
+  font-size:.74rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--dim);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.acct-item{
+  display:block; padding:9px 10px; border-radius:9px;
+  color:var(--parchment); text-decoration:none;
+  font-size:.9rem; font-weight:700; line-height:1.2;
+}
+.acct-item:hover{background:rgba(255,247,237,.09)}
+.acct-item:focus-visible{outline:2px solid var(--coral); outline-offset:-2px}

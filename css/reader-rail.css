@@ -1,0 +1,104 @@
+/* ==========================================================================
+   Factbox reader (read.html) — the control rail, and nothing else.
+
+   Loaded by read.html only, after css/app.css and css/audio-reader.css, and
+   it defines exactly two things: where the rail sits, and the 62px of right
+   margin the card text gives up to clear it.
+
+   WHY THERE IS A RAIL
+   -------------------
+   The reader had three controls at three heights: "← Stories" top-left, the
+   Save bookmark beside it, and the sound button top-right. Save is the one a
+   reader reaches for mid-story, and it was the furthest thing on the screen
+   from the thumb holding the phone — up, and across. Every app this audience
+   arrives from (TikTok, Instagram, Reels) puts the save action in a vertical
+   rail at the foot of the right edge, and it is the one gesture they do not
+   have to look for.
+
+   So Save and Sound stack as one column, bottom-right. "← Stories" stays
+   top-left: it is the way out of the story, not a control inside it.
+
+   ORDER: sound on top, SAVE ON THE BOTTOM.
+   The founder's ask was "the save button as a bookmark in the bottom right",
+   and the bottom of the rail is literally that corner. It is also the slot a
+   thumb reaches without the hand moving, which is the right place for the
+   frequent action; sound is tapped once a session at most.
+
+   THE FLOOR IS --bottom-safe, AND THAT IS NOT NEGOTIABLE
+   -----------------------------------------------------
+   --bottom-safe in app.css is max(13vh, inset + toolbar + 4px) because the
+   Instagram and TikTok in-app browsers draw their own toolbar over the bottom
+   of the viewport, and that is essentially all of our traffic. The rail's
+   floor sits on that line with 6px of air, so it clears the toolbar at every
+   screen height rather than at the one the last person tested on.
+   ========================================================================== */
+
+.fb-rail{
+  position:fixed;
+  right:12px;
+  bottom:calc(var(--bottom-safe, max(13vh, 64px)) + 6px);
+  /* 32, matching .fb-sound: one above .topbar (31) and the progress bar (30),
+     so a card's own stacking context can never bury it. */
+  z-index:32;
+
+  display:flex; flex-direction:column; align-items:center;
+  gap:10px;
+
+  /* The gaps between the buttons are painting, not a target. Each child takes
+     its own taps back. */
+  pointer-events:none;
+
+  transition:opacity .22s ease, transform .22s ease;
+}
+.fb-rail > *{pointer-events:auto}
+
+/* Sound first, save last, whatever order they were appended in — the save
+   button is mounted when the story renders and the sound button when the deck
+   first has a scored card, and those two do not land in a fixed order. */
+.fb-rail .fb-sound{position:static; top:auto; right:auto; order:1}
+.fb-rail .fbs-save{order:2}
+
+/* --------------------------------------------------------------------------
+   Hidden on the end card.
+
+   That pane is the way out of the story rather than part of it: it carries
+   its own single button, and two floating controls land on its words. The
+   class is toggled from read.html's scroll handler, which runs with and
+   without an IntersectionObserver.
+   -------------------------------------------------------------------------- */
+.fb-rail.is-off{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translateY(8px);
+  transition:opacity .22s ease, transform .22s ease, visibility 0s linear .22s;
+}
+
+/* --------------------------------------------------------------------------
+   The card text gives up 62px on the right.
+
+   .copy is padding:0 20px in app.css and the rail is 38px wide at right:12px,
+   so a long line ran under the buttons instead of stopping before them. 62px
+   is the rail plus its margin plus a hair. Only below 760px: above it the
+   deck is wide, .copy is capped at 620px and centred, and the two never meet.
+   -------------------------------------------------------------------------- */
+@media (max-width:760px){
+  .copy{padding-right:82px}
+}
+
+/* The sound control's note follows its button. It is one line of glass that
+   says where the iOS silent switch is, shown once per device the moment sound
+   starts — 700px above the button it belongs to, it is a message from
+   nowhere. Only read.html loads this file, so the composed story pages keep
+   the top-right note their own top-right button sits under. */
+.fb-sound-note{
+  top:auto;
+  bottom:calc(var(--bottom-safe, max(13vh, 64px)) + 58px);
+  transform:translateY(6px);
+}
+.fb-sound-note.on{transform:none}
+
+@media (prefers-reduced-motion:reduce){
+  .fb-rail{transition:none}
+  .fb-sound-note{transform:none}
+}

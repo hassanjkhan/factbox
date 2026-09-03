@@ -85,7 +85,7 @@ Top-**right**, on the same rail as the "← Stories" pill (top-left), same glass
 same pill radius, same 38 px height, `z-index: 32` — one above `.topbar` (31) and
 the progress bar (30).
 
-It is **not** in the bottom of the viewport, and must never be moved there.
+It is **not** in the bottom of the viewport, and must not be moved on the composed story pages there.
 `--bottom-safe` in `app.css` is `max(13vh, toolbar + inset)` for one reason: the
 Instagram and TikTok in-app browsers draw their own toolbar over the bottom of
 the screen, and that is essentially all of our traffic. A control down there is a
@@ -676,3 +676,23 @@ cards — **3.04 a story**, against 2.3 for the beat-level map this replaces.
 | 48 | church_history | 666 and the Roman emperor | `copies` · **`fire`** `copies` · · · · |
 | 49 | church_history | The Antichrist | **`void`** `copies` · · · `vault` · `gallery` |
 | 50 | ancient_world | The Ides of March | **`court`** · **`night`** **`court`** · · · · `gallery` |
+
+
+## Where the control sits, now
+
+Two answers, and they differ on purpose.
+
+On **`/read`** the sound button is the top of `.fb-rail`, the vertical rail at
+the foot of the right edge, with Save below it — the thumb's corner, the way a
+feed app puts them. `js/audio-reader.js` mounts into `.fb-rail` when the page
+has one.
+
+On the **composed story pages** (`story.html`, `cleopatra.html`,
+`firststory.html`) there is no rail, so it stays `position:fixed` at the top
+right, and the note under it stays there too. That is what the mount falls back
+to when `.fb-rail` is absent.
+
+What has not changed: it never goes below `--bottom-safe`. The Instagram and
+TikTok in-app browsers draw their own toolbar over the bottom of the viewport,
+and a control down there is a control that cannot be tapped. The rail's floor
+sits on that line.

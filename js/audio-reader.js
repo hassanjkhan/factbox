@@ -622,9 +622,12 @@
      so the paywall pane, the error pane and the moment before the fetch lands
      never show a sound button with nothing to sound.
 
-     It sits top-RIGHT: the reader's "back to Stories" pill is top-left, and
-     the bottom ~15% of the viewport is under the Instagram / TikTok in-app
-     browser toolbar, where nothing tappable may live.
+     On the reader it sits in the control rail at the foot of the RIGHT edge,
+     above the Save bookmark, with the rail's floor on --bottom-safe. The
+     bottom ~15% of the viewport is under the Instagram / TikTok in-app
+     browser toolbar and nothing tappable may live there — --bottom-safe is
+     that line, and the rail sits on it, not in it. On the composed story
+     pages, which have no rail, it stays top-right where it always was.
      ------------------------------------------------------------------------ */
   var btn = document.createElement("button");
   btn.type = "button";
@@ -667,12 +670,16 @@
     if (shown || dead) return;
     shown = true;
     paint();
-    /* Into the reader's top-right rail if it has one, so the account pill and
-       this button lay themselves out as a row instead of being handed the same
-       fixed corner and covering each other. Body is the fallback, and is what
-       the composed story pages use — they have no rail. */
+    /* Into the reader's control rail if it has one — the column at the foot
+       of the right edge that also carries the Save bookmark, so the two lay
+       themselves out as a column instead of being handed the same corner and
+       covering each other. Order inside it is CSS, not append order.
+
+       The body is the fallback, and is what the composed story pages use —
+       they have no rail, and css/audio-reader.css keeps them the fixed
+       top-right button they have always had. */
     try {
-      var rail = document.querySelector(".topbar-r");
+      var rail = document.querySelector(".fb-rail");
       (rail || document.body).appendChild(btn);
       document.body.appendChild(note);
     }

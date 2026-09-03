@@ -1,69 +1,35 @@
 # Explore
 
-`explore.html` + `js/explore.js` + `css/explore.css`. Where a reader who just
-finished a story goes to find the next one. Sibling of `stories.html`; same
-covers, same classes, same tone.
+There is no Explore page any more, and this file is mostly a redirect.
 
-## What is on the page
+`/` and `/explore` serve the same page — the home page. It is built by
+`js/today.js` and styled by `css/today.css`, and it carries Today's Factbox,
+Trending now, and Binge a series. The nav has two tabs, Explore and Library;
+there is no Home tab, because the page you land on is the home page.
 
-Search field → filter chips (theme, then kind of story) → a running tally →
-the view. With no query and no chip selected the view is the default browse:
+What used to be here — a search row, "Pick an obsession" chips, and eighteen
+shelves — is gone. It was a second answer to the question the home page was
+already answering.
 
-| Shelf | Where it comes from |
-|---|---|
-| Resume strip | `FBP.continueReading(stacks)` — same component as the home shelf |
-| Keep reading | `FBP.state` = `reading`, most recently touched first |
-| Start here | `stack.free` — hidden once the reader has paid |
-| Quickest reads | `secs` ascending, 12 |
-| The long ones | `cards.length >= 11` |
-| You have not opened these | `FBP.state` = `unread` — hidden until something *has* been read, otherwise it is all 51 |
-| Finished | `FBP.state` = `done` |
-| Browse by theme | one shelf per `topic`, 8 |
-| Browse by kind of story | one shelf per `kind`, 6 |
+## What js/explore.js still is
 
-Every editorial shelf is derived from `secs`, `cards.length`, `kind` or this
-browser's own reading memory. Nothing on this page asserts a fact about a story
-that the story does not assert itself.
+The season's own names for things, and nothing else. It publishes:
 
-## Display names
+```js
+window.FBTAX = { TOPICS: {...}, KINDS: {...} }
+```
 
-`topic` and `kind` are how the data is filed, not how a reader talks. The map
-lives in `TOPICS` and `KINDS` at the top of `js/explore.js` — change it there.
+`TOPICS` maps a stack's `topic` key to a display name and a `lower` form for
+mid-sentence use. `KINDS` does the same for `kind`. Both are read at call time
+rather than at load, because `js/recommend.js` may run before this file has
+defined them.
 
-- `cleopatra` → Cleopatra · `new_testament` → The New Testament ·
-  `church_history` → **Devils, saints and heresies** · `old_testament` → The Old
-  Testament · `us_history` → America · `ancient_world` → The ancient world ·
-  `medieval_modern` → Medieval and modern · `disaster` → When it all went wrong
-- `unsolved_mystery` → Unsolved mysteries · `myth_correction` → Things you have
-  wrong · `violent_death` → Deaths · `list_explainer` → The whole thing,
-  explained · `moral_reversal` → The turn nobody mentions · `hidden_meaning` →
-  Hidden meanings
+This is the one place a subject is named. `js/recommend.js`, `js/today.js` and
+the end card all read it, and each carries its own fallback copy in case the
+file is missing — so a rename has to happen here first, and the fallbacks have
+to follow. "Devils, saints and heresies" became "Saints and sinners" that way.
 
-## Search
-
-Client-side, no network. One lowercased haystack per stack built at load from
-title + hook + every card headline + the two display names, so "unsolved" and
-"mysteries" find the group as well as the words. Every typed word must appear,
-so a second word narrows. Curly apostrophes are folded — nobody types one.
-No results renders `.void`: what happened, what search covers, and one tap back
-to all 51.
-
-## Rules
-
-- Never throws. Every DOM lookup, every `FB`/`FBP` call and every storage read
-  is guarded, and a data failure renders a sentence with a way out — never a
-  blank page. `esc` and `minutes` have local fallbacks so a 404 on `gate.js`
-  cannot empty the page.
-- Works with `FBP` absent: every cover simply renders unread, no shelf breaks.
-- ES5 only, plain IIFE, no build step.
-- `explore.css` adds only what app.css has no answer for: the search field,
-  chips, the horizontal `.shelf`, the `.ghead` dividers and `.void`. Covers,
-  locks, read bars and `.sechead` come from app.css untouched.
-- Stack `01` links to `story.html`; everything else to `read.html?s=<id>`,
-  locked included — the paywall lives in the reader, not here.
-
-## Checks
-
-`rendercheck/checkexplore.js` (add `nofbp` to strip progress.js in memory) and
-`rendercheck/checkexplorestate.js` (add `unlocked`) against
-`python3 -m http.server 8899 --directory <site>`.
+The `lower` form exists because the end card says "There's more to X". A
+possessive does not work across all eight subjects: "devils, saints and
+heresies's story" and "disasters's story" are not sentences. Naming the subject
+after a preposition reads correctly for every one of them.

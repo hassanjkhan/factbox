@@ -1,74 +1,45 @@
-# "Read another one" — `js/recommend.js`
+# The end card
 
-One file, one global, `FBR`. It owns the end of a story and nothing else. It
-does not fetch, does not write storage, and defines no other global. Every
-public function is wrapped in `try/catch`: **it cannot throw.**
+`js/recommend.js` + `css/recommend.css`. What a reader sees when a story runs
+out.
 
-Optional friends, all guarded: `FB` (gate), `FBP` (reading memory), `FBS`
-(saves). Missing any of them costs a signal or a button, never the panel.
+## What it is
 
----
+One story and one button.
 
-## 1. Wiring into `read.html`
-
-```html
-<link rel="stylesheet" href="css/recommend.css">   <!-- after css/app.css -->
-...
-<script src="js/progress.js"></script>
-<script src="js/gate.js"></script>
-<script src="js/recommend.js"></script>            <!-- after both -->
-```
-
-`recommend.css` is additive: it reuses `.pane`, `.plate`, `.lock`, `.go`,
-`.ghost`, `.fine` from `app.css` and redefines none of them. Every selector is
-scoped to `.rec`.
-
-Replace the `endcard(next)` string with the element:
-
-```js
-deck.appendChild(FBR.endPanel(s, stacks, { n: 3 }));
-```
-
-(and delete the `endcard()` function plus the `next` loop above it).
-
-## 2. The API
-
-| Call | Returns |
+| Element | What it says |
 |---|---|
-| `FBR.next(current, stacks, n)` | up to `n` ranked rows. `current` may be a stack object **or** an id string; `stacks` may be the array **or** the raw `{stacks:[…]}` payload. |
-| `FBR.endPanel(current, stacks, opts)` | a `<section class="pane rec">` **Element**, always. `opts = {n:3, heading, explore, library}`. |
-| `FBR.href(stackOrId)` | `"story.html"` for `01`, `"read.html?s=ID"` for everything else. |
-| `FBR.reasonFor(current, stack)` | the reader-facing why-line for one pair. |
+| Progress | `CLEOPATRA · 1 OF 8` — the subject, and where they are in it, a segment per story |
+| Headline | Want to know what happened next? |
+| Subhead | Keep going. There's more to Cleopatra, and it gets stranger. |
+| Plate | The cover they just finished, 4:3, with a tick, its title and runtime |
+| Button | **Continue** — an `<a>` to the next story they can open, or a `<button>` to checkout when there is none |
 
-A row from `next()` is a shallow copy of the stack plus:
-`why` (reader sentence), `whyKey` (`topic|kind|resume|done|free|browse|next`),
-`locked` (true = this reader cannot open it, **caller must mark it**),
-`href`, `score`.
+## Why it is one thing and not nine
 
-## 3. Ranking, plainly
+It used to be three ranked covers, a Save beside each, the offer, and three
+links back to a shelf that the "← Stories" pill already reaches. That is nine
+tappable things at the highest-intent second on the site — the moment someone
+has just finished something and is deciding whether to have another.
 
-Same topic **+120**, same kind **+45**, story they started and abandoned
-**+90**, unread **+12**, free-when-the-reader-is-locked-out **+60**, already
-finished **−400**, locked to this reader **−1200**, plus a fixed 0–16 spread
-derived from the id pair.
+## Two details that are load-bearing
 
-The two penalties are sized to dominate: a finished story never outranks an
-unread one, and a story they cannot open never outranks one they can — but
-neither is deleted, so the panel is never empty. The current story is excluded
-outright. No `Math.random()` anywhere: the spread is a string hash, so the same
-reader state produces the same three covers on every reload, forever.
+**The button sits at 73% of the pane, in viewport units.** `top:73%` inside a
+pane that is exactly one viewport tall is correct; the padding that reserves
+room below it is `27vh`, not `27%`, because percentage padding resolves against
+*width* — on a 430×932 phone that is 116px where 252px was meant, and the
+button lands on the in-app browser's toolbar where it cannot be tapped.
 
-`endPanel` adds two product rules on top of the ranking:
+**The subhead names the subject after a preposition.** "There's more to X", not
+"X's story". Two of the eight subjects are plural phrases and the possessive is
+not a sentence for them. And when a subject holds only one story — `disaster`
+does — the phrase names the subject the reader is actually being sent to
+instead, because "there's more to disasters" is a claim they can disprove in
+one tap.
 
-- **Locked reader:** everything they can open, then at most **one** locked
-  cover as a marked teaser (dimmed, padlock, "· Locked"), then one calm buy
-  button and the way out. Six padlocks in a row is a nag.
-- **One door, not the same door three times:** if all three picks share a
-  reason, the last slot goes to the best-ranked candidate with a different one.
+## The rail is not part of this
 
-## 4. Verified
-
-`rendercheck/checkrec.js` (85 assertions, all 51 stacks) and
-`rendercheck/checkrece2e.js` (the panel built by the real scripts over HTTP,
-inside a deck, locked and unlocked) and `rendercheck/checkrecsaves.js` (against the real
-`js/saves.js`). All pass.
+`css/reader-rail.css` owns the Save and sound controls at the foot of the right
+edge. On the end card the rail is hidden entirely: that pane is the way out of
+the story, not part of it, and two floating controls land on its words.
+`read.html` toggles `.fb-rail.is-off` from its own scroll handler.
