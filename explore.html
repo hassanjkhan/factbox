@@ -16,6 +16,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/data/index.json" as="fetch" crossorigin>
 <link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/explore.css">
 <!-- The header's account control must not flash. This class makes its slot
      invisible without collapsing it, so the row keeps its height from the
@@ -70,7 +71,12 @@
   <div id="chips" class="chipwrap"></div>
   <p class="tally" id="tally" aria-live="polite"></p>
 
-  <div id="view"></div>
+  <div id="view">
+    <div class="fbload">
+      <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+      <p class="fbload-say" role="status">Cross-referencing three unreliable sources…</p>
+    </div>
+  </div>
 
   <noscript>
     <p class="void" style="margin-top:24px">

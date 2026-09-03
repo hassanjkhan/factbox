@@ -16,6 +16,7 @@
 <meta property="og:url" content="https://factbox.app/login">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/account.css">
 <link rel="stylesheet" href="/css/auth.css">
 
@@ -113,8 +114,8 @@
        markup, because a spinner is meaningless to a reader whose JavaScript
        never ran — the form below is the useful thing for them. -->
   <div class="au-wait" id="au-wait" role="status" hidden>
-    <span class="au-spin" aria-hidden="true"></span>
-    <span id="au-wait-t">Checking whether you are already signed in…</span>
+    <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+    <span class="fbload-say" id="au-wait-t">Checking the guest list…</span>
   </div>
 
   <!-- ===== already signed in ============================================ -->
@@ -669,7 +670,11 @@
      signed-out answer before it knows which one is true. */
   setMode("in");
   show(wait, true);
-  text(waitT, "Checking whether you are already signed in…");
+  /* The waiting line is FBLoad's now, and it is deliberately not rewritten
+     here — this line used to overwrite the random one with the old copy the
+     moment the page booted. If the module is missing the markup's own baked-in
+     sentence stands, which is already a real sentence. */
+  try { if (window.FBLoad && waitT) waitT.textContent = FBLoad.line(); } catch (e) {}
 
   whenFBU(function (api) {
     FBU = api;

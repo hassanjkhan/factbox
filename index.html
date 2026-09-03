@@ -15,6 +15,7 @@
 <meta property="og:url" content="https://factbox.app/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
 <!-- The header's account control must not flash. This class makes its slot
      invisible without collapsing it, so the row keeps its height from the
      first paint and nothing shifts when auth finally answers. The timer
@@ -55,8 +56,10 @@
   </header>
 
   <div id="shelf">
-    <p class="fine" style="margin-top:24px">Loading the season… if nothing
-    appears, reload the page.</p>
+    <div class="fbload">
+      <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+      <p class="fbload-say" role="status">Dusting off the archive…</p>
+    </div>
   </div>
   <noscript><p class="fine" style="margin-top:24px">Factbox needs JavaScript to
   show the stories.</p></noscript>

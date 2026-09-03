@@ -33,19 +33,16 @@ body{background:var(--ground); color:var(--parchment)}
    words is indistinguishable from a hang.
    -------------------------------------------------------------------------- */
 .au-wait{
-  display:flex; align-items:center; gap:12px;
+  /* A column since the spinner became a progress bar: the bar wants the full
+     width of the panel and the sentence sits under it, rather than the two
+     competing for one row. */
+  display:flex; flex-direction:column; align-items:stretch; gap:11px;
   margin:26px 0 0; padding:16px 16px;
   border-radius:16px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
   font-size:.92rem; font-weight:700; color:var(--dim); line-height:1.4;
 }
 .au-wait[hidden]{display:none}
-.au-spin{
-  flex:0 0 18px; width:18px; height:18px; border-radius:50%;
-  border:2px solid rgba(255,247,237,.18); border-top-color:var(--coral);
-  animation:au-turn .8s linear infinite;
-}
-@keyframes au-turn{to{transform:rotate(360deg)}}
 
 /* --------------------------------------------------------------------------
    Google. The one tap that works for most people, so it is the biggest thing
@@ -213,8 +210,7 @@ body{background:var(--ground); color:var(--parchment)}
 .au-who b{color:var(--parchment); font-weight:800; word-break:break-word}
 
 @media (prefers-reduced-motion:reduce){
-  .au-spin{animation:none; border-top-color:var(--coral)}
-  .au-prov, .au-2nd{transition:none}
+    .au-prov, .au-2nd{transition:none}
 }
 
 /* --------------------------------------------------------------------------

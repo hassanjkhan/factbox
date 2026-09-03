@@ -524,3 +524,55 @@ html.fb-hdr .acct{visibility:hidden}
 .acct.is-float .acct-me{
   min-height:38px; line-height:38px; max-width:11ch;
 }
+
+/* ==========================================================================
+   The waiting state — js/loader.js
+
+   A bar that moves and a line of copy, replacing "Loading…" everywhere. The
+   whole thing is CSS: no script has to run for a reader to see it, which is
+   why the bar animates on a keyframe rather than from JavaScript.
+
+   The curve decelerates and stops at 92%. It is not measuring anything — a
+   fetch of a JSON body has no honest progress to report — so it says the one
+   true thing it can, which is "still going". A bar sitting at 100% while
+   nothing happens reads as stuck; one still crawling reads as working.
+   ========================================================================== */
+.fbload{
+  display:flex; flex-direction:column; gap:11px;
+  margin-top:22px; max-width:26rem;
+}
+.fbload-track{
+  height:4px; border-radius:999px; overflow:hidden;
+  background:rgba(255,247,237,.10);
+}
+.fbload-fill{
+  display:block; height:100%; width:4%; border-radius:999px;
+  background:linear-gradient(90deg,
+    var(--coral,#FF7A5C) 0%, #FFC08A 45%, var(--coral,#FF7A5C) 100%);
+  background-size:220% 100%;
+  animation:fbload-grow 3.2s cubic-bezier(.12,.72,.22,1) forwards,
+            fbload-shine 1.5s linear infinite;
+}
+@keyframes fbload-grow{
+  0%{width:4%} 18%{width:34%} 42%{width:58%} 70%{width:78%} 100%{width:92%}
+}
+@keyframes fbload-shine{ to{ background-position:-220% 0 } }
+
+.fbload-say{
+  margin:0; font-size:.86rem; line-height:1.45;
+  color:var(--dim,rgba(255,247,237,.62));
+  font-variant-numeric:tabular-nums;
+}
+
+/* Inside the account and sign-in panels the bar sits in a narrow row, so it
+   loses the top margin and the copy sits beside nothing else. */
+.au-wait .fbload{margin-top:0; max-width:22rem}
+
+/* Reduced motion: the bar still has to say "working", so it keeps one slow
+   sweep and drops the shine, rather than freezing into a stuck-looking stub. */
+html.no-motion .fbload-fill{
+  animation:fbload-grow 4.5s linear forwards;
+}
+@media (prefers-reduced-motion: reduce){
+  .fbload-fill{ animation:fbload-grow 4.5s linear forwards; }
+}

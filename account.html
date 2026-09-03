@@ -9,6 +9,7 @@
 <meta name="robots" content="noindex,nofollow">
 <link rel="canonical" href="https://factbox.app/account">
 <link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/account.css">
 <link rel="stylesheet" href="/css/auth.css">
 
@@ -101,8 +102,8 @@
   </header>
 
   <div class="au-wait" id="ac-wait" role="status" hidden>
-    <span class="au-spin" aria-hidden="true"></span>
-    <span id="ac-wait-t">Looking up your account…</span>
+    <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+    <span class="fbload-say" id="ac-wait-t">Looking you up in the ledger…</span>
   </div>
 
   <!-- ===== signed in ==================================================== -->

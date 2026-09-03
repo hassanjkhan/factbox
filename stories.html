@@ -15,6 +15,7 @@
 <meta property="og:url" content="https://factbox.app/stories">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
 
 <!-- Discovery, not bandwidth.
 
@@ -80,8 +81,10 @@
   </header>
 
   <div id="shelf">
-    <p class="fine" style="margin-top:24px">Loading the season… if nothing
-    appears, reload the page.</p>
+    <div class="fbload">
+      <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+      <p class="fbload-say" role="status">Waking the archivist…</p>
+    </div>
   </div>
   <noscript><p class="fine" style="margin-top:24px">Factbox needs JavaScript to
   show the stories.</p></noscript>

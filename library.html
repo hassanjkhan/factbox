@@ -11,6 +11,7 @@
 <meta name="robots" content="noindex">
 <link rel="preload" href="/data/index.json" as="fetch" crossorigin>
 <link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/library.css">
 <!-- The header's account control must not flash. This class makes its slot
      invisible without collapsing it, so the row keeps its height from the
@@ -54,7 +55,10 @@
   <div id="shelf" >
     <!-- Filled by js/library.js. If the season cannot be fetched, that script
          writes visible copy here — never nothing. -->
-    <p class="fine" style="text-align:left">Loading your library…</p>
+    <div class="fbload">
+      <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+      <p class="fbload-say" role="status">Finding where you left off…</p>
+    </div>
   </div>
 
   <p class="fine" style="margin-top:34px;text-align:left">

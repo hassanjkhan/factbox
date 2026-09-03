@@ -72,6 +72,7 @@
 })();
 </script>
 <link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/recommend.css">
 <link rel="stylesheet" href="/css/scenes.css">
 <link rel="stylesheet" href="/css/audio-reader.css">
@@ -111,9 +112,11 @@
 
 <main class="deck" id="deck" tabindex="-1">
   <section class="pane">
-    <h1>Loading this story…</h1>
-    <p>If nothing appears, the story list did not load.</p>
-    <a class="ghost" href="/stories">All stories</a>
+    <div class="fbload">
+      <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+      <p class="fbload-say" role="status">Unrolling the scroll. It is a long one…</p>
+    </div>
+    <a class="ghost" href="/stories" style="margin-top:22px">All stories</a>
   </section>
 </main>
 <noscript><p style="padding:24px;color:#FFF7ED">Factbox needs JavaScript to
