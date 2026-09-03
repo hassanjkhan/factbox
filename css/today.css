@@ -30,8 +30,11 @@ body{background:var(--ground); color:var(--parchment)}
    pitch steps aside for it. Hidden by a class on a page element this file
    owns: the header block itself and app.css are never touched, and if the
    header is later rebuilt without an h1 these rules simply match nothing. */
-.lib.today.is-back .mast h1,
-.lib.today.is-back .mast p:not(.mark){display:none}
+/* The mast's headline and subtitle used to be hidden for a returning reader,
+   so the greeting could take their place. They are not hidden any more: the
+   page says the same thing to everybody, and the streak sits underneath it
+   rather than instead of it. The rule is kept as a comment rather than
+   deleted so the next person does not reinvent the swap. */
 
 /* --------------------------------------------------------------------------
    The greeting. Two versions of the same slot: the pitch for someone who has

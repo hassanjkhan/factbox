@@ -118,7 +118,7 @@
      cover points there rather than at the generic reader — the same rule the
      rest of the site follows. */
   function href(s) {
-    if (!s || !s.id) return "/stories";
+    if (!s || !s.id) return "/explore";
     if (s.id === "01") return "/cleopatra";
     return "/read?s=" + encodeURIComponent(s.id);
   }
@@ -326,10 +326,17 @@
   function greetHTML(map) {
     var streak = streakOf(map);
     var done = finishedOf(map);
-    /* An h1, because the mast's own h1 is hidden the moment this one is
-       shown: the page has exactly one VISIBLE h1 in either state. */
-    var out = '<h1 class="tdy-head">Welcome back. Ready for 5 minutes?</h1>' +
-              '<ul class="tdy-stats">';
+    /* The mast's headline stays. It used to be swapped for "Welcome back.
+       Ready for 5 minutes?", which meant the page introduced itself to a
+       stranger and greeted a regular — two different pages sharing a URL. The
+       owner wants one: "Be disgustingly well-informed." is the name of the
+       thing, and it does not stop being true on a reader's second visit.
+
+       So the streak and the finished count are the only thing this returns
+       now, and they sit under the headline rather than replacing it. Not an
+       h1 any more, because the mast's h1 is no longer hidden and a page with
+       two visible h1s is a page a screen reader reads twice. */
+    var out = '<ul class="tdy-stats">';
     if (streak > 0) out += stat(streak, "day streak");
     out += stat(done, done === 1 ? "story finished" : "stories finished");
     return out + '</ul>';
@@ -493,6 +500,32 @@
       '</section>';
   }
 
+  /* --- Everything there is -------------------------------------------------
+
+     Eight subject rows told a reader how the season is organised. A wall of
+     fifty-one covers tells them how much of it there is, which is the more
+     useful thing to know on the page you land on — and it is the same grid the
+     shelf already used, so nothing new had to be designed for it.
+
+     Deliberately the whole catalogue in id order, not a filtered or ranked
+     slice: Today's Factbox and Trending have already made a case for six
+     stories, and this section's job is the opposite one of showing the rest
+     exist. `.grid` and `.card` come from css/app.css unchanged, so a cover
+     here is the same object as a cover on any other shelf, padlocks and read
+     bars included — applyLocked() and applyOpen() find these without knowing
+     they were added. */
+  function allHTML(stacks) {
+    if (!stacks || !stacks.length) return "";
+    var out = "", i;
+    for (i = 0; i < stacks.length; i++) out += cover(stacks[i]);
+    return '' +
+      '<section class="row">' +
+        '<div class="sechead"><h2>All stories</h2>' +
+        '<span>' + stacks.length + ' to read</span></div>' +
+        '<div class="grid">' + out + '</div>' +
+      '</section>';
+  }
+
   /* --- the page ----------------------------------------------------------- */
 
   function build(back) {
@@ -502,7 +535,8 @@
            todayHTML(today) +
            shelf("Trending now", "picked for this week",
                  trending(STACKS, today)) +
-           seriesHTML(STACKS, back);
+           seriesHTML(STACKS, back) +
+           allHTML(STACKS);
   }
 
   /* The waiting bar gets to finish rather than just stop: FBLoad.done lifts it
@@ -522,6 +556,28 @@
      element, which this page owns, and css/today.css does the rest. If the
      header is later rebuilt without an h1, the class matches nothing and the
      greeting below simply stands on its own. */
+  /* The subtitle is the one line on this page that is not true for everybody.
+
+     "Trade five minutes of scrolling for something worth remembering" is a
+     pitch, and pitching the product to somebody who has already bought it
+     reads as not knowing who they are. So a reader who can open everything
+     gets told what they have instead. A reader who cannot keeps the pitch,
+     because "You have all fifty-one" would simply be false for them — and the
+     shelf makes exactly the same swap, with the same sentence, so the two
+     pages cannot drift apart.
+
+     Called from the access correction, not at first paint: before the answer
+     arrives the honest line is the one already in the markup. */
+  function pitchFor(open) {
+    try {
+      var p = document.getElementById("tdy-blurb");
+      if (!p) return;
+      p.textContent = open
+        ? "You have all fifty-one. New stories are added through the season."
+        : "Trade five minutes of scrolling for something worth remembering.";
+    } catch (e) {}
+  }
+
   function standDownPitch() {
     try {
       var main = view.parentNode;
@@ -529,6 +585,10 @@
              (" " + main.className + " ").indexOf(" lib ") === -1) {
         main = main.parentNode;
       }
+      /* `is-back` used to hide the mast's headline and subtitle. It no longer
+         does — see css/today.css — but the class is still set, because the
+         stats row keys its top margin off it. Nothing about the header is
+         touched from here. */
       if (main && main.className !== undefined && !hasClass(main, "is-back")) {
         main.className += " is-back";
       }
@@ -632,6 +692,9 @@
     if (drewOpen === allowed) return;
     drewOpen = allowed;
     try { if (allowed) applyOpen(); else applyLocked(); } catch (e) {}
+    /* Same moment the padlocks resolve, for the same reason: this is the
+       first point at which the page knows who it is talking to. */
+    pitchFor(!!allowed);
   }
 
   function decorate() {
@@ -663,7 +726,7 @@
           '<b>The stories did not arrive.</b>' +
           '<p>That usually means the connection dropped on the way. Reload the ' +
           'page, or open the season shelf, which lists all fifty-one.</p>' +
-          '<a href="/stories">All stories</a>' +
+          '<a href="/explore">All stories</a>' +
         '</div>';
     } catch (e) {}
   }
