@@ -219,3 +219,10 @@ function stripeWithKey(event) {
    guards against a double init rather than performing one.
    -------------------------------------------------------------------------- */
 exports.story = require("./story").story;
+
+/* --------------------------------------------------------------------------
+   The support inbox, likewise in its own file and for the same reason. It
+   shares nothing with the webhook above except `admin.initializeApp()`, which
+   has already run by the time this line executes.
+   -------------------------------------------------------------------------- */
+exports.support = require("./support").support;

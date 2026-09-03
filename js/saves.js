@@ -248,6 +248,12 @@ var FBS = (function () {
       var b = document.createElement("button");
       b.type = "button";
       b.className = "fbs-save";
+      /* This button already reports itself: read.html passes an onChange that
+         fires save_add / save_remove. js/analytics.js's one delegated click
+         listener reads data-fbt="-" as "counted elsewhere, do not send
+         ui_click for this" — without it the same tap would be counted twice
+         and every funnel built on save_add would be wrong. */
+      try { b.setAttribute("data-fbt", "-"); } catch (e) {}
       b.stackId = k;
 
       /* 38px circle: the rail above it carries .fb-sound at 38px and the

@@ -17,7 +17,8 @@ node check-page.js  "story.html"      ".beat"  "Cleopatra"
 node check-page.js  "cleopatra.html"  ".endask" "Read the rest of season one"
 node check-plates.js "index.html"     ".card"        # every cover has a fallback
 node check-regressions.js                            # bugs that must not come back
-node check-page.js  "stories.html"   ".card"    "Season one"
+node check-analytics.js                              # the instrumentation is still there
+node check-page.js  "stories.html"   ".card"    "Be disgustingly"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
 node check-page.js  "read.html?s=44" ".paywall" "Two stories are free"
 node check-page.js  "index.html"     ".card"    "Be disgustingly"
@@ -41,6 +42,26 @@ python3 check-structure.py --save   # record the current counts as the baseline
 Counts the things that must balance in every page: comment delimiters, `<body>`,
 `<head>`, one navigation bar, `<script>`/`</script>`, and the number of
 `<link rel="preload">` tags, which is compared against a recorded baseline.
+
+## Analytics
+
+```sh
+node check-analytics.js
+```
+
+Asserts the measurement has not quietly gone away — which is the way
+measurement fails. Every page must load `js/analytics.js`, the file that sends
+the `page_open` page view; the onboarding must still record an answer and a
+dwell for each of its six questions and where the reader walked away; every
+event name must be a literal in the source rather than built at runtime, and
+must be legal GA4 (40 characters, `[a-z0-9_]`, not reserved); values must be
+clipped to GA4's 100 characters; and nothing a reader typed may appear in any
+event.
+
+It exists because `start.html` shipped with no analytics tag at all, so every
+event the six-question onboarding fired went nowhere for its whole life — and
+the number that came back was zero, which reads exactly like a page nobody
+visits.
 
 It exists because a script removing an inline block from nine pages located the
 block by prose in the comment ABOVE it, walked back to the previous `<script`

@@ -305,6 +305,16 @@
 <script src="/js/account.js"></script>
 <script src="/js/profile-sync.js"></script>
 <script src="/js/start.js"></script>
+<!-- /start had NO analytics sink on it at all. js/start.js has always called
+     FB.track, but FB.track only reaches PostHog and GA4 because js/analytics.js
+     wraps it, and this was the one page of the site that never loaded that
+     file — so every start_step this flow has ever fired went nowhere. The six
+     questions every new reader answers were, in measurement terms, silent.
+
+     It goes AFTER js/start.js on purpose: analytics.js bridges window.FB.track
+     when it runs and again on DOMContentLoaded, so either order works, but the
+     onboarding must not wait on it to draw a screen. -->
+<script src="/js/analytics.js"></script>
 <script src="/js/acct.js"></script>
 
 </body>

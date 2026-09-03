@@ -162,6 +162,35 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- The support inbox ------------------------------------------------
+    // What the two boxes on /support collect. Closed to every browser in both
+    // directions, and that is the design rather than an oversight.
+    //
+    // WRITE. The obvious rule here would be `allow create: if` a shape check,
+    // and it would work — the shape helpers above are already written. It is
+    // not what is deployed, because a rule cannot count. A support message
+    // comes from a signed-out stranger by definition (that is who needs
+    // support), so there is no uid to rate-limit on and no way to ask how many
+    // documents this browser wrote in the last minute. A public create rule is
+    // therefore a free, unmetered write endpoint, and the only honest cap it
+    // could carry is on the size of each write, never on how many. The
+    // `support` Cloud Function is the only door instead: it builds every field
+    // itself, caps every length, throttles per IP and spends against a global
+    // daily quota, and it runs with admin credentials so it does not pass
+    // through these rules at all.
+    //
+    // READ. Nobody, ever. These documents are strangers' email addresses and
+    // whatever they chose to tell us; the audience is two founders in the
+    // Firebase console, which reads with admin credentials.
+    match /support/{id} {
+      allow read, write: if false;
+    }
+    // Today's date and today's count, so the quota above survives a cold
+    // start. Written only by that function.
+    match /support_meta/{doc} {
+      allow read, write: if false;
+    }
+
     // --- Everything else --------------------------------------------------
     match /{document=**} {
       allow read, write: if false;

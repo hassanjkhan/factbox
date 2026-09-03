@@ -153,6 +153,79 @@
     try { if (window.FB && window.FB.track) window.FB.track(name, extra); } catch (e) {}
   }
 
+  /* ======================================================================
+     MEASURING THE FUNNEL.
+
+     Before this, /start sent two things: start_step (which screen was shown)
+     and start_ready. Which answer was chosen, how long each question took, and
+     which question a reader walked away on were all invisible — on the one
+     flow every new reader goes through. Six questions with no drop-off curve
+     is the single biggest hole in the site's measurement, so all three are
+     recorded here.
+
+     Four rules this obeys, and they are the ones that go wrong:
+
+       * FOUR EVENT NAMES, ALL LITERAL. start_step, start_answer,
+         start_abandon, start_ready. Not `start_q1`, not `answer_<key>`. GA4
+         charges a report against a distinct event name; a name built from a
+         screen id is an unbounded set that silently stops being reported. The
+         question and the answer are PARAMETERS.
+       * NOTHING TYPED IS SENT. `answer` is the button's data-k, one of a fixed
+         list written in start.html (a topic key, a draw key, 5/10/20/45,
+         7/14/30/50). There is no free text anywhere on this page — no name, no
+         email, no search box — and nothing here reads an input.
+       * EVERY PARAMETER IS BOUNDED. Values are clipped to GA4's 100
+         characters and dwells to half an hour, so a phone left on a question
+         overnight reports a ceiling rather than a number that ruins an
+         average.
+       * NOTHING HERE MAY THROW OR DELAY A TAP. Same rule as the rest of the
+         file: every call is wrapped, and the measurement happens after the
+         answer has already been marked and stored.
+     ====================================================================== */
+
+  /* The reader-facing question each screen asks, as a stable key. Reused as
+     the `question` parameter so a report reads "goal" rather than "q5". */
+  var QKEY = {
+    q1: "topic", q2: "draw", q3: "relate",
+    q4: "wish",  q5: "goal", q6: "streak"
+  };
+
+  var DWELL_MAX = 1000 * 60 * 30;   /* half an hour is not a question */
+
+  function now() {
+    try { return Date.now(); } catch (e) { return 0; }
+  }
+
+  function clip(v, n) {
+    try {
+      var t = String(v == null ? "" : v);
+      return t.length > n ? t.slice(0, n) : t;
+    } catch (e) { return ""; }
+  }
+
+  var screenAt   = 0;      /* when the screen on display was shown */
+  var shown      = false;  /* has any screen been shown yet */
+  var answers    = {};     /* which questions have been answered */
+  var readyHit   = false;  /* the plan finished building: not an abandon */
+  var leftSaid   = false;  /* start_abandon is reported once, like stack_dropoff */
+
+  /* Time on the screen currently displayed. */
+  function dwell() {
+    try {
+      if (!screenAt) return 0;
+      var ms = now() - screenAt;
+      if (ms < 0) return 0;
+      return ms > DWELL_MAX ? DWELL_MAX : ms;
+    } catch (e) { return 0; }
+  }
+
+  function answerCount() {
+    var n = 0, k;
+    try { for (k in answers) if (Object.prototype.hasOwnProperty.call(answers, k)) n++; }
+    catch (e) {}
+    return n;
+  }
+
   /* Same half-minute rounding js/gate.js prints everywhere else, so a length
      on this page reads exactly as it does on the shelf. */
   function minutes(secs) {
@@ -227,6 +300,12 @@
     clearTimers();
     if (i < 0) i = 0;
     if (i > SCREENS.length - 1) i = SCREENS.length - 1;
+    /* Read the outgoing screen BEFORE idx moves. Its dwell rides on the event
+       for the screen being shown, which is how the turn screen and the wait
+       screen get measured without two more event names: whatever the reader
+       spent looking at "Makes sense" arrives as from_ms on the q6 step. */
+    var fromName = shown ? SCREENS[idx] : "";
+    var fromMs   = shown ? dwell() : 0;
     idx = i;
     for (var j = 0; j < SCREENS.length; j++) show(screenNode(j), j === i);
     paintChrome();
@@ -240,7 +319,12 @@
     var name = SCREENS[i];
     if (name === "q4") prepQ4();
     if (name === "wait") runWait();
-    track("start_step", { step: name });
+
+    var p = { step: name, q: QNUM[name] || 0 };
+    if (fromName) { p.from = fromName; p.from_ms = fromMs; }
+    track("start_step", p);
+    screenAt = now();
+    shown = true;
   }
 
   function go(i) {
@@ -298,7 +382,22 @@
          cannot be tapped, but nothing about that should be load-bearing. */
       if (SCREENS[idx] !== screen) return;
       markOne(id, k);
+      /* The one event that was missing: WHICH answer, and how long it took.
+         Sent after the answer is marked and before the advance timer, so the
+         measurement can never sit between the tap and the next screen. */
+      var ms = dwell();
       answered(function () { handler(k); });
+      try {
+        var q = QNUM[screen] || 0;
+        track("start_answer", {
+          step: screen,
+          q: q,
+          question: QKEY[screen] || screen,
+          answer: clip(k, 100),
+          dwell_ms: ms
+        });
+        answers[screen] = 1;
+      } catch (e) {}
     });
   }
 
@@ -354,7 +453,8 @@
       addClass(el("st-bar"), "is-done");
       show(el("st-building"), false);
       show(el("st-ready"), true);
-      track("start_ready", null);
+      readyHit = true;
+      track("start_ready", { answers: answerCount() });
     }, BUILD_MS);
   }
 
@@ -595,6 +695,38 @@
     } catch (e2) {}
 
     show_(0);
+
+    /* ---- Where the reader walked away ---------------------------------- *
+       The drop-off, question by question. Reported on pagehide and on the tab
+       going hidden — the same two moments js/analytics.js's card dwell and
+       read.html's stack_dropoff use, because on a phone they are the only
+       reliable ones; there is no unload worth trusting in an in-app webview.
+
+       ONCE per page load, and only when the plan never finished building.
+       That is deliberately the same bargain stack_dropoff already makes: a
+       reader who backgrounds the app on q3, comes back and finishes produces
+       one start_abandon (q3) and one start_ready, and a funnel that excludes
+       sessions carrying start_ready is correct. Re-arming it on every screen
+       change would send several abandons for one reader and make the naive
+       count — which is the count anyone will actually run — wrong. */
+    function abandon() {
+      try {
+        if (leftSaid || readyHit) return;
+        leftSaid = true;
+        var name = SCREENS[idx];
+        track("start_abandon", {
+          step: name,
+          q: QNUM[name] || 0,
+          question: QKEY[name] || name,
+          dwell_ms: dwell(),
+          answers: answerCount()
+        });
+      } catch (e) {}
+    }
+    on(window, "pagehide", abandon);
+    on(D, "visibilitychange", function () {
+      try { if (D.visibilityState === "hidden") abandon(); } catch (e) {}
+    });
 
     var p = loadIndex();
     if (p && p.then) {

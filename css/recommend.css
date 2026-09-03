@@ -76,11 +76,21 @@
 .ec-segs i.is-now{background:var(--coral); box-shadow:var(--glow-accent)}
 
 .pane.rec h2{margin:0}
-.ec-sub{
-  margin:0; color:var(--dim);
+/* The subhead is width-constrained, so it has to centre itself.
+   SELECTOR WEIGHT IS THE WHOLE POINT HERE. app.css carries `.pane p{margin:0}`
+   — one class and one type, 0-1-1 — and this rule used to be `.ec-sub`, one
+   class, 0-1-0. It lost, `margin:0` won, and the paragraph sat hard against
+   the pane's left padding at every width where 32ch fits: 22px on the left
+   and 188px on the right inside a 560px pane. It read as centred on a narrow
+   phone only because 32ch is wider than the column there.
+   `.pane.rec .ec-sub` is 0-3-0, which beats it. And the centring is written
+   as ONE `margin` shorthand rather than `margin-inline` plus a later
+   `margin:0` — `.haveacct` and `.endfoot` were both broken by exactly that
+   ordering, a shorthand further down silently resetting the auto sides. */
+.pane.rec .ec-sub{
+  margin:0 auto; color:var(--dim);
   font-size:var(--fs-body); font-weight:var(--w-body); line-height:var(--lh-body);
   max-width:32ch;
-  margin-left:auto; margin-right:auto;
 }
 
 /* ---- the cover they finished ---------------------------------------------
@@ -158,7 +168,45 @@ a.ec-go{
 }
 @media (max-height:640px){
   .ec-plate{width:min(200px, 52%); padding-top:min(150px, 39%)}
-  .ec-sub{font-size:var(--fs-sub)}
+  /* Matches the weight of the base rule above (0-3-0), or it would not land. */
+  .pane.rec .ec-sub{font-size:var(--fs-sub)}
+}
+
+/* ---- the way back in, under the button ----------------------------------
+   Only on the end card that ASKS — /firststory, where the button is "Sign up
+   to read more". `.has-ask` is set by the block tools/compose.py appends, so
+   read.html's own end card is untouched by everything in this section.
+
+   It is absolutely positioned for the same reason the button is: the copy
+   above is a generated title of unknown length, and a flow element under an
+   absolutely positioned button would sit behind it. It hangs off the same
+   73% line, 6px under the button's bottom edge:
+
+     button centre   73%
+     button height   52px (padding 16+16, min-height --tap, --fs-lead line)
+     button bottom   73% + 26px
+     this top        73% + 32px          <- margin-top below
+     this height     44px                <- one --tap target, no more
+     this bottom     73% + 76px
+
+   The floor is --bottom-safe, max(13vh, inset + 60px toolbar + 4px). The
+   worst case is a short phone where 13vh wins: on 568px that floor is at
+   494px and this line ends at 491px. It fits, and it only ever gets roomier
+   as the viewport grows, because 73% + 76px grows slower than 87%. */
+.pane.rec .ec-signin{
+  position:absolute; left:22px; right:22px;
+  top:73%; margin:32px auto 0;
+  /* flex, not a plain line box: an inline-block with a 44px tap height inside
+     a <p> sits on the text baseline and drags the block taller than 44px,
+     which is what would push it through the floor above. */
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+  column-gap:5px;
+  max-width:520px;
+  text-align:center;
+}
+.pane.rec .ec-signin a{
+  color:var(--accent-ink); font-weight:var(--w-strong); text-decoration:none;
+  display:inline-block; padding:8px 6px; min-height:var(--tap); line-height:28px;
 }
 
 @media (prefers-reduced-motion:reduce){

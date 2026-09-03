@@ -312,6 +312,16 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     });
     if (chip) {
       document.body.appendChild(chip);
+      /* js/progress.js builds this chip's two buttons with no id and no class,
+         so js/analytics.js's delegated click listener has nothing to name them
+         by. Name them here, where the chip is known: the first already reports
+         itself as resume_used above, the second -- "start from the beginning"
+         -- has never been measured at all and now arrives as ui_click. */
+      try {
+        var chipBtns = chip.getElementsByTagName("button");
+        if (chipBtns[0]) chipBtns[0].setAttribute("data-fbt", "-");
+        if (chipBtns[1]) chipBtns[1].setAttribute("data-fbt", "resume_dismiss");
+      } catch (e) {}
       deck.addEventListener("scroll", function once() {
         deck.removeEventListener("scroll", once);
         setTimeout(function () { try { chip.dismiss(); } catch (e) {} }, 2500);

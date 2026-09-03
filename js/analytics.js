@@ -488,6 +488,12 @@
      ====================================================================== */
 
   function capture(name, props) {
+    /* `stack_open` is fired by read.html and by the three composed story pages
+       and means "the deck is on screen". story_time below starts its clock on
+       it rather than asking those four files to call something new — two of
+       them are generated and must not be hand-edited. Watching the seam is
+       how this file already learns about every other event. */
+    try { if (name === "stack_open") storyOpen(props); } catch (e) {}
     try {
       if (window.posthog && posthog.capture) posthog.capture(name, props || {});
     } catch (e) {}
@@ -605,6 +611,7 @@
         dwell_ms: ms,
         dwell_s: Math.round(ms / 100) / 10
       });
+      storyCards++;      /* what story_time reports as `cards` */
     }
     current = null;
   }
@@ -628,6 +635,276 @@
   addEventListener("pagehide", stamp);
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") stamp();
+  });
+
+
+  /* ======================================================================
+     SITE-WIDE COVERAGE.
+
+     Everything below is new instrumentation, and all of it lives here rather
+     than in eleven page scripts, for two reasons:
+
+       1. This file is the only one loaded by every page. Six pages — the home
+          page, /explore, /library, /start, /support and /credits — had no
+          analytics call of any kind in them, and three more (/story,
+          /cleopatra, /firststory) are GENERATED from read.html and must not be
+          hand-edited. A listener installed here covers all of them, including
+          the generated three, without touching a single one of those files.
+
+       2. FIREBASE-ANALYTICS.md's whole point is that there is one seam.
+          Everything here goes through capture() — the same function FB.track
+          is bridged into — so both sinks get it and there is still no second
+          set of call sites anywhere.
+
+     GA4's limits are hard and it drops what breaks them SILENTLY, so:
+
+       * Event names are literals. There is no `click_<id>`, no `view_<page>`.
+         GA4 charges a report against a distinct name and an app stream caps
+         them at 500; a name built from a DOM id is an unbounded set. The
+         detail goes in PARAMETERS, which is what parameters are for.
+       * A name is <= 40 characters, [a-z0-9_], starts with a letter, and is
+         not on GA_RESERVED above. `page_view` and `screen_view` ARE reserved,
+         which is why the page event below is `page_open` — a reserved name
+         would be silently renamed to `fb_page_view` for GA4 only, and the two
+         sinks would then disagree about what the event is called.
+       * Parameter names are <= 40 characters and values are clipped to 100
+         HERE, not just in gaParams(), so PostHog and GA4 store the same string
+         rather than a long one and a truncated one.
+       * The registration budget is the real constraint (50 event-scoped custom
+         dimensions, 50 metrics). The site carried 20 parameter names; these
+         additions bring 8 more — page, control, cards, q, question, answer,
+         from_ms, answers — for 28 in total. Existing names are reused wherever
+         the meaning matches: `stack` for a story id, `from` for a provenance,
+         `plan`, `why`, `step`, `dwell_ms`.
+     ====================================================================== */
+
+  var CLIP = 100;   /* GA4's cap on a string parameter value */
+
+  function clip(v, n) {
+    try {
+      var s = String(v == null ? "" : v);
+      return s.length > n ? s.slice(0, n) : s;
+    } catch (e) { return ""; }
+  }
+
+  /* A slug that cannot be anything but [a-z0-9_], because a parameter VALUE
+     has no character rule but a report is unreadable without one. */
+  function slug(v, n) {
+    try {
+      var s = String(v == null ? "" : v).toLowerCase()
+                .replace(/[^a-z0-9]+/g, "_")
+                .replace(/^_+|_+$/g, "");
+      return s.slice(0, n || 40);
+    } catch (e) { return ""; }
+  }
+
+  /* ---- Which page this is ---------------------------------------------- *
+     One event name, a `page` parameter. `/`, `/index.html` and `/index` are
+     one page ("home"); `/read` and `/read.html` are one page ("read"). The
+     query string is deliberately dropped: read.html?s=26 would otherwise put
+     51 values in a dimension where `stack_open` already carries the story id
+     properly. */
+  function pageName() {
+    try {
+      var p = String(location.pathname || "/").replace(/\/+$/, "");
+      var i = p.lastIndexOf("/");
+      if (i > -1) p = p.slice(i + 1);
+      p = p.replace(/\.html?$/i, "");
+      if (!p || p === "index") return "home";
+      return slug(p, 40) || "home";
+    } catch (e) { return "unknown"; }
+  }
+  var PAGE = pageName();
+
+  capture("page_open", { page: PAGE });
+
+  /* ---- Every meaningful control, once ----------------------------------- *
+     ONE delegated listener on the document, not 102 wired handlers. It is
+     registered in the capture phase so a control whose own handler calls
+     stopPropagation is still counted, and it does four things and no others:
+     read attributes, build two strings, call capture(), return. It never
+     calls preventDefault, never touches the event, never reads the value of
+     an input, and cannot throw into the handler that follows it.
+
+     WHAT IS NOT SENT. Nothing typed. This reads `data-fbt`, `id`, `name`,
+     `data-k`, the element's own static label and its class — all of them site
+     copy written in the repo. It never reads `value`, never reads an
+     <input>/<textarea>/<select>, and deliberately never reads `aria-label`,
+     because js/library.js templates a story title into one and the next
+     person to do that may template something else.
+
+     WHAT IS NOT COUNTED. A control that already sends its own named event.
+     Sending ui_click alongside it would double-count the same tap and break
+     every funnel built on the specific name. Each matcher below names the
+     event the control already sends. */
+  var SKIP_IDS   = { pay: 1, "jn-buy": 1 };
+  var SKIP_CLASS = ["fbs-save", "ec-go"];
+  var HOPS = 6;
+
+  function skipControl(n) {
+    try {
+      var t = n, hops = 0, a;
+      while (t && t.getAttribute && hops++ < HOPS) {
+        /* Explicit opt-out, for anything this file cannot recognise. */
+        a = t.getAttribute("data-fbt");
+        if (a === "-") return true;
+        if (a) return false;                       /* an explicit name wins */
+        if (t.id && SKIP_IDS[t.id] === 1) return true;       /* subscribe_click / checkout_start */
+        if (t.getAttribute("data-unsave")) return true;      /* library_unsave */
+        /* Every answer option in /start and /join carries data-k, and every
+           one of them already sends start_answer, join_draw, join_relate,
+           join_time, join_streak or join_plan_pick. */
+        if (t.getAttribute("data-k")) return true;
+        var c = " " + String(t.className || "") + " ";
+        for (var i = 0; i < SKIP_CLASS.length; i++) {
+          if (c.indexOf(" " + SKIP_CLASS[i] + " ") !== -1) return true;   /* save_add/remove, rec_click */
+        }
+        t = t.parentNode;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  /* The control's name, from the first of these that answers. */
+  function controlName(n) {
+    try {
+      var t = n, hops = 0, v;
+      while (t && t.getAttribute && hops++ < HOPS) {
+        v = t.getAttribute("data-fbt");    if (v && v !== "-") return slug(v, 40);
+        v = t.id;                          if (v) return slug(v, 40);
+        v = t.getAttribute("name");        if (v) return slug(v, 40);
+        v = t.getAttribute("data-k");      if (v) return slug(v, 40);
+        t = t.parentNode;
+      }
+      /* No identifier anywhere. Fall back to the button's own words — site
+         copy, in the repo, never anything a reader typed. */
+      var tag = String(n.tagName || "").toLowerCase();
+      if (tag !== "input" && tag !== "textarea" && tag !== "select") {
+        v = slug(n.textContent, 40);
+        if (v) return v;
+      }
+      v = slug(String(n.className || "").split(/\s+/)[0], 40);
+      return v || tag || "control";
+    } catch (e) { return "control"; }
+  }
+
+  /* A tappable ancestor, or nothing. A tap lands on the <b> inside a button. */
+  function controlOf(n) {
+    try {
+      var t = n, hops = 0, tag, role;
+      while (t && t.getAttribute && hops++ < HOPS) {
+        tag = String(t.tagName || "").toLowerCase();
+        role = t.getAttribute("role");
+        if (tag === "button" || tag === "summary" ||
+            (tag === "a" && t.getAttribute("href")) ||
+            (tag === "input" && /^(submit|button|checkbox|radio)$/i.test(t.getAttribute("type") || "")) ||
+            role === "button" || role === "radio" || role === "tab" || role === "switch") return t;
+        t = t.parentNode;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  try {
+    document.addEventListener("click", function (ev) {
+      try {
+        var n = controlOf(ev && ev.target);
+        if (!n) return;
+        if (skipControl(n)) return;
+        capture("ui_click", { page: PAGE, control: clip(controlName(n), CLIP) });
+      } catch (e) {}
+      /* No preventDefault, no return value, nothing that can delay the tap. */
+    }, true);
+  } catch (e) {}
+
+  /* ---- How long a story actually held someone -------------------------- *
+     card_view above measures one card. This measures the whole visit: from
+     the moment the deck renders (`stack_open`, which read.html and the three
+     composed pages already fire) to the moment the reader goes away.
+
+     ENGAGED time, not wall-clock: the clock stops while the tab is hidden, so
+     a phone left face-down in a pocket for an hour does not report an hour of
+     reading. Reported on pagehide and on the tab going hidden, which is how
+     stack_dropoff already reports, and exactly once — the same `reported`
+     flag that event uses, for the same reason. */
+  var story = "", storyAt = 0, storyMs = 0, storyCards = 0, storyDone = false;
+
+  function storyOpen(props) {
+    try {
+      story = clip((props && props.stack) || "", 24);
+      storyAt = Date.now();
+      storyMs = 0; storyCards = 0; storyDone = false;
+    } catch (e) {}
+  }
+
+  function storyPause() {
+    try {
+      if (!story || !storyAt) return;
+      var d = Date.now() - storyAt;
+      if (d > 0 && d < 1000 * 60 * 60 * 6) storyMs += d;
+      storyAt = 0;
+    } catch (e) {}
+  }
+
+  function storyResume() {
+    try { if (story && !storyAt) storyAt = Date.now(); } catch (e) {}
+  }
+
+  function storyReport() {
+    try {
+      if (!story || storyDone) return;
+      storyDone = true;
+      storyPause();
+      if (storyMs < 500) return;      /* opened and gone: not a reading */
+      capture("story_time", { stack: story, dwell_ms: storyMs, cards: storyCards });
+    } catch (e) {}
+  }
+
+  /* ---- Coming back from Stripe ------------------------------------------ *
+     The one genuinely silent step in the money path. `checkout_start` fires on
+     /join, the reader leaves for Stripe, and the success redirect lands on
+     ?unlocked=1 — which js/gate.js's claim() strips out of the URL with
+     replaceState at parse time, long before this file runs. So there was no
+     event anywhere for "the payment worked", which is the only step in the
+     funnel that pays.
+
+     This reads the answer rather than the URL, so the stripping does not
+     matter: js/progress.js already records how access arrived (stripe |
+     restore | local) and mints a token for it. First time this browser sees a
+     given token, that is a new unlock. Read-only — nothing here decides,
+     grants or changes access, and the marker is this file's own key.
+
+     The token itself is NEVER sent: it can carry the Stripe session id. Only
+     its first eight characters are kept, in localStorage, as a local
+     "have I already reported this one" marker. */
+  var SEEN_KEY = "fb_access_seen_v1";
+
+  function accessCheck() {
+    try {
+      if (!window.FBP || !FBP.unlocked || !FBP.unlocked()) return;
+      var src = "", tok = "";
+      try { src = String((FBP.source && FBP.source()) || ""); } catch (e) {}
+      try { tok = String((FBP.token && FBP.token()) || ""); } catch (e) {}
+      var sig = slug(src, 12) + "|" + clip(tok, 8);
+      if (ls(SEEN_KEY) === sig) return;
+      ls(SEEN_KEY, sig);
+      capture("access_gained", { from: slug(src, 20) || "unknown", page: PAGE });
+    } catch (e) {}
+  }
+  accessCheck();
+  try { if (window.FBX && FBX.paint) FBX.paint(function () { accessCheck(); }); } catch (e) {}
+  setTimeout(accessCheck, 3000);
+
+  /* One place for the two leave paths, so the last card is stamped before the
+     story total that counts it. */
+  function leaving() {
+    stamp();
+    storyReport();
+  }
+  addEventListener("pagehide", leaving);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") leaving();
+    else storyResume();
   });
 
   /* ---- The notice ------------------------------------------------------ */

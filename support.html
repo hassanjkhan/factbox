@@ -72,6 +72,24 @@
   .sp-a a,
   .sp-foot a{color:var(--parchment);text-decoration:underline;text-underline-offset:3px}
 
+  /* The sent state. The box keeps its shape and swaps its contents, so the
+     page does not jump under the reader's thumb at the moment they are
+     looking for confirmation. */
+  .sp-sent{display:none;flex-direction:column;gap:12px;align-items:flex-start;padding:15px 16px;border-radius:14px;background:var(--ground);box-shadow:inset 0 0 0 1px var(--hair)}
+  .sp-sent p{margin:0;font-size:.95rem;line-height:1.6;color:var(--parchment)}
+  .sp-sent .sp-sent-x{color:var(--dim)}
+  .sp-box.is-sent .sp-sent{display:flex}
+  .sp-box.is-sent .sp-field,
+  .sp-box.is-sent .sp-err,
+  .sp-box.is-sent .sp-count,
+  .sp-box.is-sent .go{display:none}
+  .sp-again{min-height:var(--tap);padding:0;border:0;background:none;color:var(--parchment);font-family:var(--ui);font-size:.92rem;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  /* app.css sets a{color:inherit}; the failure sentence carries a mailto and
+     it has to look like the thing you tap. */
+  .sp-err a{color:var(--crimson);text-decoration:underline;text-underline-offset:3px}
+  .sp-count{margin:-4px 0 0;font-size:.8rem;font-weight:500;color:var(--dim)}
+  .sp-count[data-over="1"]{color:var(--crimson)}
+
   @media (prefers-reduced-motion:reduce){
     .sp-faq summary::after{transition:none}
   }
@@ -91,39 +109,56 @@
     <p class="sp-sub">A person reads every message.</p>
   </header>
 
-  <!-- Both boxes open the reader's own mail app with the message already
-       written. Nothing here posts anywhere: this site has no server that can
-       send mail, and a form that silently fails is worse than one that hands
-       the message to something the reader can see working. -->
+  <!-- Both boxes post to the support function, which writes the message into
+       Firestore where a founder reads it. If that post fails for any reason,
+       the box says so and hands back a mailto with the reader's own words
+       already in it — a form that silently drops what someone typed is worse
+       than one that admits it could not send.
+
+       The email address is optional. The people who most need this page are
+       the ones whose sign-in is broken, and refusing their message because
+       they did not want to be written back to is refusing the report. -->
   <form class="sp-box" id="sp-help" novalidate>
     <label class="sp-field" for="sp-msg">
       <span>What is annoying you?</span>
-      <textarea id="sp-msg" rows="5" placeholder="Tell us what happened. The more specific the better."></textarea>
+      <textarea id="sp-msg" rows="5" maxlength="4000"
+                placeholder="Tell us what happened. The more specific the better."></textarea>
     </label>
+    <p class="sp-count" id="sp-help-count" hidden></p>
     <label class="sp-field" for="sp-from">
-      <span>Your email</span>
-      <input id="sp-from" type="email" inputmode="email" autocomplete="email"
+      <span>Your email &mdash; optional, but there is nowhere to reply without it</span>
+      <input id="sp-from" type="email" inputmode="email" autocomplete="email" maxlength="200"
              autocorrect="off" spellcheck="false" placeholder="you@example.com">
     </label>
     <p class="sp-err" id="sp-help-err" hidden role="alert"></p>
     <button class="go" id="sp-help-go" type="submit">Send</button>
+    <div class="sp-sent" id="sp-help-ok" role="status" hidden>
+      <p class="sp-sent-t"></p>
+      <button class="sp-again" type="button">Send another</button>
+    </div>
   </form>
 
   <form class="sp-box" id="sp-idea" novalidate>
     <h2 class="sp-h2">Suggest a story</h2>
-    <p class="sp-note">A person, a scandal, a mystery — anything you would want
+    <p class="sp-note">A person, a scandal, a mystery &mdash; anything you would want
       to read in five minutes.</p>
     <label class="sp-field" for="sp-idea-msg">
       <span>What should we cover?</span>
-      <textarea id="sp-idea-msg" rows="4" placeholder="Who or what, and why it is worth five minutes."></textarea>
+      <textarea id="sp-idea-msg" rows="4" maxlength="4000"
+                placeholder="Who or what, and why it is worth five minutes."></textarea>
     </label>
+    <p class="sp-count" id="sp-idea-count" hidden></p>
     <label class="sp-field" for="sp-idea-from">
-      <span>Your email</span>
-      <input id="sp-idea-from" type="email" inputmode="email" autocomplete="email"
+      <span>Your email &mdash; optional</span>
+      <input id="sp-idea-from" type="email" inputmode="email" autocomplete="email" maxlength="200"
              autocorrect="off" spellcheck="false" placeholder="you@example.com">
     </label>
     <p class="sp-err" id="sp-idea-err" hidden role="alert"></p>
     <button class="go" id="sp-idea-go" type="submit">Send the idea</button>
+    <div class="sp-sent" id="sp-idea-ok" role="status" hidden>
+      <p class="sp-sent-t"></p>
+      <button class="sp-again" type="button">Send another</button>
+    </div>
   </form>
 
   <section class="sp-faqs">
@@ -269,29 +304,48 @@
 <script src="/js/acct.js"></script>
 <script src="/js/analytics.js"></script>
 <!-- ==========================================================================
-     The two boxes.
+     The two boxes, and where what you type actually goes.
 
-     Both hand the message to the reader's own mail app, addressed to
-     hello@factbox.app with the subject and body already written. Nothing posts
-     anywhere: this site has no server that can send mail, and a form that
-     silently drops what someone typed is worse than one that visibly hands it
-     over.
+     A POST to the `support` function, which writes one document into the
+     `support` collection in Firestore. The founders read that collection in
+     the Firebase console. Nothing about the message is decided here: the
+     function builds every field itself, so this file cannot smuggle one and
+     neither can anybody who reaches the endpoint with curl.
 
-     Neither will send without an email address in it. A support message from
-     an unknown sender cannot be answered, which makes it a message into a bin.
+     Three states, and the middle one is the reason this is not four lines:
 
-     ES5, guarded. If this block never runs the page is still every answer and
-     a working mailto link in each of them.
+       sent      the box swaps to a confirmation, in place, no page jump
+       refused   a sentence saying what to do instead, with a mailto that
+                 already carries what they typed — and the box keeps its text
+       waiting   the button says so and cannot be pressed twice
+
+     No status codes reach the reader, and no message is ever cleared before
+     the server has said it has it.
+
+     ES5, guarded throughout. If this whole block fails to parse, the page is
+     still every answer on it and a working hello@factbox.app link in three
+     places, which is the state it shipped in yesterday.
      ========================================================================== -->
 <script>
 (function () {
   "use strict";
 
-  var TO = "hello@factbox.app";
+  var TO       = "hello@factbox.app";
+  var ENDPOINT = "https://us-central1-factbox-7cb97.cloudfunctions.net/support";
+  var MAX      = 4000;          /* the function's cap, repeated here so the
+                                   reader is told before they lose the trip */
+  var WARN_AT  = 3500;
+  var GAP_MS   = 20000;         /* the function's per-IP gap, so a double tap
+                                   is answered here instead of over the wire */
+  var WAIT_MS  = 15000;
+  var LKEY     = "fb_support_last_v1";
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  function val(n) { try { return (n && n.value ? String(n.value) : "").replace(/^\s+|\s+$/g, ""); } catch (e) { return ""; } }
-  function say(n, t) { try { if (n) { n.textContent = t; n.hidden = !t; } } catch (e) {} }
+  function trim(v) { return String(v == null ? "" : v).replace(/^\s+|\s+$/g, ""); }
+  function val(n) { try { return trim(n && n.value); } catch (e) { return ""; } }
+
+  function lsGet(k) { try { return window.localStorage ? window.localStorage.getItem(k) : null; } catch (e) { return null; } }
+  function lsSet(k, v) { try { if (window.localStorage) window.localStorage.setItem(k, v); } catch (e) {} }
 
   /* Deliberately loose. The point is to catch a typo and an empty box, not to
      argue with anyone about what a valid address looks like — the strict
@@ -300,38 +354,260 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
   }
 
+  /* The fallback, with their words already in it. Built for every failure
+     path, so "email it instead" is never a suggestion to retype anything. */
+  function mailHref(subject, body, who) {
+    var text = body + (who ? "\n\n—\nReply to: " + who : "");
+    return "mailto:" + TO +
+      "?subject=" + encodeURIComponent(subject) +
+      "&body=" + encodeURIComponent(text);
+  }
+
+  /* A sentence, the address as a tappable mailto, and the rest of the
+     sentence. Built as nodes rather than markup: none of it is ever assembled
+     out of what somebody typed. */
+  function refuse(node, before, href, after) {
+    if (!node) return;
+    try {
+      while (node.firstChild) node.removeChild(node.firstChild);
+      node.appendChild(document.createTextNode(before));
+      if (href) {
+        var a = document.createElement("a");
+        a.href = href;
+        a.appendChild(document.createTextNode(TO));
+        node.appendChild(a);
+        node.appendChild(document.createTextNode(after || ""));
+      }
+      node.hidden = false;
+    } catch (e) {}
+  }
+  function clearErr(node) {
+    try {
+      if (!node) return;
+      while (node.firstChild) node.removeChild(node.firstChild);
+      node.hidden = true;
+    } catch (e) {}
+  }
+
+  /* One request, one answer, whatever happens. status 0 means "never got
+     there" — offline, blocked, timed out, DNS gone — and every one of those is
+     the same sentence to a reader. */
+  function post(token, payload, done) {
+    var settled = false, timer = null, xhr = null;
+    function finish(status, body) {
+      if (settled) return;
+      settled = true;
+      try { if (timer) clearTimeout(timer); } catch (e) {}
+      done(status, body);
+    }
+    try { xhr = new XMLHttpRequest(); } catch (e) { return finish(0, null); }
+    try {
+      xhr.open("POST", ENDPOINT, true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        var body = null;
+        try { body = JSON.parse(xhr.responseText); } catch (e) {}
+        finish(xhr.status, body);
+      };
+      xhr.onerror = function () { finish(0, null); };
+      xhr.ontimeout = function () { finish(0, null); };
+      /* Belt and braces: some in-app webviews fire neither of the two above. */
+      timer = setTimeout(function () { try { xhr.abort(); } catch (e) {} finish(0, null); }, WAIT_MS);
+      xhr.send(JSON.stringify(payload));
+    } catch (e) { finish(0, null); }
+  }
+
+  /* An ID token if there is one going, and nothing at all if getting it takes
+     longer than the reader should wait. The function verifies it; a missing or
+     stale one costs the message nothing but the uid. */
+  function withToken(cb) {
+    var done = false;
+    function go(t) { if (done) return; done = true; cb(t || ""); }
+    try {
+      var u = (window.FBU && window.FBU.user) ? window.FBU.user() : null;
+      if (!u || typeof u.getIdToken !== "function") return go("");
+      setTimeout(function () { go(""); }, 2500);
+      u.getIdToken().then(function (t) { go(String(t || "")); }, function () { go(""); });
+    } catch (e) { go(""); }
+  }
+
   function wire(opts) {
-    var form = el(opts.form), msg = el(opts.msg), from = el(opts.from), err = el(opts.err);
-    if (!form) return;
+    var form  = el(opts.form),
+        msg   = el(opts.msg),
+        from  = el(opts.from),
+        err   = el(opts.err),
+        count = el(opts.count),
+        okBox = el(opts.ok),
+        go    = el(opts.go);
+    if (!form || !msg) return;
+
+    var okText = okBox ? okBox.getElementsByTagName("p")[0] : null;
+    var again  = okBox ? okBox.getElementsByTagName("button")[0] : null;
+    var label  = go ? go.innerHTML : "Send";
+    var busy   = false;
+
+    function tally() {
+      if (!count) return;
+      var n = String(msg.value || "").length;
+      if (n < WARN_AT) { count.hidden = true; return; }
+      count.hidden = false;
+      count.setAttribute("data-over", n >= MAX ? "1" : "0");
+      count.firstChild ? (count.firstChild.nodeValue = n + " of " + MAX + " characters")
+                       : count.appendChild(document.createTextNode(n + " of " + MAX + " characters"));
+    }
+    try { msg.addEventListener("input", tally, false); } catch (e) {}
+
+    function waiting(on) {
+      busy = on;
+      try {
+        if (!go) return;
+        go.disabled = on;
+        go.innerHTML = on ? "Sending…" : label;
+      } catch (e) {}
+    }
+
+    function sent(who) {
+      try {
+        if (okText) {
+          while (okText.firstChild) okText.removeChild(okText.firstChild);
+          okText.appendChild(document.createTextNode(opts.okMsg));
+          if (!who) {
+            var x = document.createElement("span");
+            x.className = "sp-sent-x";
+            x.appendChild(document.createTextNode(" " + opts.noReplyMsg));
+            okText.appendChild(x);
+          }
+        }
+        if (okBox) okBox.hidden = false;
+        msg.value = "";
+        if (from) from.value = "";
+        tally();
+        clearErr(err);
+        form.className = form.className.replace(/\s*is-sent\b/g, "") + " is-sent";
+      } catch (e) {}
+    }
+
+    if (again) {
+      try {
+        again.addEventListener("click", function () {
+          try {
+            form.className = form.className.replace(/\s*is-sent\b/g, "");
+            if (okBox) okBox.hidden = true;
+            msg.focus();
+          } catch (e) {}
+        }, false);
+      } catch (e) {}
+    }
+
     form.addEventListener("submit", function (ev) {
       try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
-      say(err, "");
+      if (busy) return;
+      clearErr(err);
+
       var body = val(msg), who = val(from);
 
-      if (!body) { say(err, opts.emptyMsg); try { msg.focus(); } catch (e) {} return; }
-      if (!who) { say(err, "We need your email, or there is nowhere to reply."); try { from.focus(); } catch (e) {} return; }
-      if (!looksLikeEmail(who)) { say(err, "That email does not look right — check it and try again."); try { from.focus(); } catch (e) {} return; }
-
-      var text = body + "\n\n—\nFrom: " + who + "\nSent from " + opts.where;
-      var href = "mailto:" + TO +
-        "?subject=" + encodeURIComponent(opts.subject) +
-        "&body=" + encodeURIComponent(text);
-      try { if (window.FB && FB.track) FB.track(opts.event); } catch (e) {}
-      try { location.href = href; } catch (e) {
-        say(err, "Could not open your mail app. Write to " + TO + " instead.");
+      if (!body) { refuse(err, opts.emptyMsg, "", ""); try { msg.focus(); } catch (e) {} return; }
+      if (body.length > MAX) {
+        refuse(err, "That is longer than this box can send — " + MAX +
+                    " characters is the limit, and you are at " + body.length +
+                    ". Trim it, or send the whole thing to ",
+               mailHref(opts.subject, body, who), ".");
+        try { msg.focus(); } catch (e) {}
+        return;
       }
+      if (who && !looksLikeEmail(who)) {
+        refuse(err, "That email does not look right — check it, or clear the box and send without one.", "", "");
+        try { from.focus(); } catch (e) {}
+        return;
+      }
+
+      /* The reader's own double-tap, answered here rather than by a refusal
+         from three thousand miles away. */
+      var last = Number(lsGet(LKEY) || 0);
+      if (last && (new Date()).getTime() - last < GAP_MS) {
+        refuse(err, "Give that a few seconds — the last one is still on its way.", "", "");
+        return;
+      }
+
+      waiting(true);
+      withToken(function (token) {
+        post(token, {
+          kind: opts.kind,
+          message: body,
+          email: who,
+          page: (function () { try { return String(location.pathname || "/support"); } catch (e) { return "/support"; } })()
+        }, function (status, res) {
+          waiting(false);
+
+          if (status === 200 && res && res.ok === true) {
+            lsSet(LKEY, String((new Date()).getTime()));
+            try { if (window.FB && window.FB.track) window.FB.track(opts.event); } catch (e) {}
+            sent(who);
+            return;
+          }
+
+          var href = mailHref(opts.subject, body, who);
+
+          if (status === 0) {
+            refuse(err, "That did not send — the connection did not reach us. " +
+                        "Nothing is lost: your words are still in the box above, and this " +
+                        "will put them in an email to ", href, " instead.");
+            return;
+          }
+          if (status === 429) {
+            refuse(err, "We cannot take that one just now. Send it to ", href,
+                        " and it reaches exactly the same person.");
+            return;
+          }
+          if (res && res.error === "too_long") {
+            refuse(err, "That is longer than this box can send. Trim it, or send the whole thing to ", href, ".");
+            return;
+          }
+          refuse(err, "That did not send. Your words are still in the box above — " +
+                      "this will put them in an email to ", href, " instead.");
+        });
+      });
     }, false);
+
+    return { from: from };
   }
 
   function boot() {
-    wire({ form: "sp-help", msg: "sp-msg", from: "sp-from", err: "sp-help-err",
-           subject: "Factbox support", event: "support_send",
-           where: "the support page",
-           emptyMsg: "Tell us what happened first — even one line helps." });
-    wire({ form: "sp-idea", msg: "sp-idea-msg", from: "sp-idea-from", err: "sp-idea-err",
-           subject: "Factbox — story idea", event: "support_idea",
-           where: "the suggest-a-story box",
-           emptyMsg: "Tell us what to cover first." });
+    var a = wire({
+      form: "sp-help", msg: "sp-msg", from: "sp-from", err: "sp-help-err",
+      count: "sp-help-count", ok: "sp-help-ok", go: "sp-help-go",
+      kind: "help", subject: "Factbox support", event: "support_send",
+      emptyMsg: "Tell us what happened first — even one line helps.",
+      okMsg: "Sent. A person reads every message, usually within a couple of days.",
+      noReplyMsg: "You did not leave an email, so there is nothing to reply to — send another with one if you want an answer."
+    });
+    var b = wire({
+      form: "sp-idea", msg: "sp-idea-msg", from: "sp-idea-from", err: "sp-idea-err",
+      count: "sp-idea-count", ok: "sp-idea-ok", go: "sp-idea-go",
+      kind: "idea", subject: "Factbox — story idea", event: "support_idea",
+      emptyMsg: "Tell us what to cover first.",
+      okMsg: "Got it, and thank you — a fair few stories started exactly like this.",
+      noReplyMsg: ""
+    });
+
+    /* If they are signed in, save them typing the address we already know.
+       Never overwrites something they have typed. */
+    function prefill() {
+      try {
+        var e = (window.FBU && window.FBU.email) ? window.FBU.email() : "";
+        if (!e) return;
+        if (a && a.from && !a.from.value) a.from.value = e;
+        if (b && b.from && !b.from.value) b.from.value = e;
+      } catch (err) {}
+    }
+    try {
+      if (window.FBU && window.FBU.onReady) window.FBU.onReady(prefill);
+      else window.addEventListener("fbu-ready", function () {
+        try { if (window.FBU && window.FBU.onReady) window.FBU.onReady(prefill); } catch (e) {}
+      }, false);
+    } catch (e) {}
   }
 
   try {

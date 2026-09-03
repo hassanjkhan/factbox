@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Factbox · Season one</title>
-<meta name="description" content="Fifty-one history stories on paintings from the world's museums, one card at a time.">
+<title>Factbox · Be disgustingly well-informed.</title>
+<meta name="description" content="Trade five minutes of scrolling for something worth remembering. Fifty-one history stories on paintings from the world's museums.">
 <meta name="theme-color" content="#0E0B12">
 <link rel="canonical" href="https://factbox.app/stories">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
-<meta property="og:title" content="Factbox · Season one">
-<meta property="og:description" content="Fifty-one history stories on paintings from the world's museums, one card at a time.">
+<meta property="og:title" content="Factbox · Be disgustingly well-informed.">
+<meta property="og:description" content="Trade five minutes of scrolling for something worth remembering. Fifty-one history stories on paintings from the world's museums.">
 <meta property="og:image" content="https://factbox.app/img/share.jpg">
 <meta property="og:url" content="https://factbox.app/stories">
 <meta name="twitter:card" content="summary_large_image">
@@ -55,8 +55,11 @@
       <a href="/explore">Explore</a>
       <a href="/library">Library</a>
       <span class="acct" id="fb-acct"></span></nav>
-    <h1>Season one</h1>
-    <p id="blurb">Fifty-one stories, told one card at a time, on paintings from the world's museums. Every card says when nobody actually knows.</p>
+    <!-- The home page's headline and subtitle, word for word, so the two
+         cannot drift apart. #blurb is still swapped further down for a reader
+         who already has all fifty-one; this is the signed-out line. -->
+    <h1>Be disgustingly well-informed.</h1>
+    <p id="blurb">Trade five minutes of scrolling for something worth remembering.</p>
   </header>
 
   <div id="shelf">
@@ -73,10 +76,6 @@
   </p>
 </main>
 
-<div class="buybar" id="buybar" hidden>
-  <button class="go" id="pay" type="button">Read all 51 stories</button>
-  <p class="fine">Sign up first — three days free before anything is charged.</p>
-</div>
 
 <script src="/js/progress.js"></script>
 <script src="/js/access.js"></script>
@@ -84,7 +83,6 @@
 <script>
 (function () {
   var shelf = document.getElementById("shelf");
-  var bar   = document.getElementById("buybar");
 
   /* ----------------------------------------------------------------------
      A cover does not depend on who is asking. A padlock does.
@@ -106,8 +104,13 @@
      twice — a paying reader looking at locks on stories they bought.
 
      Nothing here reflows when the answer lands for a signed-out reader:
-     .lock and .freetag are absolutely positioned inside .plate, .buybar is
-     fixed, and the meta line stays one line either way. See css/app.css.
+     .lock and .freetag are absolutely positioned inside .plate, and the meta
+     line stays one line either way. See css/app.css.
+
+     There is no buy bar on this page any more. The fixed bar that used to sit
+     at the foot of a signed-out shelf, and the button and line of copy in it,
+     were removed; the padlocks below are untouched and are still the whole of
+     what a signed-out reader is shown.
      ---------------------------------------------------------------------- */
 
   var STACKS = null;
@@ -215,14 +218,12 @@
       var meta = a.querySelector(".meta");
       if (meta) meta.textContent = a.getAttribute("data-meta") || "";
     }
-    try { bar.hidden = false; } catch (e) {}
   }
 
   /* The answer came back "may read everything". Consolidate the two headings
      into the one the open shelf has always shown, by MOVING the cards rather
      than rebuilding them — the thumbnails on screen are never re-requested. */
   function applyOpen() {
-    try { bar.hidden = true; } catch (e) {}
     var g1 = document.getElementById("grid-free");
     var g2 = document.getElementById("grid-rest");
     var h1 = document.getElementById("sechead-free");
@@ -329,9 +330,6 @@
       "Could not load the stories. Check your connection and reload." + '</p>';
   });
 
-  document.getElementById("pay").addEventListener("click", function () {
-    FB.checkout(this, "home");
-  });
 })();
 </script>
 <!-- js/auth.js is a module, so the browser defers it: it runs after the

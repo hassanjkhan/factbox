@@ -408,12 +408,16 @@ var FBR = (function () {
         go = el("a", "go ec-go", label);
         go.href = target.href;
         go.setAttribute("role", "button");
+        /* Already counted, as rec_click. See js/analytics.js. */
+        try { go.setAttribute("data-fbt", "-"); } catch (e) {}
         go.addEventListener("click", function () {
           track("rec_click", { stack: str(target.id), why: str(target.whyKey), slot: "1" });
         });
       } else {
         go = el("button", "go ec-go", label);
         go.type = "button";
+        /* Already counted: FB.checkout sends subscribe_click. */
+        try { go.setAttribute("data-fbt", "-"); } catch (e) {}
         go.addEventListener("click", function () {
           try {
             if (window.FB && typeof FB.checkout === "function") { FB.checkout(go, "endcard"); return; }

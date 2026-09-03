@@ -1122,6 +1122,7 @@
      rate. Nothing is typed twice, so nothing can disagree with itself. */
 
   var picked = "annual";
+  var blockedSaid = false;   /* checkout_blocked is reported once per page */
 
   function renderPlans() {
     try {
@@ -1142,7 +1143,18 @@
                 '</button>';
       }
       wrap.innerHTML = html;
-      wireRadios("jn-plan-opts", function (k) { picked = k || picked; syncBuy(); });
+      wireRadios("jn-plan-opts", function (k) {
+        picked = k || picked;
+        /* The one step of the money path that said nothing. join_step reports
+           that the plan screen was reached and checkout_start reports the plan
+           bought; between them, which plan a reader SELECTED and then did not
+           buy was invisible, so a price that people pick and back out of
+           looked identical to one nobody looks at. `plan` is the same
+           parameter name checkout_start already uses, and it is one of four
+           fixed keys from FBA.plans() -- nothing typed. */
+        track("join_plan_pick", { plan: String(picked) });
+        syncBuy();
+      });
       syncBuy();
     } catch (e) { syncBuy(); }
   }
@@ -1181,6 +1193,14 @@
          tap — the same precedent as FB.checkout, moved earlier so the reader
          never spends a tap on nothing. */
       if (A && !A.anyLinkReady()) {
+        /* A reader reaching the plan screen and finding the button disabled
+           produced no event at all, so this looked in every report exactly
+           like a reader who lost interest. Reported once per page: syncBuy()
+           runs on every plan tap. */
+        if (!blockedSaid) {
+          blockedSaid = true;
+          track("checkout_blocked", { plan: String(picked), why: "no_link" });
+        }
         buy.textContent = "Checkout is not open yet";
         buy.disabled = true;
         show(note, true);
@@ -1203,6 +1223,11 @@
 
       var url = A ? A.checkoutURL(picked) : "";
       if (!url) {
+        /* checkout_start has already fired at this point and the reader is
+           going nowhere. Without this the funnel shows a checkout that started
+           and never completed, which is what an abandoned payment looks like
+           too -- two very different problems, one shape in the report. */
+        track("checkout_blocked", { plan: String(picked), why: "no_url" });
         if (btn) { btn.textContent = "Checkout is not open yet"; btn.disabled = true; }
         show(el("jn-buy-note"), true);
         text(el("jn-buy-note"), "Payments are not switched on for this site yet. " +
