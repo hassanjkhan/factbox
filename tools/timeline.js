@@ -83,7 +83,16 @@ const kb = n => (n ? (n / 1024).toFixed(1).padStart(7) + "KB" : "        ");
       return r.width > 0 && r.height > 0 && o > 0.05 && (el.textContent || "").trim().length > 4;
     };
     (function tick() {
-      if (readable(document.querySelector(".beat, #shelf .card, .paywall h2"))) stamp("FIRST CARD READABLE");
+      /* "Readable" is not "this site's card markup" — every page has to be
+         measurable, including the ones with no cards on them. So: the first
+         element that is laid out, opaque, and carrying real words, searched in
+         the order a reader's eye would find them. */
+      var MAIN = ".beat, #shelf .card, .paywall h2, main h1, main h2, .wrap h1, " +
+                 "h1, h2, .card, table tbody tr, form label, p";
+      var list = document.querySelectorAll(MAIN);
+      for (var i = 0; i < list.length; i++) {
+        if (readable(list[i])) { stamp("FIRST CONTENT READABLE"); break; }
+      }
       if (readable(document.querySelector(".paywall h2"))) stamp("paywall readable");
       if (document.querySelector("#shelf .card.locked")) stamp("padlocks applied");
       if (document.querySelector(".buybar:not([hidden])")) stamp("buy bar shown");
@@ -128,10 +137,10 @@ const kb = n => (n ? (n / 1024).toFixed(1).padStart(7) + "KB" : "        ");
     console.log("  " + ms(t) + "  (+" + ms(gap).trim() + ")  " + n.padEnd(30) + " " + bar);
   });
 
-  const first = rows.find(r => r[0] === "FIRST CARD READABLE");
+  const first = rows.find(r => r[0] === "FIRST CONTENT READABLE");
   console.log("\n  " + (first
-    ? "TIME TO FIRST READABLE CARD: " + Math.round(first[1]) + "ms"
-    : "NO CARD EVER BECAME READABLE — this is the blank-page failure."));
+    ? "TIME TO FIRST READABLE CONTENT: " + Math.round(first[1]) + "ms"
+    : "NOTHING EVER BECAME READABLE — this is the blank-page failure."));
   console.log("");
   await browser.close();
   process.exit(first ? 0 : 1);
