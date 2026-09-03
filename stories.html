@@ -15,6 +15,31 @@
 <meta property="og:url" content="https://factbox.app/stories">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/app.css">
+
+<!-- Discovery, not bandwidth.
+
+     Nothing on this page is large. The problem was WHEN the browser found out
+     it needed things. data/index.json is fetched by js/gate.js, which is
+     itself a <script> the parser reaches partway down, so the fetch started at
+     ~1100ms on a cold load — and every cover on the shelf is written by the
+     JavaScript that runs after it, so the preload scanner never saw a single
+     image either. The first thumbnail therefore could not begin before ~1200ms
+     on a page whose HTML had arrived at 400ms.
+
+     These links are in the <head>, so the scanner starts all of them in the
+     first few milliseconds, in parallel with the stylesheet.
+
+     The six covers are the first six the grid draws: the two free stories,
+     then the rest in id order. That order is stable, and a wrong guess costs
+     exactly one unused 20KB fetch, never a broken page — so this may drift out
+     of date without anyone having to keep it in step. -->
+<link rel="preload" href="/data/index.json" as="fetch" crossorigin>
+<link rel="preload" href="/img/thumbs/s01.webp" as="image">
+<link rel="preload" href="/img/thumbs/s02.webp" as="image">
+<link rel="preload" href="/img/thumbs/s03.webp" as="image">
+<link rel="preload" href="/img/thumbs/s04.webp" as="image">
+<link rel="preload" href="/img/thumbs/s05.webp" as="image">
+<link rel="preload" href="/img/thumbs/s06.webp" as="image">
 <!-- The header's account control must not flash. This class makes its slot
      invisible without collapsing it, so the row keeps its height from the
      first paint and nothing shifts when auth finally answers. The timer
@@ -124,7 +149,7 @@
          ' data-free="' + (s.free ? "1" : "") + '"' +
          ' data-meta="' + FB.esc(metaLine(s)) + '">' +
         '<div class="plate">' +
-          '<img loading="lazy" decoding="async" alt="" ' +
+          '<img loading="lazy" decoding="async" alt="" width="420" height="560" ' +
                'src="/img/thumbs/' + FB.esc(s.img) + '.webp">' +
           (s.free ? '<span class="freetag">FREE</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +

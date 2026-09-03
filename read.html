@@ -36,6 +36,41 @@
   } catch (e) {}
 })();
 </script>
+<!-- Discovery, in the head, before anything else runs.
+
+     Which story this is lives in the query string, so no static <link> can
+     name the two files that matter — and both of them were being found late.
+     The story JSON is fetched by js/gate.js, a script the parser reaches
+     partway down the page; the first card's painting is written into the DOM
+     by JavaScript that runs after THAT, so the preload scanner never saw it at
+     all. On a cold load the painting could not start before about 1.4 seconds
+     on a page whose HTML had arrived in 300ms.
+
+     Six lines of head script fix the ordering. Both names are derivable from
+     the id — data/story/<ID>.json and the first card's plate, c<id>-01 — so
+     nothing has to be looked up first. Both are guesses in the sense that a
+     404 is possible; both are harmless if wrong, because the real fetch that
+     follows is unchanged and a preload that misses costs one request.
+
+     Deliberately not a module and deliberately inline: anything with a src
+     would itself have to be discovered, which is the problem being solved. -->
+<script>
+(function () {
+  try {
+    var m = /[?&]s=([A-Za-z0-9_-]{1,24})/.exec(location.search || "");
+    if (!m) return;
+    var id = m[1].toUpperCase(), head = document.head;
+    function pre(href, as, cors) {
+      var l = document.createElement("link");
+      l.rel = "preload"; l.href = href; l.as = as;
+      if (cors) l.crossOrigin = "anonymous";
+      head.appendChild(l);
+    }
+    pre("/data/story/" + id + ".json", "fetch", true);
+    pre("/img/cards/c" + id.toLowerCase() + "-01.webp", "image");
+  } catch (e) {}
+})();
+</script>
 <link rel="stylesheet" href="/css/app.css">
 <link rel="stylesheet" href="/css/recommend.css">
 <link rel="stylesheet" href="/css/scenes.css">
