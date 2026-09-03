@@ -654,3 +654,72 @@ html.fb-hdr .acct{visibility:hidden}
 .acct.is-float .acct-me{
   min-height:38px; line-height:38px; max-width:11ch;
 }
+
+/* --------------------------------------------------------------------------
+   Support.
+
+   Two boxes and a stack of answers. The boxes come first because someone who
+   arrived annoyed should not have to scroll past eleven questions to say so,
+   and the answers are closed by default so the page is a short list of
+   questions rather than a wall of prose to hunt through.
+   -------------------------------------------------------------------------- */
+.sp .sp-sub{
+  margin:6px 0 0; font-size:1.02rem; line-height:1.6; font-weight:400;
+  color:var(--dim);
+}
+.sp-box{
+  display:flex; flex-direction:column; gap:14px;
+  margin:26px 0 0; padding:20px; border-radius:20px;
+  background:var(--raise); box-shadow:inset 0 0 0 1px var(--hair);
+}
+.sp-h2{margin:0; font-size:1.16rem; font-weight:700; letter-spacing:-.012em}
+.sp-note{margin:-6px 0 0; font-size:.95rem; line-height:1.55; font-weight:400; color:var(--dim)}
+.sp-field{display:flex; flex-direction:column; gap:7px}
+.sp-field span{font-size:.86rem; font-weight:600; color:var(--dim)}
+.sp-field textarea,
+.sp-field input{
+  width:100%; padding:13px 15px; border:0; border-radius:14px;
+  background:var(--ground); color:var(--parchment);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  font-family:var(--ui); font-size:1rem; font-weight:400; line-height:1.55;
+  -webkit-appearance:none; appearance:none; resize:vertical;
+}
+.sp-field textarea::placeholder,
+.sp-field input::placeholder{color:var(--dimmer)}
+.sp-field textarea:focus-visible,
+.sp-field input:focus-visible{
+  outline:2px solid var(--coral); outline-offset:2px;
+}
+.sp-err{
+  margin:0; font-size:.9rem; font-weight:500; color:var(--crimson);
+}
+.sp-box .go{margin-top:2px}
+
+.sp-faqs{margin-top:38px}
+.sp-faqs .sp-h2{margin-bottom:6px}
+.sp-faq{
+  border-top:1px solid var(--hair);
+}
+.sp-faq:last-of-type{border-bottom:1px solid var(--hair)}
+.sp-faq summary{
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  min-height:var(--tap); padding:14px 2px; cursor:pointer;
+  font-size:1.02rem; font-weight:600; letter-spacing:-.008em;
+  list-style:none;
+}
+.sp-faq summary::-webkit-details-marker{display:none}
+.sp-faq summary::after{
+  content:""; flex:none; width:10px; height:10px;
+  border-right:2px solid var(--dim); border-bottom:2px solid var(--dim);
+  transform:rotate(45deg) translate(-2px,-2px);
+  transition:transform .18s ease;
+}
+.sp-faq[open] summary::after{transform:rotate(-135deg) translate(-3px,-3px)}
+.sp-a{padding:0 2px 18px}
+.sp-a p{margin:0 0 11px; font-size:.98rem; line-height:1.65; font-weight:400; color:var(--dim)}
+.sp-a li{font-size:.98rem; line-height:1.65; font-weight:400; color:var(--dim); margin:0 0 8px}
+.sp-a strong{color:var(--parchment); font-weight:600}
+
+@media (prefers-reduced-motion:reduce){
+  .sp-faq summary::after{transition:none}
+}

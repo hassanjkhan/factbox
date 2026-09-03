@@ -71,7 +71,12 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
   /* Not URLSearchParams: it is absent on the older in-app webviews this site
      targets, and it sat on a top-level line, so its absence emptied the page. */
   var m = /[?&]s=([^&#]*)/.exec(location.search);
-  var id = m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
+  /* No ?s= means the page was reached by one of the story's own URLs —
+     /cleopatra, /story, /firststory — which are real pages built from this
+     one and set FB_STORY before it runs. Those paths were the composed
+     animated page until now; they are the reader on the real paintings. */
+  var id = m ? decodeURIComponent(m[1].replace(/\+/g, " "))
+             : String(window.FB_STORY || "");
 
   /* Which cards carry the second artwork. Nearly every card in a stack shares
      the hero plate, which is why a stack costs one image to read; the

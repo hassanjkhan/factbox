@@ -57,7 +57,8 @@ var FBT = (function () {
      flagship story. */
   function href(s) {
     var id = str(s.id);
-    if (id === "01") return "/cleopatra";
+    /* No special case for 01 any more: the composed page is animation, not
+       the paintings, so the flagship opens in the reader like the rest. */
     return "/read?s=" + encodeURIComponent(id);
   }
 

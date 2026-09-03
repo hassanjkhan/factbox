@@ -256,3 +256,23 @@ html.au-js .au-panel{display:none}
   color:var(--parchment); text-decoration:underline;
   text-underline-offset:3px;
 }
+
+/* --------------------------------------------------------------------------
+   Centred.
+
+   The page was a left-aligned column with two centred buttons in it, so the
+   heading, the tabs, the field labels and the footer links all sat on one
+   edge while the things you press sat on another. One axis now.
+   -------------------------------------------------------------------------- */
+.au-panel{text-align:center}
+.au-switch{justify-content:center}
+.au-panel .jn-field{text-align:left}          /* a label belongs over its box */
+.au-panel .jn-row{justify-content:center; gap:22px}
+.au-panel .fine{margin-left:auto; margin-right:auto; max-width:46ch}
+
+/* The title belongs to the shared .mast, which every other page wants left.
+   Scoped to this page's body so nothing else moves. */
+body.au h1, body.au .mast{text-align:center}
+body.au .tabs{justify-content:center}
+body.au .tabs .acct{position:absolute; right:0; top:0}
+body.au .mast{position:relative}

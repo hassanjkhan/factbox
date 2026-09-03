@@ -147,7 +147,10 @@ var FBR = (function () {
   /* Stack 01 is the illustrated one-off page; everything else is the reader. */
   function href(s) {
     var id = idOf(s);
-    if (id === "01") return "/cleopatra";
+    /* Story 01 used to be routed to /cleopatra, the composed page: CSS scenes
+       and animation rather than the museum plates every other story is told
+       on. It reads as a different product, so the flagship now opens in the
+       reader like everything else, on its ten real paintings. */
     return "/read?s=" + encodeURIComponent(id);
   }
 
