@@ -68,15 +68,26 @@ var FBSTART = (function () {
   function question(step) {
     var p = el("section", "st-panel");
     p.appendChild(bar(step.n));
-    p.appendChild(el("p", "st-step", step.n === 6 ? "Last one" : "Question " + step.n + " of 6"));
+
+    /* Answering moves you on, so there is no Continue to press — which means a
+       mis-tap would otherwise be unrecoverable. Back is the price of that. */
+    var head = el("div", "st-head");
+    if (step.n > 1) {
+      var back = el("button", "st-back");
+      back.type = "button";
+      back.setAttribute("aria-label", "Back");
+      back.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
+        'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>';
+      back.addEventListener("click", function () { prev(); });
+      head.appendChild(back);
+    }
+    head.appendChild(el("p", "st-step", step.n === 6 ? "Last one" : "Question " + step.n + " of 6"));
+    p.appendChild(head);
 
     var h = el("h1", "st-q", step.q);
     h.id = step.id + "-h";
     p.appendChild(h);
-
-    var go = el("button", "go", "Continue");
-    go.type = "button";
-    go.disabled = true;
 
     var box = el("div", "st-opts");
     box.setAttribute("role", "radiogroup");
@@ -94,8 +105,10 @@ var FBSTART = (function () {
           b.setAttribute("aria-checked", "true");
           answers[step.id] = label;
           save();
-          go.disabled = false;
           track("start_answer", { q: step.id });
+          /* Long enough for the tap to register as a choice, short enough that
+             it reads as the app responding rather than as a wait. */
+          try { setTimeout(next, 260); } catch (e) { next(); }
         });
         box.appendChild(b);
       })(step.opts[i]);
@@ -103,8 +116,6 @@ var FBSTART = (function () {
 
     p.appendChild(box);
     p.appendChild(el("div", "st-spacer"));
-    go.addEventListener("click", function () { next(); });
-    p.appendChild(go);
     return p;
   }
 
@@ -115,6 +126,14 @@ var FBSTART = (function () {
     p.appendChild(el("p", "st-sub",
       "Five minutes a day. Addictive stories. The people, scandals, wars, and " +
       "ideas you’ll actually remember."));
+    /* Three real covers with their real hooks. A promise about "addictive
+       stories" is worth nothing next to three of them, and this is the only
+       screen in the flow where the reader has been given nothing yet. Filled
+       in after the fetch; if it never lands the screen is exactly what it was. */
+    var peek = el("div", "st-peek");
+    p.appendChild(peek);
+    fillPeek(peek);
+
     p.appendChild(el("div", "st-spacer"));
     var go = el("button", "go", "Get started");
     go.type = "button";
@@ -126,6 +145,50 @@ var FBSTART = (function () {
     fine.appendChild(a);
     p.appendChild(fine);
     return p;
+  }
+
+  /* The three covers on the opening screen. Free stories first — the shelf a
+     reader can actually open is the honest sample — and the hook rather than
+     the title, because the hook is what the product sounds like. */
+  function fillPeek(box) {
+    try {
+      if (!window.FB || !FB.load) return;
+      FB.load().then(function (stacks) {
+        try {
+          /* One per subject. The free stories are 01-03 and all three are
+             Cleopatra, so taking the first three made a history app look like
+             a Cleopatra app on the one screen that says what it is. Free
+             first within each subject, so the sample is still openable. */
+          var seen = {}, picks = [], i, s2, t;
+          for (i = 0; i < stacks.length && picks.length < 3; i++) {
+            s2 = stacks[i]; t = String(s2.topic || i);
+            if (seen[t] || !s2.free) continue;
+            seen[t] = 1; picks.push(s2);
+          }
+          for (i = 0; i < stacks.length && picks.length < 3; i++) {
+            s2 = stacks[i]; t = String(s2.topic || i);
+            if (seen[t]) continue;
+            seen[t] = 1; picks.push(s2);
+          }
+          for (i = 0; i < picks.length; i++) {
+            var s = picks[i];
+            var card = el("div", "st-peek-c");
+            var img = document.createElement("img");
+            img.alt = "";
+            img.decoding = "async";
+            img.src = "/img/thumbs/" + String(s.img) + ".webp";
+            img.onerror = function () {
+              this.onerror = null;                        /* one retry, never a loop */
+              this.src = "/img/stacks/" + String(s.img) + ".webp";
+            };
+            card.appendChild(img);
+            card.appendChild(el("p", null, String(s.hook || s.title)));
+            box.appendChild(card);
+          }
+          if (picks.length) box.className = "st-peek is-on";
+        } catch (e) {}
+      })["catch"](function () {});
+    } catch (e) {}
   }
 
   /* The turn. Five questions in, the reader has said what they want five
@@ -213,6 +276,7 @@ var FBSTART = (function () {
   }
 
   function next() { if (at + 1 < STEPS.length) show(at + 1); }
+  function prev() { if (at > 0) show(at - 1); }
 
   function boot(rootId) {
     try { root = document.getElementById(rootId || "st"); } catch (e) {}

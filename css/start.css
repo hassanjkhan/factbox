@@ -27,9 +27,41 @@
 .st-prog i{flex:1; height:4px; border-radius:999px; background:rgba(255,247,237,.16)}
 .st-prog i.on{background:var(--coral)}
 
+.st-head{display:flex; align-items:center; gap:10px; flex:none}
 .st-step{
   margin:0; font-size:.72rem; font-weight:800; letter-spacing:.14em;
   text-transform:uppercase; color:var(--dimmer);
+}
+/* Answering advances, so this is the only way back out of a mis-tap. */
+.st-back{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; margin-left:-7px; padding:0;
+  border:0; border-radius:var(--pill); background:transparent;
+  color:var(--dim); cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.st-back:active{background:rgba(255,247,237,.07)}
+
+/* --------------------------------------------------------------------------
+   The sample on the opening screen.
+
+   Three real covers with their real hooks. "Addictive stories" is a claim; a
+   painting with "Two of the most powerful men in the world fell for her"
+   under it is the thing itself. Hidden until the fetch lands so the screen
+   never shows three empty boxes.
+   -------------------------------------------------------------------------- */
+.st-peek{display:none; gap:11px; flex:none}
+.st-peek.is-on{display:flex}
+.st-peek-c{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:8px}
+.st-peek-c img{
+  width:100%; aspect-ratio:3/4; object-fit:cover; object-position:center 32%;
+  border-radius:12px; background:var(--raise);
+  box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 0 0 1px var(--hair);
+}
+.st-peek-c p{
+  margin:0; font-size:.78rem; font-weight:750; line-height:1.3;
+  letter-spacing:-.005em; color:var(--dim);
+  /* Three lines each, so the row stays level whatever the hooks run to. */
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
 }
 .st-q{
   margin:0; font-size:clamp(1.4rem,5.6vw,1.75rem); font-weight:850;
