@@ -152,9 +152,7 @@
     return '<p class="statline">' +
       '<b>' + done + '</b> ' + (done === 1 ? "story" : "stories") + ' finished' +
       ' · <b>' + cards + '</b> ' + (cards === 1 ? "card" : "cards") + ' read' +
-      ' · about <b>' + m + '</b> min' +
-      '<small>Minutes are estimated from each story’s own listed length, ' +
-      'not from a clock. Nothing about your reading leaves this browser.</small></p>';
+      ' · about <b>' + m + '</b> min</p>';
   }
 
   /* --- the whole page ------------------------------------------------------ */

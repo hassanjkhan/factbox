@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://factbox.app/explore">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/app.css">
-<link rel="stylesheet" href="/css/explore.css">
+<link rel="stylesheet" href="/css/today.css">
 <!-- The header's account control must not flash. This class makes its slot
      invisible without collapsing it, so the row keeps its height from the
      first paint and nothing shifts when auth finally answers. The timer
@@ -39,66 +39,45 @@
 <main class="lib">
   <header class="mast">
     <p class="mark">FACTBOX</p>
+    <!-- Two tabs. "Home" and "Explore" were two answers to one question and
+         Explore was the better of them, so its shelves moved to the bottom of
+         this page and the tab went. Account is one icon: from the reader's
+         side "sign in" and "sign up" are the same errand, and the page behind
+         it works out which of the two they need. -->
     <nav class="tabs" aria-label="Sections">
-      <a href="/stories">Home</a>
-      <a href="/explore" aria-current="page">Explore</a>
+      <a href="/today" aria-current="page">Today</a>
       <a href="/library">Library</a>
-      <!-- Account. Signed out this is two links; signed in it is the reader's
-           name. Never both: the script sets hidden on every branch. -->
       <span class="acct" id="fb-acct">
-        <a class="acct-in" id="fb-acct-in" href="/login?next=explore">Sign in</a>
-        <a class="acct-up" id="fb-acct-up" href="/login?next=explore">Sign up</a>
-        <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
+        <a class="acct-in td-acct" id="fb-acct-in" href="/login?next=explore" aria-label="Sign in">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8.6" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+        </a>
+        <a class="acct-me td-acct" id="fb-acct-me" href="/account" aria-label="Account" hidden>
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8.6" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+        </a>
       </span>
     </nav>
-    <h1>Explore</h1>
-    <p id="blurb">Fifty-one stories, sorted by what they are about and by what kind of story they are. Search for a name, or just scroll.</p>
   </header>
 
-  <!-- Search is a plain input, filtered in the browser. There is no server to
-       ask, and a spinner over 51 rows would be theatre. -->
-  <form class="find" id="find" role="search" action="#" onsubmit="return false">
-    <label class="vh" for="q">Search stories</label>
-    <span class="glass" aria-hidden="true">⌕</span>
-    <input id="q" name="q" type="search" autocomplete="off" autocorrect="off"
-           autocapitalize="none" spellcheck="false" enterkeyhint="search"
-           placeholder="Cleopatra, Lincoln, Rome…">
-    <button type="button" class="x" id="qx" aria-label="Clear search" hidden>×</button>
-  </form>
-
-  <div id="chips" class="chipwrap"></div>
-  <p class="tally" id="tally" aria-live="polite"></p>
-
-  <div id="view"></div>
-
-  <noscript>
-    <p class="void" style="margin-top:24px">
-      <b>This page needs JavaScript.</b>
-      All fifty-one stories are still listed on the <a href="/stories">home shelf</a>.
-    </p>
-  </noscript>
-
-  <p class="fine" style="margin-top:34px;text-align:left">
-    <a href="/stories">All stories</a> · <a href="/account">Account</a> ·
-    <a href="/credits">Artwork credits</a> ·
-    <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
-    <a href="/support">Support</a>
-  </p>
+  <!-- Real copy, replaced by the render. Never a blank shell: if every script
+       below fails, this is still a page with words and a way out. -->
+  <div id="td">
+    <h1 class="td-h1">Be disgustingly well-informed.</h1>
+    <p class="td-sub">Trade five minutes of scrolling for something worth
+      remembering. <a href="/stories">Start with season one</a>.</p>
+  </div>
 </main>
-
-<div class="buybar" id="buybar" hidden>
-  <button class="go" id="pay" type="button">Read all 51 stories</button>
-  <p class="fine">Sign up first — three days free before anything is charged.</p>
-</div>
 
 <script src="/js/progress.js"></script>
 <script src="/js/access.js"></script>
 <script src="/js/gate.js"></script>
-<script src="/js/explore.js"></script>
-<!-- js/auth.js is a module, so the browser defers it: it runs after the
-     document is parsed and BEFORE DOMContentLoaded, whatever position this tag
-     is in. The ES5 block below therefore cannot read window.FBU at the moment
-     it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
+<script src="/js/today.js"></script>
+<script>
+(function () { try { FBT.boot("td"); } catch (e) {} })();
+</script>
 <script type="module" src="/js/auth.js"></script>
 <script>
 /* The header account control. ES5, every lookup guarded, and it cannot throw:
@@ -108,7 +87,7 @@
   "use strict";
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+  var aIn = el("fb-acct-in"), aMe = el("fb-acct-me");
 
   function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
   function reveal() {
@@ -143,9 +122,9 @@
     try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
     if (inNow) {
       try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
-      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+      hide(aIn, true); hide(aMe, false);
     } else {
-      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+      hide(aMe, true); hide(aIn, false);
     }
     reveal();
   }

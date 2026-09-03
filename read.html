@@ -346,7 +346,7 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
   "use strict";
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+  var aIn = el("fb-acct-in"), aMe = el("fb-acct-me");
 
   function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
   function reveal() {
@@ -381,9 +381,9 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
     try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
     if (inNow) {
       try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
-      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+      hide(aIn, true); hide(aMe, false);
     } else {
-      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+      hide(aMe, true); hide(aIn, false);
     }
     reveal();
   }

@@ -91,9 +91,8 @@
       <!-- Account. Signed out this is two links; signed in it is the reader's
            name. Never both: the script sets hidden on every branch. -->
       <span class="acct" id="fb-acct">
-        <a class="acct-in" id="fb-acct-in" href="/login?next=account">Sign in</a>
-        <a class="acct-up" id="fb-acct-up" href="/login?next=account">Sign up</a>
-        <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
+        <a class="acct-in td-acct" id="fb-acct-in" href="/login?next=account" aria-label="Sign in"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.6" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></a>
+        <a class="acct-me td-acct" id="fb-acct-me" href="/account" aria-label="Account" hidden><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.6" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></a>
       </span>
     </nav>
     <h1>Account</h1>
@@ -576,7 +575,7 @@
   "use strict";
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  var aIn = el("fb-acct-in"), aUp = el("fb-acct-up"), aMe = el("fb-acct-me");
+  var aIn = el("fb-acct-in"), aMe = el("fb-acct-me");
 
   function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
   function reveal() {
@@ -611,9 +610,9 @@
     try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
     if (inNow) {
       try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
-      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+      hide(aIn, true); hide(aMe, false);
     } else {
-      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+      hide(aMe, true); hide(aIn, false);
     }
     reveal();
   }

@@ -65,10 +65,9 @@
   <!-- Real copy, replaced by the render. Never a blank shell: if every script
        below fails, this is still a page with words and a way out. -->
   <div id="td">
-    <h1 class="td-h1">Get smarter about history in 5 minutes a day.</h1>
-    <p class="td-sub">The wildest stories, people, scandals, and mysteries from
-      history, broken into bite-sized lessons.
-      <a href="/explore">Browse every story</a>.</p>
+    <h1 class="td-h1">Be disgustingly well-informed.</h1>
+    <p class="td-sub">Trade five minutes of scrolling for something worth
+      remembering. <a href="/stories">Start with season one</a>.</p>
   </div>
 </main>
 
@@ -88,7 +87,7 @@
   "use strict";
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
-  var aIn = el("fb-acct-in"), aUp = null, aMe = el("fb-acct-me");
+  var aIn = el("fb-acct-in"), aMe = el("fb-acct-me");
 
   function hide(n, on) { try { if (n) n.hidden = !!on; } catch (e) {} }
   function reveal() {
@@ -123,9 +122,9 @@
     try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
     if (inNow) {
       try { if (aMe) aMe.textContent = label(FBU); } catch (e) {}
-      hide(aIn, true); hide(aUp, true); hide(aMe, false);
+      hide(aIn, true); hide(aMe, false);
     } else {
-      hide(aMe, true); hide(aIn, false); hide(aUp, false);
+      hide(aMe, true); hide(aIn, false);
     }
     reveal();
   }

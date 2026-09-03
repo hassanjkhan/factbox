@@ -241,9 +241,15 @@ var FBT = (function () {
       if (by[k].length < 2) continue;              /* one story is not a series */
       var done = 0, j;
       for (j = 0; j < by[k].length; j++) if (progress(by[k][j]).status === "done") done++;
+      /* Straight into the next unread one. "Binge" that lands you on a list
+         is not a binge, and there is no separate browse page to land on now. */
+      var nextUp = by[k][0], q;
+      for (q = 0; q < by[k].length; q++) {
+        if (progress(by[k][q]).status !== "done") { nextUp = by[k][q]; break; }
+      }
       var a = el("a", "td-row");
-      a.href = "/explore#" + encodeURIComponent(k);
-      a.appendChild(plate(by[k][0]));
+      a.href = href(nextUp);
+      a.appendChild(plate(nextUp));
       var t = el("div", "td-row-t");
       t.appendChild(el("b", null, topicName(k)));
       t.appendChild(el("span", "td-meta",
@@ -254,18 +260,6 @@ var FBT = (function () {
         'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" ' +
         'stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
       a.appendChild(ch);
-      wrap.appendChild(a);
-    }
-    return wrap;
-  }
-
-  function chips() {
-    var wrap = el("div", "td-chips"), i;
-    var table = TOPICS;
-    try { if (window.FBTAX && FBTAX.TOPICS) table = FBTAX.TOPICS; } catch (e) {}
-    for (i = 0; i < table.length; i++) {
-      var a = el("a", "td-chip", table[i].name || table[i].key);
-      a.href = "/explore#" + encodeURIComponent(table[i].key);
       wrap.appendChild(a);
     }
     return wrap;
@@ -301,10 +295,9 @@ var FBT = (function () {
         page.appendChild(stats);
       }
     } else {
-      page.appendChild(el("h1", "td-h1", "Get smarter about history in 5 minutes a day."));
+      page.appendChild(el("h1", "td-h1", "Be disgustingly well-informed."));
       page.appendChild(el("p", "td-sub",
-        "The wildest stories, people, scandals, and mysteries from history, " +
-        "broken into bite-sized lessons."));
+        "Trade five minutes of scrolling for something worth remembering."));
     }
 
     if (resume && resume.stack) {
@@ -331,16 +324,7 @@ var FBT = (function () {
     }
     if (rest.length) page.appendChild(section("Trending now", null, shelf(rest.slice(0, 8))));
 
-    page.appendChild(section("Pick an obsession", null, chips()));
     page.appendChild(section("Binge a series", null, seriesRows(stacks)));
-
-    var search = el("a", "td-search");
-    search.href = "/explore";
-    search.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
-      'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' +
-      'aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>';
-    search.appendChild(document.createTextNode("Search all " + stacks.length + " stories"));
-    page.appendChild(search);
 
     root.innerHTML = "";
     root.appendChild(page);
