@@ -32,18 +32,11 @@
 
 <div class="prog" aria-hidden="true"><i id="bar"></i></div>
 <div class="topbar"><a class="back" href="/stories">← Stories</a></div>
-<!-- Account, mirroring the back button on the other side. read.html has no
-     .tabs row — it is a full-bleed deck — so the control takes the same
-     floating pill the back button already uses, and carries one link rather
-     than two: this and the back button share a 390px line, and sign-up is one
-     tap further on the page this points at. Save no longer sits on this line —
-     it moved to the action rail at the foot of the right edge. -->
-<div class="topbar-r">
-  <span class="acct is-float" id="fb-acct">
-    <a class="acct-in" id="fb-acct-in" href="/login?next=stories">Sign in</a>
-    <a class="acct-me" id="fb-acct-me" href="/account" hidden>Account</a>
-  </span>
-</div>
+<!-- No account control in the reader. Every pane here points at the story or
+     at the next one; "Sign in" was the only thing on screen pointing away from
+     it, floating over artwork. It is on every other page, and "← Stories"
+     leads to all of them. The two scripts below still look for #fb-acct-in and
+     both already guard for it being absent, so nothing else changes. -->
 
 <main class="deck" id="deck" tabindex="-1">
   <section class="pane">

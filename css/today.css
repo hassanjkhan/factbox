@@ -62,7 +62,12 @@
   margin:0; font-size:.84rem; font-weight:650; color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
-.td-hero .go{margin-top:5px}
+.td-hero .go{
+  margin-top:5px;
+  /* .go is a <button> rule in app.css and this is a <span> inside a link, so
+     it inherits the page's left alignment instead of centring its own label. */
+  text-align:center;
+}
 
 /* Resume: the same hero with a bar across it. */
 .td-bar{display:flex; align-items:center; gap:10px; margin-top:2px}
@@ -103,9 +108,14 @@
 .td-tile .td-meta{margin-top:5px}
 
 /* Obsessions. */
-.td-chips{display:flex; flex-wrap:wrap; gap:9px}
+/* Pulled left by exactly the pill's own padding, so the first LABEL sits on
+   the same line as "Pick an obsession" rather than the pill's border doing —
+   a row of pills reads as indented when its text starts 17px in from the
+   heading above it. 14px leaves 4px of the page gutter, so nothing touches
+   the edge of a phone. */
+.td-chips{display:flex; flex-wrap:wrap; gap:9px; margin-left:-14px}
 .td-chip{
-  display:inline-flex; align-items:center; min-height:46px; padding:0 17px;
+  display:inline-flex; align-items:center; min-height:46px; padding:0 14px;
   border-radius:var(--pill); font-size:.98rem; font-weight:780;
   color:var(--parchment); text-decoration:none;
   box-shadow:inset 0 0 0 1px var(--hair);

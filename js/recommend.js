@@ -44,7 +44,7 @@ var FBR = (function () {
     TOPICS: [
       { key: "cleopatra",       name: "Cleopatra",                   lower: "Cleopatra" },
       { key: "new_testament",   name: "The New Testament",           lower: "the New Testament" },
-      { key: "church_history",  name: "Devils, saints and heresies", lower: "devils, saints and heresies" },
+      { key: "church_history",  name: "Saints and sinners",          lower: "saints and sinners" },
       { key: "old_testament",   name: "The Old Testament",           lower: "the Old Testament" },
       { key: "us_history",      name: "America",                     lower: "America" },
       { key: "ancient_world",   name: "The ancient world",           lower: "the ancient world" },
@@ -453,7 +453,7 @@ var FBR = (function () {
 
          "There's more to Cleopatra" rather than "Cleopatra's story": the
          sentence is generated for eight topics and the possessive only reads
-         for one of them — "devils, saints and heresies's story" and
+         for one of them — "saints and sinners's story" and
          "disasters's story" are not sentences. Same line, one word moved. */
       var rest = remaining(current, stacks);
 
