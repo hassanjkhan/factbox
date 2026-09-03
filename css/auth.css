@@ -77,10 +77,32 @@ body{background:var(--ground); color:var(--parchment)}
 .au-prov[disabled] svg{opacity:.4}
 
 /* The "or" rule. A line with a word in it, not a heading — it separates, it
-   does not announce. */
-.au-or{
+   does not announce.
+
+   Written as `.au-panel > p.au-or` and not `.au-or`, and that is the whole
+   fix, not a flourish. This element is a <p> and a direct child of
+   #au-main.au-panel, so `.au-panel > p` further down (0,1,1) out-ranked a bare
+   `.au-or` (0,1,0) and took both the box and the rhythm off it:
+
+     * `max-width:44ch` capped the rule at 481.5px with no auto side margins,
+       so on any panel wider than that it stayed pinned to the LEFT edge while
+       the Google button above it centred itself in 520px. The word sat at the
+       centre of the wrong box — 125px left of centre at 768, 191px at 1440.
+       Under 481.5px of panel the two boxes happened to coincide, which is why
+       it looked fine on a phone and wrong on the screenshot.
+     * `margin:0 0 4px` replaced `22px 2px 4px`, so the gap above the rule was
+       0 and the gap below was 16 (the 4 collapsing into .jn-field's 16).
+
+   The flex centring itself was never the problem: ::before and ::after are
+   `flex:1 1 auto` on empty content, so they grow equally and the word lands in
+   the middle of whatever box it is given. It was given the wrong box.
+
+   520px, auto side margins and matching 22px margins: same width and same
+   axis as .au-prov and .au-2nd, and equal air above and below. */
+.au-panel > p.au-or, .au-or{
   display:flex; align-items:center; gap:12px;
-  margin:22px 2px 4px;
+  width:100%; max-width:520px;
+  margin:22px auto;
   font-size:var(--fs-meta); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
   color:var(--dimmer); text-transform:uppercase;
 }
@@ -113,7 +135,11 @@ body{background:var(--ground); color:var(--parchment)}
 /* A note that is information rather than a failure: "check your email", "we
    sent a code". Same shell as .jn-err so the two read as the same kind of
    line, in the colour that means "this worked". */
-.au-say{
+/* `.au-panel > p.au-say` for the same reason as .au-or above: .au-say is a
+   direct child <p> of the panel, so the bare class loses to `.au-panel > p`
+   and silently gives up its margin and its size. Same latent bug, different
+   element — found while fixing the first one. */
+.au-panel > p.au-say, .au-say{
   margin:10px 2px 0; font-size:var(--fs-note); font-weight:var(--w-strong);
   line-height:1.45;
   /* --teal is the sage FILL and reads 1.9:1 as type on cream. --teal-ink is

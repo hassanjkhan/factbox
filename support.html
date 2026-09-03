@@ -217,11 +217,12 @@
       </details>
       <details class="sp-faq">
         <summary>What happens to my reading progress?</summary>
-        <div class="sp-a"><p>It is stored in your browser and sent nowhere. That means the good part — nobody, us
-     included, can see what you have read — and the awkward part:</p>
+        <div class="sp-a"><p>Signed in, it is kept against your account, so it follows you to another
+     phone and comes back if you clear this one. Signed out, it stays in this browser
+     and nowhere else. Either way:</p>
   <ul>
-    <li>Clearing your browsing data erases it, and <strong>we cannot restore it</strong>, because we never had a copy.</li>
-    <li>It does not follow you to another phone. The restore link carries your access across; it does not carry your progress.</li>
+    <li>Signed out, clearing your browsing data erases it and <strong>we cannot restore it</strong>, because there is no copy anywhere else. Signed in, it comes back when you sign in again.</li>
+    <li>Signed out, it does not follow you to another phone. The restore link carries your access across; it does not carry your progress.</li>
     <li>In private browsing, and in a few in-app browsers, the browser refuses to save anything at all. Reading works fine; nothing is remembered afterwards. Where saving is unavailable the site says so rather than pretending the button worked.</li>
   </ul>
   <p>The <a href="/privacy">Privacy Policy</a> lists every key the site writes, exactly
@@ -267,12 +268,11 @@
       </details>
       <details class="sp-faq">
         <summary>What do you know about me?</summary>
-        <div class="sp-a"><p>Effectively nothing. If you signed up, your email address and your answers to the
-     onboarding questions are stored <strong>in your own browser</strong> — there is no
-     server behind the sign-up form, so we never receive them. The one exception is that
-     your email is put into the Stripe checkout page so you do not type it twice.
-     Your reading never leaves your browser at all. Payment is Stripe's, so Stripe holds
-     your billing details and we do not. We measure which stories people
+        <div class="sp-a"><p>If you have an account, we hold your email address, two of your
+     onboarding answers, and — so it follows you between phones — which stories you have
+     read and saved. Your email also goes into the Stripe checkout page so you do not
+     type it twice. Signed out, none of that leaves your browser. Payment is Stripe's,
+     so Stripe holds your billing details and we do not. We measure which stories people
      finish and how long each card holds you, through PostHog, so that the next stories
      are better than the last. It stores a random id in your browser and there is a
      one-tap off switch on the Privacy page. The <a href="/privacy">Privacy Policy</a> is the full

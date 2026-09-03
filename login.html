@@ -69,7 +69,6 @@
       <a href="/library">Library</a>
       <span class="acct" id="fb-acct"></span></nav>
     <h1 id="au-title">Sign in to Factbox</h1>
-    <p id="au-blurb">One account. All fifty-one stories, wherever you read it.</p>
   </header>
 
   <!-- Shown by the script while FBU.ready() is still settling. Hidden in the
@@ -309,7 +308,6 @@
   var forgot   = el("au-forgot");
 
   var title    = el("au-title");
-  var blurb    = el("au-blurb");
 
   function reveal() {
     try {
@@ -328,9 +326,6 @@
     text(go, up ? "Create my account" : "Sign in");
     text(swap, up ? "I already have an account" : "Create an account");
     text(title, up ? "Create your Factbox account" : "Sign in to Factbox");
-    text(blurb, up
-      ? "One account, every phone. It takes about twenty seconds and nothing is charged for it."
-      : "One account. All fifty-one stories, wherever you read it.");
     text(gT, up ? "Sign up with Google" : "Continue with Google");
     show(forgot, !up);
     try { if (pass) pass.setAttribute("autocomplete", up ? "new-password" : "current-password"); } catch (e) {}
