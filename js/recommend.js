@@ -295,10 +295,23 @@ var FBR = (function () {
         left++;
       }
       if (!left) return null;
-      var table = taxon("TOPICS"), name = null;
-      for (i = 0; i < table.length; i++) if (table[i].key === topic) name = table[i].lower || table[i].name;
+
+      /* The bar counts the whole topic, including this story: a reader who has
+         just finished one of eight should see one segment filled, not none. */
+      var total = 0, done = 0;
+      for (i = 0; i < stacks.length; i++) {
+        if (str(stacks[i].topic) !== topic) continue;
+        total++;
+        if (idOf(stacks[i]) === idOf(current) || progress(stacks[i]).status === "done") done++;
+      }
+
+      var table = taxon("TOPICS"), name = null, disp = null;
+      for (i = 0; i < table.length; i++) if (table[i].key === topic) {
+        name = table[i].lower || table[i].name;
+        disp = table[i].name || table[i].lower;
+      }
       if (!name) return null;
-      return { n: left, name: name };
+      return { n: left, name: name, disp: disp, done: done, total: total };
     } catch (e) { return null; }
   }
 
@@ -307,6 +320,21 @@ var FBR = (function () {
   var WORDS = ["no", "One", "Two", "Three", "Four", "Five", "Six", "Seven",
                "Eight", "Nine", "Ten", "Eleven", "Twelve"];
   function count(n) { return (n > 0 && n < WORDS.length) ? WORDS[n] : String(n); }
+
+  /* One segment per story in the topic, filled for the ones behind you. A
+     percentage bar would be a smaller lie about the same thing; these are
+     countable, so they get counted. Capped, because a topic of thirty would
+     draw thirty hairlines nobody can tell apart. */
+  function bar(done, total) {
+    var wrap = el("div", "rec-bar"), i, seg;
+    if (!total || total > 14) return null;
+    for (i = 0; i < total; i++) {
+      seg = el("i", i < done ? "on" : null);
+      wrap.appendChild(seg);
+    }
+    wrap.setAttribute("aria-hidden", "true");   /* the line above it says the same */
+    return wrap;
+  }
 
   /* One story, given the whole width: the plate, the title on it, and how long
      it takes. 4:3, not wider — every plate in the library is a 3:4 portrait
@@ -421,21 +449,28 @@ var FBR = (function () {
         sec.appendChild(thread);
       }
 
-      /* What is left, counted, without claiming an order the data does not
-         have. The topics group eight or eleven stories that were written to
-         stand alone, so "Part 2 of 8" would promise a sequence that is not
-         there; "Seven more on Cleopatra" is the same open loop and true. */
+      /* Where they are in the topic, then the reason to keep going.
+
+         "There's more to Cleopatra" rather than "Cleopatra's story": the
+         sentence is generated for eight topics and the possessive only reads
+         for one of them — "devils, saints and heresies's story" and
+         "disasters's story" are not sentences. Same line, one word moved. */
       var rest = remaining(current, stacks);
+
+      if (rest) {
+        sec.appendChild(el("p", "rec-count",
+          rest.disp + " \u00b7 " + rest.done + " of " + rest.total));
+        var b = bar(rest.done, rest.total);
+        if (b) sec.appendChild(b);
+      }
+
       var head = str(opts.heading) ||
-                 (rest ? count(rest.n) + " more on " + rest.name + "." : "That is the whole story");
+                 (rest ? "Want to know what happened next?" : "That is the whole story");
       sec.appendChild(el("h2", null, head));
 
-      /* The next story's own hook, in the voice it was written in. It is the
-         most specific sentence available at this moment and it costs nothing
-         — every stack already carries one. Clamped to two lines in CSS; a few
-         run to 400 characters. */
-      var lede = pick ? str(pick.hook) : "";
-      if (!lede) lede = picks.length ? "Read another one." : "That is every story for now.";
+      var lede = rest
+        ? "Keep going. There\u2019s more to " + rest.name + ", and it gets stranger."
+        : (picks.length ? "Read another one." : "That is every story for now.");
       sec.appendChild(el("p", "rec-lede", lede));
 
       if (pick) sec.appendChild(plate(pick));
@@ -443,7 +478,7 @@ var FBR = (function () {
       /* One button. A reader who still has something they can open is sent to
          it; the offer waits until they actually run out. */
       if (pick && !pick.locked) {
-        var go = el("a", "go", "Read it");
+        var go = el("a", "go", "Continue");
         go.href = pick.href;
         go.addEventListener("click", function () {
           track("rec_click", { stack: str(pick.id), why: str(pick.whyKey), slot: "cta" });
