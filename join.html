@@ -60,16 +60,23 @@
   cookie mirror this page has always used — and js/profile-sync.js mirrors that
   record to customers/{uid}/profile/onboarding for a signed-in reader:
 
-      Interests (screen 2)  -> FBA.setInterests([...])   the `interests` array
-      Daily goal (screen 8) -> FBA.setGoal(n)            GOALS: 5 | 10 | 20
+      Interests  (screen 2) -> FBA.setInterests([...])   the `interests` array
+      Motivation (screen 3) -> FBA.setMotivation(k)      MOTIVES
+      Barrier    (screen 5) -> FBA.setBarrier(k)         BARRIERS
+      Scrolling  (screen 6) -> FBA.setScrolling(k)       SCROLLS
+      Daily goal (screen 8) -> FBA.setGoal(n)            GOALS: 5 | 10 | 20,
+                                                         -1 = "you decide"
+      Future     (screen 9) -> FBA.setFuture(k)          FUTURES
       Finished  (screen 10) -> FBA.finishOnboarding()
 
-  The other four questions — motivation, barrier, scrolling and future self —
-  have NO field in js/account.js and this rebuild was not allowed to add one.
-  They are recorded to analytics per question, with the answer and the dwell,
-  and held for the length of the visit so screen 11 and the Back arrow work.
-  They do not survive a refresh. js/start.js says so again where it stores
-  them, and the report that shipped this says what to add to fix it.
+  ALL SIX SURVIVE A REFRESH. The four in the middle used to have no field in
+  js/account.js and lived for the length of a visit; they now have one each,
+  clamped to the data-k attributes written below, so this markup is the
+  vocabulary and the store refuses anything else. What still stops at the
+  browser is the MIRROR: firestore.rules gates that document with hasOnly()
+  and does not yet name the four, so js/profile-sync.js deliberately leaves
+  them out rather than have one unlisted key deny the whole write. Both files
+  say so where it matters.
 
   EVERY SCREEN BELOW IS IN THE MARKUP WITH ITS REAL COPY, unhidden. The script
   hides the ones it is not showing. If it never runs, or throws, the reader
@@ -621,7 +628,18 @@
   /* DailyGoal.title and DailyGoal.reinforcement. The reinforcement is shown
      one step later, on the streak screen — that delay is deliberate. */
   var GOAL_TEXT = { "5": "5 minutes", "10": "10 minutes",
-                    "20": "20 minutes", "45": "As long as it takes" };
+                    "20": "20 minutes", "45": "As long as it takes",
+                    /* FBA.GOAL_AUTO. The reader asked us to choose, so the
+                       plan says we chose rather than quoting them a number
+                       they never picked. */
+                    "-1": "A pace we pick for you" };
+
+  /* The "let Factbox decide" goal, from the store rather than as a literal,
+     so the two cannot drift. It is a real answer and 0 still means nobody
+     answered — which is why the recap below can now appear for a reader whose
+     only answer was "you pick", and say so instead of quoting five minutes. */
+  var GOAL_AUTO = -1;
+  try { if (A && typeof A.GOAL_AUTO === "number") GOAL_AUTO = A.GOAL_AUTO; } catch (e) {}
   var GOAL_REINF = {
     "5":  "Five minutes a day is a story a day. That’s the whole plan.",
     "10": "Ten minutes a day and you’ll finish a whole subject most weeks.",
@@ -844,10 +862,16 @@
      the open-ended goal gets its own phrasing. */
   function paceLine(g, s) {
     /* EDITED: s of 0 means nothing was promised, so nothing is claimed. */
+    /* "A pace we pick for you a day" is not a sentence either, so the
+       delegated goal gets its own phrasing exactly as the open-ended one
+       does. Saying "5 minutes a day" to a reader who asked us to choose would
+       be quoting them a number they went out of their way not to pick. */
     if (!s) {
+      if (g === GOAL_AUTO) return "A pace we pick for you.";
       if (g === 45) return "No timer at all.";
       return (GOAL_TEXT[String(g)] || "5 minutes") + " a day.";
     }
+    if (g === GOAL_AUTO) return "A pace we pick for you, and " + s + " days in a row.";
     if (g === 45) return "No timer at all, and " + s + " days in a row.";
     return (GOAL_TEXT[String(g)] || "5 minutes") + " a day, aiming for " + s + " days in a row.";
   }
@@ -859,7 +883,8 @@
       { label: "Picking your first story",
         done: LOAD.first ? ("First story: " + LOAD.first) : "First story picked" },
       { label: "Setting your pace",
-        done: (GOAL_TEXT[String(g)] || "5 minutes") + " a day" }
+        done: g === GOAL_AUTO ? "A pace we pick for you"
+                              : (GOAL_TEXT[String(g)] || "5 minutes") + " a day" }
     ];
   }
 

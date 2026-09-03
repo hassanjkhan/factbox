@@ -63,16 +63,16 @@
      accounts and a server behind them. Most of what it remembers about you is
      still written into your own browser, where clearing site data is the whole
      of deleting it. Some of it is not: an account, the answers you gave when
-     you started, and a payment all live somewhere your phone cannot reach. This
-     page keeps those two piles apart — what is written where, what leaves the
+     you started, what you have read, and a payment all live somewhere your
+     phone cannot reach. This page keeps those two piles apart — what is written where, what leaves the
      browser, which companies receive it, and how to be rid of each.</p>
 
   <h2>The short version</h2>
   <ul>
     <li>You can sign in with Google, or with an email address and a password. The account is held by Google Firebase; your password never reaches us.</li>
     <li>Signing in creates a record on our side under a Firebase user id. Whether you are a subscriber is written there by Stripe's webhook, and that is what makes a subscription work on a second phone.</li>
-    <li>If you are signed in, the six answers from <a href="/start.html">the opening questions</a> are copied to that record, along with your name and email address if you gave them. Signed out, they stay in this browser.</li>
-    <li>What you have read, how far into each story, and which stories you saved are written to <strong>your browser's storage only, and are never sent anywhere</strong>.</li>
+    <li>The six questions at <a href="/join">the start of signing up</a> are answered by tapping one of a fixed set of buttons, never by typing, and <strong>all six are written into this browser</strong>. If you are signed in, <strong>two of the six</strong> are also copied to your account record — the subjects you picked and the minutes a day you chose — along with your name and email address if you gave them. The other four stay on this device. Section 07 lists that record field by field.</li>
+    <li>What you have read, how far into each story, and which stories you saved are written into this browser. <strong>If you are signed in they are also written to your account</strong>, which is what carries your place in a story to a second phone. Signed out, they never leave the browser. Section 08 is the whole of it.</li>
     <li>Payment is handled by Stripe, on Stripe's own pages. Card details never touch our pages.</li>
     <li>Your restore link is a <strong>bearer token</strong>: anyone holding it has access.</li>
     <li>Every page sends events to PostHog and to Google Analytics. Once you are signed in, <strong>those events carry your Firebase user id</strong>, so they are not anonymous. There is a one-tap off switch in section 05.</li>
@@ -93,11 +93,12 @@
 
   <h2>02 · What the site stores in your browser</h2>
   <p>These are the exact keys, as written by the code. Nothing on this list is
-     read off your device by us — the site has no endpoint that uploads any of
-     them. Two of them are separately re-entered elsewhere and say so: your
-     email address goes to Stripe (section 06) and, if you are signed in, the
-     contents of <code>fb_acct_v1</code> are copied to your account record
-     (section 07).</p>
+     read off your device by anything other than the site's own code running in
+     it, and while you are signed out none of it leaves at all. Signed in,
+     three of these keys are mirrored to your account and say so:
+     <code>fb_acct_v1</code> (section 07), and <code>fb_read_v1</code> and
+     <code>fb_saved_v1</code> (section 08). Your email address is also
+     separately re-entered at Stripe (section 06).</p>
 
   <div class="wrap">
   <table>
@@ -111,23 +112,28 @@
       <tr><td class="k"><code>fb_saved_v1</code></td><td>Stories you saved, as a list of story id and a whole-second timestamp, newest first. Capped at 200 entries and about 8&#8239;KB.</td></tr>
       <tr><td class="k"><code>fb_saveprobe</code></td><td>Written and immediately deleted once per page load, purely to find out whether this browser will accept a write at all.</td></tr>
       <tr><td class="k"><code>fb_owner_v1</code></td><td>Set only if someone unlocks the site with the owner passphrase. It exists so the person who makes the site can read it on a new phone without paying.</td></tr>
-      <tr><td class="k"><code>fb_acct_v1</code></td><td>What you told the opening questions and the sign-up funnel, as one small JSON object: a randomly generated local id, the email address you typed, your first name if you gave one, what draws you to history, which of the three "sounds familiar" statements you ticked, the minutes a day and the streak you picked, the plan questions' three yes/nos, which plan you chose, whether you finished the questions, and when the record was made. Capped at 700 bytes.</td></tr>
+      <tr><td class="k"><code>fb_acct_v1</code></td><td>What you told the opening questions and the sign-up funnel, as one small JSON object: a randomly generated local id, the email address you typed, your first name if you gave one, the subjects you picked, why you are here, what usually stops you reading, how much of a day goes to scrolling, who you want to be a year from now, the minutes a day you chose (or a marker meaning you asked us to choose), which plan you chose, whether you finished the questions, and when the record was made. It also holds the answers to an earlier version of these questions, where they were given: what draws you to history, which of three "sounds familiar" statements you ticked, the streak you picked and the plan questions' three yes/nos. Every one of these is a value from a fixed list written into the page; none of them is text you typed except the email address and first name. Capped at 700 bytes.</td></tr>
       <tr><td class="k"><code>fb-sound</code></td><td>Whether you switched a story's ambient sound on or off, so it does not have to ask again.</td></tr>
       <tr><td class="k"><code>fb-sound-hint</code></td><td>Set once, after you have been shown the note about your phone's silent switch, so it is never shown twice.</td></tr>
       <tr><td class="k"><code>fb_analytics_optout_v1</code></td><td>Set to <code>1</code> if you press the off switch in §05. It is the reason the analytics scripts do not load on your next visit, so deleting it turns them back on.</td></tr>
       <tr><td class="k"><code>fb_support_last_v1</code></td><td>The time you last sent a message from <a href="/support">the support page</a>, as a number of milliseconds. It is there so a double tap does not send the same message twice.</td></tr>
+      <tr><td class="k"><code>fb_cache_owner_v1</code></td><td>The Firebase user id whose reading and saves the two keys above are currently holding. It is how the site knows not to show one person's reading to the next person who signs in on the same browser, and it is emptied on sign-out.</td></tr>
+      <tr><td class="k"><code>fb_analytics_notice_v1</code></td><td>Set once you have been shown the note about analytics, so it is not shown again.</td></tr>
       <tr><td class="k"><code>fb_access_seen_v1</code></td><td>Up to twenty characters: how access arrived, plus the first eight characters of the token it arrived with. It exists so a single unlock is counted once rather than on every page. The token itself is never sent anywhere.</td></tr>
     </tbody>
   </table>
   </div>
 
-  <p>Two further values are kept in <code>sessionStorage</code>, which your
+  <p>Four further values are kept in <code>sessionStorage</code>, which your
      browser discards when you close the tab. <code>fbx_corrected_v1</code> is
      set after the page has reloaded itself once to correct a paywall it drew
      before your subscription had loaded, so it can never do that twice.
-     <code>fb_auth_redirect_v1</code> is set while you are away at Google's
-     sign-in page, so the site knows to expect you back. Both hold the single
-     character <code>1</code>.</p>
+     <code>fbpg_pulled_v1</code> does the same job for a shelf drawn before
+     your account's reading had arrived. <code>fb_auth_redirect_v1</code> is
+     set while you are away at Google's sign-in page, so the site knows to
+     expect you back. <code>fb_live_v1</code> holds the Firebase user id this
+     tab has actually seen signed in, so a page cannot draw personal state on
+     the strength of a stale hint.</p>
   <p>Story ids are strings like <code>07B</code>. With the single exception of
      <code>fb_acct_v1</code>, no key on this list contains a name, an email
      address, or anything else that identifies you.</p>
@@ -152,7 +158,9 @@
   <p><strong>Your reading memory and your saved stories are never put in a cookie.</strong>
      They are far too large, and a cookie rides along on every request — which would
      mean sending your reading history to the web server on every page load. They stay
-     in localStorage, which is sent nowhere.</p>
+     in localStorage. Signed out, that is the end of them; signed in, they are
+     written to your account by a request that goes to Firestore and nowhere
+     else, which is section 08.</p>
   <p>Those four are the ones our own code sets. They are functional: they
      remember a purchase you made and what you typed into the funnel. They do
      not follow you to other sites and they feed no advertising system. The
@@ -224,7 +232,7 @@
     <li><code>stack_open</code>, <code>resume_used</code>, <code>stack_complete</code>, <code>stack_dropoff</code>, <code>story_time</code> — a story was opened, resumed, finished or left part-way, carrying the story id, the card reached, and how many seconds you were actually reading with the tab in front of you.</li>
     <li><code>card_view</code> — a card left the screen, carrying the story id, the card number, its narrative beat, its subject, and <strong>how many seconds it was on screen</strong>. Anything under a second is treated as a swipe passing through and is not sent.</li>
     <li><code>save_add</code>, <code>save_remove</code>, <code>library_unsave</code>, <code>library_view</code>, <code>library_own_view</code>, <code>home_view</code>, <code>rec_view</code>, <code>rec_click</code> — a story was saved or unsaved, a shelf was opened, or an end-of-story recommendation was shown or followed. These carry a story id and which slot was tapped.</li>
-    <li><code>start_step</code>, <code>start_answer</code>, <code>start_abandon</code>, <code>start_ready</code> — a question in <a href="/start.html">the opening six</a> was shown, answered or walked away from, carrying which question it was, how many seconds it took, and <strong>which answer you tapped</strong>. The answer is one of a fixed list written into the page — a topic key, or a number of minutes or days. There is no text box anywhere in that flow.</li>
+    <li><code>start_step</code>, <code>start_answer</code>, <code>start_abandon</code>, <code>start_ready</code> — a question in <a href="/join">the opening six</a> was shown, answered or walked away from, carrying which question it was, how many seconds it took, and <strong>which answer you tapped</strong>. The answer is one of a fixed list written into the page — a topic key, or a number of minutes or days. There is no text box anywhere in that flow.</li>
     <li><code>join_view</code>, <code>join_step</code>, <code>join_skip</code>, <code>join_draw</code>, <code>join_relate</code>, <code>join_time</code>, <code>join_streak</code>, <code>join_praise</code>, <code>join_plan_start</code>, <code>join_plan_ask</code>, <code>join_plan_answer</code>, <code>join_plan_built</code>, <code>join_plan_pick</code>, <code>join_signup</code>, <code>join_login_hit</code>, <code>join_login_known</code>, <code>join_login_miss</code>, <code>join_restore_use</code> — a step of the sign-up funnel was shown, answered, skipped or completed, carrying the step name and the answer key or plan name.</li>
     <li><code>signin_google</code>, <code>signin_email</code>, <code>signup_email</code>, <code>signout</code> — someone signed in, signed up or signed out. These carry no properties of their own.</li>
     <li><code>paywall_view</code>, <code>subscribe_click</code>, <code>checkout_start</code>, <code>checkout_blocked</code>, <code>billing_portal</code>, <code>access_gained</code> — the subscribe screen was shown, a plan was chosen, a checkout was started or refused, the billing portal was opened, or access began working in this browser. <code>access_gained</code> carries how it arrived: <code>stripe</code>, <code>restore</code> or <code>local</code>.</li>
@@ -282,7 +290,7 @@
 
   <h2>07 · Your account, and what is held under it</h2>
   <p>An account is a document in Google Firestore, keyed by your Firebase user
-     id. Three things write to it, and each writes somewhere different.</p>
+     id. Four things write to it, and each writes somewhere different.</p>
   <ul>
     <li><strong>Firebase Auth</strong> holds the account itself: your email
         address, whether it is verified, your display name and photo if you came
@@ -294,32 +302,61 @@
         when the period ends and when any trial ends. Nothing about a card is in
         it. A browser cannot write here — the rules forbid it — which is why it
         is worth trusting.</li>
-    <li><strong>The site itself</strong> copies what is in <code>fb_acct_v1</code>
-        to <code>customers/{your id}/profile/onboarding</code>: what draws you to
-        history, which statements sounded familiar, your minutes a day, your
-        streak, the plan questions' three answers, the plan you picked, your
-        first name and your email address, and whether the questions were
-        finished. Nothing is inferred, scored or bucketed; a question you skipped
-        produces no field at all. This happens only while you are signed in, and
-        clearing an answer clears it there too.</li>
+    <li><strong>The site itself</strong> copies part of <code>fb_acct_v1</code>
+        to <code>customers/{your id}/profile/onboarding</code>. The whole of
+        what that document may contain is fixed in our database rules, and it is
+        this and nothing else: the subjects you picked, your minutes a day, your
+        streak, what draws you to history, which statements sounded familiar,
+        the plan questions' three answers, how often you said you read, the plan
+        you picked, your first name, your email address, the random local id
+        from §02, and whether the questions were finished. Nothing is inferred,
+        scored or bucketed; a question you skipped produces no field at all, and
+        an answer you change is changed there too.</li>
+    <li><strong>The site also</strong> writes your reading and your saved
+        stories to <code>customers/{your id}/profile/reading</code>. That is
+        section 08.</li>
   </ul>
-  <p>Your reading progress is in none of these. See section 08.</p>
+  <p>Four of the six questions at <a href="/join">the start of signing up</a> —
+     why you are here, what usually stops you, how much of a day goes to
+     scrolling, and who you want to be a year from now — are <strong>not in
+     that record and are not sent anywhere</strong>. They are stored in this
+     browser only, under <code>fb_acct_v1</code>, because the rules that fix
+     the shape of the document above do not name them. Choosing "let Factbox
+     decide" rather than a number of minutes also stores nothing there. What
+     does leave, for these four, is the measurement in section 05, which
+     records which answer was tapped without being tied to that record.</p>
   <p>Story text for subscribers is served by a function of ours that verifies
      your sign-in token and reads the subscriber flag itself, rather than
      believing anything the browser says. Its ordinary server logs are Google
      Cloud's, under Google's terms.</p>
 
-  <h2>08 · Your reading, and the one box that does leave</h2>
-  <p>Your reading progress. Which stories you opened, how far into each you got,
-     which you finished, which you saved, and when. All of it is written to your
-     own browser and to nothing else. We do not have it, cannot request it, and
-     could not produce it if we were asked to, because nothing on our side stores
-     it and no page has an endpoint to send it to. The one thing that does leave
-     is the measurement in section 05, which says a story was opened and for how
-     long — not a list of what you have read.</p>
-  <p>The trade is exact and worth stating: nothing about your reading can leak
-     from us, and equally nothing about your reading can be restored by us. Clear
-     your site data and it is gone for good, on this device and every other one.</p>
+  <h2>08 · Your reading, and where it now goes</h2>
+  <p><strong>This section changed.</strong> An earlier version of this policy
+     said your reading never left your browser. That was true of an earlier
+     version of the site and it is no longer true, because reading now follows
+     an account rather than a device. What follows is what the code does today.</p>
+  <p>Your reading progress is: which stories you opened, how far into each you
+     got, how long ago you last touched each one, which you finished, and which
+     you saved. <strong>Signed out</strong>, all of it is written to your own
+     browser and to nothing else — we do not have it and no page has an endpoint
+     to send it to.</p>
+  <p><strong>Signed in</strong>, the same information is also written to
+     <code>customers/{your id}/profile/reading</code> in Firestore, under your
+     Firebase user id. It holds a story id against four numbers — the furthest
+     card, how many cards that story had, a whole-second timestamp, and a
+     finished flag — plus the list of stories you saved, and counts of both. It
+     holds nothing else; the shape is fixed in our database rules and capped in
+     size there. This is what carries your place in a story to a second phone,
+     and it is the reason signing in on a friend's phone does not show them your
+     reading: the browser's copy is tagged with the account it came from and is
+     thrown away when a different account signs in.</p>
+  <p>The trade has moved and is worth stating plainly. Your reading is now
+     restorable — sign in anywhere and it comes back — and in exchange it is now
+     something we hold, and so something that could be demanded of us or leak
+     from us. Clearing your site data no longer deletes it; section 11 says how
+     to have it deleted. The one thing that leaves in <em>both</em> cases is the
+     measurement in section 05, which says a story was opened and for how long,
+     not a list of what you have read.</p>
   <h3>What you write on the support page</h3>
   <p>What you type into the two boxes on <a href="/support">the support page</a>
      does leave your browser. Pressing Send posts what you wrote to a function of
@@ -394,12 +431,13 @@
         have an account, because access is one of those keys. Save your restore
         link first, or sign in, and it comes back.</li>
     <li><strong>What is under your account:</strong> clearing your browser does
-        <em>not</em> touch it. Your name, email address and onboarding answers
-        stay in Firestore, and your account stays in Firebase Auth, until they
-        are deleted. There is no button on the site that does this yet. Write to
+        <em>not</em> touch it. Your name, email address, onboarding answers and
+        — since reading moved to the account — your reading progress and saved
+        stories stay in Firestore, and your account stays in Firebase Auth,
+        until they are deleted. There is no button on the site that does this yet. Write to
         <a href="mailto:hello@factbox.app">hello@factbox.app</a> and we will
-        delete the account, the profile record and the subscription records under
-        it, and confirm that we have.</li>
+        delete the account, both profile records — the answers and the reading —
+        and the subscription records under it, and confirm that we have.</li>
     <li><strong>If you have written to us:</strong> a message sent from the
         support page is a document in Firestore; an email is in our inbox. Ask
         for either to be deleted and we will delete it and confirm that we

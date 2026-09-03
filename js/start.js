@@ -73,14 +73,25 @@
    new Firestore path, no second store.
 
        screen  2 interests  -> FBA.setInterests(list)   the `interests` array
+       screen  3 motivation -> FBA.setMotivation(k)     MOTIVES
+       screen  5 barrier    -> FBA.setBarrier(k)        BARRIERS
+       screen  6 scrolling  -> FBA.setScrolling(k)      SCROLLS
        screen  8 goal       -> FBA.setGoal(n)           GOALS: 5 | 10 | 20
+                                                        | -1 = "you decide"
+       screen  9 future     -> FBA.setFuture(k)         FUTURES
        screen 10 building   -> FBA.finishOnboarding()
 
-   THE FOUR THAT ARE NOT STORED: motivation, barrier, scrolling and future
-   self. js/account.js has no field for any of them, its vocabularies clamp
-   every value it does hold, and this rebuild was explicitly not allowed to
-   edit that file. The three dishonest ways out were all available and all
-   refused:
+   ALL SIX ANSWERS ARE STORED. The four in the middle used to be held in
+   `picks` for the length of the visit and nothing more: they survived Back,
+   because Back never leaves the page, and died on a refresh. They now have
+   four fields and four clamped setters of their own in js/account.js, in the
+   same shape as setDraw — the vocabulary IS the set of data-k attributes in
+   join.html, and an unknown key is refused rather than stored, so nothing on
+   this page can put a fifth answer into the record.
+
+   The three dishonest ways out that were refused when this file could not
+   edit js/account.js are still refused, and are still worth writing down,
+   because the fix was to add fields rather than to reuse the wrong ones:
 
      * squeezing them into `relates`, whose vocabulary is three statements —
        two of the five barriers map, three would be silently dropped;
@@ -91,11 +102,15 @@
        forbids in as many words: "Nothing is inferred, derived, scored or
        bucketed."
 
-   So they are recorded where they are actually actionable — one start_answer
-   each, carrying the question, the answer and the dwell — and held in `picks`
-   for the length of the visit, which is what screen 11 and the Back arrow
-   need. They do not survive a refresh. The four setters that would fix that
-   are named in the report that shipped this file.
+   THE MIRROR STOPS SHORT OF THESE FOUR. js/profile-sync.js wraps the new
+   setters, so answering schedules a write, but the document it writes is
+   `hasOnly`-gated by firestore.rules and one unlisted key rejects the whole
+   thing. Four names in the rules, four lines in profile-sync, and they go up
+   with the rest; until then localStorage and the cookie mirror hold them,
+   which is what surviving a refresh needed.
+
+   They are still measured exactly as before: one start_answer each, carrying
+   the question, the answer and the dwell. Storing is not measuring.
 
    ---------------------------------------------------------------------------
    NOTHING HERE TOUCHES MONEY. This file does not name a price, a plan or the
@@ -320,13 +335,46 @@
   /* ======================================================================
      What the reader has told us.
 
-     `interests` and `goal` are written straight through to FBA the moment
-     they are tapped. The other four have no field to be written to — see the
-     block at the top of this file — and live here only.
+     Every one of the six is written straight through to FBA the moment it is
+     tapped, and read back out of FBA on load. `picks` is the copy this screen
+     renders from, not a second store: it is repopulated from the record by
+     repaint(), and nothing here is the only place an answer lives.
      ====================================================================== */
 
   var picks = { interests: [], motivation: "", barrier: "",
                 scrolling: "", goal: "", future: "" };
+
+  /* The four single-select questions that are one FBA field each:
+
+       [ picks field, the option list, FBA getter, FBA setter ]
+
+     The goal is not in this table. "auto" is a sentinel rather than a number
+     of minutes, so it keeps the two functions below to itself. The getter and
+     setter are named rather than referenced so that an older cached
+     js/account.js without them degrades to what this file did before — the
+     answer is measured and rendered, and simply not stored — instead of
+     throwing on a tap. */
+  var HELD = [
+    ["motivation", "ob-motivation-opts", "motivation", "setMotivation"],
+    ["barrier",    "ob-barrier-opts",    "barrier",    "setBarrier"],
+    ["scrolling",  "ob-scrolling-opts",  "scrolling",  "setScrolling"],
+    ["future",     "ob-future-opts",     "future",     "setFuture"]
+  ];
+
+  function heldBy(field) {
+    var i;
+    for (i = 0; i < HELD.length; i++) { if (HELD[i][0] === field) return HELD[i]; }
+    return null;
+  }
+
+  /* Store one of the four. Silent when the setter is missing or refuses. */
+  function storeHeld(field, k) {
+    try {
+      var a = A(), row = heldBy(field);
+      if (!a || !row || typeof a[row[3]] !== "function") return;
+      a[row[3]](k);
+    } catch (e) {}
+  }
 
   function hasInterest(k) {
     try { return picks.interests.indexOf(k) !== -1; } catch (e) { return false; }
@@ -341,16 +389,28 @@
     } catch (e) {}
   }
 
-  /* "auto" is the reader saying "you decide", and js/account.js's word for a
-     question with no answer is 0 — which is also what it stores for a skip.
-     The two are indistinguishable in the record, and that is a known cost of
-     not being able to add a field. In this session they are distinct, and
-     screen 11 says "Factbox picks your pace" rather than a number. */
+  /* "auto" is the reader saying "you decide". That used to store as 0, which
+     is js/account.js's word for a question NOBODY ANSWERED, so the record
+     could not tell a considered "you pick" from a step that was never
+     reached. It now has a value of its own — FBA.GOAL_AUTO, -1 — and the two
+     are distinct everywhere, not just for the length of a visit.
+
+     The literal -1 is a fallback for an older cached js/account.js, where
+     setGoal(-1) is refused and the answer stores as nothing rather than as a
+     wrong number of minutes. */
+  function goalAuto() {
+    try {
+      var a = A();
+      if (a && typeof a.GOAL_AUTO === "number") return a.GOAL_AUTO;
+    } catch (e) {}
+    return -1;
+  }
+
   function storeGoal(k) {
     try {
       var a = A();
       if (!a) return;
-      a.setGoal(k === "auto" ? 0 : (Number(k) || 0));
+      a.setGoal(k === "auto" ? goalAuto() : (Number(k) || 0));
     } catch (e) {}
   }
 
@@ -616,7 +676,7 @@
       function (k) {
         picks[field] = k;
         markOne(boxId, k);
-        if (field === "goal") storeGoal(k);
+        if (field === "goal") storeGoal(k); else storeHeld(field, k);
       },
       function () { return !!picks[field]; });
   }
@@ -788,8 +848,9 @@
   }
 
   /* Anything this browser already said, said back, so nobody answers the same
-     question twice. Only the two that FBA can hold come back — the other four
-     are gone with the tab, which is written up at the top of this file. */
+     question twice. All six come back now, out of FBA — a refresh mid-flow
+     lands the reader on screen 1 with every answer still marked and every
+     Continue still enabled. */
   function repaint() {
     try {
       var a = A();
@@ -802,8 +863,31 @@
           }
           markMany("ob-interests-opts");
         }
+
+        /* The goal, with the sentinel turned back into the button that set
+           it. -1 is a real answer and marks "Let Factbox decide"; 0 is
+           nobody having answered and marks nothing. */
         var g = a.goal();
-        if (g) { picks.goal = String(g); markOne("ob-goal-opts", picks.goal); }
+        if (g === goalAuto()) {
+          picks.goal = "auto";
+          markOne("ob-goal-opts", "auto");
+        } else if (g) {
+          picks.goal = String(g);
+          markOne("ob-goal-opts", picks.goal);
+        }
+
+        /* The four that have one field each. An empty answer marks nothing,
+           so a step that was skipped still looks skipped. */
+        for (var j = 0; j < HELD.length; j++) {
+          try {
+            var row = HELD[j];
+            if (typeof a[row[2]] !== "function") continue;
+            var v = a[row[2]]();
+            if (!v) continue;
+            picks[row[0]] = v;
+            markOne(row[1], v);
+          } catch (e2) {}
+        }
       }
     } catch (e) {}
 

@@ -347,3 +347,107 @@ change with it:
 
 `support.html`'s own footer still reads "Last updated 2 September 2026", which is
 that page's line to change, not mine.
+
+## 9. 3 September 2026 — `privacy.html` swept again, after reading moved to the account
+
+Scope: `privacy.html`. Written alongside a change to `js/account.js`,
+`js/start.js` and `js/profile-sync.js` that gave four onboarding answers a
+place to live. `terms.html` and `support.html` were again not touched; §9.4
+lists what they now get wrong, and it is more than §8.7 recorded.
+
+### 9.1 The two errors named in the brief
+
+- **"the six answers from the opening questions"**, linking to `/start.html`
+  twice (`privacy.html:74`, `:227`). `/start` is a one-screen hand-off; the
+  questions are eleven screens at `/join`. Both links now point at `/join` and
+  the sentence says what is actually true of the six: all six are stored in the
+  browser, **two of them reach the account**, and §07 lists that record field by
+  field. There are now zero occurrences of `start.html` in the file.
+
+### 9.2 The error the brief did not name, and it was the serious one
+
+§08 was titled "Your reading, and the one box that does leave" and said, of
+reading progress: *"All of it is written to your own browser and to nothing
+else. We do not have it, cannot request it, and could not produce it if we were
+asked to."* That stopped being true when `js/progress-sync.js` shipped. For a
+signed-in reader the reading map and the saves list are written to
+`customers/{uid}/profile/reading` (`js/progress-sync.js:32,123,520-531`),
+permitted by `firestore.rules` `match /profile/{docId}` with the key list
+`schema, updatedAt, count, map, saveCount, saves`.
+
+A privacy policy that tells a reader we cannot produce their reading history,
+while we hold it, is the worst class of error this document can contain, so it
+is corrected in five places rather than one:
+
+- §08 retitled **"Your reading, and where it now goes"**, and opens by saying
+  the section changed and that the previous version described an earlier site.
+  It then splits signed-out (browser only, unchanged and still true) from
+  signed-in (also Firestore), names the four numbers held per story, and states
+  the trade in both directions — reading is now restorable, and it is now
+  something that could be demanded of us or leak from us.
+- The short version (`:75`) no longer says reading is "never sent anywhere".
+- §02's preamble no longer says "the site has no endpoint that uploads any of
+  them"; it names the three keys that are mirrored and where each goes.
+- §03's cookie note kept its true claim — reading is never put in a cookie —
+  but lost the false tail "which is sent nowhere".
+- §11 adds reading and saves to what stays in Firestore after a browser is
+  cleared, and the deletion request now covers **both** profile documents.
+
+**This supersedes the bullet at §3 line 59 of this file**, "Reading progress
+never leaves the browser, and the symmetrical consequence". That described the
+page as it stood on 2 September and is left in place as the record of it.
+
+### 9.3 What else was corrected while sweeping
+
+- **§07 was under-counting.** It said "Three things write to it" and listed
+  Firebase Auth, the Stripe webhook, and the onboarding mirror. There is a
+  fourth — the reading document — so it now says four and names it.
+- **The `fb_acct_v1` row in §02** described the old iOS-ported question set. It
+  now lists what the record actually holds, including the four answers added
+  today, and says the older fields are still carried where they were given.
+- **Three localStorage keys were missing from a table that claims to be exact**:
+  `fb_cache_owner_v1` (`js/progress.js:61`), `fb_analytics_notice_v1`
+  (`js/analytics.js:122`). The `sessionStorage` paragraph said "Two further
+  values" and named two; there are four — it was missing `fbpg_pulled_v1`
+  (`js/progress-sync.js:683`) and `fb_live_v1` (`js/progress.js:639`).
+- **The four answers that do NOT sync are now stated as such.** Motivation,
+  barrier, scrolling and future self are stored in the browser only, because
+  `firestore.rules` gates the onboarding document with `keys().hasOnly([...])`
+  and does not name them. So does "let Factbox decide", which is stored as a
+  sentinel that `js/profile-sync.js` never sends. §07 says all of this, because
+  a policy that over-claims what leaves is as wrong as one that under-claims.
+
+### 9.4 What `support.html` and `terms.html` now get wrong (not mine to edit)
+
+§8.7 listed three. There are more, and two of them are the same false claim
+this section just removed from `privacy.html`.
+
+**`support.html`** — the FAQ answers are pre-account:
+
+- `support.html:220` — "What happens to my reading progress?" answers *"It is
+  stored in your browser and sent nowhere. That means the good part — nobody, us
+  included, can see what you have read."* False for a signed-in reader.
+- `support.html:223` — *"we cannot restore it, because we never had a copy."*
+  False, and it is the opposite of the current selling point: reading follows
+  the account precisely so that it **can** be restored.
+- `support.html:224` — "It does not follow you to another phone." Signing in is
+  now exactly how it follows.
+- `support.html:270-274` — "What do you know about me?" answers *"Effectively
+  nothing… there is no server behind the sign-up form, so we never receive
+  them… Your reading never leaves your browser at all."* Three false clauses in
+  one paragraph: Firebase Auth holds the account, Firestore holds the answers
+  and the reading, and a Cloud Function holds anything typed into that very
+  page.
+
+**`terms.html`** — in addition to the three in §8.7:
+
+- `terms.html:106-110` — the "one honest mechanical note" rests on *"This site
+  has no server"*. It contradicts `terms.html:113` seven lines later, which
+  correctly says signing in gives you a real account held by Google Firebase.
+- `terms.html:126-127` — *"Your reading progress and your saved stories are
+  stored the same way, and cannot be recovered by us, because we never had
+  them."* The same false claim, in the other legal document.
+
+Neither file is in this session's scope. Both are user-facing statements about
+data handling that are now untrue, and `support.html:270-274` is the one a
+reader is most likely to go looking for.

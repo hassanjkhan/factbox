@@ -179,7 +179,23 @@
     if (!r || typeof r !== "object") return out;
 
     /* The ported iOS funnel. 0 and "" mean "not answered", which is a
-       different thing from any legal answer, so they produce no field. */
+       different thing from any legal answer, so they produce no field.
+
+       NOT HERE, AND ON PURPOSE: motivation, barrier, scrolling and future.
+       js/account.js holds all four and js/join asks all four, but the rule on
+       customers/{uid}/profile/onboarding is
+           request.resource.data.keys().hasOnly([...])
+       and a single unlisted key does not drop that key — it DENIES THE WHOLE
+       WRITE. Adding them here before the rules name them would stop mirroring
+       the answers that sync today, silently, because a denied write is
+       counted and swallowed like every other error in this file.
+
+       To land them, all three at once:
+         1. firestore.rules — add "motivation", "barrier", "scrolling",
+            "future" to the key list, plus shortStr(k, 30) for each;
+         2. EMPTY above     — four more "" entries, so clearing works;
+         3. here            — four more str(r.x, 30) lines.
+       The setters are already on WATCHED, so nothing else has to change. */
     var draw = str(r.draw, 30);                     if (draw) out.draw = draw;
     var rel  = strList(r.relates, 8, 30);           if (rel.length) out.relates = rel;
     var goal = Math.floor(Number(r.goal) || 0);     if (goal > 0) out.goalMinutes = goal;
@@ -447,7 +463,15 @@
 
   var WATCHED = ["setDraw", "setRelates", "setGoal", "setStreak",
                  "addPlanAnswer", "setInterests", "setFrequency", "setPlan",
-                 "signUp", "finishOnboarding", "forget"];
+                 "signUp", "finishOnboarding", "forget",
+                 /* The four /join answers. Wrapped so that answering one
+                    schedules a sync like every other setter — but see
+                    answers(): the payload cannot carry them until
+                    firestore.rules names them, so today these four schedule a
+                    write whose fingerprint is unchanged, and nothing is sent.
+                    They are listed now so that adding the fields is one edit
+                    in one place rather than a bug nobody finds. */
+                 "setMotivation", "setBarrier", "setScrolling", "setFuture"];
 
   function wrap() {
     var A = fba();

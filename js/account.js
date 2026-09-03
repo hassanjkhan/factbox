@@ -438,11 +438,40 @@ var FBA = (function () {
 
      The key names are shortened for the byte budget; the mapping is written
      out in ACCOUNT.md so the two sides stay joinable.
+
+     ADDED for the eleven-screen /join flow. Four of its six questions had no
+     field here, so they survived Back and died on a refresh. They are four
+     more single-select vocabularies, clamped exactly like DRAWS: the keys ARE
+     the data-k attributes in join.html, and nothing else is accepted, so the
+     DOM can never put a fifth answer in the record.
+
+       MOTIVES  ← screen 3  "why are you here"
+       BARRIERS ← screen 5  "what usually stops you"
+       SCROLLS  ← screen 6  "how long a day goes to scrolling"
+       FUTURES  ← screen 9  "a year from now"
+
+     These four are LOCAL ONLY today. js/profile-sync.js can carry them the
+     moment firestore.rules names them — see the note above the setters.
      ====================================================================== */
   var DRAWS   = ["people", "turning", "thread", "tiktok"];
   var RELATES = ["notime", "unfinished", "stories"];
-  var GOALS   = [5, 10, 20, 45];
+
+  /* -1 is the reader saying "you decide", which is a DIFFERENT answer from
+     never having been asked. 0 stays the word for unanswered, so the two can
+     no longer be confused. It is negative on purpose: every real value here
+     is a count of minutes, and there is no minute count this could be
+     mistaken for. js/profile-sync.js only mirrors a goal above zero, so this
+     sentinel never reaches Firestore, where the rules require >= 0. */
+  var GOAL_AUTO = -1;
+  var GOALS   = [GOAL_AUTO, 5, 10, 20, 45];
   var STREAKS = [7, 14, 30, 50];
+
+  var MOTIVES  = ["smarter", "understand", "conversation", "less_scrolling",
+                  "missed_school"];
+  var BARRIERS = ["forget", "bored", "where_to_start", "no_time", "never_return"];
+  var SCROLLS  = ["lt30", "m30_60", "h1_2", "h2_3", "too_much"];
+  var FUTURES  = ["know_more", "remember", "storyteller", "replaced_scrolling",
+                  "routine"];
 
   /* Clamp a number to one of a fixed set. 0 means "not answered", which is
      distinct from every legal value, so a skipped step stays skipped. */
@@ -513,9 +542,16 @@ var FBA = (function () {
      about:
        d  what draws them to history: people | turning | thread | tiktok
        r  which of the three "sound familiar" statements they ticked
-       g  daily minutes they committed to: 5 | 10 | 20 | 45 (45 = open-ended)
+       g  daily minutes they committed to: 5 | 10 | 20 | 45 (45 = open-ended),
+          or -1 for "let Factbox decide". 0 still means nobody answered.
        s  streak they are aiming for, in days: 7 | 14 | 30 | 50
        q  the plan-loader's three yes/no answers, as 1s and 0s
+
+     The four /join questions that used to live only in a tab:
+       m  motivation — why they are here
+       b  barrier    — what usually stops them
+       c  scrolling  — how much of a day goes to the phone
+       u  future     — who they want to be a year from now
 
      `i` and `f` are LEGACY but permanent. The funnel no longer asks which
      subjects you like or how often you read — the iOS flow does not, and
@@ -529,7 +565,8 @@ var FBA = (function () {
 
   function blank() {
     return { v: 1, a: "", e: "", n: "", i: [], f: "", p: "", o: 0, t: 0,
-             d: "", r: [], g: 0, s: 0, q: [] };
+             d: "", r: [], g: 0, s: 0, q: [],
+             m: "", b: "", c: "", u: "" };
   }
 
   function nowSec() { try { return Math.floor(Date.now() / 1000); } catch (e) { return 0; } }
@@ -558,6 +595,10 @@ var FBA = (function () {
       r.d = DRAWS.indexOf(String(o.d)) !== -1 ? String(o.d) : "";
       r.g = pickFrom(GOALS, o.g);
       r.s = pickFrom(STREAKS, o.s);
+      r.m = MOTIVES.indexOf(String(o.m))  !== -1 ? String(o.m) : "";
+      r.b = BARRIERS.indexOf(String(o.b)) !== -1 ? String(o.b) : "";
+      r.c = SCROLLS.indexOf(String(o.c))  !== -1 ? String(o.c) : "";
+      r.u = FUTURES.indexOf(String(o.u))  !== -1 ? String(o.u) : "";
       if (o.r && o.r.length) {
         for (var j = 0; j < o.r.length && r.r.length < RELATES.length; j++) {
           var s = o.r[j];
@@ -731,9 +772,11 @@ var FBA = (function () {
     } catch (e) { return false; }
   }
 
-  /* 0 means unanswered. goalMinutes() is the raw answer; the caller decides
-     what to show when it is 0, because "five minutes" as a DEFAULT and
-     "five minutes" as a CHOICE are different sentences. */
+  /* 0 means unanswered, -1 (GOAL_AUTO) means "let Factbox decide" — a real
+     answer, and no longer the same value as never having been asked. goal()
+     is the raw answer; the caller decides what to show for each, because
+     "five minutes" as a DEFAULT, "five minutes" as a CHOICE and "you pick"
+     are three different sentences. */
   function goal() { try { return rec().g || 0; } catch (e) { return 0; } }
   function setGoal(n) {
     try {
@@ -757,6 +800,47 @@ var FBA = (function () {
       return true;
     } catch (e) { return false; }
   }
+
+  /* --- the four /join answers -------------------------------------------
+     Motivation, barrier, scrolling and future self. One shape, four times:
+     clamp to the vocabulary, save, return true only when the value was legal.
+     An empty value clears the answer, exactly like setDraw, so a skipped step
+     stays indistinguishable from one never reached.
+
+     WHY A HELPER AND NOT FOUR COPIES OF setDraw: four identical bodies drift.
+     The behaviour is setDraw's, unchanged — the vocabulary and the one-letter
+     field are the only things that vary.
+
+     THESE FOUR DO NOT REACH FIRESTORE YET. js/profile-sync.js wraps them, so
+     answering one schedules a sync, but its payload cannot carry them until
+     firestore.rules names them: that document's key list is `hasOnly(...)`,
+     and one unlisted key rejects the WHOLE write — which would silently stop
+     mirroring the answers that do sync today. The three edits go together:
+     four keys in firestore.rules, four lines in profile-sync's answers(),
+     four in its EMPTY. Until then this record is the only home they have, and
+     it survives a refresh, which is what it was missing. */
+  function setOne(set, field, k) {
+    try {
+      var v = String(k == null ? "" : k);
+      if (v && set.indexOf(v) === -1) return false;
+      var r = rec();
+      r[field] = v;
+      save();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function motivation() { try { return rec().m || ""; } catch (e) { return ""; } }
+  function setMotivation(k) { return setOne(MOTIVES, "m", k); }
+
+  function barrier() { try { return rec().b || ""; } catch (e) { return ""; } }
+  function setBarrier(k) { return setOne(BARRIERS, "b", k); }
+
+  function scrolling() { try { return rec().c || ""; } catch (e) { return ""; } }
+  function setScrolling(k) { return setOne(SCROLLS, "c", k); }
+
+  function future() { try { return rec().u || ""; } catch (e) { return ""; } }
+  function setFuture(k) { return setOne(FUTURES, "u", k); }
 
   /* The plan loader's three yes/nos. Both answers lead to the same place —
      they are theatre, and the iOS file says so — but they are the reader's,
@@ -824,11 +908,13 @@ var FBA = (function () {
       return { accountId: r.a, email: r.e, name: r.n, interests: r.i.slice(0),
                frequency: r.f, plan: r.p, onboarded: r.o === 1, at: r.t * 1000,
                draw: r.d, relates: r.r.slice(0), goal: r.g, streak: r.s,
-               planAnswers: r.q.slice(0) };
+               planAnswers: r.q.slice(0),
+               motivation: r.m, barrier: r.b, scrolling: r.c, future: r.u };
     } catch (e) {
       return { accountId: "", email: "", name: "", interests: [], frequency: "",
                plan: "", onboarded: false, at: 0,
-               draw: "", relates: [], goal: 0, streak: 0, planAnswers: [] };
+               draw: "", relates: [], goal: 0, streak: 0, planAnswers: [],
+               motivation: "", barrier: "", scrolling: "", future: "" };
     }
   }
 
@@ -842,7 +928,14 @@ var FBA = (function () {
     goal: goal, setGoal: setGoal,
     streak: streak, setStreak: setStreak,
     planAnswers: planAnswers, addPlanAnswer: addPlanAnswer,
+    /* onboarding — the four /join questions */
+    motivation: motivation, setMotivation: setMotivation,
+    barrier: barrier, setBarrier: setBarrier,
+    scrolling: scrolling, setScrolling: setScrolling,
+    future: future, setFuture: setFuture,
     DRAWS: DRAWS, RELATES: RELATES, GOALS: GOALS, STREAKS: STREAKS,
+    MOTIVES: MOTIVES, BARRIERS: BARRIERS, SCROLLS: SCROLLS, FUTURES: FUTURES,
+    GOAL_AUTO: GOAL_AUTO,
     /* onboarding — legacy, still read by other layers. Keep defined. */
     interests: interests, setInterests: setInterests,
     frequency: frequency, setFrequency: setFrequency,

@@ -242,11 +242,14 @@
       html +=
         '<div class="empty">' +
           '<h2>Your library is empty</h2>' +
-          '<p>Everything you read shows up here — where you got to, what you ' +
-          'finished, and anything you saved for later. Nothing is sent anywhere; ' +
-          'it is all kept in this browser.</p>' +
+          /* No paragraph. The heading has already said the only thing there
+             is to say, and the sentence that used to sit here explained where
+             reading is stored to somebody who has not read anything yet. It
+             was also, by the end, untrue: reading and saves now go to the
+             account as well as to this browser. Removing it is a correction
+             as much as a trim, and privacy.html §08 is where that belongs. */
           '<div class="emptygo">' +
-            '<a class="go" href="/explore">Explore all 51 stories</a>' +
+            '<a class="go" href="/explore">Explore all stories</a>' +
           '</div>' +
         '</div>' +
         section("Start with these", "free to read", free);
@@ -328,6 +331,34 @@
               rerender();
             });
           }
+        } catch (e) {}
+
+        /* And the same again for the two stores this shelf draws from, which
+           retires a page reload.
+
+           js/progress-sync.js repaints a shelf that is showing a departed
+           reader's ticks by reloading the whole page — but only as a last
+           resort, and its own guard says why: it returns early when
+           `p.listeners() > 1`, on the grounds that something else will
+           redraw. Subscribing here IS that something. The shelf redraws in
+           place, the reader keeps their scroll position, and the one-shot
+           reload stops being reachable from /library.
+
+           Registered after the first render for the same reason as FBX.paint
+           above: a listener that can run before the page has drawn is how
+           /stories once reloaded itself forever.
+
+           FBS is filtered on `why`. "local" is this tab's own save or unsave,
+           which the click handler has already redrawn; redrawing it twice is
+           work nobody asked for. Every other reason — the account answering,
+           a sign-out clearing the cache — is news this shelf has not drawn
+           yet. FBP is not filtered: a tick is only ever written by reading a
+           story, which does not happen on this page, so there is no local
+           echo to skip. Neither callback writes anything, so neither can
+           feed itself. */
+        try {
+          if (window.FBP && FBP.onChange) FBP.onChange(function () { rerender(); });
+          if (window.FBS && FBS.onChange) FBS.onChange(function (why) { if (why !== "local") rerender(); });
         } catch (e) {}
       } catch (e) {
         fail("Something went wrong drawing your library. Reload the page.");
