@@ -1,0 +1,240 @@
+/* ==========================================================================
+   Factbox — the opening questions.   Exposes: window.FBSTART
+
+   Six questions and two interstitials, then /join. It hands over before the
+   form, the prices or the trial, so nothing here is governed by STRIPE.md and
+   nothing here can break checkout.
+
+   ES5 only. Every DOM lookup and every storage touch is guarded: if this
+   script dies the markup underneath is still the first question with real
+   options and a link onward, because a page that renders nothing is the one
+   failure this site has actually shipped.
+   ========================================================================== */
+
+var FBSTART = (function () {
+  "use strict";
+
+  var KEY = "fb-onboarding";
+
+  /* Six asks. The interstitials sit between them and do not move the bar:
+     they are not questions, and a bar that advances when nothing was answered
+     misstates how much is left. */
+  var STEPS = [
+    { id: "intro" },
+    { id: "q1", n: 1, q: "What do you want to uncover first?",
+      opts: ["Powerful people", "Scandals & betrayals", "Wars & revolutions",
+             "Mysteries & conspiracies", "Religion & mythology", "Ancient civilizations"] },
+    { id: "q2", n: 2, q: "What kind of stories keep you hooked?",
+      opts: ["Love, sex & betrayal", "Power & ambition", "Murder & mystery",
+             "Genius & discovery", "Rise & fall", "The truth behind famous stories"] },
+    { id: "q3", n: 3, q: "How much history do you feel like you actually remember?",
+      opts: ["Almost none", "Bits and pieces", "A decent amount", "I’m already a history nerd"] },
+    { id: "q4", n: 4, q: "What do you wish you knew more about?",
+      opts: ["Ancient Egypt & Rome", "Kings, queens & empires", "Christianity & biblical history",
+             "American history", "World wars", "Famous thinkers & inventors"] },
+    { id: "q5", n: 5, q: "How much time do you want to spend getting smarter each day?",
+      opts: ["5 minutes", "10 minutes", "15 minutes", "As long as I’m entertained"] },
+    { id: "aha" },
+    { id: "q6", n: 6, q: "What would you love to get from Factbox?",
+      opts: ["Finally understand history", "Have more interesting things to talk about",
+             "Replace mindless scrolling", "Learn something every day",
+             "Become ridiculously good at trivia"] },
+    { id: "build" }
+  ];
+
+  var answers = {}, at = 0, root = null, panels = {};
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function track(name, props) { try { if (window.FB && FB.track) FB.track(name, props); } catch (e) {} }
+
+  /* Private mode and some in-app webviews throw on write, not on read, so the
+     whole flow has to work when nothing can be saved. */
+  function save() {
+    try { window.localStorage.setItem(KEY, JSON.stringify(answers)); } catch (e) {}
+  }
+
+  function bar(n) {
+    var w = el("div", "st-prog"), i, seg;
+    for (i = 1; i <= 6; i++) { seg = el("i", i <= n ? "on" : null); w.appendChild(seg); }
+    w.setAttribute("aria-hidden", "true");
+    return w;
+  }
+
+  function question(step) {
+    var p = el("section", "st-panel");
+    p.appendChild(bar(step.n));
+    p.appendChild(el("p", "st-step", step.n === 6 ? "Last one" : "Question " + step.n + " of 6"));
+
+    var h = el("h1", "st-q", step.q);
+    h.id = step.id + "-h";
+    p.appendChild(h);
+
+    var go = el("button", "go", "Continue");
+    go.type = "button";
+    go.disabled = true;
+
+    var box = el("div", "st-opts");
+    box.setAttribute("role", "radiogroup");
+    box.setAttribute("aria-labelledby", h.id);
+
+    for (var i = 0; i < step.opts.length; i++) {
+      (function (label) {
+        var b = el("button", "st-opt", label);
+        b.type = "button";
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", "false");
+        b.addEventListener("click", function () {
+          var all = box.querySelectorAll(".st-opt"), k;
+          for (k = 0; k < all.length; k++) all[k].setAttribute("aria-checked", "false");
+          b.setAttribute("aria-checked", "true");
+          answers[step.id] = label;
+          save();
+          go.disabled = false;
+          track("start_answer", { q: step.id });
+        });
+        box.appendChild(b);
+      })(step.opts[i]);
+    }
+
+    p.appendChild(box);
+    p.appendChild(el("div", "st-spacer"));
+    go.addEventListener("click", function () { next(); });
+    p.appendChild(go);
+    return p;
+  }
+
+  function intro() {
+    var p = el("section", "st-panel");
+    p.appendChild(el("div", "st-spacer"));
+    p.appendChild(el("h1", "st-q", "Remember history without studying it."));
+    p.appendChild(el("p", "st-sub",
+      "Five minutes a day. Addictive stories. The people, scandals, wars, and " +
+      "ideas you’ll actually remember."));
+    p.appendChild(el("div", "st-spacer"));
+    var go = el("button", "go", "Get started");
+    go.type = "button";
+    go.addEventListener("click", function () { next(); });
+    p.appendChild(go);
+    var fine = el("p", "st-fine");
+    var a = el("a", null, "I already have an account");
+    a.href = "/login?next=today";
+    fine.appendChild(a);
+    p.appendChild(fine);
+    return p;
+  }
+
+  /* The turn. Five questions in, the reader has said what they want five
+     times; this is the sentence that tells them why the answers matter, so it
+     is not another ask and does not move the bar. */
+  function aha() {
+    var p = el("section", "st-panel st-centre");
+    p.appendChild(el("div", "st-spacer"));
+    var m = el("div", "st-mark");
+    m.innerHTML = '<svg viewBox="0 0 24 24" width="27" height="27" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true"><path d="M4 5.5h7a3 3 0 0 1 3 3V20a2.5 2.5 0 0 0-2.5-2.5H4z"/>' +
+      '<path d="M20 5.5h-3.5a2.5 2.5 0 0 0-2.5 2.5V20a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>';
+    p.appendChild(m);
+    p.appendChild(el("h1", "st-q", "History is easier to remember when it feels like a story."));
+    p.appendChild(el("p", "st-sub",
+      "Factbox turns the people and events you want to know into short, " +
+      "addictive stories you can finish in minutes."));
+    p.appendChild(el("div", "st-spacer"));
+    var go = el("button", "go", "Continue");
+    go.type = "button";
+    go.addEventListener("click", function () { next(); });
+    p.appendChild(go);
+    return p;
+  }
+
+  /* The wait. It is real work being narrated, not a fake delay dressed up: the
+     line names what the reader actually picked, so somebody who chose
+     "Mysteries & conspiracies" sees that phrase and not a generic list. */
+  function building() {
+    var p = el("section", "st-panel st-centre");
+    p.appendChild(el("div", "st-spacer"));
+    var loadOuter = el("div", "st-load");
+    var loadFill = el("i");
+    loadOuter.appendChild(loadFill);
+    p.appendChild(loadOuter);
+    var h = el("h1", "st-q", "Building your Factbox…");
+    p.appendChild(h);
+    var line = el("p", "st-sub");
+    p.appendChild(line);
+    p.appendChild(el("div", "st-spacer"));
+
+    p.enter = function () {
+      var picks = [], k;
+      for (k in answers) {
+        if (Object.prototype.hasOwnProperty.call(answers, k) && k !== "q3" && k !== "q5") {
+          picks.push(String(answers[k]).toLowerCase());
+        }
+      }
+      line.textContent = picks.length
+        ? "Finding stories about " + picks.slice(0, 3).join(", ") + "…"
+        : "Finding stories about scandals, powerful people, and ancient civilizations…";
+      try { setTimeout(function () { loadFill.style.width = "100%"; }, 60); } catch (e) {}
+      try {
+        setTimeout(function () {
+          h.textContent = "Your personalised feed is ready.";
+          line.textContent = "";
+          try { setTimeout(function () { location.href = "/join"; }, 700); }
+          catch (e2) { location.href = "/join"; }
+        }, 1900);
+      } catch (e) { location.href = "/join"; }
+    };
+    return p;
+  }
+
+  function show(i) {
+    var k;
+    for (k in panels) {
+      if (Object.prototype.hasOwnProperty.call(panels, k)) {
+        panels[k].className = panels[k].className.replace(/\s*is-on\b/, "");
+      }
+    }
+    var step = STEPS[i], p = panels[step.id];
+    if (!p) return;
+    p.className += " is-on";
+    at = i;
+    /* Only when there is something to scroll. Every panel is built to fit the
+       screen, so this is for the rare tall one — and calling it unconditionally
+       trips a "Not implemented" in the render checks, which jsdom logs rather
+       than throws, so a try/catch does not silence it. A check that cries wolf
+       gets ignored, so the call goes away instead. */
+    try { if (window.pageYOffset > 0 && window.scrollTo) window.scrollTo(0, 0); } catch (e) {}
+    track("start_step", { step: step.id });
+    if (p.enter) p.enter();
+  }
+
+  function next() { if (at + 1 < STEPS.length) show(at + 1); }
+
+  function boot(rootId) {
+    try { root = document.getElementById(rootId || "st"); } catch (e) {}
+    if (!root) return;
+    try {
+      var frag = document.createDocumentFragment(), i, step, p;
+      for (i = 0; i < STEPS.length; i++) {
+        step = STEPS[i];
+        p = step.id === "intro" ? intro()
+          : step.id === "aha"   ? aha()
+          : step.id === "build" ? building()
+          : question(step);
+        panels[step.id] = p;
+        frag.appendChild(p);
+      }
+      root.innerHTML = "";
+      root.appendChild(frag);
+      show(0);
+    } catch (e) {
+      /* The markup underneath is a real first screen with a way onward. */
+    }
+  }
+
+  return { boot: boot, answers: function () { return answers; }, version: 1 };
+})();

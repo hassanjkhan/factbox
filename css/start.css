@@ -1,0 +1,86 @@
+/* ==========================================================================
+   Factbox — the opening questions.
+
+   Six questions, two interstitials, then the existing signup. It is a separate
+   page from join.html on purpose: that file carries the form, the three prices
+   and the trial, and STRIPE.md governs anything that touches them. This asks
+   what someone wants and hands over; it never sees money.
+
+   One screen at a time, each one whole — no scrolling inside a question, so a
+   reader always sees every option and the button at once.
+   ========================================================================== */
+
+.st{
+  min-height:100vh; min-height:100dvh;
+  max-width:560px; margin:0 auto;
+  padding:var(--top-safe) 20px calc(var(--bottom-safe) / 2 + 20px);
+  display:flex; flex-direction:column; gap:18px;
+}
+
+.st-panel{display:none; flex-direction:column; gap:18px; flex:1 1 auto}
+.st-panel.is-on{display:flex}
+
+/* Progress across the six questions. The interstitials do not advance it —
+   they are not asks, and a bar that moves when nothing was answered is a lie
+   about how much is left. */
+.st-prog{display:flex; gap:5px; flex:none}
+.st-prog i{flex:1; height:4px; border-radius:999px; background:rgba(255,247,237,.16)}
+.st-prog i.on{background:var(--coral)}
+
+.st-step{
+  margin:0; font-size:.72rem; font-weight:800; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dimmer);
+}
+.st-q{
+  margin:0; font-size:clamp(1.4rem,5.6vw,1.75rem); font-weight:850;
+  line-height:1.16; letter-spacing:-.02em; text-wrap:balance;
+}
+.st-sub{margin:0; font-size:1rem; line-height:1.5; color:var(--dim)}
+
+.st-opts{display:flex; flex-direction:column; gap:10px}
+.st-opt{
+  display:flex; align-items:center; width:100%; text-align:left;
+  min-height:56px; padding:0 18px; border:0; border-radius:16px;
+  background:var(--raise); box-shadow:inset 0 0 0 1px var(--hair);
+  color:var(--parchment); font-family:inherit;
+  font-size:1rem; font-weight:750; letter-spacing:-.005em;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:transform .12s ease, box-shadow .16s ease, background .16s ease;
+}
+.st-opt:active{transform:scale(.99)}
+.st-opt[aria-checked="true"]{
+  background:rgba(255,122,92,.15); color:#FFD9CF;
+  box-shadow:inset 0 0 0 1.5px rgba(255,122,92,.55);
+}
+
+.st-spacer{flex:1 1 auto; min-height:8px}
+.st .go{flex:none}
+.st .go[disabled]{opacity:.45}
+
+/* The two screens that are not questions. */
+.st-mark{
+  width:56px; height:56px; margin:0 auto; border-radius:16px;
+  display:grid; place-items:center;
+  background:rgba(255,122,92,.15); color:var(--coral); flex:none;
+}
+.st-centre{text-align:center}
+
+.st-load{
+  width:100%; height:6px; border-radius:999px; flex:none;
+  background:rgba(255,247,237,.14); overflow:hidden;
+}
+.st-load i{
+  display:block; height:100%; width:8%; border-radius:999px; background:var(--coral);
+  transition:width .45s cubic-bezier(.3,.7,.3,1);
+}
+
+.st-fine{
+  margin:0; text-align:center; font-size:.85rem; font-weight:700; color:var(--dim);
+}
+.st-fine a{color:var(--dim); text-decoration:underline}
+
+@media (prefers-reduced-motion:reduce){
+  .st-opt{transition:none}
+  .st-opt:active{transform:none}
+  .st-load i{transition:none}
+}
