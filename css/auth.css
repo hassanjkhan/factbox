@@ -42,7 +42,7 @@ body{background:var(--ground); color:var(--parchment)}
 .au-wait[hidden]{display:none}
 .au-spin{
   flex:0 0 18px; width:18px; height:18px; border-radius:50%;
-  border:2px solid rgba(255,247,237,.18); border-top-color:var(--coral);
+  border:2px solid rgba(255,247,237,.18); border-top-color:var(--accent-ink);
   animation:au-turn .8s linear infinite;
 }
 @keyframes au-turn{to{transform:rotate(360deg)}}
@@ -213,7 +213,7 @@ body{background:var(--ground); color:var(--parchment)}
 .au-who b{color:var(--parchment); font-weight:700; word-break:break-word}
 
 @media (prefers-reduced-motion:reduce){
-  .au-spin{animation:none; border-top-color:var(--coral)}
+  .au-spin{animation:none; border-top-color:var(--accent-ink)}
   .au-prov, .au-2nd{transition:none}
 }
 

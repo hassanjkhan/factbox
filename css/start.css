@@ -82,8 +82,8 @@
 }
 .st-opt:active{transform:scale(.99)}
 .st-opt[aria-checked="true"]{
-  background:rgba(255,122,92,.15); color:#FFD9CF;
-  box-shadow:inset 0 0 0 1.5px rgba(255,122,92,.55);
+  background:rgba(76,155,232,.15); color:var(--accent-ink);
+  box-shadow:inset 0 0 0 1.5px rgba(76,155,232,.55);
 }
 
 .st-spacer{flex:1 1 auto; min-height:8px}
@@ -95,7 +95,7 @@
 .st-mark{
   width:56px; height:56px; margin:0 auto; border-radius:16px;
   display:grid; place-items:center;
-  background:rgba(255,122,92,.15); color:var(--coral); flex:none;
+  background:rgba(76,155,232,.15); color:var(--accent-ink); flex:none;
 }
 .st-centre{text-align:center}
 
@@ -143,7 +143,7 @@
 .st-proof-r{display:flex; align-items:center; gap:13px}
 .st-proof-r b{
   flex:0 0 62px; font-size:1.22rem; font-weight:700; letter-spacing:-.02em;
-  color:var(--coral); font-variant-numeric:tabular-nums;
+  color:var(--accent-ink); font-variant-numeric:tabular-nums;
 }
 .st-proof-r.is-big b{font-size:1.42rem}
 .st-proof-t{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:6px}
