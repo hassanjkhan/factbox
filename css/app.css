@@ -10,19 +10,35 @@
    ========================================================================== */
 
 :root{
-  color-scheme:dark;
+  color-scheme:light;
 
-  /* Theme.swift palette, same values the app and the story page use */
-  --parchment:#FFF7ED; --ink:#3E2F4A; --ink-soft:#8B7B93;
-  --coral:#FF7A5C; --coral-deep:#E85F41; --crimson:#A81F38;
-  --teal:#4FC3B8; --butter:#FFD36E; --lilac:#B79CED;
-  --night:#1B1620;
+  /* Paper, not night. The six colours: cream, navy, bright blue, light blue,
+     sage, dark brown.
 
-  --ground:#0E0B12;
-  --raise:#181320;
-  --hair:rgba(255,247,237,.13);
-  --dim:rgba(255,247,237,.62);
-  --dimmer:rgba(255,247,237,.52);
+     The token NAMES are kept even though their meaning inverted — --parchment
+     is the reading colour and is now navy, not near-white. Renaming it would
+     have touched several hundred declarations across nine stylesheets for no
+     gain; the value is the thing that matters and this note is the warning.
+
+     The reader keeps the dark treatment. See html.reader below: a full-bleed
+     museum painting with words over it needs a dark ground and light type, and
+     that is true whatever colour the rest of the site is. */
+  --parchment:#1D3159;                     /* navy — text, on paper */
+  --ink:#443A3A; --ink-soft:#6E625F;       /* dark brown, and it softened */
+  --coral:#4C9BE8;                         /* bright blue — fills and buttons */
+  --accent-ink:#215A97;                    /* the same blue as TYPE: 5.8:1 on
+                                              the card, where #4C9BE8 is 2.4 */
+  --coral-deep:#3B82CC; --crimson:#A81F38;
+  --teal:#8CA75D;                          /* sage — the second accent */
+  --butter:#95C8F7;                        /* light blue */
+  --lilac:#B79CED;
+  --night:#1D3159;
+
+  --ground:#DCD5C8;                        /* cream — the page */
+  --raise:#EDE8DE;                         /* a card lifted off it */
+  --hair:rgba(29,49,89,.16);
+  --dim:rgba(29,49,89,.66);
+  --dimmer:rgba(29,49,89,.5);
 
   /* DM Sans, four weights: 700 headlines and card titles, 600 buttons,
      500 labels and metadata, 400 body. The fallbacks are the rounded stack it
@@ -40,6 +56,27 @@
 
   --tap:44px;
   --pill:999px;
+}
+
+/* --------------------------------------------------------------------------
+   The reader, and only the reader.
+
+   read.html sets this class. Every pane there is a museum painting filling the
+   screen with words laid over it: that wants a dark ground and light type no
+   matter what colour the browse pages are, and the end card sits in the same
+   swipe deck, so it has to match or the last swipe of every story is a white
+   flash. Same tokens, night values.
+   -------------------------------------------------------------------------- */
+html.reader{
+  color-scheme:dark;
+  --parchment:#FFF7ED;
+  --accent-ink:#4C9BE8;                    /* on night the bright one IS the
+                                              readable one — 6.4:1 on #0E0B12 */
+  --ground:#0E0B12;
+  --raise:#181320;
+  --hair:rgba(255,247,237,.13);
+  --dim:rgba(255,247,237,.62);
+  --dimmer:rgba(255,247,237,.52);
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -68,7 +105,7 @@ img{max-width:100%;display:block}
 .mast{padding:22px 2px 6px}
 .mark{
   font-size:.82rem; font-weight:700; letter-spacing:.34em;
-  color:var(--coral); margin:0 0 14px;
+  color:var(--accent-ink); margin:0 0 14px;
 }
 .mast h1{
   font-size:clamp(1.9rem,7vw,2.5rem); font-weight:700; margin:0 0 10px;
@@ -149,7 +186,7 @@ img{max-width:100%;display:block}
   background:var(--coral); color:#2A1109;
   font-family:var(--ui); font-size:1.02rem; font-weight:600;
   padding:16px 20px; min-height:var(--tap);
-  box-shadow:0 8px 26px rgba(232,95,65,.34);
+  box-shadow:0 8px 26px rgba(59,130,204,.34);
   transition:transform .15s ease, filter .15s ease;
 }
 .go:active{transform:translateY(1px) scale(.99)}
@@ -211,7 +248,7 @@ img{max-width:100%;display:block}
 }
 .copy .eyebrow{
   font-size:.7rem; font-weight:500; letter-spacing:.2em;
-  color:var(--coral); margin:0 0 10px;
+  color:var(--accent-ink); margin:0 0 10px;
 }
 .copy h2{
   font-size:clamp(1.35rem,5.2vw,1.7rem); font-weight:700; margin:0;
@@ -373,7 +410,7 @@ html.is-endcard .fb-sound-note{
 .readbar{
   position:absolute; left:0; bottom:0; height:3px;
   background:var(--coral); border-radius:0 3px 3px 0;
-  box-shadow:0 0 10px rgba(232,95,65,.55);
+  box-shadow:0 0 10px rgba(59,130,204,.55);
 }
 /* Finished covers step back so the unread ones carry the eye. The check is the
    signal; dimming alone would read as "locked", which is a different thing. */
@@ -385,7 +422,7 @@ html.is-endcard .fb-sound-note{
   font-size:.72rem; font-weight:700; display:grid; place-items:center;
   box-shadow:0 2px 8px rgba(0,0,0,.4);
 }
-.card.is-reading .meta{color:var(--coral); font-weight:600}
+.card.is-reading .meta{color:var(--accent-ink); font-weight:600}
 
 /* "Pick up where you left off" — one wide cover, not a grid cell, because it
    is a single answer to a single question. */
@@ -399,7 +436,7 @@ html.is-endcard .fb-sound-note{
 .resume .plate{width:64px; flex:0 0 64px; border-radius:10px; aspect-ratio:3/4}
 .resume .t{min-width:0}
 .resume .t b{display:block; font-size:.98rem; font-weight:700; line-height:1.25}
-.resume .t span{font-size:.8rem; color:var(--coral); font-weight:500}
+.resume .t span{font-size:.8rem; color:var(--accent-ink); font-weight:500}
 
 /* --------------------------------------------------------------------------
    The restore link. Access lives in one browser's storage, so this link is the
@@ -529,7 +566,7 @@ html.fb-hdr .acct{visibility:hidden}
 .acct .acct-up{
   padding:0 13px; border-radius:var(--pill);
   box-shadow:inset 0 0 0 1px var(--hair);
-  color:var(--coral); font-weight:700;
+  color:var(--accent-ink); font-weight:700;
 }
 /* The name is text, brighter than a tab, truncated rather than allowed to
    push the tabs sideways on a 390px screen. */

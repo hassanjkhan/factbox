@@ -86,7 +86,7 @@ body{background:var(--ground); color:var(--parchment)}
    never the only signal: the field keeps focus and the button stays live. */
 .jn-err{
   margin:10px 2px 0; font-size:.86rem; font-weight:600; line-height:1.45;
-  color:var(--coral);
+  color:var(--accent-ink);
 }
 .jn-err[hidden]{display:none}
 
@@ -118,7 +118,7 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .jn-opt[aria-pressed="true"],
 .jn-opt[aria-checked="true"]{
-  background:rgba(255,122,92,.13);
+  background:rgba(76,155,232,.13);
   box-shadow:inset 0 0 0 2px var(--coral);
 }
 .jn-opt[aria-pressed="true"] span,
@@ -142,7 +142,7 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .jn-plan:active{transform:scale(.99)}
 .jn-plan[aria-checked="true"]{
-  background:rgba(255,122,92,.13);
+  background:rgba(76,155,232,.13);
   box-shadow:inset 0 0 0 2px var(--coral);
 }
 .jn-plan .jn-per{
@@ -164,7 +164,7 @@ body{background:var(--ground); color:var(--parchment)}
 }
 /* The best-value marker is the one piece of emphasis on this screen, and it
    is a statement of arithmetic — the cheapest month — not a scarcity claim. */
-.jn-plan.is-best{box-shadow:inset 0 0 0 1px rgba(255,122,92,.45)}
+.jn-plan.is-best{box-shadow:inset 0 0 0 1px rgba(76,155,232,.45)}
 .jn-plan.is-best[aria-checked="true"]{box-shadow:inset 0 0 0 2px var(--coral)}
 .jn-badge{
   position:absolute; right:14px; top:-9px;
@@ -216,7 +216,7 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-aside b{display:block; font-size:.95rem; font-weight:700; margin-bottom:5px}
 .jn-aside p{margin:0 0 8px; font-size:.86rem; line-height:1.5; color:var(--dim)}
 .jn-aside p:last-child{margin-bottom:0}
-.jn-aside a{color:var(--coral); font-weight:600}
+.jn-aside a{color:var(--accent-ink); font-weight:600}
 .jn-aside input{
   width:100%; margin:2px 0 9px; padding:11px 12px;
   border:0; border-radius:10px; background:rgba(255,247,237,.07);
@@ -248,8 +248,8 @@ body{background:var(--ground); color:var(--parchment)}
    -------------------------------------------------------------------------- */
 .jn-reinf{
   margin:16px 0 0; padding:12px 14px;
-  border-radius:14px; background:rgba(255,122,92,.10);
-  box-shadow:inset 0 0 0 1px rgba(255,122,92,.26);
+  border-radius:14px; background:rgba(76,155,232,.10);
+  box-shadow:inset 0 0 0 1px rgba(76,155,232,.26);
   font-size:.9rem; font-weight:600; line-height:1.45; color:var(--parchment);
 }
 .jn-reinf[hidden]{display:none}
@@ -262,13 +262,13 @@ body{background:var(--ground); color:var(--parchment)}
    -------------------------------------------------------------------------- */
 .jn-echo{
   margin:20px 0 0; padding:24px 20px;
-  border-radius:22px; background:rgba(255,122,92,.11);
-  box-shadow:inset 0 0 0 1px rgba(255,122,92,.24);
+  border-radius:22px; background:rgba(76,155,232,.11);
+  box-shadow:inset 0 0 0 1px rgba(76,155,232,.24);
   text-align:center;
 }
 .jn-echo .jn-eyebrow{
   margin:0 0 12px; font-size:.68rem; font-weight:700; letter-spacing:.2em;
-  color:var(--coral); text-transform:uppercase;
+  color:var(--accent-ink); text-transform:uppercase;
 }
 .jn-echo h2{
   font-size:clamp(1.5rem,6.2vw,2rem); font-weight:700; margin:0 0 12px;
@@ -289,7 +289,7 @@ body{background:var(--ground); color:var(--parchment)}
    is content hides here — only the response to an action not yet taken.
    -------------------------------------------------------------------------- */
 .jn-opt .reply{display:none}
-.jn-opt[aria-pressed="true"] .reply{display:block; color:var(--coral)}
+.jn-opt[aria-pressed="true"] .reply{display:block; color:var(--accent-ink)}
 
 /* --------------------------------------------------------------------------
    Streak rows. A day count in a badge, then the adjective the reader is
@@ -313,8 +313,8 @@ body{background:var(--ground); color:var(--parchment)}
   font-size:.55rem; font-weight:700; letter-spacing:.09em;
   text-transform:uppercase; color:var(--dimmer);
 }
-.jn-opt[aria-checked="true"] .jn-day{background:rgba(255,122,92,.24); color:var(--coral)}
-.jn-opt[aria-checked="true"] .jn-day u{color:var(--coral)}
+.jn-opt[aria-checked="true"] .jn-day{background:rgba(76,155,232,.24); color:var(--accent-ink)}
+.jn-opt[aria-checked="true"] .jn-day u{color:var(--accent-ink)}
 
 /* --------------------------------------------------------------------------
    The plan loader. Three bars that fill, stall, ask one thing, then finish.
@@ -364,7 +364,7 @@ body{background:var(--ground); color:var(--parchment)}
 .jn-q[hidden]{display:none}
 .jn-q .jn-q-eyebrow{
   margin:0 0 6px; font-size:.64rem; font-weight:700; letter-spacing:.18em;
-  color:var(--coral); text-transform:uppercase;
+  color:var(--accent-ink); text-transform:uppercase;
 }
 .jn-q .jn-q-t{
   margin:0 0 12px; font-size:1rem; font-weight:700; line-height:1.35;
@@ -394,6 +394,6 @@ body{background:var(--ground); color:var(--parchment)}
   color:var(--dimmer);
 }
 .jn-haveacct a{
-  color:var(--coral); font-weight:600; text-decoration:none;
+  color:var(--accent-ink); font-weight:600; text-decoration:none;
   display:inline-block; padding:9px 6px; min-height:var(--tap); line-height:26px;
 }

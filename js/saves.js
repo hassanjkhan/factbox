@@ -298,8 +298,8 @@ var FBS = (function () {
           b.innerHTML = mark(on);
           b.title = on ? "Saved to your library" : "Save to your library";
           b.style.cssText = BASE + (on
-            ? "background:rgba(255,122,92,.16);color:#FF7A5C;" +
-              "border:1px solid rgba(255,122,92,.42);"
+            ? "background:rgba(76,155,232,.16);color:#4C9BE8;" +
+              "border:1px solid rgba(76,155,232,.42);"
             : "background:rgba(20,16,26,.86);color:#FFF7ED;" +
               "border:1px solid rgba(255,247,237,.22);");
         } catch (e) {}

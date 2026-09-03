@@ -22,7 +22,7 @@
 
 /* The streak line. Numbers a reader collects, stated once, small. */
 .td-stats{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-.td-streak{display:inline-flex; align-items:center; gap:6px; color:var(--coral);
+.td-streak{display:inline-flex; align-items:center; gap:6px; color:var(--accent-ink);
   font-size:.95rem; font-weight:700}
 .td-dot{width:3px; height:3px; border-radius:999px; background:rgba(255,247,237,.3)}
 .td-stat{font-size:.95rem; font-weight:600; color:var(--dim)}
@@ -53,7 +53,7 @@
 .td-hero-body{padding:18px 20px 20px; display:flex; flex-direction:column; gap:9px}
 .td-eyebrow{
   font-size:.72rem; font-weight:500; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--coral); margin:0;
+  color:var(--accent-ink); margin:0;
 }
 .td-hook{
   margin:0; font-size:1.24rem; font-weight:700; line-height:1.2; letter-spacing:-.015em;
@@ -96,7 +96,7 @@
 .td-cat{
   display:block; margin-top:8px;
   font-size:.66rem; font-weight:500; letter-spacing:.15em; text-transform:uppercase;
-  color:var(--coral);
+  color:var(--accent-ink);
 }
 .td-tile b{
   display:block; margin-top:4px;
