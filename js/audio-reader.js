@@ -543,11 +543,26 @@
   function probe() {
     if (probed || everLoaded) return;
     probed = true;
+
+    /* Two beds used to be fetched here, so that one missing file could not
+       retire the whole system on its own. The second one was never heard: it
+       is a different bed from the one playing, chosen precisely because it is
+       different. At a mean of 132KB that was a sixth of a megabyte spent to
+       answer a question, on every story, competing for bandwidth with the
+       painting the reader is actually looking at.
+
+       So it asks in order instead. The live bed is needed anyway, so the
+       first probe is free; a second is fetched ONLY if the first failed,
+       which is the only case where the extra file ever told us anything. */
     var a = liveKey || anyOtherKey(null);
-    var b = anyOtherKey(a) || CFG["default"];
-    Promise.all([load(a), load(b)]).then(function () {
-      if (!everLoaded) retire("No sound available");
-      else paint();                 /* drop the busy pulse once anything lands */
+    load(a).then(function () {
+      if (everLoaded) { paint(); return; }   /* drop the busy pulse           */
+      var b = anyOtherKey(a) || CFG["default"];
+      if (!b || b === a) { retire("No sound available"); return; }
+      load(b).then(function () {
+        if (!everLoaded) retire("No sound available");
+        else paint();
+      });
     });
   }
 

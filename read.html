@@ -164,10 +164,16 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
         ' data-card="' + n + '"' +
         ' data-cam="' + (n % 6) + '">' +
         '<div class="art">' +
+          /* Only the first card ships with a src. Every other painting is
+             held in data-plate until the window below reaches it — see
+             "Paging the paintings". The fallback is carried on the element
+             too, because by the time onerror fires the stack it belongs to
+             is long out of scope. */
           '<img alt="" decoding="async"' +
-            (n === 0 ? ' fetchpriority="high"' : ' loading="lazy"') +
-            ' src="/img/cards/' + FB.esc(plate) + '.webp"' +
-            ' onerror="this.onerror=null;this.src=\'/img/stacks/' + FB.esc(stack.img) + '.webp\'">' +
+            (n === 0 ? ' fetchpriority="high" src="/img/cards/' + FB.esc(plate) + '.webp"'
+                     : ' data-plate="/img/cards/' + FB.esc(plate) + '.webp"') +
+            ' data-fallback="/img/stacks/' + FB.esc(stack.img) + '.webp"' +
+            ' onerror="this.onerror=null;this.src=this.getAttribute(\'data-fallback\')">' +
         '</div>' +
         '<div class="copy">' +
           '<h2>' + FB.esc(c.head) + '</h2>' + body + cite +
@@ -320,17 +326,82 @@ read a story. <a href="/stories" style="color:#FF7A5C">All stories</a></p></nosc
        observer's first tick, and — the lesson from shipping a wordless page —
        nothing that can throw runs before this point. */
     var beats = [].slice.call(deck.querySelectorAll(".beat, .pane"));
+
+    /* ----------------------------------------------------------------------
+       Paging the paintings.
+
+       A story is eight to thirteen cards and every card is a painting; the
+       mean is 210KB and the worst is 449KB, so opening one used to mean
+       committing to one to three megabytes of pictures the reader may never
+       scroll to. The card text is not the problem and is not paged — the
+       whole story's copy is about 12KB in one file, and splitting that into
+       pages would cost more in round trips than it could ever save.
+
+       So: card 0 has a src in the markup and is preloaded in the head. Every
+       other painting waits in data-plate until the reader is within AHEAD
+       cards of it, which keeps roughly two loading in front of them at all
+       times — far enough that the next card is decoded before it is reached,
+       near enough that reaching card three has never fetched card ten.
+
+       Loaded plates are never unloaded. Coming back up a story you have just
+       read should cost nothing, and an <img> whose src is removed is a blank
+       frame the moment it scrolls back into view.
+       ---------------------------------------------------------------------- */
+    var AHEAD = 2;
+    function page(from) {
+      try {
+        var i, hi = Math.min(beats.length - 1, from + AHEAD);
+        /* One behind as well: scrolling back up must never show an empty
+           frame, and it is one request, already in cache in the common case. */
+        for (i = Math.max(0, from - 1); i <= hi; i++) {
+          var img = beats[i] && beats[i].querySelector("img[data-plate]");
+          if (!img) continue;
+          img.src = img.getAttribute("data-plate");
+          img.removeAttribute("data-plate");
+          /* The card being read outranks the ones being fetched ahead of it. */
+          try { img.setAttribute("fetchpriority", i === from ? "high" : "low"); } catch (e) {}
+        }
+      } catch (e) { pageEverything(); }
+    }
+    /* The escape hatch. If anything above throws, or no observer ever fires,
+       a reader must not be left scrolling through empty frames — so every
+       remaining plate is loaded outright. Slow beats broken. */
+    function pageEverything() {
+      try {
+        var all = deck.querySelectorAll("img[data-plate]"), j;
+        for (j = 0; j < all.length; j++) {
+          all[j].src = all[j].getAttribute("data-plate");
+          all[j].removeAttribute("data-plate");
+        }
+      } catch (e) {}
+    }
+
     if (window.IntersectionObserver) {
       io = new IntersectionObserver(function (es) {
         for (var k = 0; k < es.length; k++) {
           es[k].target.classList.toggle("live", es[k].isIntersecting);
+          if (es[k].isIntersecting) {
+            var at = beats.indexOf(es[k].target);
+            if (at > -1) page(at);
+          }
         }
       }, { threshold: 0.55 });
       for (var b = 0; b < beats.length; b++) io.observe(beats[b]);
+      page(0);
+      /* A card that is 55% on screen is what marks live, and a reader who
+         never quite gets one there — a short last card, an odd viewport —
+         would page nothing. Scroll is the coarser, always-true signal. */
+      deck.addEventListener("scroll", function () {
+        try {
+          var h = deck.clientHeight || 1;
+          page(Math.round(deck.scrollTop / h));
+        } catch (e) {}
+      }, { passive: true });
     } else {
       /* No observer: mark them all live rather than none. Everything degrades
          to "always on", which is worse for battery and correct for reading. */
       for (var b2 = 0; b2 < beats.length; b2++) beats[b2].classList.add("live");
+      pageEverything();
     }
     if (beats[0]) {
       requestAnimationFrame(function () { beats[0].classList.add("live"); });
