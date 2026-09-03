@@ -25,24 +25,42 @@ Every commit from `bab525b` to `79d84aa`. Highlights, newest first:
   and per-control events, onboarding answer + dwell + abandon.
 - Paper/DM Sans repaint; reader stays night. `/firststory` asks for the signup.
 
-## Half-finished in the working tree — DO NOT PUSH AS IS
+## Everything is pushed. Working tree is clean.
 
-Check `git status` first; these were live when the budget ran out.
+The last commit is `805f68b`. Two large pieces landed after the first draft of
+this file:
 
-| Files | State |
-|---|---|
-| `js/today.js`, `css/today.css` | **Instagram-style mosaic, mid-build.** Its own last note: "rows collapse at 4 columns and the last row leaves holes". `/explore` still renders and passes checks, but the mosaic is not finished. Either finish it or `git checkout` those two files. |
-| `join.html`, `css/join.css`, `start.html`, `js/start.js` | **Onboarding rebuild, mid-flight.** `join.html` links `/css/join.css` which may not exist — a 404 on every load. Fix that first whichever way you go. |
-| `js/progress.js`, `js/saves.js`, `js/progress-sync.js`, `firestore.rules` | **Reading progress and saves moving to Firestore.** Unverified. |
+- **Onboarding rebuilt at `/join`** — eleven screens, `/start` retired to a
+  hand-off. The questions/money boundary is one div and the four money panels
+  are byte-identical to what they were. **No fabricated statistic ships**:
+  `RECALL_CLAIM_PCT` defaults to `null` and the screen counts 450 real cards
+  instead.
+- **Reading and saves moved to the account.** Signed out now shows nothing.
+  Firestore is the record, localStorage a cache tagged with the uid that owns
+  it. This was the live privacy bug and it is fixed.
 
-## The bug that is still live and matters most
+**Discarded deliberately:** an unfinished Instagram-style mosaic for the
+Explore grid (`js/today.js`, `css/today.css` reverted to HEAD). Its own last
+note was that rows collapse at four columns and the last row leaves holes.
+Redo it from scratch; the brief is in the session.
 
-**Signed-out readers see the previous reader's history.** `/explore` and
-`/library` show finished ticks, progress bars and saved stories from whoever
-last used the browser, because both live in localStorage with no notion of
-who wrote them. On a shared or public machine that is somebody else's
-activity on display. The fix is the Firestore work above: account is the
-record, browser is a cache, clear on sign-out, paint from cache then correct.
+## Known gaps left by the two big pieces
+
+- **Four onboarding answers are not persisted.** Motivation, barrier,
+  scrolling and future-self fire analytics with answer and dwell, and survive
+  Back, but not a refresh — `js/account.js` was off-limits to that agent and
+  its setters clamp against fixed vocabularies. Adding four clamped setters
+  there is the fix, and it is small.
+- **`/privacy` is now inaccurate again**: it says "the six answers from the
+  opening questions" and links to `/start.html` twice.
+- **Two optional one-liners** were verified but not applied, to retire a
+  fallback reload — the exact code is in the session report for `js/library.js`
+  (~line 328) and `js/today.js` (end of `decorate()`).
+- A test account is live in production auth:
+  `progress-cache-test@example.com`, uid `uM7ZQHcGAPRrjA5ngfzSBRQPr1n2`.
+  Delete it and its `profile/reading` document when convenient.
+- Four cosmetic `/stories` links remain in `join.html`'s money panels. They
+  work through the forwarder; `/join` is the last page not swept.
 
 ## Not started
 
