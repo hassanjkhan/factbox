@@ -536,16 +536,36 @@ const QUERIES = {
      from that file's paint(): data-fbt="sound_on" / "sound_off" mirroring
      aria-pressed. That file belongs to another hand, so it is requested, not
      edited, and until it lands the dashboard tile has to read "sound toggled". */
+  /* Three control names, not one, and the reason matters.
+
+     This query was first written against `fb-sound`, which never shipped: the
+     click listener walks up to the nearest ancestor with an id, and that is
+     #fb-rail, so every historical press was recorded as `fb_rail` — one
+     undifferentiated number that could not say whether sound went on or off.
+     js/audio-reader.js now sets data-fbt to the state the press PRODUCES, so
+     new presses arrive as `sound_on` (a play) or `sound_off` (a mute).
+
+     `fb_rail` is kept as its own column rather than folded into the total.
+     Those taps are real presses and dropping them would understate use before
+     the fix, but they cannot be split, and adding them to either side would
+     invent a direction nobody measured. The dashboard shows them separately
+     and says why. */
   audio_usage: {
     params: ["days"],
     build: (p) => ({
-      columns: ["sound_taps", "sound_users", "readers", "story_opens"],
+      columns: ["plays", "mutes", "undirected_legacy_taps",
+                "sound_users", "readers", "story_opens"],
       sql:
         "SELECT" +
         " countIf(event = 'ui_click'" +
-        "   AND toString(properties.control) = 'fb-sound') AS sound_taps," +
+        "   AND toString(properties.control) = 'sound_on') AS plays," +
+        " countIf(event = 'ui_click'" +
+        "   AND toString(properties.control) = 'sound_off') AS mutes," +
+        " countIf(event = 'ui_click'" +
+        "   AND toString(properties.control) = 'fb_rail') AS undirected_legacy_taps," +
         " count(DISTINCT if(event = 'ui_click'" +
-        "   AND toString(properties.control) = 'fb-sound', person_id, NULL)) AS sound_users," +
+        "   AND toString(properties.control) IN ('sound_on','sound_off','fb_rail')," +
+        "   person_id, NULL)) AS sound_users," +
         " count(DISTINCT if(event = 'stack_open', person_id, NULL)) AS readers," +
         " countIf(event = 'stack_open') AS story_opens" +
         " FROM events" +
@@ -1095,14 +1115,29 @@ function shape(name, rows) {
 
   if (name === "audio_usage") {
     const one = rows[0] || {};
-    const users = Number(one.sound_users || 0);
+    const users   = Number(one.sound_users || 0);
     const readers = Number(one.readers || 0);
-    return [
-      { metric: "sound_taps",  label: "Sound toggled",              value: Number(one.sound_taps || 0) },
-      { metric: "sound_users", label: "People who toggled sound",   value: users },
-      { metric: "readers",     label: "People who opened a story",  value: readers },
-      { metric: "share_pct",   label: "Share who touched the sound", value: pct(users, readers) }
+    const plays   = Number(one.plays || 0);
+    const mutes   = Number(one.mutes || 0);
+    const legacy  = Number(one.undirected_legacy_taps || 0);
+    const out = [
+      { metric: "plays", label: "Turned sound ON",  value: plays },
+      { metric: "mutes", label: "Muted the sound",  value: mutes }
     ];
+    /* Only shown when there are any. A permanent zero row headed "direction
+       not recorded" invites the question every time the page is opened, long
+       after the answer stopped being interesting. */
+    if (legacy) {
+      out.push({ metric: "undirected_legacy_taps",
+                 label: "Presses before the split (direction not recorded)",
+                 value: legacy });
+    }
+    out.push(
+      { metric: "sound_users", label: "People who touched the sound",  value: users },
+      { metric: "readers",     label: "People who opened a story",     value: readers },
+      { metric: "share_pct",   label: "Share who touched the sound",   value: pct(users, readers) }
+    );
+    return out;
   }
 
   if (name === "onboarding_funnel") {

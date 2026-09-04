@@ -1,0 +1,429 @@
+/* ==========================================================================
+   Factbox — /admin/dashboard
+
+   Loaded by exactly one page and by nothing else. Every class here is
+   namespaced `dsh-`, for two reasons that have both cost this repo a day:
+
+     1. app.css already styles bare names — .card, .grid, .count, .meta, .t,
+        .fine, .row, .go, .pane, .back, .copy. A data page wants half of those
+        words. Reusing one inherits a layout written for a shelf of covers,
+        which is how a whole page ended up centred once with every structural
+        check green.
+
+     2. tools/check-regressions.js builds its `[hidden]` twin check from the
+        UNION of every css/*.css and every top-level page. A rule in here
+        giving a visible `display:` to a name that a DIFFERENT page hides with
+        the hidden attribute turns that page's element visible and fails the
+        check with this file's name nowhere in the message. `dsh-` cannot
+        collide with anything: nothing else in the repo uses the prefix.
+
+   NO COLOUR IS DEFINED HERE. Every value is a token from app.css. The
+   measured figures quoted below are against the real composited ground
+   (--raise #F1EBDF inside a panel, --ground #E7E0D3 for the page):
+
+     --ink      on --raise  11.21:1     body and every number in a table
+     --dim      on --raise   6.8:1      column labels, secondary copy
+     --dimmer   on --raise   5.4:1      the quietest line that is still words
+     --accent-ink on --raise 5.79:1     links, the sorted column, chart axes
+     --crimson  on --raise   6.06:1     a drop-off, and only a drop-off
+     --teal-ink on --raise   7.44:1     the second line on a chart
+
+   --coral is a FILL (2.40:1 on --raise), so it fills bars and never writes a
+   word. A bar drawn in it carries a --coral-deep stroke (5.44:1) so the shape
+   itself clears the 3:1 that a meaningful graphic needs; the number is also
+   written beside every bar in --ink, because a chart you cannot read a value
+   off is decoration.
+   ========================================================================== */
+
+/* ---- The [hidden] rule, in one line ------------------------------------
+   An author `display:` beats the user agent's `[hidden]{display:none}` —
+   author sheets outrank UA before specificity is consulted — so an element
+   with `hidden` set and a class that sets a display stays on screen. That
+   family has bitten this repo five times.
+
+   This sheet loads on one page, so a blanket rule is safe here in a way it
+   would not be in app.css, and it cannot be forgotten when a class is added
+   six months from now. The explicit twins below it are not redundant: they
+   are what tools/check-regressions.js reads, and they document the intent at
+   the rule that created the risk.
+
+   `display:none` rules are exempt from that checker by design, and this one
+   IS display:none, so it adds nothing to the risky set it guards against.
+   ---------------------------------------------------------------------- */
+[hidden]{display:none !important}
+
+/* ==========================================================================
+   Page frame
+   ========================================================================== */
+
+/* Wider than .lib's 900px on purpose: this is a table of fourteen columns
+   read on a desk, not a shelf of covers read on a phone. It still has to
+   survive 375px, which is what the scroll boxes below are for. */
+.dsh{
+  min-height:100vh; min-height:100dvh;
+  padding:var(--top-safe) 18px var(--bottom-safe);
+  max-width:1280px; margin:0 auto;
+}
+
+.dsh-sub{
+  margin:6px 2px 0; max-width:62ch;
+  font-size:var(--fs-note); color:var(--dim); line-height:var(--lh-body);
+}
+
+/* The one place this page uses the display serif, and it uses it the way the
+   rest of the site does: on the headline and nowhere else. */
+.dsh h1{
+  margin:14px 2px 0;
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:var(--fs-h1); letter-spacing:var(--ls-head); line-height:var(--lh-head);
+}
+
+/* ==========================================================================
+   The gate
+
+   Four mutually exclusive panels and never a blank screen. A visitor who is
+   not an admin gets a sentence, not a spinner that never stops.
+   ========================================================================== */
+
+.dsh-gate{margin:22px 0 0}
+.dsh-gate[hidden]{display:none}
+
+/* Left, not centred. The masthead above it is hard against the left margin,
+   and a centred card under a left-aligned headline reads as two designs. */
+.dsh-panel{
+  display:block;
+  max-width:560px; margin:0;
+  padding:22px 20px;
+  border-radius:16px; background:var(--raise);
+  box-shadow:var(--shadow-1), inset 0 0 0 1px var(--hair);
+}
+.dsh-panel[hidden]{display:none}
+
+.dsh-panel h2{
+  margin:0 0 8px; font-size:var(--fs-lead); font-weight:var(--w-head);
+  letter-spacing:var(--ls-title);
+}
+.dsh-say{
+  margin:0; color:var(--dim);
+  font-size:var(--fs-note); line-height:var(--lh-body);
+}
+.dsh-say + .dsh-say{margin-top:10px}
+
+.dsh-actions{
+  display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 0;
+}
+.dsh-actions[hidden]{display:none}
+
+/* A button and a link that look the same, because on this page they do the
+   same job. Both clear the 44px tap target the rest of the site uses. */
+.dsh-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:var(--tap); padding:11px 18px;
+  border:0; border-radius:var(--pill); cursor:pointer;
+  background:var(--tint-2); color:var(--ink);
+  font-family:var(--ui); font-size:var(--fs-note); font-weight:var(--w-strong);
+  text-decoration:none;
+}
+.dsh-btn[hidden]{display:none}
+.dsh-btn:hover{background:var(--tint-3)}
+.dsh-btn-go{
+  background:var(--coral); color:var(--on-accent);
+  box-shadow:var(--shadow-go);
+}
+.dsh-btn-go:hover{background:var(--coral)}
+
+/* ==========================================================================
+   The date range, shared by every section
+   ========================================================================== */
+
+.dsh-main{display:block}
+.dsh-main[hidden]{display:none}
+
+.dsh-bar{
+  display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px;
+  margin:20px 0 0; padding:14px 14px 15px;
+  border-radius:14px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.dsh-bar[hidden]{display:none}
+
+.dsh-field{display:flex; flex-direction:column; gap:5px}
+.dsh-field[hidden]{display:none}
+
+.dsh-field label{
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--dimmer);
+}
+
+/* font-family is set explicitly: a form control does not inherit it, and the
+   date inputs came out in the platform sans beside DM Sans everywhere else. */
+.dsh-input,
+.dsh-select{
+  font-family:var(--ui); font-size:var(--fs-note); color:var(--ink);
+  background:var(--menu); border:1px solid var(--hair); border-radius:10px;
+  padding:9px 11px; min-height:38px; max-width:100%;
+}
+.dsh-input{min-width:150px}
+.dsh-select{min-width:150px}
+
+/* A field that takes the spare width of the control bar.
+
+   .dsh-grow goes on the FIELD and never on the control inside it. .dsh-field
+   is a COLUMN flex container, so `flex:1 1 220px` on its child sets a
+   220px basis along the column — a height — and the story picker rendered as
+   a 220px-tall select. The control fills the field's width instead. */
+.dsh-grow{flex:1 1 220px; min-width:0}
+.dsh-grow > .dsh-select,
+.dsh-grow > .dsh-input{width:100%; min-width:0}
+
+.dsh-range{
+  margin:10px 2px 0;
+  font-size:var(--fs-meta); color:var(--dimmer); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ==========================================================================
+   A section
+   ========================================================================== */
+
+.dsh-sec{display:block}
+.dsh-sec[hidden]{display:none}
+
+.dsh-sec .sechead h2{font-size:var(--fs-h3)}
+
+/* The line that says what the section answers. It is not decoration: half of
+   these numbers are ambiguous without the question they answer. */
+.dsh-q{
+  margin:-6px 2px 12px; max-width:70ch;
+  font-size:var(--fs-note); color:var(--dim); line-height:var(--lh-body);
+}
+
+/* Loading, empty and error all render here, and one of them always does. */
+.dsh-state{
+  display:block; margin:0 0 12px; padding:13px 15px;
+  border-radius:12px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  font-size:var(--fs-note); color:var(--dim); line-height:var(--lh-body);
+}
+.dsh-state[hidden]{display:none}
+.dsh-state b{color:var(--ink); font-weight:var(--w-strong)}
+/* A failure is the one thing on this page allowed to be the stop colour. */
+.dsh-state.dsh-bad{color:var(--crimson)}
+.dsh-state.dsh-bad b{color:var(--crimson)}
+
+/* ==========================================================================
+   Headline numbers
+   ========================================================================== */
+
+.dsh-kpis{
+  display:grid; gap:10px; margin:0 0 14px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+}
+.dsh-kpis[hidden]{display:none}
+
+.dsh-kpi{
+  display:block; padding:13px 14px;
+  border-radius:12px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.dsh-kpi[hidden]{display:none}
+
+.dsh-kpi-n{
+  display:block; font-size:var(--fs-h2); font-weight:var(--w-head);
+  letter-spacing:var(--ls-head); line-height:var(--lh-head);
+  font-variant-numeric:tabular-nums; color:var(--ink);
+}
+.dsh-kpi-l{
+  display:block; margin-top:4px;
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
+}
+
+/* ==========================================================================
+   The horizontal scroll box
+
+   Wide content scrolls inside its own box. The page body never scrolls
+   sideways — that rule is what keeps this usable at 375px, and it applies to
+   the charts as much as to the tables, because an SVG scaled down to a third
+   of its width has 5px type on it and is a picture of some numbers rather
+   than the numbers.
+   ========================================================================== */
+
+.dsh-scroll{
+  display:block; overflow-x:auto; overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  border-radius:14px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.dsh-scroll[hidden]{display:none}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+.dsh-tbl{
+  border-collapse:collapse; width:100%; min-width:520px;
+  font-size:var(--fs-note);
+}
+.dsh-tbl[hidden]{display:none}
+
+.dsh-tbl th,
+.dsh-tbl td{
+  padding:10px 14px; text-align:left; vertical-align:baseline;
+  border-bottom:1px solid var(--hair);
+  white-space:nowrap;
+}
+.dsh-tbl thead th{
+  position:sticky; top:0; z-index:1;
+  background:var(--menu);
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--dimmer);
+  padding:0;
+}
+.dsh-tbl tbody tr:last-child td{border-bottom:0}
+
+/* Every number right-aligned and tabular, so a column of them can be read
+   down as a column rather than as fourteen separate strings. */
+.dsh-tbl .dsh-n{text-align:right; font-variant-numeric:tabular-nums; color:var(--ink)}
+.dsh-tbl thead th.dsh-n .dsh-sort{justify-content:flex-end}
+
+/* The first column is the name of the thing, and it is the one column allowed
+   to wrap and to be wide. */
+.dsh-tbl .dsh-name{
+  white-space:normal; min-width:180px; max-width:420px;
+  font-weight:var(--w-strong); color:var(--ink);
+}
+.dsh-tbl .dsh-id{
+  font-size:var(--fs-meta); color:var(--dimmer); font-weight:var(--w-body);
+}
+
+/* The sort control is a real button inside the th: it is the thing you click,
+   so it must be reachable by keyboard and must say what it will do. */
+.dsh-sort{
+  display:flex; align-items:center; gap:6px; width:100%;
+  padding:11px 14px; min-height:40px;
+  border:0; background:none; cursor:pointer;
+  font:inherit; color:inherit; letter-spacing:inherit; text-transform:inherit;
+  text-align:inherit;
+}
+.dsh-sort[hidden]{display:none}
+.dsh-sort:hover{color:var(--ink)}
+.dsh-tbl thead th[aria-sort="ascending"] .dsh-sort,
+.dsh-tbl thead th[aria-sort="descending"] .dsh-sort{color:var(--accent-ink)}
+
+/* The arrow is aria-hidden and the th carries aria-sort, so a screen reader
+   is told the sort once rather than reading a caret. */
+.dsh-caret{font-size:var(--fs-micro); opacity:0}
+.dsh-tbl thead th[aria-sort="ascending"] .dsh-caret,
+.dsh-tbl thead th[aria-sort="descending"] .dsh-caret{opacity:1}
+
+.dsh-tbl tbody tr:hover td{background:var(--tint)}
+/* The story the reader has open in section 2, marked in section 1. */
+.dsh-tbl tbody tr.dsh-on td{background:var(--accent-wash)}
+
+/* A cell that is a proportion gets a bar behind the number. It is a fill at
+   16% over the row, which is a texture rather than a colour, and the number
+   in front of it is --ink either way. */
+.dsh-cell-bar{
+  position:relative; display:block;
+  padding:2px 0;
+}
+.dsh-cell-bar i{
+  position:absolute; left:0; top:0; bottom:0; z-index:0;
+  display:block; background:var(--accent-wash); border-radius:3px;
+}
+.dsh-cell-bar span{position:relative; z-index:1}
+
+/* ==========================================================================
+   Charts
+
+   Inline SVG, drawn by js/dashboard.js at the pixel width of its container
+   and redrawn when that changes, so nothing is ever scaled: 13px type stays
+   13px type at 375 and at 1920. No CDN, no library — this site loads no
+   third-party JavaScript and is not going to start.
+
+   Colour lives here rather than in the drawing code so the tokens stay in one
+   file and a repaint reaches the charts.
+   ========================================================================== */
+
+.dsh-chart{
+  display:block; padding:14px 0 4px;
+}
+.dsh-chart[hidden]{display:none}
+.dsh-chart svg{display:block}
+
+.dsh-fill{fill:var(--coral); stroke:var(--coral-deep); stroke-width:1}
+.dsh-fill-2{fill:var(--teal); stroke:var(--teal-ink); stroke-width:1}
+.dsh-track{fill:var(--tint-2)}
+
+.dsh-line{fill:none; stroke:var(--accent-ink); stroke-width:2;
+          stroke-linejoin:round; stroke-linecap:round}
+.dsh-line-2{fill:none; stroke:var(--teal-ink); stroke-width:2; stroke-dasharray:5 4;
+            stroke-linejoin:round; stroke-linecap:round}
+.dsh-dot{fill:var(--accent-ink)}
+.dsh-dot-2{fill:var(--teal-ink)}
+.dsh-rule{stroke:var(--hair); stroke-width:1}
+.dsh-axis{stroke:var(--tint-3); stroke-width:1}
+
+/* Type inside a chart. --fs-* are rem, and an SVG <text> takes a CSS
+   font-size like anything else, so these track the reader's own text size. */
+.dsh-t{font-family:var(--ui); font-size:var(--fs-meta); font-weight:var(--w-label);
+       fill:var(--ink); font-variant-numeric:tabular-nums}
+.dsh-t-dim{font-family:var(--ui); font-size:var(--fs-fine); font-weight:var(--w-label);
+           fill:var(--dimmer); font-variant-numeric:tabular-nums}
+.dsh-t-drop{font-family:var(--ui); font-size:var(--fs-fine); font-weight:var(--w-strong);
+            fill:var(--crimson); font-variant-numeric:tabular-nums}
+
+/* The key under a two-line chart. */
+.dsh-key{
+  display:flex; flex-wrap:wrap; gap:6px 18px; margin:8px 2px 0;
+  font-size:var(--fs-meta); color:var(--dim); font-weight:var(--w-label);
+}
+.dsh-key[hidden]{display:none}
+.dsh-key span{display:inline-flex; align-items:center; gap:7px}
+.dsh-key i{
+  display:inline-block; width:16px; height:3px; border-radius:2px;
+  background:var(--accent-ink);
+}
+.dsh-key i.dsh-key-2{background:var(--teal-ink)}
+.dsh-key i.dsh-key-fill{height:11px; width:11px; border-radius:3px;
+  background:var(--coral); box-shadow:inset 0 0 0 1px var(--coral-deep)}
+
+/* A standing caveat under a section, for a question the data cannot answer.
+   It is not an error, so it is not the stop colour; it is a fact about the
+   measurement and it reads like one. */
+.dsh-note{
+  display:block; margin:12px 0 0; padding:12px 14px;
+  border-radius:12px; background:var(--tint);
+  border-left:3px solid var(--accent-ink);
+  font-size:var(--fs-meta); color:var(--dim); line-height:var(--lh-body);
+}
+.dsh-note[hidden]{display:none}
+.dsh-note b{color:var(--ink); font-weight:var(--w-strong)}
+
+/* ==========================================================================
+   Small screens
+
+   It is a data page, so the desk is what matters — but nothing here may break
+   on a phone. At 375 the control bar stacks, the tables and the charts scroll
+   inside their own boxes, and the page body still does not move sideways.
+   ========================================================================== */
+
+@media (max-width:640px){
+  .dsh{padding-left:14px; padding-right:14px}
+  .dsh-bar{gap:10px}
+  .dsh-field{flex:1 1 140px; min-width:0}
+  .dsh-input,.dsh-select{min-width:0; width:100%}
+  .dsh-kpis{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+  .dsh-kpi-n{font-size:var(--fs-lead)}
+  /* A sticky header inside a horizontally scrolling box on iOS repaints the
+     row at the wrong offset mid-scroll. The header is a convenience on a long
+     table and the table is short on a phone; drop it rather than ship the
+     artefact. */
+  .dsh-tbl thead th{position:static}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .dsh-btn,.dsh-tbl tbody tr{transition:none}
+}

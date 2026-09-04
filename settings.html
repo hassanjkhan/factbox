@@ -142,6 +142,18 @@
           <span>Subscription</span>
           <span class="ac-arrow" id="st-billing-v">Manage →</span>
         </a>
+        <!-- Admins only, and hidden by default rather than shown by default:
+             if the script never runs, a reader sees one row fewer, which is
+             the harmless failure. The row is a convenience, not a control —
+             /admin/dashboard verifies admin against the server on every
+             query, so revealing the link to the wrong person reveals a page
+             that will refuse them. It ships with the [hidden] twin because an
+             author `display:` beats the UA rule, which has caught this repo
+             five times. -->
+        <a class="ac-row" id="st-admin" href="/admin/dashboard" hidden>
+          <span>Dashboard</span>
+          <span class="ac-arrow" aria-hidden="true">→</span>
+        </a>
       </div>
 
       <p class="ac-eyebrow">Help</p>
@@ -423,5 +435,19 @@
 </script>
 
 <script src="/js/analytics.js"></script>
+<script>
+/* One row, shown only to an admin. FBU.admin() is a browser variable and is
+   not security — it decides what to DRAW. The dashboard itself re-reads the
+   admin flag server-side on every query, so this cannot grant anything. */
+(function () {
+  try {
+    var row = document.getElementById("st-admin");
+    if (!row || !window.FBU || !FBU.ready) return;
+    FBU.ready().then(function () {
+      try { if (FBU.admin && FBU.admin()) row.hidden = false; } catch (e) {}
+    })["catch"](function () {});
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>

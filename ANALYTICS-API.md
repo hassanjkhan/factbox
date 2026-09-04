@@ -254,18 +254,27 @@ single-character wildcard there. Searching `sub_why` therefore also matches `sub
 Harmless in practice — control names are slugs — but it explains an occasional extra row.
 
 ### `audio_usage` — who turns the sound on
-Params: `days`. Returns four metric rows: `sound_taps`, `sound_users`, `readers`,
-`share_pct` (`sound_users` ÷ `readers`).
+Params: `days`. Returns `plays` and `mutes` as separate rows — the sound button
+sets `data-fbt` to the state a press *produces*, so a play and a mute are
+distinguishable. Presses recorded before that landed arrive under one name and
+appear as `undirected_legacy_taps`, shown only when non-zero and never folded
+into either side: adding them to one would invent a direction nobody measured.
+Then `sound_users`, `readers` and `share_pct`.
 
-**Known limitation, and it needs a one-line change in a file this function does not own.**
-The ambient-sound button in `js/audio-reader.js` carries no `data-fbt`, no `id` and no
-`name`, so `ui_click` records it by its first class — `fb-sound` — and the class is read
-*before* the toggle flips. Every tap looks identical. This query can therefore say how
-many people touched the sound and how often, and **cannot say how many turned it on
-versus muted it**. The fix is one attribute set from the paint function, e.g.
-`data-fbt="sound_on"` / `data-fbt="sound_off"` mirroring `aria-pressed`. Requested
-through the owner; until it lands, the dashboard should label this tile "sound toggled",
-not "sound on".
+This query was first written against a control named `fb-sound`, which never
+shipped — the click listener walks up to the nearest ancestor with an id, so
+every press was logged as `fb_rail`. It returned zero for its whole life.
+
+**Resolved the same day this was written.** `js/audio-reader.js` now sets
+`data-fbt` from its paint function to the state a press *produces* — `sound_on`
+for a play, `sound_off` for a mute — mirroring the `aria-pressed` it already
+maintained, and `ui_click` also carries `was_on` measured from that attribute.
+The two are always inverses; if a report ever shows them agreeing, the
+attribute has been flipped and `was_on` is the one to believe.
+
+What remains is not fixable: presses made before that landed were all logged
+under one name and cannot be split retroactively. They are reported separately
+rather than folded into either side.
 
 ### `client_errors` — crashes and thrown errors
 Params: `days`, `contains` (optional), `release` (optional), `limit`.
