@@ -1300,6 +1300,125 @@ var FBR = (function () {
   }
   function loginURL() { return "/login?next=" + hereNext(); }
 
+  /* ---- WHERE THE READER WAS WHEN THEY LEFT TO SIGN IN --------------------
+
+     Signing in is a real navigation. "Continue with email" goes to /login and
+     comes back; Google in an in-app webview is a REDIRECT, so it leaves for
+     accounts.google.com, comes back through the Firebase handler, and only
+     then reloads this page. Nothing held in a variable survives any of that,
+     and what was being lost is the worst possible thing to lose: the reader
+     had just given us an account and was one tap from the offer, and they
+     came back to the top of the story to do the whole scroll again.
+
+     THE SHAPE IS read.html's fb_return_v1, DELIBERATELY. That key is how this
+     site already writes down "put this reader back where they were" across a
+     navigation it does not control — localStorage, {s, at}, a TTL, an id it
+     validates, and one shot. This is the same record with the step on it, so
+     there is one pattern on this site rather than two. It is NOT fb_return_v1
+     itself: that one is read by /explore on the way back from Stripe and
+     re-entering it here would send a reader who has not paid to a story they
+     cannot open.
+
+     WHY localStorage AND NOT sessionStorage, which is what this was.
+     sessionStorage is per TAB. A redirect sign-in does not always come back
+     to the tab it left: an in-app webview can hand the round trip to the
+     system browser, and some of them return the reader to a new context
+     entirely. The record then reads as absent and the reader is back to
+     scrolling. localStorage survives all of it, which is the whole job, and
+     the TTL below is what keeps it from outliving the trip.
+
+     THIRTY MINUTES. It has to outlast the slowest honest sign-in — a Google
+     redirect with a password, a second factor, an app switch, a reader who
+     puts the phone down halfway — and it has to be dead long before the same
+     reader opens the same story again tomorrow. fb_return_v1 gets an hour
+     because a Stripe checkout is a card number and possibly a 3-D Secure
+     detour; an auth round trip is shorter than that, so this is shorter than
+     that. A reader who signs in today and comes back next week gets the
+     story, which is what they asked for.
+     ---------------------------------------------------------------------- */
+  var GATE_KEY = "fb_gate_v1";
+  var GATE_TTL = 30 * 60 * 1000;
+  var GATE_ID  = /^[A-Za-z0-9_-]{1,24}$/;   /* the shape read.html accepts */
+
+  function gateClear() { try { localStorage.removeItem(GATE_KEY); } catch (e) {} }
+
+  function gateWrite(sid, step) {
+    try {
+      localStorage.setItem(GATE_KEY, JSON.stringify({
+        s: String(sid == null ? "" : sid),
+        step: Math.floor(Number(step)) || 0,
+        at: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  /* Reads it back, or null. Anything that is not a live record of a trip
+     that has just been made is cleared on the way out, so a malformed or
+     expired key cannot sit there being re-examined on every page load.
+
+     The empty story id is legitimate and is not a failure: the ask at the end
+     of a free story sells the season rather than one story, and writes "". */
+  function gateRead() {
+    var raw = null, o;
+    try { raw = localStorage.getItem(GATE_KEY); } catch (e) { return null; }
+    if (!raw) return null;
+    try { o = JSON.parse(raw); } catch (e) { gateClear(); return null; }
+    if (!o || typeof o !== "object") { gateClear(); return null; }
+    var sid = String(o.s == null ? "" : o.s);
+    var step = Math.floor(Number(o.step)) || 0;
+    var at = Number(o.at);
+    if (sid && !GATE_ID.test(sid)) { gateClear(); return null; }
+    if (step < 2) { gateClear(); return null; }
+    if (!isFinite(at) || at <= 0) { gateClear(); return null; }
+    if (Date.now() - at > GATE_TTL) { gateClear(); return null; }
+    /* A clock set backwards, or a record written in the future. Neither is a
+       reader coming back from signing in. */
+    if (at - Date.now() > GATE_TTL) { gateClear(); return null; }
+    return { s: sid, step: step, at: at };
+  }
+
+  /* WHO IS HOLDING THE PHONE, ASKED AFTER THE PAGE HAS LOADED AND NOT DURING.
+
+     This is the half that was missing. restore() read signedIn() at the
+     instant the sheet was built, and on a page load that is almost never the
+     answer: js/auth.js is a deferred module, Firebase reports an auth state
+     some hundreds of milliseconds later, and a Google redirect resolves
+     later still. A synchronous "no" there is a reader who signed in and got
+     nothing back.
+
+     FBU.ready() settles when the identity is known, whichever way it lands,
+     and it caps its own wait so it always settles. The interval is only for
+     the case where FBU itself has not appeared yet; 45 ticks is nine
+     seconds, past both js/auth.js's own 8s cap and js/access.js's 7s one, so
+     this cannot outlive the answers it is waiting for. */
+  function whenAuthKnown(fn) {
+    var fired = false;
+    function once2() {
+      if (fired) return;
+      fired = true;
+      try { fn(); } catch (e) {}
+    }
+    var U = null;
+    try { U = fbu(); } catch (e) {}
+    if (U && U.ready) {
+      try { U.ready().then(once2, once2); return; } catch (e) {}
+    }
+    var n = 0, t;
+    try {
+      t = setInterval(function () {
+        n++;
+        var V = null;
+        try { V = fbu(); } catch (e) {}
+        if (V && V.ready) {
+          clearInterval(t);
+          try { V.ready().then(once2, once2); } catch (e) { once2(); }
+          return;
+        }
+        if (n > 45) { clearInterval(t); once2(); }
+      }, 200);
+    } catch (e) { once2(); }
+  }
+
   /* ---- "Continue with Apple" · NOT SHIPPED, AND HERE IS THE SWITCH -------
      The mockup puts an Apple button between Google and email. Firebase has
      no Apple provider configured on this project — the identity toolkit
@@ -1702,30 +1821,21 @@ var FBR = (function () {
       /* ---- which sheet, and when ------------------------------------------
          Render-then-correct, the same discipline as the access gate: the
          sheet that opens is the one that matches the answer we have, and it
-         is replaced when a better answer arrives. A reader who signs in
-         through the Google REDIRECT leg leaves this page entirely and comes
-         back to it, so "where was I" has to survive that trip. It rides in
-         sessionStorage, keyed to the story, and it is the only thing this
-         file stores. */
-      var STEP_KEY = "fb_gate_v1";
-      function remember(step) {
-        try {
-          sessionStorage.setItem(STEP_KEY, JSON.stringify(
-            { s: s ? str(s.id) : "", step: step }));
-        } catch (e) {}
-      }
+         is replaced when a better answer arrives. A reader who signs in — by
+         email, which navigates, or through the Google REDIRECT leg, which
+         leaves the origin entirely — comes back to a fresh page load, so
+         "where was I" has to survive that trip. It rides in the record over
+         gateWrite() above: localStorage, story-keyed, with a TTL, which is
+         read.html's fb_return_v1 pattern and the only thing this file
+         stores. */
+      var sid = s ? str(s.id) : "";
+      function remember(step) { gateWrite(sid, step); }
       function remembered() {
-        try {
-          var raw = sessionStorage.getItem(STEP_KEY);
-          if (!raw) return 0;
-          var o = JSON.parse(raw);
-          if (!o || o.s !== (s ? str(s.id) : "")) return 0;
-          return Math.floor(Number(o.step)) || 0;
-        } catch (e) { return 0; }
+        var o = gateRead();
+        if (!o || o.s !== sid) return 0;
+        return o.step;
       }
-      function forget() {
-        try { sessionStorage.removeItem(STEP_KEY); } catch (e) {}
-      }
+      function forget() { gateClear(); }
 
       function paint(cls) {
         try {
@@ -1748,9 +1858,17 @@ var FBR = (function () {
       function openBuy()  { paint("is-buy");  remember(3); report(); focusIn(buy); }
       /* Shutting is not leaving. The reader is still in the story, the
          boundary is one scroll behind them, and read.html re-arms the gesture
-         through onShut so the sheet can be asked for again. */
+         through onShut so the sheet can be asked for again.
+
+         It IS the end of the round trip, though, and the record goes with it.
+         "Maybe later" has to mean later on a reload too: a sheet that comes
+         back by itself every time the page loads for the next half hour is a
+         sheet the reader cannot dismiss, which is worse than one they had to
+         scroll to. Asking again is the same journey as asking the first time
+         — back to the boundary, and go. */
       function shut() {
         paint("");
+        forget();
         try { if (typeof host.onShut === "function") host.onShut(); } catch (e) {}
       }
 
@@ -1768,29 +1886,96 @@ var FBR = (function () {
         openAuth();
       }
 
-      /* Signing in through the redirect leg reloads this page. If the reader
-         had already reached the sheet for THIS story and now has an account,
-         put them back where they were rather than making them find the
-         boundary again. */
+      /* ---- STEP 2 -> STEP 3, ACROSS A PAGE LOAD ---------------------------
+
+         The reader scrolled to the boundary, opened the sheet, signed in, and
+         the sign-in took them off this page. They come back to a fresh load.
+         This is what puts them on step 3 — the offer, over the same story —
+         instead of at the top of it with the whole scroll to do again.
+
+         THREE THINGS IT WILL NOT DO.
+
+         It will not decide on an answer it does not have yet. signedIn() at
+         build time is a guess; whenAuthKnown() waits for FBU to settle, which
+         is the only moment the question can be answered. That wait is the
+         bug this used to have.
+
+         It will not sell to somebody who already pays. Entitlement is asked
+         AFTER identity is known, through FBX.canRead — the same authority
+         read.html uses, per story, so today's free story and a subscriber
+         both come out as "let them read". They get the story; the record is
+         dropped and no sheet opens.
+
+         It will not fire twice, and it will not linger. The record is one
+         shot: it is dropped the moment it has been acted on, and dropped just
+         as firmly when the trip ended signed out — a sign-in that failed or
+         was abandoned must not leave a price waiting on the next page load.
+         The boundary is one scroll away when they want it. */
+      var restoring = false;
       function restore() {
+        if (restoring) return false;
+        if (!remembered()) return false;
+        restoring = true;
+        whenAuthKnown(function () {
+          if (!signedIn()) { forget(); restoring = false; return; }
+          mayRead(function (ok) {
+            forget();
+            restoring = false;
+            /* They can read it. read.html has already drawn the story, or is
+               about to correct itself into it; a purchase sheet on top of
+               that is selling somebody something they own. */
+            if (ok) return;
+            openBuy();
+          });
+        });
+        return true;
+      }
+
+      /* May this reader open the story the sheet is about — asked once,
+         after identity is settled. Story-level, because that is the question:
+         FBX.canRead(id) is true for a subscriber, for a permanently free
+         story and for today's Factbox, and FB.unlocked() only answers the
+         first of the three. The blank ask at the end of a free story has no
+         story to ask about, so it falls back to the account-level answer.
+         Every failure answers with what we know rather than throwing: this
+         runs on a page that is already on screen. */
+      function mayRead(fn) {
         try {
-          var was = remembered();
-          if (!was) return false;
-          if (was >= 2 && signedIn()) { openBuy(); return true; }
+          if (sid && window.FBX && FBX.canRead) {
+            FBX.canRead(sid).then(function (ok) { fn(!!ok); },
+                                  function () { fn(unlocked()); });
+            return;
+          }
+          if (window.FBX && FBX.ready) {
+            FBX.ready().then(function () { fn(unlocked()); },
+                             function () { fn(unlocked()); });
+            return;
+          }
         } catch (e) {}
-        return false;
+        fn(unlocked());
       }
 
       /* An account arriving while the sheet is open — a popup sign-in, or a
          late FBU — moves the reader on rather than leaving them looking at a
-         question they have just answered. */
+         question they have just answered.
+
+         And the same event is the second way home from a redirect: FBU can
+         report the returning user after this element was built, on a page
+         where no sheet is showing at all. A record standing for this story
+         means the reader asked for step 3 before they left, so it is taken
+         then, through the same restore() and therefore the same entitlement
+         check. */
       try {
         var U = fbu();
         if (U && U.onChange) {
           U.onChange(function () {
             try {
-              if (host.className.indexOf("is-auth") === -1) return;
-              if (signedIn()) openBuy();
+              if (host.className.indexOf("is-auth") > -1) {
+                if (signedIn()) openBuy();
+                return;
+              }
+              if (host.className.indexOf("is-") > -1) return;
+              if (signedIn() && remembered()) restore();
             } catch (e) {}
           });
         }
@@ -1993,6 +2178,13 @@ var FBR = (function () {
       host.openBuy = openBuy;
       host.shut = shut;
       host.restore = restore;
+      /* True between "a trip is standing" and the moment it has been acted
+         on. read.html rebuilds the end card whenever the access answer or the
+         reader's own record changes, and it drops the wall under it when it
+         does; a sheet still waiting for FBU to say who is holding the phone
+         has not decided anything yet, and removing it there is the restore
+         failing silently. */
+      host.restoring = function () { return restoring; };
       /* read.html has always called reveal() on the pane it just built, and
          leave() when the reader scrolls off it. One opens; the other is a
          no-op, because a sheet is not something you scroll past. */
@@ -2031,6 +2223,26 @@ var FBR = (function () {
     endPanel: endPanel,
     paywall: paywall,
     href: href,
+    /* Is a sign-in round trip standing, and which story was it for?
+
+       read.html asks, because the sheet a reader left from is not always a
+       locked story's boundary — the ask at the end of /firststory opens the
+       same sheet over a story that has no lock on it at all, and nothing
+       rebuilds that sheet on the way back unless the page knows to. One
+       reader of this record, in this file, with the TTL and the id check on
+       it; the page asks rather than parsing storage of its own.
+
+       Non-consuming: it answers the question and leaves the record for
+       restore() to act on and drop. Null when there is nothing standing,
+       when it is malformed, or when it has expired — and an expired one is
+       cleared on the way past. */
+    pending: function () {
+      var o = gateRead();
+      return o ? { s: o.s, step: o.step } : null;
+    },
+    /* Drop it without acting on it: the reader turned out to be able to read
+       the story, or the story it names is not in the season any more. */
+    forgetPending: gateClear,
     reasonFor: function (cur, s) {
       try { return reason(cur, s, progress(s), !unlocked()).text; } catch (e) { return "Next up"; }
     }

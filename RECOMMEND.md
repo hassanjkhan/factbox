@@ -427,7 +427,54 @@ should be handed back to, which is **not always the one the sheet is about**:
 `explore.html` reads it after `gate.js` claims `?unlocked=1`, checks
 `FBX.canRead(id)`, and `location.replace`s. Its TTL is one hour.
 
-### 4h. "View other plans" — `.pw-sheet`
+### 4h. Coming back from sign-in — `fb_gate_v1`
+
+Signing in is a real navigation. "Continue with email" goes to `/login` and
+comes back; Google inside an in-app webview is a **redirect**, so the reader
+leaves the origin entirely and returns through the Firebase handler. Nothing
+held in a variable survives that, and what was being lost was the worst thing
+to lose: the reader had just handed over an account and was one tap from the
+offer, and they came back to the **top of the story** with the whole scroll to
+do again.
+
+`js/recommend.js` writes `localStorage.fb_gate_v1` — `{"s":"<stack id>",
+"step":2|3,"at":<ms>}` — every time a sheet opens, and drops it the moment the
+trip ends. **localStorage, not sessionStorage**, which is what this was: a
+redirect sign-in does not always come back to the tab it left, and a per-tab
+record then reads as absent. **Thirty minutes**, half `fb_return_v1`'s hour,
+because an auth round trip is shorter than a card number and a 3-D Secure
+detour, and the record has to be dead long before the same reader opens the
+same story tomorrow. The empty story id is legitimate: `/firststory`'s ask
+sells the season rather than one story and writes `""`.
+
+Two places rebuild the sheet, because the sheet opens in two places:
+
+* **a locked story's boundary** — `read.html` calls `gate.restore()` on the
+  gate it just built, and puts the deck back on the boundary card when a trip
+  is standing. It lands the reader **on** that card, not past it, so `passed`
+  stays false and nothing springs at somebody whose sign-in failed.
+* **the end card** — `restoreWall()`, for the ask at the end of `/firststory`
+  and for the wall `/story` and `/cleopatra` open over a locked next story.
+  None of those runs are locked, so none of them reach the block above.
+
+Both go through the same `restore()`, and it refuses three things. It does not
+decide on an answer it does not have: `signedIn()` at build time is a guess, so
+it waits on `FBU.ready()` — that wait is the bug this used to have. It does not
+sell to somebody who already pays: entitlement is asked **after** identity, via
+`FBX.canRead(id)`, which is true for a subscriber, a permanently free story and
+today's Factbox alike. And it is one shot — dropped when it has been acted on,
+and dropped just as firmly when the trip ended signed out, so an abandoned
+sign-in leaves no price waiting on the next page load. "Maybe later", Escape
+and the veil all drop it too: a sheet that returns on every reload for half an
+hour is one the reader cannot dismiss.
+
+`dropWall()` names `is-auth` and `is-buy` rather than testing the `is-` prefix,
+and that is not a tidiness point. `js/recommend.js`'s last-resort pane — the
+one it returns when building the sheet throws — is `pane paywall pw is-offer`.
+A prefix test matches it, holds it on the screen for ever, and leaves a wall
+nobody asked for standing on the body with a subscriber sitting under it.
+
+### 4i. "View other plans" — `.pw-sheet`
 
 Unchanged, and kept although the mockup drops it. Exactly the rungs
 `js/account.js` still offers — annual (best value, preselected) and monthly;
@@ -435,7 +482,7 @@ quarterly is retired with `offered:false` over there and never reaches this
 file. Removing the monthly rung is a change to the offer, and `ONBOARDING.md`
 §10 says to ask before touching pricing. Picking calls `FBA.setPlan()`.
 
-### 4i. What is deliberately NOT here
+### 4j. What is deliberately NOT here
 
 * the mockup's four-step questionnaire and affirmation screens. The redesign
   retired them; see `join.html`.

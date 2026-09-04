@@ -51,13 +51,17 @@ have to move together: here, `ONBOARDING.md` §2, and the
 
 ## Returning a buyer to their story
 
-**Not finished, and it cannot be finished from the reader page.** A reader who
-taps "Start my 3 days free" was trying to read one particular story, and the
-right thing after checkout is that story rather than a shelf.
+**Done.** A reader who taps through to checkout was trying to read one
+particular story, and the right thing afterwards is that story rather than a
+shelf.
 
 `read.html` writes down which one, into `localStorage.fb_return_v1`, as
 `{"s":"<stack id>","at":<ms>}`, immediately before it hands the reader to the
-funnel. **Nothing reads that key yet.**
+funnel. `explore.html` reads it on arrival: a reader who has paid goes
+straight to that story, and the record is consumed either way, so it cannot
+fire twice or hijack an ordinary visit later. One hour TTL.
+
+This section said "nothing reads that key yet" for longer than it was true.
 
 It cannot be read here. Stripe's three Payment Links redirect to
 `https://factbox.app/stories?unlocked=1&session_id=...`, that URL lives in the

@@ -258,10 +258,10 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      the return path is this file, and the only honest thing this page can do
      is write down where the reader was before handing them to checkout.
 
-     Reading it back belongs on the page they land on. That is /explore, and
-     this change does not own it, so TODAY THIS KEY IS WRITTEN AND NOTHING
-     READS IT. The four lines that finish it, and where they go, are in
-     tools/README.md under "Returning a buyer to their story".
+     Reading it back belongs on the page they land on, and that is /explore,
+     which does it: explore.html reads this key on arrival, sends a reader who
+     has paid straight to the story they left, and consumes the record either
+     way. This note used to say nothing read the key. Something does.
      -------------------------------------------------------------------- */
   var RETURN_KEY = "fb_return_v1";
   function rememberStory(st) {
@@ -892,11 +892,38 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
            its content. */
         try { (document.body || document.documentElement).appendChild(gate); } catch (e) {}
 
-        /* Signing in with Google inside an in-app webview is a REDIRECT: the
-           reader leaves this page and comes back to it. If they were already
-           at the sheet for this story and now have an account, put them back
-           where they were rather than making them find the boundary again. */
-        try { if (gate.restore) gate.restore(); } catch (e) {}
+        /* --------------------------------------------------------------
+           COMING BACK FROM SIGN-IN.
+
+           Signing in is a real navigation. "Continue with email" goes to
+           /login and comes back; Google inside an in-app webview is a
+           REDIRECT, so the reader leaves the origin entirely and returns
+           through the Firebase handler — more than one load, and none of it
+           under this page's control. What they came back to was the top of
+           the story, with the sheet gone and the whole scroll to do again,
+           at the exact moment they had just given us an account.
+
+           gate.restore() is what puts the sheet back. It answers true when a
+           trip is standing for THIS story — it does not open anything yet,
+           because who is holding the phone is not knowable at this instant,
+           and whether they can now read the story is knowable only after
+           that. js/recommend.js owns both waits, and drops the offer
+           entirely for a reader who turns out to be a subscriber.
+
+           The deck is put back here, and only when a trip is standing. The
+           boundary card is the last card ON THE PAGE — the run has always
+           been FREE_RUN cards and no more — so this cannot show a card the
+           gate held back, whatever the reader is entitled to. Landing ON it
+           rather than past it is deliberate: `passed` stays false, so the
+           reader is standing where they stopped with the gesture still armed
+           behind them, and nothing springs at somebody whose sign-in failed
+           and who is simply back in the story. */
+        try {
+          if (gate.restore && gate.restore()) {
+            deck.scrollTop = edge();
+            onScroll();
+          }
+        } catch (e) {}
 
         /* Prime the arming. A reader can be resting on the boundary without
            the deck ever firing a scroll event — a short run, a restored
@@ -948,7 +975,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
        recommendations are missing. */
     if (!lock && window.FBR && FBR.endPanel && FB.loadIndex) {
       FB.loadIndex().then(function (stacks) {
-        var panel = null, builtFor = null;
+        var panel = null, builtFor = null, restored = false;
 
         /* Which story Continue offers depends on what this reader may open, and
            that answer can arrive after the panel is built. Built once with the
@@ -967,6 +994,37 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
            access answer changing is exactly the case where a wall may no
            longer be the right thing to be sitting under. */
         function dropWall() {
+          /* TWO SHEETS ARE NEVER STALE, and both of them used to be taken off
+             the screen here.
+
+             One the reader is looking at. The card underneath it is being
+             rebuilt because the access answer or the reader's own record
+             changed; neither is a reason to remove an offer somebody is in
+             the middle of answering, and a sheet that vanishes on its own is
+             one they cannot answer at all.
+
+             One that has not decided whether it should be on screen yet — a
+             sheet restored after a sign-in, still waiting for FBU to say who
+             is holding the phone. Signing in is exactly what makes the
+             reader's record change, so the rebuild and the restore land
+             within a few hundred milliseconds of each other every time, and
+             dropping it here is the restore failing silently. It removes
+             itself if the answer turns out to be "they can read it".
+
+             THE TWO CLASSES ARE NAMED, not matched by their "is-" prefix.
+             js/recommend.js's own last-resort pane — the one it returns when
+             building the sheet threw — is `pane paywall pw is-offer`, and a
+             prefix test holds THAT on the screen for ever: it is not a sheet,
+             it has no is-auth/is-buy state to be in the middle of, and its
+             restore() answers false precisely so it gets taken back off. A
+             prefix test made this function a no-op for it, which is a wall
+             nobody asked for left standing on the body, and a subscriber left
+             sitting under one when the access answer finally arrives. */
+          try {
+            var open = payPane ? String(payPane.className || "") : "";
+            if (open.indexOf("is-auth") > -1 || open.indexOf("is-buy") > -1) return;
+            if (payPane && payPane.restoring && payPane.restoring()) return;
+          } catch (e) {}
           try { if (payPane && payPane.parentNode) payPane.parentNode.removeChild(payPane); } catch (e) {}
           payPane = null;
         }
@@ -985,7 +1043,21 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
              call — which always hands over a story — falls back. */
           var sell = (st && st.id != null) ? st : (opts2.blank ? null : s);
           var keep = opts2.keep !== undefined ? opts2.keep : (sell || s);
-          if (payPane && payPane.open) { payPane.open(); return; }
+          /* opts2.restore — the reader is not asking for this now, they asked
+             for it before they left to sign in. The sheet is built exactly as
+             it would have been and then handed to its own restore(), which
+             waits for the account to answer and drops the whole thing if the
+             answer is "they can read it". A wall nobody asked for must never
+             be left standing, so a restore that finds nothing to do takes the
+             pane back off the page. */
+          if (payPane && payPane.open) {
+            if (opts2.restore) {
+              try { if (payPane.restore) payPane.restore(); } catch (e) {}
+              return;
+            }
+            payPane.open();
+            return;
+          }
           var pane = buildPaywall(sell, opts2.from || "endcard", null,
                                   opts2.head, keep);
           /* recommend.js fell through to its own fallback pane, which is a
@@ -993,6 +1065,9 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
              is appended to the deck the way the old wall was. */
           if (!pane || typeof pane.open !== "function") {
             if (!pane) return;
+            /* A whole pane is not a sheet and cannot be restored over a story
+               the reader may turn out to own. Nothing is drawn. */
+            if (opts2.restore) { try { if (FBR.forgetPending) FBR.forgetPending(); } catch (e) {} return; }
             payPane = pane;
             deck.appendChild(pane);
             onScroll();
@@ -1001,6 +1076,24 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
           }
           payPane = pane;
           try { (document.body || document.documentElement).appendChild(pane); } catch (e) {}
+          if (opts2.restore) {
+            var live = false;
+            try { live = !!(pane.restore && pane.restore()); } catch (e) {}
+            if (!live) { dropWall(); return; }
+            /* Back on the card they left from, not the top of a story they
+               have already read — but only when this card has no countdown
+               on it. The end card can open the next story by itself, and
+               scrolling a reader onto a running clock while a sheet is over
+               it would navigate them out from under their own offer. The
+               timer paragraph is the tell: recommend.js only builds one when
+               the card is allowed to advance on its own. */
+            try {
+              if (panel && !panel.querySelector(".ec-timer")) {
+                goTo(deck.scrollHeight);
+              }
+            } catch (e) {}
+            return;
+          }
           pane.open();
         }
 
@@ -1060,29 +1153,85 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
            HERE, inside the end-card branch, because that is the only place
            the sheet has a story to be about. The link's href survives as the
            no-JS path and as the fallback if this never runs. */
+        /* The ask, opened by a tap — or reopened on the way back from a
+           sign-in that took the reader off this page. Both go through the
+           same call, with the same words and the same story, because they
+           are the same sheet; `restoring` only changes whether it is opened
+           outright or handed to its own restore(). */
+        function endGate(restoring) {
+          /* Nothing was interrupted: this reader finished a free story. So
+             the sheet is not selling one particular story, and it says so.
+             `null` for the stack, deliberately: the next story on the card
+             may be free too, and putting its title on a purchase sheet
+             would be selling something that is already open. */
+          wall(null, {
+            blank: true,
+            from: "story",
+            head: "Read the rest.",
+            /* The story the card was about to open, so the buyer comes back
+               to something they have not read. Null when there is nothing
+               left to offer, and then nothing is written down and Stripe's
+               own return to the shelf stands. */
+            keep: (panel && panel.nextStory) || null,
+            restore: !!restoring
+          });
+        }
+
         try {
-          window.FB_ENDGATE = function () {
-            /* Nothing was interrupted: this reader finished a free story. So
-               the sheet is not selling one particular story, and it says so.
-               `null` for the stack, deliberately: the next story on the card
-               may be free too, and putting its title on a purchase sheet
-               would be selling something that is already open. */
-            wall(null, {
-              blank: true,
-              from: "story",
-              head: "Read the rest.",
-              /* The story the card was about to open, so the buyer comes back
-                 to something they have not read. Null when there is nothing
-                 left to offer, and then nothing is written down and Stripe's
-                 own return to the shelf stands. */
-              keep: (panel && panel.nextStory) || null
-            });
-          };
+          window.FB_ENDGATE = function () { endGate(false); };
         } catch (e) {}
 
+        /* --------------------------------------------------------------
+           COMING BACK FROM SIGN-IN, AT THE END OF A STORY.
+
+           The boundary of a locked story is not the only place this sheet
+           opens. /firststory ends on the same one — an account, then the
+           offer — and /story and /cleopatra open it from the end card when
+           the next story is not this reader's to open. None of those runs
+           are locked, so none of them go through the block above, and the
+           reader who answered that sheet came back to the top of a story
+           they had already finished with nothing on the screen. Scrolling
+           the whole way down again was the only way back to the offer they
+           were one tap from. That is the bug.
+
+           js/recommend.js owns the record and its TTL. This asks whether one
+           is standing, works out which sheet it named, and rebuilds it —
+           once. `restored` is not about being tidy: build() runs again every
+           time the access answer or the reader's own record changes, and a
+           sheet that reappeared on each of those would be one the reader
+           could not get rid of. */
+        function restoreWall() {
+          if (restored) return;
+          var want = null;
+          try {
+            if (!window.FBR || !FBR.pending) return;
+            want = FBR.pending();
+          } catch (e) { return; }
+          if (!want) return;
+          restored = true;
+          var sid = String(want.s || "");
+          /* No story on the record: the ask at the end of a free story, which
+             sells the season rather than one story and writes "". */
+          if (!sid) { endGate(true); return; }
+          /* A story on it: the wall the end card opens over a locked next
+             story. It has to be a story that is still in the season — a
+             renamed or retired id gets the record dropped rather than a
+             sheet about nothing. */
+          var st = null, q;
+          for (q = 0; q < stacks.length; q++) {
+            if (String(stacks[q].id) === sid) { st = stacks[q]; break; }
+          }
+          if (!st) {
+            try { if (FBR.forgetPending) FBR.forgetPending(); } catch (e) {}
+            return;
+          }
+          wall(st, { from: "endcard", restore: true });
+        }
+
         build(FB.unlocked());
+        restoreWall();
         try {
-          if (window.FBX && FBX.paint) FBX.paint(function (a) { build(!!a); });
+          if (window.FBX && FBX.paint) FBX.paint(function (a) { build(!!a); restoreWall(); });
         } catch (e) {}
 
         /* The card also depends on the reader's own record — how many stories
@@ -1146,6 +1295,12 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
       return FB.unlocked();
     }).then(function (ok) {
       if (!ok) { showWall(s); return; }
+      /* They can read it — which is the answer for a reader who signed in and
+         already had a subscription. Whatever they were doing at the boundary
+         before they left, the offer is not the thing to come back to, so the
+         record of that trip is dropped here rather than left for the end card
+         to find and rebuild a wall out of. */
+      try { if (window.FBR && FBR.forgetPending) FBR.forgetPending(); } catch (e) {}
       render(s);
     });
   }).catch(function () {
