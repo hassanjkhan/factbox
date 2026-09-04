@@ -106,7 +106,7 @@
     <li>Your restore link is a <strong>bearer token</strong>: anyone holding it has access.</li>
     <li>Every page sends events to PostHog and to Google Analytics. Once you are signed in, <strong>those events carry your Firebase user id</strong>, so they are not anonymous. There is a one-tap off switch in section 05.</li>
     <li>Every page also loads a font from Google, which means Google sees your IP address on every page whether or not you have an account.</li>
-    <li>Anything you write in the two boxes on the support page is sent to us and stored, along with the reply address you give. The optional note box shown when you cancel a subscription goes to the same place, without a reply address.</li>
+    <li>Anything you write in the two boxes on the support page is sent to us and stored, along with the reply address you give.</li>
     <li>Clearing this site's data in your browser removes everything in section 02 and section 03. It does not remove your account, the record under it, or a message you have sent us — for that, see section 11.</li>
   </ul>
 
@@ -397,17 +397,6 @@
      from, your message, the page you sent it from, and your Firebase user id if
      you were signed in. <strong>Your IP address is not stored, and neither is a
      hash of it.</strong> Messages are capped at 4,000 characters.</p>
-  <p>The support page is not the only screen that can reach that function. If you
-     start cancelling a subscription, the screen at <code>/subscription</code>
-     offers a box headed &#8220;Anything we should know?&#8221;, and what you type
-     into it is posted to <em>the same function</em>, filed under the same
-     <code>support</code> collection as a message from the help box, marked as
-     having come from <code>/subscription</code>. Same document, same 4,000
-     character cap, same retention in section 11. Two differences, both in your
-     favour: that screen has no reply-address box, so the address field goes out
-     empty, and the box is optional &#8212; cancelling does not depend on it, and
-     if you leave it empty nothing is sent at all. If you are signed in, your
-     Firebase user id is recorded as it is for any other message.</p>
   <p>If that post does not go through, the page offers you a link that opens the
      message in your own mail app instead, addressed to
      <a href="mailto:hello@factbox.app">hello@factbox.app</a>, with what you

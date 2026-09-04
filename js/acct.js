@@ -6,16 +6,34 @@
    "Account" link, and the reader's name was truncated to a different length on
    each. This is that logic, in one file, and the nine copies are gone.
 
-   What it draws is one insignia at the top right of every page. Asked for:
-   "ON EVERY SINGLE PAGE THAT EXISTS, THERE SHOULD NOT BE A SIGN IN OR SIGN UP
-   BUTTON. IT SHOULD JUST BE AN UPPER RIGHT HAND PROFILE INSIGNIA THAT OPENS A
-   DROP DOWN TO EITHER SIGN IN OR SIGN UP."
+   What it draws is one insignia at the top right of every page that asks for
+   it. One tap, one destination, both ways round:
 
-   Signed out there is no menu: the insignia IS the sign-in button, and it
-   carries no aria-haspopup, because announcing a popup that never opens is a
-   lie to a screen reader. Signed in it shows the reader's name, their account,
-   their library and their settings. Escape closes it; so does a click anywhere
-   else; so does moving focus out of it.
+       signed in   ->  /account
+       signed out  ->  /login?next=<this page>
+
+   There is no menu. There used to be one signed in — the reader's name, then
+   Your account, Your library, Settings — and it was removed on the same
+   reasoning that removed the signed-out one before it. Library is a top-level
+   tab in this very masthead, two inches to the left. Settings is a row on
+   /account itself. So the menu spent a tap offering one destination that was
+   not already one tap away, and that destination was /account. Now the
+   insignia simply is the way to /account.
+
+   It carries no aria-haspopup and no aria-expanded, because announcing a
+   popup that never opens is a lie to a screen reader, and its accessible name
+   says where it goes rather than reading out the reader's initial.
+
+   It stays a <button> that navigates, which is what the signed-out insignia
+   has always been. An <a href> would be the truer element for a control whose
+   whole job is to go somewhere, and it was built and measured that way first —
+   but `.tabs a` in css/app.css styles every anchor in this masthead nav, at a
+   higher specificity than `.acct-btn`, and the insignia lives inside that nav
+   on all seven pages. As an anchor the disc came out 34x44 rather than 34x34
+   — an ellipse — with the wrong colour, font, padding and transition. Ten
+   properties, one of them state-dependent. Restoring them from here would put
+   the design system inside a script. See ACCOUNT.md 10.8 for the one-line
+   change to `.tabs a` that would let this become a real link.
 
    ---------------------------------------------------------------------------
    The contract with a page
@@ -35,14 +53,18 @@
 
    Auth answers a beat after first paint, so a control that renders "signed
    out" and then corrects itself is a visible flicker on every page load. The
-   button is drawn immediately — it is the same circle either way — and only
-   its letter and its menu wait for the answer. Nothing moves when the answer
-   lands, because nothing about the button's size depends on it.
+   circle is drawn immediately — it is the same circle either way — and only
+   its letter and its label wait for the answer. Nothing moves when the answer
+   lands, because nothing about the circle's size depends on it. Where the tap
+   goes is decided at the moment of the tap, not painted in advance, so it is
+   never stale. A tap in that first beat goes to /login?next=<here>, which is
+   where it went before this file drew a menu at all, and login.html sends a
+   reader who turns out to be signed in straight on to `next`.
    ========================================================================== */
 (function () {
   "use strict";
 
-  var host = null, btn = null, menu = null, open = false, FBU = null;
+  var host = null, btn = null, FBU = null;
 
   function el(tag, cls, txt) {
     var n = document.createElement(tag);
@@ -79,43 +101,7 @@
     return n ? n.charAt(0).toUpperCase() : "";
   }
 
-  /* --- the menu ---------------------------------------------------------- */
-
-  function item(href, text) {
-    var a = el("a", "acct-item", text);
-    a.setAttribute("href", href);
-    a.setAttribute("role", "menuitem");
-    return a;
-  }
-
-  function build() {
-    menu.innerHTML = "";
-    if (signedIn()) {
-      var who = nameOf();
-      if (who) {
-        var h = el("p", "acct-who", who);
-        menu.appendChild(h);
-      }
-      menu.appendChild(item("/account", "Your account"));
-      menu.appendChild(item("/library", "Your library"));
-      /* Settings is a screen of its own now — name, email, subscription, the
-         help pages and the way out. It is one row down on /account, but this
-         menu is on nine pages and that row is on one, so a reader who wants
-         to cancel or to sign out should not have to pass through the account
-         screen to find out where it went. */
-      menu.appendChild(item("/settings", "Settings"));
-    }
-    /* Signed out there is no menu at all — see the click handler. A menu of
-       one destination is a tap spent choosing between "Sign in" and "Create
-       account", which is the same page either way. */
-  }
-
-  /* Where a signed-out reader goes. One place: the sign-in page, which already
-     offers both signing in and creating an account on the same screen. */
-  function signInURL() {
-    var n = here();
-    return "/login" + (n ? "?next=" + n : "");
-  }
+  /* --- where one tap lands ------------------------------------------------ */
 
   /* Where to come back to. A path, never a full URL, and never anything with a
      scheme or a host in it — this string is put straight into a query. */
@@ -127,39 +113,35 @@
     } catch (e) { return ""; }
   }
 
-  function show(on) {
-    open = !!on;
-    try {
-      menu.hidden = !open;
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
-      if (open) build();
-    } catch (e) {}
+  /* Where a signed-out reader goes. One place: the sign-in page, which already
+     offers both signing in and creating an account on the same screen. */
+  function signInURL() {
+    var n = here();
+    return "/login" + (n ? "?next=" + n : "");
   }
+
+  function destination() {
+    return signedIn() ? "/account" : signInURL();
+  }
+
+  /* --- painting ----------------------------------------------------------- */
 
   function paint() {
     try {
-      var ini = initial();
-      var inNow = signedIn();
+      var inNow = signedIn(), who = nameOf(), ini = initial();
       btn.className = "acct-btn" + (inNow ? " is-in" : "");
+      /* The accessible name says where the tap goes. The initial inside the
+         circle is the reader's, not a label — a screen reader announcing "H"
+         has told nobody anything. Signed in the reader's name rides along,
+         because the row that used to show it lived in the menu that is gone. */
       btn.setAttribute("aria-label", inNow
-        ? (nameOf() ? "Account menu for " + nameOf() : "Account menu")
+        ? (who ? "Your account, " + who : "Your account")
         : "Sign in");
-      /* Only a menu may claim to have a popup. Signed out this navigates, and
-         announcing a popup that never opens is a lie to a screen reader. */
-      if (inNow) {
-        btn.setAttribute("aria-haspopup", "true");
-        btn.setAttribute("aria-expanded", open ? "true" : "false");
-      } else {
-        btn.removeAttribute("aria-haspopup");
-        btn.removeAttribute("aria-expanded");
-        if (open) show(false);
-      }
       var slot = btn.querySelector(".acct-ini");
       if (slot) {
         if (ini) { slot.textContent = ini; slot.className = "acct-ini"; }
         else { slot.textContent = ""; slot.className = "acct-ini is-anon"; }
       }
-      if (open) build();
     } catch (e) {}
   }
 
@@ -172,48 +154,23 @@
     btn = el("button", "acct-btn");
     btn.type = "button";
     btn.id = "fb-acct-btn";
-    btn.setAttribute("aria-haspopup", "true");
-    btn.setAttribute("aria-expanded", "false");
     btn.appendChild(el("span", "acct-ini is-anon"));
-
-    menu = el("div", "acct-menu");
-    menu.id = "fb-acct-menu";
-    menu.setAttribute("role", "menu");
-    menu.hidden = true;
 
     host.innerHTML = "";
     host.appendChild(btn);
-    host.appendChild(menu);
 
+    /* One listener, on the control itself, and it IS the behaviour. Nothing is
+       bound to document any more: the menu that needed a click-outside
+       dismiss, an Escape key and a focusout trap is gone, and so are all
+       three. A listener still firing for a menu that no longer exists is
+       worse than no listener at all.
+
+       A <button> fires this on Enter and on Space as well as on a tap, so the
+       keyboard costs nothing extra. */
     btn.addEventListener("click", function (e) {
       if (e && e.preventDefault) e.preventDefault();
-      if (e && e.stopPropagation) e.stopPropagation();
-      /* Signed out, the insignia IS the sign-in button. It used to open a menu
-         whose two items — "Sign in" and "Create account" — both led to the same
-         screen, so the menu asked the reader to choose between two names for
-         one page. Signed in there is a real choice to make, so the menu stays. */
-      if (!signedIn()) {
-        try { location.href = signInURL(); } catch (x) {}
-        return;
-      }
-      show(!open);
+      try { location.href = destination(); } catch (x) {}
     });
-
-    /* Three ways out, because a menu you cannot dismiss is a trap on a phone:
-       anywhere else on the page, Escape, and focus leaving the control. */
-    document.addEventListener("click", function (e) {
-      if (!open) return;
-      try { if (host.contains(e.target)) return; } catch (x) {}
-      show(false);
-    }, true);
-    document.addEventListener("keydown", function (e) {
-      if (open && e && (e.key === "Escape" || e.keyCode === 27)) { show(false); btn.focus(); }
-    }, false);
-    host.addEventListener("focusout", function () {
-      setTimeout(function () {
-        try { if (open && !host.contains(document.activeElement)) show(false); } catch (x) {}
-      }, 0);
-    }, false);
 
     paint();
     return true;
@@ -237,7 +194,7 @@
     if (!mount()) return;
     whenFBU(function (api) {
       FBU = api;
-      if (!FBU) { paint(); return; }        /* no module: the signed-out menu */
+      if (!FBU) { paint(); return; }        /* no module: the signed-out link */
       try { FBU.onReady(function () { paint(); }); } catch (e) { paint(); }
       try { FBU.onChange(function () { paint(); }); } catch (e) {}
     });

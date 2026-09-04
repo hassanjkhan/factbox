@@ -234,10 +234,45 @@ var FBX = (function () {
     } catch (e) { return false; }
   }
 
+  /* Identity has THREE states, and the bug is always in the third.
+
+     Signed in, signed out, and NOT YET ANSWERED. Firebase arrives by dynamic
+     import(), so on every page load there is a window — ~600ms warm, longer
+     cold, forever if the SDK is blocked — in which nobody has said anything.
+     accountDenies() above is careful about this in the direction that costs a
+     paying reader: it will not deny during that window. This is the same care
+     in the direction that costs US, and it is the one that was missing.
+
+     During the unknown window a browser flag must not GRANT either. If it
+     does, the page renders every story open and then has to take them away
+     when the answer lands, and taking access away is the correction the site
+     is worst at making — it is a reload, it is jarring, and any path that
+     drops it leaves a signed-out reader looking at the whole season. Padlocks
+     drawn and then removed are fine and are the site's render-then-correct
+     rule. Padlocks absent and then added are the product being given away for
+     as long as the answer takes.
+
+     So: no answer yet, no grant from the browser flag. The wait is bounded by
+     auth.js's own READY_MS, which sets known() true even when the SDK never
+     loads, so this can never hang and can never be permanent.
+
+     THE LEGACY BUYER IS NOT AFFECTED. This is not "signed out means locked" —
+     signed out is a real answer and the flag is honoured on it, which is the
+     whole point of the flag and the only thing keeping a pre-accounts buyer
+     reading. It is only the moment BEFORE any answer that stops granting. And
+     a page with no auth module at all (fbu() is null) is not an unanswered
+     page, it is a page that never asks; that reader keeps their access. */
+  function identityUnknown() {
+    var u = fbu();
+    if (!u) return false;
+    try { return !(u.known && u.known()); } catch (e) { return false; }
+  }
+
   function legacyFlag() { return flag(LEGACY_KEY); }
 
   function legacy() {
     if (!legacyFlag()) return false;
+    if (identityUnknown()) return false;
     /* ownerFlag(), not ownerMode(): an EXPIRED owner mark still disqualifies
        the unlock flag it set. Owner mode lapsing must not quietly promote the
        same browser to "legacy buyer". */
@@ -273,6 +308,7 @@ var FBX = (function () {
     var a = why();
     if (a !== "none") return a;
     if (legacyFlag() && ownerFlag()) return "none:owner-mode-lapsed";
+    if (legacyFlag() && identityUnknown()) return "none:identity-not-yet-known";
     if (legacyFlag() && accountDenies()) return "none:legacy-outranked-by-account";
     if (legacyFlag()) return "none:legacy-lapsed";
     return "none";

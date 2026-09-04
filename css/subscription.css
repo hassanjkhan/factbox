@@ -1,9 +1,15 @@
 /* ==========================================================================
    Factbox — the subscription screen and the cancellation flow.
 
-   Five screens on one page: the plan, the reason survey, one save attempt,
-   the confirmation, and the receipt. Plus the five answers a reader who has
-   nothing to cancel gets instead.
+   Six screens on one page: the plan, the reason survey, THE one save attempt,
+   the confirmation, and the two endings — the offer taken and the
+   subscription cancelled. Plus the five answers a reader who has nothing to
+   cancel gets instead.
+
+   There used to be four save screens, picked by the reason given, and three of
+   them are gone: the usage screen (.sb-usage), the recommendations grid
+   (.sb-recs and .sb-rec-plate) and the note box (.sb-note-field). Their rules
+   went with them. Every reason now reaches the one offer.
 
    EVERY COLOUR HERE IS A TOKEN FROM css/app.css. There is not one hex literal
    in this file and there must not be: the palette was measured pair by pair
@@ -299,49 +305,8 @@ html.sb-js #sb-static { display: none; }
 .sb-fan i:nth-child(4) { transform: rotate(6deg)   translateY(2px); }
 .sb-fan i:nth-child(5) { transform: rotate(13deg)  translateY(7px); }
 
-/* The usage line, and the "there's more waiting" grid. Both are real numbers
-   or they are not on screen; the script hides them rather than inventing. */
-.sb-usage {
-  margin: 14px 0 0;
-  font-size: var(--fs-lead); font-weight: var(--w-strong); color: var(--parchment);
-}
-.sb-recs {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px; margin: 22px 0 0;
-}
-.sb-recs a { text-decoration: none; color: inherit; }
-.sb-recs .sb-rec-plate {
-  position: relative; aspect-ratio: 3 / 4; overflow: hidden;
-  border-radius: 14px; background: var(--raise);
-  box-shadow: inset 0 0 0 1px var(--hair);
-}
-.sb-recs .sb-rec-plate img { width: 100%; height: 100%; object-fit: cover; object-position: center 32%; }
-.sb-recs b {
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-  overflow: hidden; overflow-wrap: anywhere;
-  margin: 8px 0 0;
-  font-size: var(--fs-meta); font-weight: var(--w-strong); line-height: var(--lh-tight);
-}
-.sb-recs span {
-  display: block; margin: 3px 0 0;
-  font-size: var(--fs-fine); font-weight: var(--w-label);
-  color: var(--dimmer); font-variant-numeric: tabular-nums;
-}
-
-/* The note box on the "something else" branch. */
-.sb-note-field {
-  width: 100%; margin-top: 16px; padding: 13px 15px;
-  border: 0; border-radius: 14px;
-  background: var(--raise); color: var(--parchment);
-  box-shadow: inset 0 0 0 1px var(--hair);
-  font-family: var(--ui); font-size: var(--fs-body); font-weight: var(--w-body);
-  line-height: var(--lh-body);
-  -webkit-appearance: none; appearance: none; resize: vertical;
-}
-.sb-note-field:focus-visible { box-shadow: inset 0 0 0 1px var(--accent-edge); }
-
 /* ==========================================================================
-   Step 4 — the confirmation, and step 5 — the receipt
+   Step 4 — the confirmation, step 5 — the offer taken, step 6 — the receipt
    ========================================================================== */
 
 .sb-facts { margin: 22px 0 0; }
@@ -407,12 +372,10 @@ a.go {
    Wider than a phone
 
    The mockup is 390 x 844 and this page is 900px of .lib at most, so the only
-   thing a desktop window changes is how much air is around it. Two rules:
-   the flow steps stop growing their measure, and the recommendation grid
-   keeps its three columns rather than stretching three covers to 300px each.
+   thing a desktop window changes is how much air is around it. Two rules: the
+   fact rows stop growing their measure, and the fan gets the room it has.
    ========================================================================== */
 @media (min-width: 700px) {
-  .sb-recs { max-width: 520px; margin-left: auto; margin-right: auto; }
   .sb-fan i { width: 78px; height: 104px; }
   .sb-facts { max-width: 520px; }
 }

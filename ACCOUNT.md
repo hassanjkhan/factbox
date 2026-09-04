@@ -598,25 +598,94 @@ until it is counted, the other an apology for a failure that has not happened.
 
 ## 10.8 The insignia, and `js/acct.js`
 
-`js/acct.js` still owns the one profile control on all nine pages that carry
-`<span class="acct" id="fb-acct">`. Two behaviours are load-bearing and were
-kept:
+`js/acct.js` owns the one profile control on the six pages that carry
+`<span class="acct" id="fb-acct">`: `/`, `/explore`, `/library`, `/account`,
+`/join` and `/subscription`.
 
-- **Signed out there is no menu.** One tap goes straight to
-  `/login?next=<this page>`. A menu of "Sign in" and "Create account" spends a
-  tap choosing between two names for the same screen.
-- **`aria-haspopup` only when there is a popup.** It is removed signed out;
-  announcing a popup that never opens is a lie to a screen reader.
+Four pages load the file and deliberately provide no host element, so they
+draw nothing and raise nothing — that is the documented contract, not an
+oversight: `credits.html`, `start.html`, `support.html`, and now `login.html`,
+whose masthead dropped the section nav entirely (the comment in that file says
+why: signed out the insignia points at `/login`, which is where the reader
+already is). `read.html` has no account control at all.
 
-The only change: the signed-in menu gained a third item, **Settings →
-`/settings`**. That menu is on nine pages and the Settings row is on one, so a
-reader who wants to cancel or sign out should not have to pass through
-`/account` to find out where it went.
+**There is no menu any more. One tap, one destination, both ways round:**
+
+| State | Where one tap goes |
+|---|---|
+| signed in | `/account` |
+| signed out | `/login?next=<this page>` |
+
+The signed-in menu — the reader's name, then Your account, Your library,
+Settings — is gone, on the same reasoning that removed the signed-out menu
+before it. Library is a top-level tab in this very masthead, two inches to the
+left. Settings is a row on `/account` itself. So the menu spent a tap offering
+one destination that was not already one tap away, and that destination was
+`/account`. The insignia now simply *is* the way to `/account`.
+
+Deleted with it: the `.acct-menu` element and its `role="menu"`, the
+`.acct-who` name row, the `.acct-item` links, the open/closed state, and all
+three dismissals — the capture-phase click-outside listener on `document`, the
+Escape handler on `document`, and the `focusout` trap on the host. Nothing is
+bound to `document` from this file any more. A listener still firing for a menu
+that no longer exists is worse than no listener at all.
+
+**`aria-haspopup` and `aria-expanded` are gone entirely**, not just signed out.
+Announcing a popup that never opens is a lie to a screen reader, and there is
+now no popup in either state. The accessible name says where the tap goes
+rather than reading out the reader's initial: `"Your account, <name>"` signed
+in (the name rides along because the row that used to show it lived in the
+menu), plain `"Your account"` when there is no name, and `"Sign in"` signed
+out.
 
 `?next=` still survives. `login.html`'s `NEXT_OK` is a whitelist on *shape*,
-not a list of known pages, so `?next=settings` needs nothing added to it.
-Verified in Chrome: `/login?next=account` → `/account`,
-`/login?next=settings` → `/settings`.
+not a list of known pages, so nothing needed adding to it.
+
+### Why it is still a `<button>` and not an `<a href>`
+
+An anchor is the truer element for a control whose whole job is to go
+somewhere — new tab, status-bar preview, Enter for free. It was built and
+measured that way first, and it does not work here:
+
+`.tabs a` in `css/app.css` styles **every anchor in the masthead nav**, and the
+insignia's host `<span class="acct" id="fb-acct">` is the last child of
+`<nav class="tabs">` on every page that has one. `.tabs a` is specificity (0,1,1);
+`.acct-btn` is (0,1,0), so the nav rule wins on every property they share.
+Measured in Chrome on `/explore`, as an anchor the insignia came out:
+
+| | anchor | button (correct) |
+|---|---|---|
+| box | **34x44** — an ellipse, `border-radius:50%` on a non-square box | 34x34 |
+| `min-height` | 44px (`var(--tap)`) | auto |
+| `padding` | 10px 0 | 0 |
+| `color` signed out | `var(--dimmer)` | `var(--parchment)` |
+| `font-size` / `weight` | 15px / 600 | 14px / 700 |
+| `letter-spacing` | `var(--ls-title)` | normal |
+| `text-align` | start | center |
+| `transition` | `color .16s` | background, box-shadow, transform |
+
+Ten properties, one of them (`color`) state-dependent — `.acct-btn.is-in` at
+(0,2,0) still wins signed in, so only the signed-out glyph goes dim. Restoring
+that set from `js/acct.js` would put the design system inside a script, which
+is the drift this file was created to end.
+
+**The one-line change that would let it become a link:** scope the nav rule to
+the tab links it was written for —
+
+```css
+.tabs a:not(.acct-btn){ ... }      /* app.css, currently `.tabs a` */
+```
+
+with the same treatment on `.tabs a:hover` and `.tabs a[aria-current="page"]`.
+Once that lands, `js/acct.js` can build an `<a href>` (set the href in
+`paint()` from the same `destination()` this file already has) and drop the
+click handler. Until then the control is a `<button>` that navigates, which is
+exactly what the signed-out insignia has always been.
+
+**The 44px tap target is unchanged and load-bearing.** `.acct-btn` is a 34px
+disc with an invisible, centred, out-of-flow 44px `::after`. Without it this is
+the only control on Explore under `--tap`. Verified still 34x34 with a 44x44
+band, hit-tested 21px up, down, left and right of centre on every page.
 
 ## 10.9 Analytics
 
@@ -627,8 +696,17 @@ enforces the format. These screens fire exactly what they fired before:
 |---|---|
 | `page_open` | automatic, `js/analytics.js`, one name with a `page` parameter |
 | `ui_click` | automatic, the one delegated listener |
+| `ui_click` `control:"fb-acct-btn"` | the insignia, unchanged — the delegated listener reads the element's `id`, and the id did not change when the menu went |
 | `billing_portal` | the Subscription row on `/settings` |
 | `signout` | the Sign out button on `/settings` |
+
+**No event name died with the menu.** Its three rows were plain `<a href>`s
+with no analytics of their own; they were counted by the same delegated
+`ui_click` listener as everything else, which falls back to an element's own
+words when it has no `id`. So three *parameter values* are now dead — the
+`control` values `your-account`, `your-library` and `settings` — and no event
+name is. `control:"fb-acct-btn"` covers the tap that replaced them, exactly as
+it covered the tap that opened the menu.
 
 `settings.html` loads `/js/analytics.js`, which guard 1 requires of every page
 in the repo.

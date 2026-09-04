@@ -114,13 +114,58 @@ var FBP = (function () {
     try { document.cookie = k + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/"; } catch (e) {}
   }
 
-  /* Read either store, and heal the one that is missing the value. */
+  /* Read either store. A READ MUST NOT WRITE.
+
+     This used to heal: read localStorage, find nothing, read the cookie, and
+     write the cookie's value back into localStorage. That one line gave the
+     whole season away, and it did it intermittently, which is why it survived
+     so long.
+
+     js/access.js — the only file allowed to answer "may this person read?" —
+     reads localStorage and never the cookie. So the localStorage copy of
+     fb_unlocked_v1 IS the entitlement, and the cookie is a backup of it. A
+     healing read turned every incidental call into a grant: gate.js's
+     `painted = unlockedRaw()` and this file's own claim() both call it at
+     parse time on every page of the site, so a browser holding nothing but a
+     stale unlock cookie was silently re-issued a browser-level entitlement on
+     its next page load. Measured, in a clean Chrome profile, cookie set and
+     localStorage empty: land on /explore signed out and every one of the 51
+     stories is open with no padlock, and the subtitle reads "You have all
+     fifty-one." Signed out. That is the bug.
+
+     /account and /library had each been given a private workaround for this —
+     "do not call FBP.unlocked() on this page" — written out at length in both
+     files. /explore never got one, because nobody remembered a third page
+     needed it. A rule every caller has to remember is not a rule. The read is
+     pure now, so there is nothing left to remember.
+
+     The cookie is still READ, so nothing that legitimately depends on it
+     breaks: restoreURL() still rebuilds a buyer's link out of a token that
+     survives only in the cookie, and unlocked() still answers true for the
+     in-app webview this mirror exists for. What no longer happens is the
+     silent promotion of a cookie into the store that grants access. */
   function dGet(k) {
-    var a = lsGet(k), b = ckGet(k);
-    if (a != null && a !== "") { if (b == null) ckSet(k, a); return a; }
-    if (b != null && b !== "") { lsSet(k, b); return b; }
+    var a = lsGet(k);
+    if (a != null && a !== "") return a;
+    var b = ckGet(k);
+    if (b != null && b !== "") return b;
     return null;
   }
+
+  /* The heal, kept — but deliberate, one-directional, and called from exactly
+     one place instead of from every read. See claim() for the one caller and
+     for what corroborates it. */
+  function dHeal(k) {
+    try {
+      var a = lsGet(k);
+      if (a != null && a !== "") return a;
+      var b = ckGet(k);
+      if (b == null || b === "") return null;
+      lsSet(k, b);
+      return b;
+    } catch (e) { return null; }
+  }
+
   function dSet(k, v) { var ok = lsSet(k, v); ckSet(k, v); return ok; }
   function dDel(k) { lsDel(k); ckDel(k); }
 
@@ -258,11 +303,66 @@ var FBP = (function () {
            it here first would make gate.js's own claim() a no-op. */
       }
 
+      /* THE ONE DELIBERATE HEAL, and the only one on the site.
+
+         The cookie mirror exists for one reader: the buyer in Instagram's or
+         TikTok's in-app browser, which hands out a localStorage that is wiped
+         between sessions while cookies survive. Losing them would break the
+         pre-accounts buyer this whole flag is for, so the heal stays.
+
+         What it now requires is CORROBORATION. A browser that was genuinely
+         unlocked always carries a valid restore token beside the flag — this
+         block is what mints one, and dSet writes it to both stores, so the
+         webview reader whose localStorage was wiped still has fb_pass_v1 in
+         the cookie. A bare unlock cookie with no valid token beside it is not
+         a buyer whose store was wiped; it is a leftover, and leftovers do not
+         open the season.
+
+         Note the direction this fails in. If the corroboration is missing the
+         reader is LOCKED, not opened, and the way back is the restore link —
+         which is exactly what that link is for, which is why forgetLegacy()
+         deliberately never deletes the token, and which is why FBP.restoreURL()
+         still works from a cookie-only browser after this change. */
+      if (lsGet(K_UNLOCK) !== "1" &&
+          ckGet(K_UNLOCK) === "1" &&
+          validToken(ckGet(K_TOKEN))) {
+        dHeal(K_UNLOCK);
+        dHeal(K_TOKEN);
+        dHeal(K_SRC);
+      }
+
       /* gate.js may have unlocked and stripped the URL before this file ran.
-         Mint a token anyway, so the buyer always has a restore link. */
-      if (dGet(K_UNLOCK) === "1" && !validToken(dGet(K_TOKEN))) {
+         Mint a token anyway, so the buyer always has a restore link.
+
+         Gated on the localStorage flag — the grant itself — and no longer on
+         "either store". Back-filling a token for a browser holding nothing but
+         a stale cookie was laundering that cookie into the corroborated state
+         the heal above looks for: the leftover would mint its own evidence and
+         then be believed on the strength of it. */
+      if (lsGet(K_UNLOCK) === "1" && !validToken(dGet(K_TOKEN))) {
         dSet(K_TOKEN, mint("l", ""));
         if (!dGet(K_SRC)) dSet(K_SRC, "local");
+      }
+
+      /* The mirror, in the ONE direction that cannot invent an entitlement.
+
+         localStorage -> cookie only. localStorage is the authoritative store —
+         js/access.js reads it and nothing else — so copying out of it can only
+         ever back up access that already exists. The reverse direction is the
+         one that gave the season away, and it now happens only in the
+         corroborated heal above.
+
+         dGet() used to do this as a side effect, which is how every legacy
+         buyer ended up with a mirror without anyone writing a line for it.
+         With the read pure, a buyer holding the flag in localStorage alone
+         would never get one — and would lose access the first time an in-app
+         browser wiped their localStorage, which is the exact reader the mirror
+         was built for. So it is done here, deliberately, where it can be read
+         and reasoned about. */
+      if (lsGet(K_UNLOCK) === "1" && ckGet(K_UNLOCK) !== "1") {
+        ckSet(K_UNLOCK, "1");
+        var tk = lsGet(K_TOKEN);
+        if (validToken(tk) && !validToken(ckGet(K_TOKEN))) ckSet(K_TOKEN, tk);
       }
     } catch (e) {}
   })();

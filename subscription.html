@@ -73,10 +73,19 @@
 <!--
   YOUR SUBSCRIPTION, AND HOW TO END IT.
 
-  Five screens, in the order the design gives them: the plan, the reason we
-  are being left, one save attempt, the confirmation, and the receipt. The
-  steps are hash routes (#cancel, #offer, #confirm, #done) so the phone's Back
-  button walks back out of the flow the way a reader expects it to.
+  Six screens, in the order the design gives them: the plan, the reason we are
+  being left, THE one save attempt, the confirmation, and then whichever of the
+  two endings actually happened — the offer taken, or the subscription
+  cancelled. The steps are hash routes (#cancel, #offer, #confirm, #saved,
+  #done) so the phone's Back button walks back out of the flow the way a reader
+  expects it to.
+
+  THE REASON DOES NOT GATE THE OFFER. It used to. There were four save screens
+  and the answer on step 2 picked one, so only "it costs more than I want to
+  spend" ever reached the discount and everybody else got a screen that made no
+  offer at all — which is how the offer came to look deleted. There is now one
+  save screen, every answer reaches it, and the reason is kept for what it is
+  worth on its own: analytics. The three alternative screens are gone.
 
   WHAT ACTUALLY CANCELS. Stripe's own billing portal, and only that. The
   confirmation screen's red button sends the reader there; Stripe takes the
@@ -99,10 +108,13 @@
   THE SAVE OFFER IS OFF. The design offers 50% off for another year. There is
   no discounted price and no coupon in the Stripe account — STRIPE.md §2 is
   the measurement, and it lists three prices on one product and nothing else.
-  So the screen is built, it is switched off from one object at the top of
-  js/subscription.js, and readers who say "too expensive" get the same
-  "anything we should know?" screen as everybody else until a real coupon
-  exists. STRIPE.md §10 is the click-path for turning it on.
+  So the screen is built and it is switched off from one object at the top of
+  js/subscription.js, and with no redeemable discount there is no save attempt
+  to make: the reason step hands the reader straight to the confirmation.
+  That is a switch on the whole offer, not a branch on the answer — no reason
+  can reach a save screen that another reason cannot. STRIPE.md §10 is the
+  click-path for turning it on, and §10 also carries the figure: half of what
+  Stripe actually charges is $17.94, not the mockup's $17.50.
 -->
 
 <main class="lib">
@@ -172,7 +184,13 @@
     </p>
   </section>
 
-  <!-- ===== step 2 — the reason =========================================== -->
+  <!-- ===== step 2 — the reason ===========================================
+       Asked, recorded, and given no power. Every one of these four answers
+       goes to the same next screen; js/subscription.js has no branch on the
+       value and must never grow one back. The tap is counted by
+       js/analytics.js's delegated listener as a ui_click carrying the
+       data-fbt below — which is the whole of "the reason is recorded for
+       analytics", and needs no new event name to be it. -->
   <section class="sb-step" id="sb-2" hidden aria-labelledby="sb-2-h">
     <div class="sb-head">
       <button class="sb-back" type="button" data-step="plan" data-fbt="sub_back_plan">← Subscription</button>
@@ -199,18 +217,29 @@
     </div>
   </section>
 
-  <!-- ===== step 3 — one save attempt ===================================== -->
+  <!-- ===== step 3 — THE save attempt, and there is only one =============
+       Every reason lands here. There used to be four screens in this slot,
+       picked by the answer on step 2, and only "it costs more than I want to
+       spend" reached the discount; the other three — a usage screen, a
+       recommendations grid and an "anything we should know?" note box — are
+       deleted. They are what made the offer look deleted, because three
+       readers in four were routed past it.
+
+       THE SCREEN IS SWITCHED OFF AT SOURCE, so today nothing reaches it: with
+       no redeemable discount there is no save attempt to make, and
+       js/subscription.js sends the reader from the reason to the confirmation
+       instead of drawing a save screen with nothing on it. That is the offer
+       being off for everybody, which is a different thing from a reason being
+       routed round it, and it is the thing this restructure exists to keep
+       different. The markup stays because it is finished work waiting on a
+       Stripe coupon, and because building it again later from a description is
+       how a price ends up typed instead of derived. offerLive() is the gate. -->
   <section class="sb-step" id="sb-3" hidden aria-labelledby="sb-3-h">
     <div class="sb-head">
       <button class="sb-back" type="button" data-step="cancel" data-fbt="sub_back_reason">← Back</button>
       <h1 id="sb-3-h" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Before you cancel</h1>
     </div>
 
-    <!-- THE PRICE BRANCH IS SWITCHED OFF AT SOURCE. It stays in the document
-         because it is finished work waiting on a Stripe coupon, and because
-         building it later from a description is how the number ends up typed
-         instead of derived. js/subscription.js will not show it unless
-         SAVE_OFFER passes every check in offerLive(), and today it does not. -->
     <div class="sb-offer" id="sb-off-price" hidden>
       <p class="sb-eyebrow">Before you go</p>
       <p class="sb-off-big" id="sb-off-big"></p>
@@ -226,51 +255,18 @@
                 data-fbt="sub_offer_decline">No thanks, continue cancellation</button>
       </div>
     </div>
-
-    <div id="sb-off-usage" hidden>
-      <h2 class="sb-serif">Five minutes is enough.</h2>
-      <p class="sb-say" style="margin-top:12px">One story when you have five
-      minutes. No streaks to keep up.</p>
-      <p class="sb-usage" id="sb-usage" hidden></p>
-      <div class="sb-actions">
-        <button class="go" type="button" data-step="plan" data-fbt="sub_keep_usage">Keep my subscription</button>
-        <button class="sb-quiet" type="button" data-step="confirm"
-                data-fbt="sub_offer_decline_usage">Continue cancellation</button>
-      </div>
-    </div>
-
-    <div id="sb-off-content" hidden>
-      <h2 class="sb-serif">There’s more waiting.</h2>
-      <div class="sb-recs" id="sb-recs" hidden></div>
-      <div class="sb-actions">
-        <button class="go" type="button" data-step="plan" data-fbt="sub_keep_content">Keep Factbox</button>
-        <button class="sb-quiet" type="button" data-step="confirm"
-                data-fbt="sub_offer_decline_content">Continue cancellation</button>
-      </div>
-    </div>
-
-    <div id="sb-off-other" hidden>
-      <h2 class="sb-serif">Anything we should know?</h2>
-      <!-- This box is wired to the same Cloud Function /support posts to, so
-           what is typed here reaches the two people who make Factbox. Nothing
-           on the screen claims it arrived, because a claim we cannot check is
-           the one thing this repo will not print. -->
-      <label for="sb-note" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Anything we should know?</label>
-      <textarea class="sb-note-field" id="sb-note" rows="3" placeholder="Optional."></textarea>
-      <p class="sb-off-terms" style="text-align:left;margin-left:2px">Goes to the
-      same inbox as our support form.</p>
-      <div class="sb-actions">
-        <button class="go" type="button" data-step="plan" data-fbt="sub_keep_other">Keep my subscription</button>
-        <button class="sb-quiet" type="button" data-step="confirm"
-                data-fbt="sub_offer_decline_other">Continue cancellation</button>
-      </div>
-    </div>
   </section>
 
   <!-- ===== step 4 — the confirmation ===================================== -->
   <section class="sb-step" id="sb-4" hidden aria-labelledby="sb-4-h">
     <div class="sb-head">
-      <button class="sb-back" type="button" data-step="offer" data-fbt="sub_back_offer">← Back</button>
+      <!-- data-step is set by js/subscription.js: "offer" when there is a
+           live offer behind this screen, "cancel" when there is not. A Back
+           button pointing at a step that degrades forward to this one is a
+           button that does nothing, and this is the screen where that would
+           read as a trap. -->
+      <button class="sb-back" type="button" id="sb-back-4" data-step="cancel"
+              data-fbt="sub_back_offer">← Back</button>
       <h1 id="sb-4-h">Cancel Factbox?</h1>
     </div>
     <p class="sb-say" id="sb-4-say">You keep full access until the end of the
@@ -299,14 +295,52 @@
     what you end up with is Stripe’s record of it and not ours.</p>
   </section>
 
-  <!-- ===== step 5 — the receipt ==========================================
-       Only ever drawn when Stripe has said the subscription is ending. -->
+  <!-- ===== step 5 — the offer taken =====================================
+       "You're all set." Drawn under exactly the rule the receipt below it is
+       drawn under, and for the same reason: only when Stripe's own record says
+       so. Here that means the amount on customers/{uid}/subscriptions/{id} is
+       the discounted amount SAVE_OFFER was configured with, and the plan is
+       not already on its way out. Typing #saved gets the plan screen, the same
+       way typing #done does. A screen telling a reader their next year is half
+       price while Stripe is still charging them full price is the receipt
+       lying in the other direction. -->
   <section class="sb-step" id="sb-5" hidden aria-labelledby="sb-5-h">
     <div class="sb-head">
       <a class="sb-back" href="/settings">← Settings</a>
-      <h1 id="sb-5-h">Subscription cancelled.</h1>
+      <h1 id="sb-5-h">You’re all set.</h1>
     </div>
-    <p class="sb-say is-narrow" id="sb-5-say">Your subscription will not renew.
+    <p class="sb-say is-narrow" id="sb-5-say">Your subscription is staying, at
+    the discounted price Stripe has on file for it.</p>
+    <dl class="sb-facts">
+      <div class="sb-fact" id="sb-fact-saved-price" hidden>
+        <dt>You now pay</dt>
+        <dd id="sb-saved-price"></dd>
+      </div>
+      <div class="sb-fact" id="sb-fact-saved-when" hidden>
+        <dt>Next charge</dt>
+        <dd id="sb-saved-when"></dd>
+      </div>
+      <div class="sb-fact">
+        <dt>Your reading</dt>
+        <dd>Right where you left it</dd>
+      </div>
+    </dl>
+    <div class="sb-actions">
+      <a class="go" href="/explore" data-fbt="sub_saved_read">Keep reading</a>
+      <a class="sb-2nd" id="sb-portal-4" data-fbt="-"
+         href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+         rel="noopener">Payment &amp; invoices</a>
+    </div>
+  </section>
+
+  <!-- ===== step 6 — the receipt ==========================================
+       Only ever drawn when Stripe has said the subscription is ending. -->
+  <section class="sb-step" id="sb-6" hidden aria-labelledby="sb-6-h">
+    <div class="sb-head">
+      <a class="sb-back" href="/settings">← Settings</a>
+      <h1 id="sb-6-h">Subscription cancelled.</h1>
+    </div>
+    <p class="sb-say is-narrow" id="sb-6-say">Your subscription will not renew.
     You keep every story until the period you have paid for runs out.</p>
     <dl class="sb-facts">
       <div class="sb-fact" id="sb-fact-until-2" hidden>

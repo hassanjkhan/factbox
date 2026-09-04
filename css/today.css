@@ -486,27 +486,21 @@ body{background:var(--ground); color:var(--parchment)}
    — so without this the read bar, the padlock, the FREE ribbon and the
    finished tick would all be under 72% of near-black. */
 .tdy-mosaic .lock,
-.tdy-mosaic .freetag,
 .tdy-mosaic .readbar{z-index:2}
 .tdy-mosaic > .card.is-done .plate::after{z-index:2}
 
-/* The FREE ribbon. app.css owns what it looks like — --coral fill, --on-accent
-   type, which is the pair that measures 5.9:1; white on --coral is 2.8:1 and
-   is not a legible badge, it is a blue badge with a suggestion of type on it.
-   All this does is move it to the corner the owner asked for.
+/* The FREE ribbon and the three rules that made room for it are gone.
 
-   Which means the pill and the ribbon both want the top right. The ribbon
-   wins it — it is the rarer and the louder of the two — and the pill gets out
-   of the way. HOW it gets out of the way depends on the tile, and this was
-   measured rather than guessed: side by side on a one-column tile they
-   overlap by 45px at a 375px viewport, because 125px of tile does not hold a
-   45px ribbon and "11 cards · 4½ min" at the same time. So on a narrow tile
-   the line drops underneath the ribbon, right-aligned with it, and only a
-   two-column tile — which measured 80px of clear space between them — puts
-   them side by side. Nothing is ever truncated and nothing ever overlaps. */
-.tdy-mosaic .freetag{left:auto; right:7px; top:7px}
-.tdy-mosaic > .card.is-free .meta{top:33px}
-.tdy-mosaic > .card.is-free[data-w="2"] .meta{top:7px; right:auto; left:7px}
+   They existed because the ribbon and the meta pill both wanted the top right
+   of a mosaic tile: the ribbon won it and the pill was pushed down 26px on a
+   one-column tile and across to the left on a two-column one, because measured
+   side by side at a 375px viewport they overlapped by 45px.
+
+   With the ribbon removed (js/today.js, and js/library.js's copy of it) there
+   is nothing to make room for, so the pill goes back to the corner every other
+   tile puts it in. Leaving the offsets behind would have left the two free
+   covers with their meta line sitting 26px lower than the other forty-nine,
+   which is the kind of drift nobody reports and everybody sees. */
 
 /* Wider, because it is now a mark on a photograph rather than a rule under
    one, and it has the full width of the tile to be seen across. */

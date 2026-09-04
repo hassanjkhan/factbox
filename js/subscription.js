@@ -1,11 +1,31 @@
 /* ==========================================================================
    Factbox — the subscription screen and the cancellation flow.
 
-   Five steps on one page: the plan, the reason, one save attempt, the
-   confirmation, the receipt. ES5 throughout, because every reader arrives in
-   an Instagram or TikTok webview; js/auth.js is the one module on this site
-   and this file talks to it through the same whenFBU() bridge every other
-   page uses.
+   Six steps on one page: the plan, the reason, THE one save attempt, the
+   confirmation, and then whichever ending happened — the offer taken, or the
+   subscription cancelled. ES5 throughout, because every reader arrives in an
+   Instagram or TikTok webview; js/auth.js is the one module on this site and
+   this file talks to it through the same whenFBU() bridge every other page
+   uses.
+
+   ---------------------------------------------------------------------------
+   THE REASON DOES NOT DECIDE ANYTHING
+
+   It used to. There were four save screens and paintOffer() picked one off the
+   answer, so only "it costs more than I want to spend" could reach the
+   discount and the other three answers went to screens that made no offer at
+   all. Three readers in four never saw the one thing that might have kept
+   them, which is how the offer came to look deleted.
+
+   Now: one save screen, and every reason reaches it. `why` is read for
+   analytics and for nothing else. There is no branch in this file on its
+   value and there must never be one again — if you find yourself writing
+   `if (why === ...)` around a screen, that is the bug coming back.
+
+   The offer can still be off, and today it is. That is offerLive(), it is a
+   switch on the whole offer rather than on an answer, and when it says no
+   there is no save attempt to make: the reason step hands the reader straight
+   to the confirmation instead of drawing a save screen with nothing on it.
 
    ---------------------------------------------------------------------------
    WHAT ACTUALLY CANCELS, AND WHY IT IS NOT THIS FILE
@@ -20,11 +40,15 @@
    live snapshot, so FBU.subscription() tells this page the truth within a
    second of Stripe knowing it.
 
-   That is what draws step 5. render() refuses to draw the words
+   That is what draws step 6. render() refuses to draw the words
    "Subscription cancelled." unless Stripe has said the subscription is
    ending — typing #done into the address bar gets you the plan screen. A
    receipt for a cancellation that did not happen is the single worst thing
    this page could produce, and it is not reachable from here.
+
+   Step 5, "You're all set.", is held to the same rule from the other side: it
+   is drawn only when Stripe's own record shows the reader on the discounted
+   amount. Typing #saved gets the plan screen too.
 
    The alternative was cancelling through a Cloud Function on the Stripe API.
    It was not taken: it puts a second writer on the money path, needs the API
@@ -59,9 +83,14 @@
      measurement — three prices on one product, `prod_VBdImvMmh9CI5L`, and
      nothing else — and this repo's hardest rule is that a price shown to a
      reader is exactly what Stripe charges. So the screen is built and the
-     switch is off, and a reader who says "too expensive" gets the "anything
-     we should know?" screen instead. Nobody is shown a discount nobody can
-     redeem.
+     switch is off, and while it is off the cancellation goes reason ->
+     confirmation with no save screen in between. Nobody is shown a discount
+     nobody can redeem, and nobody is shown an empty screen where one was.
+
+     The mockup's own figures are $35 and $17.50. Stripe charges $35.88, so
+     amountCents is 1794 and not 1750 — offerLive() below checks that against
+     the reader's own amount and will refuse to draw the screen if the two
+     disagree, which is exactly the $35-vs-$35.88 defect failing closed.
 
      To turn it on, Hassan creates the coupon or the discounted price in the
      Stripe dashboard (STRIPE.md §10 is the click-path) and fills in ALL of:
@@ -112,17 +141,18 @@
   };
 
   var PORTAL_FALLBACK = "https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600";
-  var SUPPORT_URL = "https://us-central1-factbox-7cb97.cloudfunctions.net/support";
 
-  /* sessionStorage, not localStorage: "I have just gone to Stripe to cancel"
-     is true for one visit and false forever after. It holds the subscription
-     id so a reader who cancels one plan while holding another is not shown a
-     receipt for the wrong one. */
-  var CXL_KEY = "fb_sub_cxl_v1";
-  var WHY_KEY = "fb_sub_why_v1";
+  /* sessionStorage, not localStorage: "I have just gone to Stripe" is true for
+     one visit and false forever after. CXL_KEY holds the subscription id so a
+     reader who cancels one plan while holding another is not shown a receipt
+     for the wrong one; SAVE_KEY is the same idea for the offer. Neither of
+     them is evidence of anything on its own — both only say which subscription
+     to believe Stripe about when Stripe answers. */
+  var CXL_KEY  = "fb_sub_cxl_v1";
+  var SAVE_KEY = "fb_sub_saved_v1";
+  var WHY_KEY  = "fb_sub_why_v1";
 
   var BILLING_WAIT_MS = 10000;   /* past FBX.CAP_MS and auth.js's own cap */
-  var NOTE_WAIT_MS    = 6000;
 
   /* ---- the smallest possible DOM layer -------------------------------- */
 
@@ -298,6 +328,30 @@
     } catch (e) { return false; }
   }
 
+  /* "You're all set." is a receipt, so it is held to the receipt's rule: it is
+     drawn only when Stripe's own record agrees. The proof is the amount on
+     customers/{uid}/subscriptions/{id} — written by the webhook off the price
+     Stripe charged — being the discounted amount, in the discount's currency,
+     on a subscription that is not already on its way out.
+
+     A DISCOUNTED PRICE lights this. A COUPON does not: a coupon leaves the
+     price object alone, so the amount on the record stays at full price and
+     there is nothing here to check against. If Hassan builds the coupon shape
+     (STRIPE.md §10, the second of the two), this screen never draws and the
+     reader lands on the plan screen instead — which shows Stripe's own state
+     and is true. Saying less is the failure mode this file is allowed. */
+  function savedTrue(sub) {
+    try {
+      var o = SAVE_OFFER;
+      if (!(o.amountCents > 0)) return false;
+      if (!(o.percentOff > 0 && o.percentOff < 100)) return false;
+      if (!sub || typeof sub.amount !== "number") return false;
+      if (sub.cancelAtPeriodEnd) return false;
+      if (String(sub.currency || "").toLowerCase() !== String(o.currency || "").toLowerCase()) return false;
+      return sub.amount === o.amountCents;
+    } catch (e) { return false; }
+  }
+
   /* ---- who this reader is ---------------------------------------------- */
 
   var FBU = null;
@@ -326,23 +380,25 @@
   var wait   = el("sb-wait");
   var stat   = el("sb-static");
   var step1  = el("sb-1"), step2 = el("sb-2"), step3 = el("sb-3");
-  var step4  = el("sb-4"), step5 = el("sb-5");
+  var step4  = el("sb-4"), step5 = el("sb-5"), step6 = el("sb-6");
   var pNone  = el("sb-none"), pOut = el("sb-out"), pDead = el("sb-dead");
 
   var eName  = el("sb-plan-name"), eState = el("sb-plan-state");
   var ePrice = el("sb-plan-price"), eWhen = el("sb-plan-when");
   var ePortal = el("sb-portal"), eLive1 = el("sb-1-live");
 
-  var offPrice = el("sb-off-price"), offUsage = el("sb-off-usage");
-  var offContent = el("sb-off-content"), offOther = el("sb-off-other");
+  /* One offer, and only one. The three screens that used to sit beside it —
+     sb-off-usage, sb-off-content and sb-off-other — are deleted from the
+     markup and from here. */
+  var offPrice = el("sb-off-price");
 
-  var eSay4 = el("sb-4-say"), eSay5 = el("sb-5-say");
+  var eSay4 = el("sb-4-say"), eSay5 = el("sb-5-say"), eSay6 = el("sb-6-say");
+  var eBack4 = el("sb-back-4");
   var eUntil1 = el("sb-until-1"), eUntil2 = el("sb-until-2");
   var eFact1 = el("sb-fact-until"), eFact2 = el("sb-fact-until-2");
   var eCancel = el("sb-cancel");
-  var eNote = el("sb-note");
 
-  var STEPS = [step1, step2, step3, step4, step5];
+  var STEPS = [step1, step2, step3, step4, step5, step6];
   var PANELS = [pNone, pOut, pDead];
 
   function only(node) {
@@ -354,7 +410,7 @@
   /* ---- the hash router -------------------------------------------------- */
 
   var HASH = { "": "plan", "#": "plan", "#cancel": "cancel", "#offer": "offer",
-               "#confirm": "confirm", "#done": "done" };
+               "#confirm": "confirm", "#saved": "saved", "#done": "done" };
 
   function stepFromHash() {
     try {
@@ -443,22 +499,17 @@
     show(eLive1, pending);
   }
 
-  /* ---- step 3, the save attempt ----------------------------------------- */
+  /* ---- step 3, THE save attempt ----------------------------------------- */
 
-  var recsDrawn = false, usageDrawn = false;
-
+  /* No argument taken from `why`, on purpose. Every reason reaches this
+     screen; the only thing that decides whether it is drawn at all is
+     offerLive(), which is the offer being on or off for everybody. render()
+     has already refused to route here when it is off, so by the time this
+     runs there is a real, redeemable discount whose arithmetic matches this
+     reader's own amount. */
   function paintOffer(sub) {
-    var live = (why === "price") && offerLive(sub);
-    show(offPrice, live);
-    show(offUsage, why === "usage");
-    show(offContent, why === "content");
-    /* "Something else" is also where a price objection lands while the
-       discount does not exist. It asks a real question and quotes no figure. */
-    show(offOther, !live && why !== "usage" && why !== "content");
-
-    if (live) paintPriceOffer(sub);
-    if (why === "usage" && !usageDrawn) { usageDrawn = true; paintUsage(); }
-    if (why === "content" && !recsDrawn) { recsDrawn = true; paintRecs(); }
+    show(offPrice, true);
+    paintPriceOffer(sub);
   }
 
   function paintPriceOffer(sub) {
@@ -505,110 +556,7 @@
     } catch (e) {}
   }
 
-  /* "You have finished nine stories." A real count off FBP, or no line.
-     FBP.visible() is the signed-out gate — a shared phone must not be told
-     about the last reader's reading. */
-  function paintUsage() {
-    try {
-      if (!window.FBP || !FBP.all || !FBP.visible || !FBP.visible()) return;
-      var m = FBP.all(), k, done = 0, started = 0;
-      for (k in m) {
-        if (!has(m, k) || !m[k]) continue;
-        if (m[k].done) done++; else started++;
-      }
-      if (done < 1 && started < 1) return;
-      var s = "";
-      if (done > 0) s = "You have finished " + done + (done === 1 ? " story" : " stories") + ".";
-      else s = "You are part-way through " + started + (started === 1 ? " story" : " stories") + ".";
-      text(el("sb-usage"), s);
-      show(el("sb-usage"), true);
-    } catch (e) {}
-  }
-
-  /* Three stories this reader has not opened, with their real covers, real
-     titles and real lengths. If the index does not arrive, the grid stays
-     hidden and the screen is the headline and the buttons — which still make
-     sense on their own. */
-  function paintRecs() {
-    try {
-      if (!window.FB || !FB.loadIndex) return;
-      FB.loadIndex().then(function (stacks) {
-        try {
-          var box = el("sb-recs");
-          if (!box || !stacks || !stacks.length) return;
-          var seen = {};
-          try {
-            if (window.FBP && FBP.all && FBP.visible && FBP.visible()) seen = FBP.all() || {};
-          } catch (e) { seen = {}; }
-
-          var picked = [], i, s;
-          for (i = 0; i < stacks.length && picked.length < 3; i++) {
-            s = stacks[i];
-            if (!s || !s.id || !s.title) continue;
-            if (has(seen, String(s.id))) continue;
-            picked.push(s);
-          }
-          /* Everything read already: show the three longest instead of
-             nothing, because "there's more waiting" with an empty grid under
-             it is a headline contradicting itself. */
-          if (!picked.length) {
-            for (i = 0; i < stacks.length && picked.length < 3; i++) {
-              if (stacks[i] && stacks[i].id && stacks[i].title) picked.push(stacks[i]);
-            }
-          }
-          if (!picked.length) return;
-
-          box.innerHTML = "";
-          for (i = 0; i < picked.length; i++) box.appendChild(recCard(picked[i]));
-          show(box, true);
-        } catch (e) {}
-      }, function () {});
-    } catch (e) {}
-  }
-
-  function recCard(s) {
-    var a = document.createElement("a");
-    a.setAttribute("href", s.id === "01" ? "/cleopatra" : "/read?s=" + encodeURIComponent(s.id));
-    a.setAttribute("data-fbt", "sub_rec_open");
-
-    var plate = document.createElement("div");
-    plate.className = "sb-rec-plate";
-    if (s.img) {
-      var img = document.createElement("img");
-      img.setAttribute("alt", "");
-      img.setAttribute("loading", "lazy");
-      img.setAttribute("decoding", "async");
-      /* Two fallbacks and then nothing: the thumbnail, the stack hero, and if
-         neither lands the plate keeps its own ground and hairline. A broken
-         image icon on a save screen is a page that looks abandoned. */
-      img.onerror = function () {
-        try {
-          if (!img.getAttribute("data-tried")) {
-            img.setAttribute("data-tried", "1");
-            img.src = "/img/stacks/" + s.img + ".webp";
-            return;
-          }
-          img.onerror = null;
-          if (img.parentNode) img.parentNode.removeChild(img);
-        } catch (e) {}
-      };
-      img.src = "/img/thumbs/" + s.img + ".webp";
-      plate.appendChild(img);
-    }
-    a.appendChild(plate);
-
-    var b = document.createElement("b");
-    b.appendChild(document.createTextNode(String(s.title)));
-    a.appendChild(b);
-
-    var sp = document.createElement("span");
-    var mins = "";
-    try { if (window.FB && FB.minutes) mins = FB.minutes(s.secs); } catch (e) { mins = ""; }
-    if (mins) { sp.appendChild(document.createTextNode(mins)); a.appendChild(sp); }
-    return a;
-  }
-
-  /* ---- steps 4 and 5 ---------------------------------------------------- */
+  /* ---- steps 4, 5 and 6 ---------------------------------------------------- */
 
   function paintConfirm(sub) {
     var until = untilText(sub);
@@ -625,16 +573,40 @@
       show(eFact1, false);
     }
     attr(eCancel, "href", portalURL());
+    /* Behind this screen is the offer when there is one and the reason when
+       there is not. render() degrades #offer forward to here when the offer is
+       off, so a Back button hard-wired to it would land the reader on this
+       same screen and look broken. */
+    attr(eBack4, "data-step", offerLive(sub) ? "offer" : "cancel");
+  }
+
+  /* Step 5. Every figure on it is Stripe's: the amount it is charging now and
+     the date it charges next. The percentage is SAVE_OFFER's, and savedTrue()
+     has already checked that percentage against the amount Stripe holds — so
+     it is not a claim, it is the same fact said in words. */
+  function paintSaved(sub) {
+    text(eSay5, "Your next year of Factbox is " + SAVE_OFFER.percentOff +
+                "% off. Nothing else about your account changes.");
+
+    var pl = priceLine(sub);
+    text(el("sb-saved-price"), pl);
+    show(el("sb-fact-saved-price"), !!pl);
+
+    var when = dateText(sub && sub.currentPeriodEnd);
+    text(el("sb-saved-when"), when);
+    show(el("sb-fact-saved-when"), !!when);
+
+    attr(el("sb-portal-4"), "href", portalURL());
   }
 
   function paintDone(sub) {
     var until = untilText(sub);
     if (until) {
-      text(eSay5, "You still have Factbox until " + until + ".");
+      text(eSay6, "You still have Factbox until " + until + ".");
       text(eUntil2, until);
       show(eFact2, true);
     } else {
-      text(eSay5, "Your subscription will not renew. You keep every story " +
+      text(eSay6, "Your subscription will not renew. You keep every story " +
                   "until the period you have paid for runs out.");
       show(eFact2, false);
     }
@@ -755,85 +727,35 @@
     }
 
     /* From here down the reader has a live Stripe subscription, which is the
-       only state any of the five steps make sense in. */
+       only state any of the six steps make sense in. */
     var want = stepFromHash();
 
     /* #done is not a screen a reader may ask for. Stripe has to have said the
        subscription is ending. */
     if (want === "done" && !sub.cancelAtPeriodEnd) want = "plan";
+    /* Nor is #saved. Stripe has to be charging the discounted amount. */
+    if (want === "saved" && !savedTrue(sub)) want = "plan";
+
+    /* THE OFFER'S ONE SWITCH, AND IT IS NOT THE REASON. When there is no
+       redeemable discount there is no save attempt to make, so the offer step
+       degrades forward to the confirmation rather than drawing a screen with
+       nothing on it. Note what this is not: it is offerLive(), which knows
+       about Stripe and about this reader's own amount and nothing whatever
+       about `why`. No answer on step 2 can reach this screen while another
+       answer cannot — that was the old shape and it is what made the offer
+       look deleted. Rewritten here rather than redirected so that the address
+       bar keeps one history entry per tap, the same way #done does. */
+    if (want === "offer" && !offerLive(sub)) want = "confirm";
 
     if (want === "plan") { paintPlan(sub); only(step1); return; }
     if (want === "cancel") { paintReasons(); only(step2); return; }
-    if (want === "offer") {
-      /* Landing straight on the offer with no reason chosen is a refresh or a
-         pasted link; the "anything we should know?" screen is the honest
-         default and quotes nothing. */
-      paintOffer(sub);
-      only(step3);
-      return;
-    }
+    if (want === "offer") { paintOffer(sub); only(step3); return; }
     if (want === "confirm") { paintConfirm(sub); only(step4); return; }
-    if (want === "done") { paintDone(sub); only(step5); return; }
+    if (want === "saved") { paintSaved(sub); only(step5); return; }
+    if (want === "done") { paintDone(sub); only(step6); return; }
 
     paintPlan(sub);
     only(step1);
-  }
-
-  /* ---- the note box ----------------------------------------------------- */
-
-  /* Read here, and nowhere near anything that reports. What a reader types
-     goes to the support inbox and to no analytics sink, ever. */
-  function noteText() {
-    try {
-      if (!eNote) return "";
-      var s = String(eNote.value || "").replace(/^\s+|\s+$/g, "");
-      return s.length > 3000 ? s.slice(0, 3000) : s;
-    } catch (e) { return ""; }
-  }
-
-  function idToken(cb) {
-    var done = false;
-    function go(t) { if (done) return; done = true; cb(t || ""); }
-    try {
-      var u = (FBU && FBU.user) ? FBU.user() : null;
-      if (!u || typeof u.getIdToken !== "function") return go("");
-      setTimeout(function () { go(""); }, 2000);
-      u.getIdToken().then(function (t) { go(String(t || "")); }, function () { go(""); });
-    } catch (e) { go(""); }
-  }
-
-  var noteSent = false;
-
-  /* Fired on the way out of the "anything we should know?" screen, in either
-     direction. The reader is never held up by it and is never told it
-     arrived, because from here we cannot know that it did. */
-  function sendNote(body) {
-    if (noteSent || !body) return;
-    noteSent = true;
-    idToken(function (token) {
-      var xhr = null, timer = null;
-      try { xhr = new XMLHttpRequest(); } catch (e) { return; }
-      try {
-        xhr.open("POST", SUPPORT_URL, true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState !== 4) return;
-          try { if (timer) clearTimeout(timer); } catch (e) {}
-          if (xhr.status === 200) {
-            try { if (window.FB && FB.track) FB.track("support_send"); } catch (e) {}
-          }
-        };
-        xhr.onerror = function () {};
-        timer = setTimeout(function () { try { xhr.abort(); } catch (e) {} }, NOTE_WAIT_MS);
-        xhr.send(JSON.stringify({
-          kind: "help",
-          message: "Cancellation note from /subscription:\n\n" + body,
-          email: "",
-          page: "/subscription"
-        }));
-      } catch (e) {}
-    });
   }
 
   /* ---- wiring ----------------------------------------------------------- */
@@ -853,9 +775,6 @@
         t = t.parentNode;
       }
       if (!dest) return;
-      /* Leaving the note screen in either direction posts what is in the box.
-         Nothing on screen claims it was sent. */
-      if (offOther && !offOther.hidden) sendNote(noteText());
       goStep(dest);
     });
 
@@ -874,8 +793,15 @@
           }
           if (!k) return;
           setWhy(k);
+          /* ONE destination for all four answers, and it is not read off the
+             answer. offerLive() is asked instead — "is there an offer at all",
+             which is the same question for every reader in the room. When
+             there is one, every reason reaches it; when there is not, nobody
+             does. Deciding here rather than letting #offer bounce keeps the
+             history to one entry per tap and the Back button honest. */
+          var next = offerLive(subNow()) ? "offer" : "confirm";
           /* Long enough to see the tick land, short enough not to feel held. */
-          setTimeout(function () { goStep("offer"); }, 170);
+          setTimeout(function () { goStep(next); }, 170);
         });
       }
     } catch (e) {}
@@ -897,6 +823,13 @@
       var dest = "";
       try { dest = SAVE_OFFER.link || ""; } catch (e) { dest = ""; }
       if (!dest) return;
+      /* The same note CXL_KEY carries, for the other ending: which
+         subscription the reader went to Stripe about. It grants nothing and
+         proves nothing — step 5 is still drawn off Stripe's own amount. */
+      try {
+        var s0 = subNow();
+        ss(SAVE_KEY, (s0 && s0.id) ? s0.id : "1");
+      } catch (e) {}
       try { if (window.FB && FB.track) FB.track("subscribe_click"); } catch (e) {}
       try { location.href = dest; } catch (e) {}
     });
@@ -920,15 +853,6 @@
       }, false);
     } catch (e) {}
 
-    if (eNote) {
-      /* A note typed and then abandoned still reaches us if the reader closes
-         the tab, which is the commonest way this screen ends. */
-      try {
-        window.addEventListener("pagehide", function () {
-          try { if (offOther && !offOther.hidden) sendNote(noteText()); } catch (e) {}
-        }, false);
-      } catch (e) {}
-    }
   }
 
   /* ---- boot ------------------------------------------------------------- */
@@ -946,12 +870,28 @@
   }
 
   /* The live Firestore snapshot arriving is what turns the confirmation into
-     a receipt. Nothing else in this file may move a reader to #done. */
+     a receipt. Nothing else in this file may move a reader to #done, and
+     nothing else may move them to #saved either — both branches below wait for
+     Stripe to have written the fact, and the sessionStorage key only says
+     which subscription to believe it about. */
   function onSub(sub) {
     try {
       if (sub && sub.cancelAtPeriodEnd && ss(CXL_KEY) && ss(CXL_KEY) === sub.id) {
         ss(CXL_KEY, null);
         goStep("done");
+        return;
+      }
+      /* No id comparison here, and CXL_KEY's is not an oversight this is
+         copying badly. A cancellation happens to the subscription the reader
+         left with, so the receipt has to name it. The discounted-price shape
+         of this offer REPLACES the subscription with a new one (STRIPE.md §10
+         says so in as many words), so the id in SAVE_KEY is the old plan's and
+         will not match. The evidence that stands either way is savedTrue():
+         Stripe is charging the discounted amount on whatever subscription this
+         reader now has. */
+      if (sub && savedTrue(sub) && ss(SAVE_KEY)) {
+        ss(SAVE_KEY, null);
+        goStep("saved");
         return;
       }
     } catch (e) {}

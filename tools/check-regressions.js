@@ -223,6 +223,108 @@ const CHECKS = [
                 /FBX\.isToday/.test(read("js/recommend.js")),
   },
   {
+    name: "reading the unlock flag does not grant it",
+    why: "js/progress.js's dGet() used to heal: read localStorage, find " +
+         "nothing, read the cookie mirror, and WRITE IT BACK. gate.js and " +
+         "progress.js's own claim() both call it at parse time on every page, " +
+         "so a browser holding nothing but a stale unlock cookie was re-issued " +
+         "a browser-level entitlement on its next load. Measured on /explore, " +
+         "signed out: all fifty-one open, no padlocks, and the subtitle " +
+         "'You have all fifty-one.' /account and /library each carried a " +
+         "private 'never call FBP.unlocked() here' workaround; /explore never " +
+         "got one. The read is pure now, so there is nothing to remember.",
+    pass: () => {
+      const s = read("js/progress.js");
+      const m = /function dGet\(k\)\s*\{[\s\S]*?\n  \}/.exec(s);
+      if (!m) return "dGet() not found in js/progress.js";
+      const body = m[0];
+      if (/lsSet\(|ckSet\(|localStorage\.setItem|document\.cookie\s*=/.test(body)) {
+        return "dGet() writes to a store; a read must not grant access";
+      }
+      /* The deliberate heal is allowed to exist — the in-app-webview buyer " +
+         needs it — but only corroborated by a valid restore token. */
+      if (/dHeal\(/.test(s) && !/validToken\(ckGet\(K_TOKEN\)\)/.test(s)) {
+        return "the heal is no longer corroborated by a valid restore token";
+      }
+      return true;
+    },
+  },
+  {
+    name: "?unlocked=1 is a parameter, not a substring",
+    why: "js/gate.js tested location.search.indexOf('unlocked=1'), which is " +
+         "true of any query containing those ten characters anywhere — a " +
+         "campaign tag, an encoded next=, a pasted referrer. Measured: " +
+         "/explore?ref=not_unlocked=1 minted the flag permanently and handed a " +
+         "signed-out reader the whole season.",
+    pass: () => {
+      const s = read("js/gate.js");
+      if (/search\.indexOf\(\s*["']unlocked=1["']\s*\)/.test(s)) {
+        return "gate.js is back to a substring test on location.search";
+      }
+      return /\[\?&\]unlocked=1/.test(s) ||
+             "gate.js no longer matches unlocked=1 as a whole parameter";
+    },
+  },
+  {
+    name: "a browser flag cannot grant before identity is known",
+    why: "Identity has three states and the bug is always in the third. " +
+         "Firebase arrives by dynamic import(), so there is a window in which " +
+         "nobody has answered. accountDenies() already refuses to DENY in that " +
+         "window, which protects a paying reader; nothing refused to GRANT in " +
+         "it, which is the direction that gives the season away. Padlocks drawn " +
+         "and then removed are the site's render-then-correct rule; padlocks " +
+         "absent and then added are the product being given away for as long " +
+         "as the answer takes.",
+    pass: () => {
+      const s = read("js/access.js");
+      if (!/function identityUnknown\(\)/.test(s)) {
+        return "js/access.js has no identityUnknown() guard";
+      }
+      const m = /function legacy\(\)\s*\{[\s\S]*?\n  \}/.exec(s);
+      if (!m) return "legacy() not found in js/access.js";
+      return /identityUnknown\(\)/.test(m[0]) ||
+             "legacy() no longer consults identityUnknown()";
+    },
+  },
+  {
+    name: "the padlocks and the subtitle answer different questions",
+    why: "Padlocks are can() — admin, subscriber, legacy or owner may all " +
+         "read. The 'You have all fifty-one' subtitle is a claim about a " +
+         "PURCHASE, so it is owns(): subscriber or legacy and nothing else. " +
+         "They were one function once, and that is how /explore came to tell " +
+         "the site's own owner they had bought the season they wrote.",
+    pass: () => {
+      const s = read("js/today.js");
+      if (!/FBX\.owns \? FBX\.owns\(\)/.test(s)) {
+        return "js/today.js no longer gates the subtitle on FBX.owns()";
+      }
+      const a = read("js/access.js");
+      const m = /function owns\(\)\s*\{[\s\S]*?\n  \}/.exec(a);
+      if (!m) return "owns() not found in js/access.js";
+      if (/"admin"|"owner"/.test(m[0])) {
+        return "owns() has been widened to admin or owner mode";
+      }
+      return true;
+    },
+  },
+  {
+    name: "the FREE ribbon is gone from every shelf",
+    why: "Removed deliberately: a free cover is already bright and unlocked " +
+         "while a paid one is dimmed and padlocked, so the badge added nothing " +
+         "a reader could not see and spent a word on 'free' at the moment we " +
+         "would rather they thought about the story. The is-free class and the " +
+         "data-free attribute are a separate contract and must NOT go with it.",
+    pass: () => {
+      for (const f of ["js/today.js", "js/library.js"]) {
+        if (/freetag/.test(read(f))) return `${f} still draws a .freetag`;
+      }
+      const t = read("js/today.js");
+      if (!/data-free="/.test(t)) return "js/today.js dropped the data-free contract";
+      if (!/is-free/.test(t)) return "js/today.js dropped the is-free class";
+      return true;
+    },
+  },
+  {
     name: "the story pages still carry the sign-up ask",
     why: "Those three URLs are the marketing funnel. Retiring the illustrated " +
          "deck must not take its call to action with it.",

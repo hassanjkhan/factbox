@@ -328,10 +328,20 @@
      attribute rather than adding a second one is what keeps applyLocked()
      unchanged and keeps the hero, the shelf and the mosaic in step.
 
-     The FREE ribbon is a different claim. It says the story is free FOREVER,
-     so it is drawn from s.free and never from the attribute — today's pick is
-     open today and locked on Thursday, and a badge that promised otherwise
-     would be a lie with a date on it. */
+     THE FREE RIBBON IS GONE. It used to be drawn here from s.free — never
+     from the attribute, because s.free means free FOREVER while the attribute
+     is also true of today's pick, which is locked again on Thursday.
+
+     It was removed because the signal it carried is already on screen without
+     it: a free cover is bright and wears no padlock, a locked one is dimmed
+     (opacity .52, saturate .65) and wears one. That contrast IS the message,
+     and it is legible at mosaic size. The word "free" added nothing a reader
+     could not already see, and it spent a word reminding them the story costs
+     nothing at the moment we would rather they were thinking about the story.
+
+     The `is-free` class and the `data-free` attribute both stay. They are the
+     contract js/library.js, applyLocked() and the QA harnesses read; only the
+     visible label went. */
   function openNow(s) { return !!(s && (s.free || (TODAY_ID && s.id === TODAY_ID))); }
 
   function cover(s) {
@@ -350,7 +360,6 @@
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" width="420" height="560" ' +
                'src="/img/thumbs/' + esc(s.img) + '.webp"' + heroFallback(s.img) + '>' +
-          (s.free ? '<span class="freetag">FREE</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(clean(s.title)) + '</h3>' +

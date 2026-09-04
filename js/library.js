@@ -138,9 +138,11 @@
         '<div class="plate">' +
           '<img loading="lazy" decoding="async" alt="" ' +
                'src="/img/thumbs/' + esc(s.img) + '.webp"' + heroFallback(s.img) + '>' +
-          (locked
-            ? '<span class="lock" aria-hidden="true">🔒</span>'
-            : (s.free ? '<span class="freetag">FREE</span>' : '')) +
+          /* The padlock stays; the FREE ribbon is gone, matching js/today.js.
+             A free cover is bright and unlocked and a paid one is dimmed and
+             wears a lock — that contrast already says it, and the word "free"
+             only reminded a reader that this one costs nothing. */
+          (locked ? '<span class="lock" aria-hidden="true">🔒</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
         '<h3>' + esc(s.title) + '</h3>' +

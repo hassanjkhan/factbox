@@ -362,9 +362,28 @@ Ask before touching pricing, the number of free stories, or `LEGAL.md`.
 
 `subscription.html` · `css/subscription.css` · `js/subscription.js`
 
-Five screens on one page: **the plan → why are you leaving → one save attempt
-→ confirm → the receipt.** Hash routes (`#cancel`, `#offer`, `#confirm`,
-`#done`) so the phone's Back button walks back out of it.
+Six screens on one page: **the plan → why are you leaving → THE one save
+attempt → confirm → and then whichever ending happened: the offer taken, or the
+subscription cancelled.** Hash routes (`#cancel`, `#offer`, `#confirm`,
+`#saved`, `#done`) so the phone's Back button walks back out of it.
+
+**The reason does not gate the offer, and must never be allowed to again.**
+Until 4 September 2026 there were four save screens in that one slot and the
+answer on the reason step picked between them, so only *"it costs more than I
+want to spend"* could reach the discount. Three readers in four were routed
+past the only thing that might have kept them — which is how the offer came to
+look deleted. There is now **one** save screen; every reason reaches it; the
+answer is recorded and decides nothing. The three alternative screens (a usage
+screen, a recommendations grid, and an *"anything we should know?"* note box
+that posted to the support Cloud Function) are deleted from the markup, the
+script and the stylesheet.
+
+The offer can still be switched off — and it is, see §10 — but that is a switch
+on the whole offer, for everybody, rather than a branch on the answer. While it
+is off there is no save attempt to make, so the reason step hands the reader
+straight to the confirmation and `#offer` degrades forward to it rather than
+drawing a screen with nothing on it. `offerLive()` is the only thing that
+decides this and it has never heard of the reason.
 
 **Stripe's billing portal is what cancels. Nothing here can.** The confirm
 screen's red button is an `<a>` pointing at
@@ -389,6 +408,17 @@ true, so typing `#done` into the address bar gets the plan screen. A reader who
 opens the portal and changes their mind comes back to a plan that still says
 *Active*. There is no local flag, no optimistic state and no way for this site
 to claim a cancellation that did not happen.
+
+**"You're all set." is held to the same rule from the other side.** `#saved`
+draws only when `savedTrue()` agrees, which means the `amount` Stripe has
+written on the subscription record IS the discounted amount `SAVE_OFFER` was
+configured with, in its currency, on a plan that is not already ending. Typing
+`#saved` gets the plan screen. Note which of §10's two shapes this can see: a
+**discounted price** changes the amount on the record and lights this screen; a
+**coupon** leaves the price object alone, so the record still reads full price,
+`savedTrue()` says no and the reader lands on the plan screen — which shows
+Stripe's own state and is true. Saying less is the failure this page is allowed
+to have.
 
 **Why the portal and not a Cloud Function on the Stripe API.** Fewer moving
 parts on the path that carries revenue: no second writer, no API key in a new
@@ -427,11 +457,24 @@ unlock and not a subscription. None of them is shown a cancel button.
 
 ### Instrumentation
 
-No new event names. The steps ride on `ui_click` (every control carries a
-`data-fbt`, which is what `js/analytics.js` reports as `control`) and the two
-hops to Stripe send the existing `billing_portal`. The note box on the "anything
-we should know?" screen posts to the same Cloud Function `/support` posts to,
-as `kind: "help"`, and the screen says so.
+**No new event names, including the reason.** The mockup names a
+`cancel_reason_selected` event; there is no such thing and there does not need
+to be. `js/analytics.js` has one delegated listener that reports every control
+as `ui_click` carrying the control's `data-fbt`, and the four reason buttons
+already carry `sub_why_price`, `sub_why_usage`, `sub_why_content` and
+`sub_why_other`. That IS the reason being recorded, it is already live, and it
+costs nothing against the event budget. `privacy.html` §"what we send" lists
+`ui_click` generically as "the control's name", so a new control name needs no
+change there — a new *event* name would. Adding one is not worth an event slot
+and a privacy edit for a fact we already have.
+
+The two hops to Stripe send the existing `billing_portal`; taking the offer
+sends the existing `subscribe_click`.
+
+**The note box is gone, and with it the only thing on this page that posted to
+the support Cloud Function.** `SUPPORT_URL` is no longer in
+`js/subscription.js`. `privacy.html` still describes that box in two places and
+now describes something that does not exist — see the note at the end of §10.
 
 
 ## 10. The save offer — OFF, and exactly what turns it on
@@ -442,9 +485,24 @@ measurement and there is no coupon, promotion code or discounted price on
 `acct_1RKKQAAhj1M3E8Tl`. A save screen quoting a discount nobody can redeem is
 worse than no save screen: it is the $35-vs-$35.88 defect with a bigger gap.
 
-Until then, a reader who says "it costs more than I want to spend" gets the
-*"Anything we should know?"* screen, which asks a real question and quotes no
-figure.
+**What a reader gets until then: nothing in that slot.** The screen that used
+to stand in for the discount — *"Anything we should know?"* — is deleted, along
+with the other two alternatives, because those alternatives are exactly what
+made the offer look deleted (§9). With no redeemable discount there is no save
+attempt to make, so the cancellation runs reason → confirmation and nobody sees
+a save screen at all. The moment `SAVE_OFFER` below is filled in and
+`offerLive()` agrees, every reason reaches the offer, and no answer can be
+routed around it.
+
+**The mockup's figures are not the till's.** The design says `full: "$35"` and
+`halfPrice: "$17.50"`. **Stripe charges $35.88**, so the half is **$17.94** and
+`amountCents` is `1794`. `PRICING.symbol` in `js/account.js` is now `"US$"`
+because Stripe presents non-US buyers their own currency (an annual link opened
+from a Canadian IP quotes CA$51.63); `js/subscription.js` does not use
+`PRICING` at all — it prints `amount` and `currency` off the reader's own
+subscription record, with a bare `$` for USD, `£`, `€`, and an honest
+`"1197 JPY"` for anything else. If the annual price ever does move to $35.00,
+`amountCents` becomes `1750` in the same edit.
 
 The screen itself is built and works. One object at the top of
 `js/subscription.js` is the whole switch:
@@ -532,11 +590,40 @@ configured discount must fail closed.
 - **In Stripe.** Open the new link (or start a cancellation in the portal) in a
   private window. The header must read **$17.94**, and there must be **no
   trial**.
-- **On the site.** `/subscription` → Cancel subscription → *"It costs more than
-  I want to spend"*. The screen must read **50% OFF**, **"$17.94 for the next 12
-  months"**, and then either **"Then $35.88 a year."** (a coupon) or **"Then
-  $17.94 a year."** (a discounted price) — whichever is true of the thing you
-  built. If any of the three disagrees with Stripe by a cent, `amountCents` or
-  `thenCents` is wrong; fix it there and nowhere else.
+- **On the site.** `/subscription` → Cancel subscription → **and then each of
+  the four reasons in turn, not just the price one.** All four must land on the
+  offer; if one of them reaches the confirmation instead, the branch is back and
+  that is the bug this flow was rebuilt to remove. The screen must read
+  **50% OFF**, **"$17.94 for the next 12 months"**, and then either **"Then
+  $35.88 a year."** (a coupon) or **"Then $17.94 a year."** (a discounted
+  price) — whichever is true of the thing you built. If any of the three
+  disagrees with Stripe by a cent, `amountCents` or `thenCents` is wrong; fix it
+  there and nowhere else.
 - **In the address bar.** Tap the button and check you land on the id you
   created.
+- **The screen after.** With the discounted-price shape, once Stripe has
+  charged the new amount the webhook writes `amount: 1794` and `/subscription`
+  can draw step 5, *"You're all set."*, quoting that amount and the next charge
+  date. With the coupon shape it cannot — the price object still reads 3588 —
+  and the reader gets the plan screen instead, which is also true. Neither
+  screen is ever drawn from a local flag.
+
+### One document this change makes inaccurate, and it is not ours
+
+The *"Anything we should know?"* note box is gone, so **`/subscription` no
+longer posts anything to the support Cloud Function**. `privacy.html` says it
+does, in two places, and both now describe a box that does not exist:
+
+- **`privacy.html` line 109**, the summary list: *"The optional note box shown
+  when you cancel a subscription goes to the same place, without a reply
+  address."* — delete that sentence.
+- **`privacy.html` lines 400–410**, section 08: the whole paragraph beginning
+  *"The support page is not the only screen that can reach that function…"* —
+  it describes the box, the empty address field and the `/subscription` filing
+  marker. It should go, and the sentence before it that promises "the two boxes
+  on the support page" is then complete on its own.
+
+`privacy.html` is somebody else's file. Nothing in this repo posts to `/support`
+from `/subscription` any more; the disclosure is now over-disclosure, which is
+harmless to a reader and wrong in a document whose whole claim is that it was
+written against what the code actually does.

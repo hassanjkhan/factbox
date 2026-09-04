@@ -40,9 +40,23 @@ var FB = (function () {
           localStorage.setItem(k, v); return v; } catch (e) { return null; }
   }
 
-  /* Stripe sends the buyer back to ?unlocked=1 on success. */
+  /* Stripe sends the buyer back to ?unlocked=1 on success.
+
+     A PARAMETER, NOT A SUBSTRING. This was indexOf("unlocked=1"), which is
+     true of any query string containing those ten characters ANYWHERE — as a
+     value, inside an encoded `next=`, in a campaign tag, in a referrer someone
+     pasted. Measured: /explore?ref=not_unlocked=1 minted the flag and the
+     signed-out reader got all fifty-one stories and "You have all fifty-one."
+     One ordinary-looking link gave the season away permanently, on any browser
+     that ever loaded it, which is as intermittent as a bug gets.
+
+     js/progress.js's own claim() has always parsed the query properly and
+     tested Q.unlocked === "1". This is the same test, done here too, so the
+     two files cannot disagree about whether a buyer came back from Stripe.
+
+     ES5: no URLSearchParams. */
   function claim() {
-    if (location.search.indexOf("unlocked=1") === -1) return;
+    if (!/[?&]unlocked=1(&|$)/.test(String(location.search || ""))) return;
     store(KEY, "1");
     try {
       history.replaceState({}, "", location.pathname + location.hash);
