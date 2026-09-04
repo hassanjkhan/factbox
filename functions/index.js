@@ -234,3 +234,15 @@ exports.support = require("./support").support;
    if some future entry point loads one without the other.
    -------------------------------------------------------------------------- */
 exports.today = require("./today").today;
+
+/* --------------------------------------------------------------------------
+   The admin analytics door. Its own file for the same reason as the three
+   above, and the reason applies hardest here: this one is new, it is the only
+   function that talks to a third party on an admin's behalf, while the webhook
+   at the top of this file is deployed, working and load-bearing for revenue. `insights.js`
+   verifies a Firebase ID token, re-reads the admin flag from Firestore itself,
+   and runs one of eleven queries IT wrote against PostHog — it never accepts a
+   query from a browser and never lets the PostHog key near one. The contract
+   the dashboard is built against is ANALYTICS-API.md.
+   -------------------------------------------------------------------------- */
+exports.insights = require("./insights").insights;

@@ -403,8 +403,12 @@ var FBS = (function () {
      into aria-label ("Save to library: <title>" / "Remove from library:
      <title>") and aria-pressed, which is where a screen reader looks anyway.
 
-     button(id, onChange, title) -> HTMLButtonElement, or null if there is no DOM.
-       onChange(isSaved, id) fires after every successful toggle.
+     button(id, onToggle, title) -> HTMLButtonElement, or null if there is no DOM.
+       onToggle(isSaved, id) fires after every successful toggle, and ONLY
+                  then. It is a report of a TAP, not of a repaint. The
+                  callers on all four readers turn it straight into
+                  save_add / save_remove, so anything else that calls it is
+                  a wrong number in the funnel — see the note at b.unbind.
        title      the story's name, for the accessible label. Optional: with
                   no title the label is the same sentence without it.
        el.refresh()  repaints from the store (call it if you change saves
@@ -413,7 +417,7 @@ var FBS = (function () {
 
      When storage is dead the button paints "Saving unavailable" and disables
      itself. A button that silently forgets is worse than one that says so. */
-  function button(id, onChange, title) {
+  function button(id, onToggle, title) {
     try {
       if (typeof document === "undefined" || !document || !document.createElement) return null;
       var k = keyOf(id);
@@ -422,7 +426,7 @@ var FBS = (function () {
       var b = document.createElement("button");
       b.type = "button";
       b.className = "fbs-save";
-      /* This button already reports itself: read.html passes an onChange that
+      /* This button already reports itself: read.html passes an onToggle that
          fires save_add / save_remove. js/analytics.js's one delegated click
          listener reads data-fbt="-" as "counted elsewhere, do not send
          ui_click for this" — without it the same tap would be counted twice
@@ -534,14 +538,38 @@ var FBS = (function () {
             if (!_lsOK || !k) return;
             var on = toggle(k);
             paint();
-            if (typeof onChange === "function") onChange(on, k);
+            if (typeof onToggle === "function") onToggle(on, k);
           } catch (e) {}
         });
       } catch (e) {}
 
       b.refresh = paint;
       /* The account's answer arrives ~600ms after the reader does. Without
-         this the button is stuck on whatever the first paint guessed. */
+         this the button is stuck on whatever the first paint guessed.
+
+         THIS SUBSCRIBES TO THE STORE, NOT TO THE CALLER. It used to read
+         `onChange(...)`, and until the parameter above was renamed that name
+         resolved to the CALLER'S callback, not to the module's subscribe
+         function eleven lines from the top of this file. So every reader
+         built a save button by handing us a function, and we called that
+         function back, once, at build time, with a function as its first
+         argument — truthy — which read.html and the three composed story
+         pages turn directly into:
+
+             FB.track(isSaved ? "save_add" : "save_remove", { stack: s.id })
+
+         One save_add per story opened, free or locked, saved or not, before
+         the reader had touched anything. Every save_add on the dashboard
+         since this button shipped is a page load. Reproduced in Chrome:
+         /read?s=01, no interaction, save_add{stack:"01"} in the first
+         second. The number was not slightly high, it was the story-open
+         count wearing a different name.
+
+         The rename is the fix, and it is the fix rather than a guard inside
+         the callback because the caller cannot defend itself against being
+         called: it has no way to tell a real toggle from this. `onToggle`
+         now means a tap and nothing else, and the repaint hangs off the
+         store's own subscribe, which is what it always meant to. */
       try { b.unbind = onChange(function () { try { paint(); } catch (e) {} }); }
       catch (e) {}
       paint();

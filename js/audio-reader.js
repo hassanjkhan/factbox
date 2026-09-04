@@ -575,6 +575,11 @@
     say(msg, 2600);                     /* the label used to carry this       */
     btn.setAttribute("aria-disabled", "true");
     btn.removeAttribute("aria-pressed");
+    /* A retired button is still on screen for another 2.6 seconds and can
+       still be tapped, and the click handler above returns immediately when
+       `dead`. So the tap does nothing, and "-" is js/analytics.js's opt-out:
+       it must not arrive as a play or a mute that never happened. */
+    try { btn.setAttribute("data-fbt", "-"); } catch (e) {}
     setTimeout(function () {
       btn.classList.add("is-gone");
       setTimeout(drop, 400);
@@ -649,15 +654,59 @@
 
   function paint() {
     var busy = (armed || (on && !everLoaded)) && !dead;
-    btn.className = "fb-sound " + (on || armed ? "is-on" : "is-off") + (busy ? " is-busy" : "");
+    var live = on || armed;
+    btn.className = "fb-sound " + (live ? "is-on" : "is-off") + (busy ? " is-busy" : "");
     /* No words. The speaker either has waves coming off it or a cross through
        it, which is the same thing every player on the phone already says, and
        a pill that reads "Sound off" over a painting is a caption competing
        with the painting. The state still has a name for anyone who cannot see
        the icon — it lives in aria-pressed and aria-label, below. */
-    btn.setAttribute("aria-pressed", String(on || armed));
-    btn.setAttribute("aria-label", (on || armed) ? "Ambient sound is on. Turn it off."
-                                                 : "Ambient sound is off. Turn it on.");
+    btn.setAttribute("aria-pressed", String(live));
+    btn.setAttribute("aria-label", live ? "Ambient sound is on. Turn it off."
+                                        : "Ambient sound is off. Turn it on.");
+
+    /* ------------------------------------------------------------------
+       What analytics calls this button.
+
+       "Are people using the audio button and then muting the music or
+       playing it?" was unanswerable, and not for a subtle reason: this
+       button carries no id, no name and no data-fbt, so js/analytics.js's
+       delegated listener had to guess a name for it, and the way it guesses
+       is to walk up to six ancestors looking for one. On all four readers
+       the first thing it finds is #fb-rail — the control COLUMN this button
+       sits in — so every mute and every unmute arrived on the dashboard as
+       `fb_rail`, one undifferentiated number named after a piece of layout.
+       (On a page with no rail it would fall through to the class instead and
+       arrive as `fb_sound`; two names for one button, neither of them saying
+       what the tap did.)
+
+       THE VALUE IS WHAT THE NEXT PRESS WILL DO, NOT WHAT THE BUTTON IS.
+
+           sound_on    pressing now turns sound ON   -> a play
+           sound_off   pressing now turns sound OFF  -> a mute
+
+       so it is the INVERSE of `live` above, and that is deliberate. The
+       listener in js/analytics.js reads this attribute in the CAPTURE phase,
+       before the click handler below has flipped anything, so an attribute
+       naming the CURRENT state would be read one press out of date and every
+       play would be filed as a mute. Read that twice before editing it: this
+       is the one line in this file where the obvious version is backwards.
+
+       Normally naming an outcome would be a guess about what a handler is
+       going to do. It is not a guess here: the handler is eleven lines below,
+       in this file, and it does exactly one thing —
+       `if (on || armed) turnOff(); else turnOn();` — off the same `live` this
+       line is computed from. paint() runs on every state change, so the
+       attribute is never stale.
+
+       The cross-check is already in the event beside it. js/analytics.js also
+       sends was_on, read off the aria-pressed set two lines up, and that one
+       is MEASURED rather than predicted. On this button the two are always
+       inverses: control "sound_off" travels with was_on true. If a report
+       ever shows them agreeing, this line has been flipped and the measured
+       one is the one to believe.
+       ------------------------------------------------------------------ */
+    try { btn.setAttribute("data-fbt", live ? "sound_off" : "sound_on"); } catch (e) {}
   }
 
   btn.addEventListener("click", function (e) {

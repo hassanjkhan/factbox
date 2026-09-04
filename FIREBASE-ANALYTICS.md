@@ -338,14 +338,27 @@ corpus, so a determined reader produces hundreds in a session. What I found:
 
 ## 4 · What is now collected, in both systems
 
-**Both sinks receive exactly the same 45 events with the same properties**,
-minus `dwell_s` on `card_view` for GA4. Nothing new is measured. No new call
-site exists. The full list of what those events carry is already written out in
-`privacy.html` §04 and is unchanged.
+**Both sinks receive exactly the same events with the same properties**, minus
+`dwell_s` on `card_view` for GA4. No new call site exists: everything still goes
+through the one `capture()` seam. `node tools/check-analytics.js` prints the
+current count of event names in the source, which is the number to trust rather
+than one written down here and left to go stale — it is **47** as of the pass
+described in `ANALYTICS.md`.
+
+> **Changed since this section was first written**, and both are set out in
+> `ANALYTICS.md` §2 with what `privacy.html` §04 needs to say about them:
+>
+> * **`client_error`** is new — `{ message, source, line, page, release }`, the
+>   first error reporting this site has ever had. Rate-limited to at most eight
+>   per page load, scrubbed of anything that could identify or unlock, and with
+>   no stack parameter on purpose.
+> * **`ui_click`** carries `was_on` when the control is a toggle, read from
+>   `aria-pressed` in the capture phase — so a mute and an unmute on the sound
+>   button are no longer the same row.
 
 |  | PostHog | Firebase / GA4 |
 |---|---|---|
-| Events | all 45 | all 45 |
+| Events | all of them | all of them |
 | Identifier stored in the browser | yes, `ph_…` in localStorage | yes, `_ga` cookie + `measurementId` |
 | Where | United States | Google, region per property |
 | Opt-out | the privacy-page button | the same button |

@@ -287,6 +287,37 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- The admin analytics door (functions/insights.js, ANALYTICS-API.md) -
+    //
+    // There is deliberately NO analytics data in Firestore. Every event the
+    // dashboard reads already lives in PostHog, put there by js/analytics.js;
+    // writing a second copy here would cost a document write on every card a
+    // reader looks at and leave two numbers for every question with no way to
+    // say which was right. What is here is only what it costs to ask.
+    //
+    // `insights_rate/{uid}` is one counter per admin per UTC day: an hour
+    // count, a day count, a timestamp and an `expiresAt` for a TTL policy.
+    // Unlike `support_ip` there is nothing to hash — the caller is always an
+    // authenticated admin whose uid is already a document id under
+    // `customers`, so a counter keyed on it reveals nothing that document does
+    // not, and there is no daily salt and no IP anywhere in it.
+    //
+    // Deny-all, and the reason is the same as the support counters: a client
+    // that could write here could hand itself an unlimited budget, and a
+    // client that could read here could tell when the owner is looking.
+    // `{document=**}` below would already deny both; this is written out so
+    // that a future rule for some neighbouring path cannot widen it by
+    // accident, and so the collections have somewhere to be explained.
+    match /insights_rate/{uid} {
+      allow read, write: if false;
+    }
+    // Today's date, today's total request count and today's count of queries
+    // that actually left Google for PostHog. The second is the number that
+    // caps a bad day; see BACKEND.md §4d.
+    match /insights_meta/{doc} {
+      allow read, write: if false;
+    }
+
     // --- Everything else --------------------------------------------------
     match /{document=**} {
       allow read, write: if false;

@@ -93,8 +93,14 @@ const CHECKS = [
          "controls other scripts build after load.",
     pass: () => {
       const s = read("js/analytics.js");
-      return /document\.addEventListener\("click",[\s\S]{0,400}?\}, true\)/.test(s) &&
-             /capture\("ui_click",\s*\{\s*page:\s*PAGE,\s*control:/.test(s);
+      /* ui_click's properties are built into an object now, because a toggle
+         adds was_on and a control that is not a toggle must not. The two
+         things this guards are unchanged: ONE listener, and it is on the
+         document in the CAPTURE phase so a handler calling stopPropagation
+         cannot hide a tap from it. */
+      return /document\.addEventListener\("click",[\s\S]{0,900}?\}, true\)/.test(s) &&
+             /var props = \{ page: PAGE, control: clip\(controlName\(n\), CLIP\) \};/.test(s) &&
+             /capture\("ui_click", props\);/.test(s);
     },
   },
   {
@@ -104,11 +110,33 @@ const CHECKS = [
          "a named list of the controls other files build.",
     pass: () => {
       const s = read("js/analytics.js");
-      return /function skipControl\(/.test(s) && /data-fbt/.test(s) &&
-             /fbs-save/.test(s) && /ec-go/.test(s) && /data-unsave/.test(s) &&
-             /data-fbt/.test(read("js/saves.js")) &&
-             /data-fbt/.test(read("js/recommend.js")) &&
-             /data-fbt/.test(read("js/library.js"));
+      if (!(/function skipControl\(/.test(s) && /data-fbt/.test(s) &&
+            /fbs-save/.test(s) && /ec-go/.test(s) && /data-unsave/.test(s) &&
+            /data-fbt/.test(read("js/saves.js")) &&
+            /data-fbt/.test(read("js/recommend.js")) &&
+            /data-fbt/.test(read("js/library.js")))) return "the skip seam is incomplete";
+
+      /* Two more that were found double-counting a real tap, both verified in
+         Chrome before they were added. The named event fires from the same
+         tap with nothing in front of it, so ui_click was a second count of
+         one press.
+
+         The test for this list is UNCONDITIONAL: a named event inside a
+         .then() is a success and ui_click is an attempt, and those are two
+         different facts worth having. That is why #au-go, #au-google, #au-out
+         and #st-out are deliberately absent, and why this check asserts they
+         stay absent — a later pass "tidying up the duplicates" would
+         otherwise silently delete every failed sign-in from the record. */
+      if (!/"st-billing": 1/.test(s))
+        return "#st-billing is not skipped; settings.html fires billing_portal on the same tap, unconditionally";
+      if (!/"jn-yn"/.test(s))
+        return ".jn-yn is not skipped; join.html already sends join_plan_answer{n, yes}, which says which way they answered";
+      const kept = ["au-go", "au-google", "au-out", "st-out"];
+      const wrong = kept.filter(id => new RegExp('"' + id + '"\\s*:\\s*1').test(s));
+      if (wrong.length)
+        return wrong.join(", ") + " has been skipped, but its named event fires only on success — " +
+               "skipping the control throws away every failed attempt, which is the half that says why it is not working";
+      return true;
     },
   },
   {
@@ -199,6 +227,200 @@ const CHECKS = [
        clipper left, which is one fewer place for the two to disagree. */
     pass: () => /function clip\(/.test(read("js/analytics.js")) &&
                 /var CLIP = 100;/.test(read("js/analytics.js")),
+  },
+  {
+    name: "a save is counted at the save, not at the page load",
+    why: "js/saves.js's button() took a callback parameter called `onChange`, " +
+         "which shadowed the module's own subscribe function of the same name " +
+         "eleven lines from the top of the file. The repaint subscription at " +
+         "the bottom of button() therefore called the CALLER back, once, at " +
+         "build time, with a function as its first argument — truthy — and all " +
+         "four readers turn that argument straight into " +
+         "FB.track(isSaved ? \"save_add\" : \"save_remove\"). Every save_add on " +
+         "the dashboard was a story being opened. The shadow is the whole bug, " +
+         "so the shadow is what is guarded: the parameter may not be called " +
+         "onChange again, and the subscription must still be there.",
+    pass: () => {
+      const s = read("js/saves.js");
+      if (!/function button\(\s*id\s*,\s*onToggle\s*,/.test(s)) {
+        return "js/saves.js button()'s callback parameter is no longer `onToggle` — " +
+               "if it has been renamed back to `onChange` it shadows the module's " +
+               "subscribe function and save_add fires on every page load";
+      }
+      if (/function onChange\(fn\)/.test(s) === false) return "js/saves.js has no module-level onChange(fn) to subscribe to";
+      /* The repaint must hang off the store, and the caller must be called
+         only from inside the click handler. */
+      if (!/b\.unbind = onChange\(function \(\) \{ try \{ paint\(\); \}/.test(s))
+        return "the save button no longer subscribes its repaint to the store";
+      /* Count CALLS, not mentions: the docstring above button() names the
+         parameter with its arguments and would otherwise count as one. */
+      const calls = (s.replace(/\/\*[\s\S]*?\*\//g, "").match(/\bonToggle\s*\(/g) || []).length;
+      if (calls !== 1) return "onToggle is called " + calls + " times outside comments; it must be called once, from the click handler";
+      if (!/if \(typeof onToggle === "function"\) onToggle\(on, k\);/.test(s))
+        return "the only call to onToggle is not the one inside the click handler";
+      return true;
+    },
+  },
+  {
+    name: "a client error is reported, in the shape the query API reads",
+    why: "Nothing listened on window.onerror or unhandledrejection on any page, " +
+         "ever. A story that threw on card three looked identical to a reader " +
+         "who got bored: both are a stack_dropoff and nothing else. One event " +
+         "name, five parameters, both sources of failure.",
+    pass: () => {
+      const s = read("js/analytics.js");
+      if (!/capture\("client_error", \{\s*message: msg, source: src, line: ln, page: PAGE, release: RELEASE\s*\}\)/.test(s))
+        return "client_error is not sent with exactly message, source, line, page, release";
+      if (!/addEventListener\("error",/.test(s)) return "nothing listens for an uncaught error";
+      if (!/addEventListener\("unhandledrejection",/.test(s)) return "nothing listens for an unhandled rejection";
+      /* window.onerror = ... would silently replace whatever a page had, and
+         js/scenes.js already listens for `error` its own way. */
+      if (/window\.onerror\s*=/.test(s)) return "js/analytics.js assigns window.onerror instead of adding a listener";
+      return true;
+    },
+  },
+  {
+    name: "a render loop cannot send more than a known number of errors",
+    why: "Both readers repaint on a MutationObserver and on scroll, so a throw " +
+         "inside one is a throw per frame. Unlimited, one phone on one story " +
+         "posts tens of thousands of events, drowns the real traffic in the " +
+         "same charts the owner is reading, and is billed for twice. The bound " +
+         "has to be arithmetic and per page load — not a rate anyone has to " +
+         "believe.",
+    pass: () => {
+      const s = read("js/analytics.js");
+      const max = s.match(/var ERR_MAX\s*=\s*(\d+);/);
+      if (!max) return "there is no ERR_MAX ceiling";
+      if (Number(max[1]) < 1 || Number(max[1]) > 25) return "ERR_MAX is " + max[1] + "; a page-load ceiling above 25 is not a ceiling";
+      if (!/if \(errSent >= ERR_MAX\) return;/.test(s)) return "ERR_MAX is declared but never enforced";
+      if (!/if \(errSeen\[sig\] === 1\) return;/.test(s)) return "the same error is not deduplicated, so a loop pays per frame";
+      if (!/errSent\+\+;/.test(s)) return "nothing increments the count the ceiling is checked against";
+      if (!/if \(sending\) return;/.test(s)) return "reporting is re-entrant: an error inside the reporter can report itself";
+      return true;
+    },
+  },
+  {
+    name: "no error is reported from a page that is leaving, and bfcache still works",
+    why: "A navigation cancels every request in flight, and the rejections that " +
+         "produces are what leaving a page looks like from inside it, not a " +
+         "fault. pagehide is the bfcache-safe signal for it. pageshow has to " +
+         "clear the flag or one Back tap leaves a live page that never reports " +
+         "again — and an unload or beforeunload listener ANYWHERE on the site " +
+         "disqualifies every page from bfcache, which js/gate.js's " +
+         "back-after-paying correction depends on.",
+    pass: () => {
+      const s = read("js/analytics.js");
+      if (!/addEventListener\("pagehide", function \(\) \{ leftPage = true; \}\)/.test(s))
+        return "pagehide does not stop error reporting";
+      if (!/addEventListener\("pageshow", function \(\) \{ leftPage = false; \}\)/.test(s))
+        return "pageshow does not restore error reporting after a bfcache tap-back";
+      if (!/if \(leftPage\) return;/.test(s)) return "the leaving flag is set but never read";
+      const bad = [];
+      for (const f of ALL) {
+        const t = read(f);
+        if (/addEventListener\(\s*["'](?:beforeunload|unload)["']/.test(t)) bad.push(f);
+        if (/\bon(?:beforeunload|unload)\s*=/.test(t)) bad.push(f);
+      }
+      return bad.length ? "a bfcache-killing unload listener is back in " + [...new Set(bad)].join(", ") : true;
+    },
+  },
+  {
+    name: "an error report cannot carry a token, a session id or an email",
+    why: "?restore=<token> is a working key to a paid season and Stripe's " +
+         "success redirect carries a session_id. A rejected fetch quotes the " +
+         "URL it failed on, and a thrown auth error is entirely capable of " +
+         "quoting the email that was just typed. There is no stack parameter " +
+         "for the same reason: a stack is many lines of many URLs.",
+    pass: () => {
+      const s = read("js/analytics.js");
+      if (!/function scrub\(v\)/.test(s)) return "there is no scrub()";
+      if (!/msg = clip\(scrub\(message\), CLIP\);/.test(s)) return "the message is not scrubbed and clipped before it is sent";
+      if (!/function fileOf\(v\)/.test(s)) return "there is no fileOf() to strip a source URL down to a path";
+      if (!/var src = fileOf\(source\);/.test(s)) return "the source is sent as given rather than reduced to a path";
+      /* The four rules scrub() has to keep: query strings, credentials in a
+         URL, email addresses, and any long unbroken run of token characters. */
+      if (!/\[\?#\]/.test(s)) return "scrub() no longer strips a query string or a fragment";
+      if (!/<email>/.test(s)) return "scrub() no longer redacts an email address";
+      if (!/\{24,\}/.test(s)) return "scrub() no longer redacts a long token-shaped run";
+      if (/\bstack:\s*/.test(s.slice(s.indexOf('capture("client_error"'))))
+        return "client_error has grown a stack parameter";
+      return true;
+    },
+  },
+  {
+    name: "a toggle says which way it was pointing when it was pressed",
+    why: "'Are people using the audio button and then muting the music or " +
+         "playing it?' A mute and an unmute were the same row in the same " +
+         "report. aria-pressed is already on the sound button and the save " +
+         "bookmark for the screen reader, and the click listener is registered " +
+         "in the CAPTURE phase, so reading it there is the state at the moment " +
+         "of the press — observed, not inferred from a handler this file does " +
+         "not own.",
+    pass: () => {
+      const s = read("js/analytics.js");
+      if (!/function toggleState\(n\)/.test(s)) return "there is no toggleState()";
+      if (!/getAttribute\("aria-pressed"\)/.test(s)) return "toggleState no longer reads aria-pressed";
+      if (!/var was = toggleState\(n\);\s*if \(was !== null\) props\.was_on = was;/.test(s))
+        return "ui_click does not carry was_on for a toggle";
+      /* null, not false, for a control that is not a toggle — otherwise every
+         button on the site lands in the 'was off' bucket. */
+      if (!/return null;\s*\/\* not a toggle \*\//.test(s))
+        return "toggleState returns something other than null for a control that is not a toggle";
+      if (!/\}, true\);/.test(s)) return "the click listener has left the capture phase, so was_on would be the state AFTER the handler ran";
+      return true;
+    },
+  },
+  {
+    name: "the sound button says what the press will do, in the right direction",
+    why: "The one control the owner asked about by name. It carries no id and " +
+         "no name, so js/analytics.js had to guess a name by walking up to six " +
+         "ancestors, found #fb-rail — the control column it sits in — and filed " +
+         "every mute and every unmute as `fb_rail`: one undifferentiated number " +
+         "named after a piece of layout.\n" +
+         "      THE DIRECTION IS THE WHOLE THING. The delegated listener reads " +
+         "data-fbt in the CAPTURE phase, before the button's own handler has " +
+         "flipped anything, so the attribute has to name the state the press " +
+         "WILL PRODUCE — the inverse of the state the button is in. An " +
+         "attribute naming the current state is read one press out of date and " +
+         "files every play as a mute. It is the one line in that file where the " +
+         "obvious version is backwards, so it is asserted rather than trusted.",
+    pass: () => {
+      const a = read("js/audio-reader.js");
+      if (!a) return "js/audio-reader.js is missing";
+      if (!/btn\.setAttribute\("aria-pressed", String\(live\)\);/.test(a))
+        return "paint() no longer derives aria-pressed from `live`, which is what the name below is the inverse of";
+      /* on/armed -> the press turns it OFF; otherwise the press turns it ON. */
+      if (!/btn\.setAttribute\("data-fbt", live \? "sound_off" : "sound_on"\);/.test(a))
+        return "the sound button's data-fbt is not `live ? \"sound_off\" : \"sound_on\"` — if the two values have been swapped, " +
+               "every mute is now reported as a play and every play as a mute";
+      /* A retired button is on screen and tappable for another 2.6 seconds and
+         its handler returns immediately, so a tap on it must not be counted. */
+      const ret = a.slice(a.indexOf("function retire("), a.indexOf("function drop("));
+      if (!/setAttribute\("data-fbt", "-"\)/.test(ret))
+        return "a retired sound button does not opt out of ui_click, so a tap that does nothing is reported as a play or a mute";
+      /* The two values are what the query API's audio_usage groups on. */
+      if (!/data-fbt/.test(read("js/analytics.js")))
+        return "js/analytics.js no longer reads data-fbt at all";
+      return true;
+    },
+  },
+  {
+    name: "there is a release to pin an error spike to",
+    why: "This site has no build step: the files are served raw off GitHub " +
+         "Pages at the same URLs forever, and nothing a browser can read " +
+         "changes when a commit lands. So the release is written down or it " +
+         "does not exist. This asserts the SHAPE — it cannot assert that " +
+         "somebody remembered to bump it, and pretending otherwise would be " +
+         "the fabricated number this repo keeps refusing.",
+    pass: () => {
+      const s = read("js/analytics.js");
+      const m = s.match(/var RELEASE = "([^"]*)";/);
+      if (!m) return "js/analytics.js has no RELEASE constant";
+      if (!/^\d{4}-\d{2}-\d{2}[a-z]?$/.test(m[1]))
+        return "RELEASE is \"" + m[1] + "\"; it must be yyyy-mm-dd with an optional letter, so two deploys on one day are two releases";
+      if (!/release: RELEASE/.test(s)) return "RELEASE is declared but not sent on client_error";
+      return true;
+    },
   },
   {
     name: "nothing a reader typed is ever sent",

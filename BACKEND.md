@@ -31,9 +31,10 @@ this document by two orders of magnitude. GitHub Pages serves them for nothing.
 `data/stacks.json` stays the source of truth (SPEC.md §5). Firestore is a serving copy and
 `tools/seed-firebase.js` is what keeps the copy honest.
 
-Four functions, four files, and they share nothing but `admin.initializeApp()`:
+Five functions, five files, and they share nothing but `admin.initializeApp()`:
 `index.js` is the Stripe webhook, `story.js` the gated read path (§4), `today.js` which
-story is free (§4b) and `support.js` the support inbox (§4c).
+story is free (§4b), `support.js` the support inbox (§4c) and `insights.js` the admin
+analytics door (§4d, contract in ANALYTICS-API.md).
 
 ---
 
@@ -716,6 +717,210 @@ refusal hands back a `mailto:` already carrying what they typed.
 
 ---
 
+## 4d. The admin analytics door
+
+`functions/insights.js`. The full contract the dashboard is built against is
+**ANALYTICS-API.md**; this section is why it looks like this rather than like the obvious
+thing.
+
+```
+POST https://us-central1-factbox-7cb97.cloudfunctions.net/insights
+Authorization: Bearer <Firebase ID token>
+{ "query": "card_dropoff", "params": { "story": "26", "days": 14 } }
+```
+
+### The data was already there
+
+The owner asked for dwell per story card, drop-off, funnels, crashes and button presses,
+and assumed all of it needed building. It did not. `js/analytics.js` has been sending
+every one of those facts to PostHog — through the Cloudflare proxy at `/ink`, so ad
+blockers do not eat it — and to GA4, for weeks. `card_view` **already carries `dwell_s`**.
+`ui_click` already names every button by its `data-fbt`. `stack_open` / `stack_complete` /
+`stack_dropoff` already bracket every reading, and `story_time` already reports engaged
+time with the clock stopped while the tab is hidden.
+
+So the obvious build — a second pipeline writing those events into Firestore — was
+refused, for three reasons and in this order:
+
+1. **It duplicates PostHog badly.** PostHog has a query language, retention, funnels and
+   session stitching. A Firestore copy would have counts.
+2. **It costs a write on every card a reader looks at.** Reads are the cheap side of
+   Firestore and writes are not; a ten-card story read by a thousand people is ten
+   thousand writes for a number PostHog already holds.
+3. **It splits the truth.** Two stores, two numbers for every question, and no way to say
+   which is right.
+
+What was actually missing was not data. It was a **door**: a way for the owner to ask
+PostHog a question from their own domain without the key or the query language ever being
+in a browser.
+
+### What is refused, and why each refusal matters
+
+**A query from the client.** The tempting version of this endpoint takes a HogQL string
+and forwards it. That is a data-exfiltration hole with extra steps — and "the key is
+read-only" is not an answer, because a read-only key reads *everything in the project*,
+including person properties and every raw event. So the eleven query texts are string
+constants inside `insights.js`. A caller sends a **name** and typed **values**. Nothing
+from a request becomes a column, a table, an ORDER BY or a filter that this file did not
+write.
+
+**`FBU.admin()` as authorisation.** `js/auth.js` keeps an `adminFlag` off the reader's own
+`customers/{uid}` document and exposes it. That decides whether a link gets painted. It is
+a variable in a browser and anyone can set it from a console, so this function verifies a
+Firebase ID token against the project's signing keys — with `checkRevoked`, so a withdrawn
+admin does not keep an hour of valid token — and then **re-reads `customers/{uid}` itself**
+and applies exactly the test auth.js applies (`admin === true || role === "admin"`).
+`firestore.rules` denies every client write to that document; the only writers are the
+Stripe webhook and the console.
+
+**Distinguishing the refusals.** A signed-out caller, a non-admin, an expired token and a
+forged one all get the identical `403 {"ok":false,"error":"not_admin"}`. Telling them
+apart would tell a stranger whether a token was valid, whether an account exists and
+whether it is the admin one. The log line knows; the response does not.
+
+**Any identity in a row.** There is no `SELECT *` in the file. Every column is named, and
+none of them is `distinct_id`, `person_id`, `$ip`, an email or a person property. People
+are counted with `count(DISTINCT person_id)` and the **count** is what is returned.
+
+### The parameter guard
+
+Every string parameter is matched against a character set — story ids
+`[A-Za-z0-9_-]`, search terms `[A-Za-z0-9 _.:/-]`, and so on — none of which admits a
+quote, a backslash, a brace, a semicolon, a comma, a parenthesis, a percent or a newline.
+A value that does not match is **refused**, not stripped: a story id with a quote in it is
+not a typo, and silently removing the quote would hide the attempt instead of putting it
+in the log with the uid that sent it.
+
+Then `lit()` asserts the same character set again at the moment the value is placed into
+the query text. That is deliberate belt-and-braces: a future query that forgets to
+validate its parameter throws instead of building a query with a stranger's punctuation
+in it. It has already earned its place once — the first draft built `'%' + contains + '%'`
+for the ILIKE searches, `lit()` rejected the `%`, and the wildcards moved into a separate
+helper that adds them around a value which still cannot contain one.
+
+PostHog does offer HogQL placeholders with a `values` map, which is the more fashionable
+answer. This does not use them, on purpose: the guarantee wanted here is "the value cannot
+contain a character that ends a string literal", which is a property of the value and
+holds whatever a remote parser this code cannot see decides to do.
+
+### Two names for the same thing, on purpose
+
+`js/dashboard.js` was written in parallel with this file and against seven shorter query
+names — `stories`, `story_cards`, `funnel`, `onboarding`, `events`, `audio`, `errors` —
+and against a `from`/`to` date range rather than a `days` count. Neither half was wrong
+and a rename round trip between two agents would have cost more than it bought, so **both
+are accepted**: the alias resolves to the canonical query, the response reports the
+canonical name, and `meta.requested` says which name arrived.
+
+The date range was the better idea and is now the primary form. A dashboard with a date
+picker has two dates, not a number of days; `from`/`to` are two `YYYY-MM-DD` strings, `to`
+is inclusive of its own day, one end given means the other is today, backwards means
+swapped, and a span over 90 days moves `from` forward rather than refusing — a picker
+dragged across a year is a picker at its end. `days` still works and is what a curl wants.
+`2026-02-31` matches the shape, is not a date, and is refused.
+
+One thing worth confirming with whoever owns the dashboard: `events` currently aliases to
+`button_presses`, because that panel searches by name and renders a `control` column. If
+it was meant to be per-event volume, the alias should point at `event_volume` instead.
+
+### Rate limiting, and the lesson support.js already paid for
+
+§4c explains at length why a module-scope `Map` was never a throttle: it is per instance,
+every cold start hands an attacker a fresh one, and the real limit was `cap × instances`.
+The same trap is here and the same answer applies — the authoritative counters are
+Firestore documents under `insights_rate/{uid}` and `insights_meta/quota`, read and
+written inside one transaction, shared by every instance and outliving all of them. The
+in-memory `Map` is still the first thing consulted, because it is free and it turns a
+dashboard stuck in a render loop against one warm instance into zero database traffic.
+
+| limit | value |
+|---|---|
+| per admin, per minute | 30 (in memory first, then Firestore) |
+| per admin, per hour | 240 |
+| per admin, per day | 1000 |
+| all admins, upstream PostHog queries per day | 3000 |
+
+Two things are **simpler** here than in support.js, and both because the caller is always
+authenticated. The counter keys on the uid, so there is no IP to hash, no daily salt, no
+`support_meta/salt` equivalent and no privacy cost at all — the document holds two counts,
+two timestamps and an `expiresAt` for a TTL policy. And the limits run **after** the admin
+check, so an anonymous flood costs zero Firestore operations: a forged token fails
+signature verification locally against cached public keys, before any network call and
+before any read.
+
+### Cost, on a normal day and a bad one
+
+A **normal** day is two or three admins opening a dashboard a few times: under a hundred
+requests, each costing one `customers` read plus a two-read/two-write transaction. Call it
+500 reads and 200 writes a month. Against a 50,000-read **daily** free allowance that is
+not a rounding error, it is below the resolution of the bill.
+
+A **bad** day, meaning a determined flood at the endpoint:
+
+| line | what bounds it | cost |
+|---|---|---|
+| PostHog queries | `GLOBAL_PER_DAY = 3000`, and PostHog does not bill per query | $0 |
+| Firestore | only authenticated admins reach a transaction; 3000 requests ≈ 9k reads + 6k writes | **< $0.02** |
+| Function compute | `maxInstances: 3` × 256 MiB, pinned for a whole day ≈ 65,000 GiB-s | ~**$0.16**, and the free tier is 360,000 GiB-s/mo |
+| Function invocations | unbounded by anything but the internet; 3 instances × 20 concurrency saturated for 24h is roughly 25M requests | ~**$10** at $0.40/M |
+| Secret Manager | two more secrets | ~**$0.12**/mo |
+
+So the worst realistic day is **about ten dollars, essentially all of it invocations**, and
+it requires somebody to sustain hundreds of requests a second at the endpoint for
+twenty-four hours to get refused. `maxInstances: 3` is what keeps the other lines flat: it
+is the only number that caps what a flood can *spend* rather than what it can *achieve*.
+
+The lower bound worth stating: an attacker who steals a **non-admin** reader's account
+reaches exactly nothing here. Their token verifies, the `customers/{uid}` read says they
+are not an admin, and they get `not_admin` before a single parameter is parsed, before the
+rate limiter, and before anything is spent.
+
+### What the owner has to do
+
+Nothing in this repository, which is public. Three steps, all in their own consoles:
+
+1. A **PostHog personal API key** with the `query:read` scope, scoped to the one project.
+2. The **project id** — the number in the PostHog dashboard URL.
+3. Both into Secret Manager, then redeploy:
+
+```bash
+firebase functions:secrets:set POSTHOG_API_KEY     --project factbox-7cb97
+firebase functions:secrets:set POSTHOG_PROJECT_ID  --project factbox-7cb97
+firebase deploy --only functions:insights          --project factbox-7cb97
+```
+
+Until then every PostHog-backed query answers `502 {"ok":false,"error":"upstream",
+"reason":"not_configured"}` — the same shape §4c uses for a missing mail key, and for the
+same reason: the function works, the admin check works, `subscription_totals` works, and
+there is simply nothing upstream to ask. And admin itself is granted by setting
+`admin: true` on `customers/<uid>` in the Firebase console; the rules let no client near
+that field.
+
+### The two things this cannot answer, and the one-line fixes
+
+**Sound on versus sound off.** The ambient-sound button in `js/audio-reader.js` carries no
+`data-fbt`, no `id` and no `name`, so `ui_click` records it by its first class —
+`fb-sound` — and reads that class *before* the toggle flips. Every tap looks identical, so
+`audio_usage` can say how many people touched the sound and cannot say how many turned it
+on. The fix is one attribute from that file's `paint()`: `data-fbt="sound_on"` /
+`data-fbt="sound_off"`, mirroring the `aria-pressed` it already sets. That file belongs to
+another hand, so it is requested, not edited, and until it lands the tile reads "sound
+toggled".
+
+**A strict ordered funnel.** `subscribe_funnel` is *step reach* — distinct people who did
+each thing inside the window — not a verified sequence. A true funnel needs a person-level
+join over ordered events and costs a multiple of one aggregate scan. For a path this
+linear the two agree closely, and the chart has to say which one it is drawing.
+
+### Node 20
+
+`functions/package.json` pins `"node": "20"`, decommissioned for Cloud Functions on
+**30 October 2026**. Noted, not migrated. `insights.js` adds no dependency and uses nothing
+newer than global `fetch`, so it moves whenever the other four move — in one change, on
+purpose, rather than four files drifting onto four runtimes.
+
+---
+
 ## 5. Audio, and the trade
 
 31 ambience beds, 4.0 MB, now in `factbox-7cb97.firebasestorage.app` under `audio/`.
@@ -806,8 +1011,11 @@ that every open is a cold instance serving a paid story:
 allowance — the closest line, audio download, uses about 7% of it.
 
 There is a small fixed floor unrelated to traffic: Artifact Registry storing the function
-container images (~$0.05/mo) and Secret Manager holding `STRIPE_WEBHOOK_SECRET` (~$0.06/mo).
-Under **$0.15/month** whether anybody reads anything or not.
+container images (~$0.05/mo) and Secret Manager holding `STRIPE_WEBHOOK_SECRET`,
+`RESEND_API_KEY`, `POSTHOG_API_KEY` and `POSTHOG_PROJECT_ID` (~$0.06/mo each). Under
+**$0.30/month** whether anybody reads anything or not. The analytics door (§4d) adds
+nothing above that floor on a normal day and about ten dollars on the worst day somebody
+can arrange, essentially all of it invocations.
 
 ### Where it stops being free
 
@@ -882,7 +1090,7 @@ override. One line in `js/today.js`, quoted in §4b.
 ## 8. Verification
 
 ```
-node --check functions/index.js functions/story.js functions/today.js functions/support.js              tools/seed-firebase.js tools/check-backend.js tools/check-support.js
+node --check functions/index.js functions/story.js functions/today.js functions/support.js              functions/insights.js tools/seed-firebase.js tools/check-backend.js tools/check-support.js
 node tools/seed-firebase.js --dry-run
 node tools/check-backend.js
 node tools/check-support.js
@@ -910,6 +1118,41 @@ repeating if the limits are ever touched:
   `reply_to`, and that a message containing the fence cannot forge it.
 - **The global ceiling.** Set `support_meta/quota.count` to `PER_DAY`, send, expect
   `429 quota`, and restore the count immediately — it is a live collection.
+
+### The analytics door (§4d)
+
+Verified against the deployed function with two throwaway accounts, one marked
+`admin: true` in `customers/`, both deleted afterwards. Seven cases, and every one of them
+should be repeated if the admin check or the parameter guard is ever touched:
+
+| case | expected |
+|---|---|
+| admin token, `subscription_totals` | `200 {"ok":true, rows:[…]}` — real counts out of Firestore |
+| admin token, any PostHog query, key unset | `502 {"ok":false,"error":"upstream","reason":"not_configured"}` |
+| signed-in **non-admin** | `403 {"ok":false,"error":"not_admin"}` |
+| signed-out, no header | `403 {"ok":false,"error":"not_admin"}` — byte-identical |
+| forged token (right shape, wrong signature) | `403 {"ok":false,"error":"not_admin"}` — byte-identical |
+| unknown query name, including one that is SQL | `400 {"ok":false,"error":"bad_query","field":"query"}` |
+| `story: "26' UNION SELECT properties.$ip FROM events--"` | `400 …"field":"story"` |
+| `from: "2026-08-21' OR 1=1--"` | `400 …"field":"from"` |
+| `from: "2026-02-31"` — matches the shape, is not a date | `400 …"field":"from"` |
+| an alias plus a date range, as `js/dashboard.js` sends them | resolves to the canonical query; `meta.requested` echoes the alias |
+| `contains: "a'); DROP TABLE events;--"` | `400 …"field":"contains"` |
+| `event: "persons"` (a real ClickHouse table) | `400 …"field":"event"` |
+| `days: 100000, limit: 9999` | accepted and **clamped** to 90 / 200, echoed in `meta.params` |
+| 40 sequential admin requests | first `429 {"ok":false,"error":"rate_limited","retry_after_s":…}` on the 30th |
+| `Origin: https://evil.example.com` | `204`, and **no** `Access-Control-Allow-Origin` header |
+| `GET` | `405 {"ok":false,"error":"bad_query","field":"method"}` |
+
+The three refusals that must stay indistinguishable are the important row: a non-admin, a
+signed-out caller and a forged token get the same status and the same body. If a future
+edit makes one of them say something else, it is telling a stranger whether an account
+exists.
+
+`functions/insights.js` exports `_lit`, `_readParams`, `_QUERIES`, `_KNOWN_EVENTS` and
+`_shape` for a test and nothing else — `index.js` takes `.insights` and only `.insights`,
+so none of it is deployed or reachable. Pointing a test at `_lit` and `_readParams` covers
+the parameter guard without a network, a key or an account.
 
 For the free-story rule specifically:
 

@@ -118,6 +118,27 @@
   };
   var GA_QUEUE_MAX = 80;   /* events buffered while the SDK is in flight */
 
+  /* ---- Which build a report came from ---------------------------------- *
+     `client_error` carries this so a spike can be pinned to a deploy instead
+     of to a day. It is a hand-set literal and it is the ONE thing in this file
+     that is not self-maintaining, so it is worth being blunt about:
+
+       THIS SITE HAS NO BUILD STEP. The .js and .html files are served raw off
+       GitHub Pages at the same URLs forever, and there is nothing in a
+       browser — not a filename hash, not an ETag, not a header a script may
+       read — that changes when a commit lands. There is no honest way to
+       derive a release id at runtime. So it is written down, or it does not
+       exist.
+
+     Bump it in the same commit that changes site behaviour. A stale value is
+     a wrong answer, not a missing one, which is why tools/check-analytics.js
+     asserts the SHAPE (yyyy-mm-dd plus a letter) rather than pretending it can
+     assert the truth of it. If nobody is going to bump it, delete the constant
+     and the parameter together — a release field that always says the same
+     thing is worse than no release field, because a reader of the dashboard
+     believes it. */
+  var RELEASE = "2026-09-04a";
+
   var OPT_IN_REQUIRED = false;   /* true = capture nothing until agreed */
   var NOTICE_KEY = "fb_analytics_notice_v1";
   var OPTOUT_KEY = "fb_analytics_optout_v1";
@@ -737,8 +758,32 @@
      Sending ui_click alongside it would double-count the same tap and break
      every funnel built on the specific name. Each matcher below names the
      event the control already sends. */
-  var SKIP_IDS   = { pay: 1, "jn-buy": 1 };
-  var SKIP_CLASS = ["fbs-save", "ec-go"];
+  /* WHAT BELONGS ON THESE LISTS, AND WHAT DOES NOT. The test is whether the
+     named event fires from the SAME TAP, UNCONDITIONALLY. If it does, ui_click
+     is a second count of one tap and the control is skipped. If the named
+     event is conditional — it fires only when a promise resolves — then the
+     two are different facts and BOTH are wanted: ui_click counts the attempt
+     and the named event counts the success, and the pair is a funnel.
+
+     So #au-go, #au-google, #au-out and #st-out are deliberately NOT here.
+     signin_email, signup_email, signin_google and signout all fire inside a
+     .then(); skipping their buttons would throw away every failed sign-in,
+     which is the half of "making accounts" that says why it is not working.
+
+     #st-billing IS here: settings.html fires billing_portal on the same tap
+     with nothing in front of it. subscription.html's four portal links were
+     given data-fbt="-" for exactly this and this one was missed, so it has
+     been counting one tap twice for as long as both have existed.
+
+     .jn-yn is here for the same reason: join.html's three yes/no questions
+     already send join_plan_answer{n, yes} as the first line of answerPhase(),
+     which carries WHICH WAY they answered — something ui_click could never
+     say, because both halves of a question sit inside one #jn-q-N and so
+     report the same control name. Verified in Chrome: one tap on Yes sent
+     ui_click{control:"jn_q_0"} and join_plan_answer{n:"1",yes:"1"}. The
+     ui_click was the useless half of the pair as well as the duplicate one. */
+  var SKIP_IDS   = { pay: 1, "jn-buy": 1, "st-billing": 1 };
+  var SKIP_CLASS = ["fbs-save", "ec-go", "jn-yn"];
   var HOPS = 6;
 
   function skipControl(n) {
@@ -749,7 +794,7 @@
         a = t.getAttribute("data-fbt");
         if (a === "-") return true;
         if (a) return false;                       /* an explicit name wins */
-        if (t.id && SKIP_IDS[t.id] === 1) return true;       /* subscribe_click / checkout_start */
+        if (t.id && SKIP_IDS[t.id] === 1) return true;       /* subscribe_click / checkout_start / billing_portal */
         if (t.getAttribute("data-unsave")) return true;      /* library_unsave */
         /* Every answer option in /start and /join carries data-k, and every
            one of them already sends start_answer, join_draw, join_relate,
@@ -757,7 +802,7 @@
         if (t.getAttribute("data-k")) return true;
         var c = " " + String(t.className || "") + " ";
         for (var i = 0; i < SKIP_CLASS.length; i++) {
-          if (c.indexOf(" " + SKIP_CLASS[i] + " ") !== -1) return true;   /* save_add/remove, rec_click */
+          if (c.indexOf(" " + SKIP_CLASS[i] + " ") !== -1) return true;   /* save_add/remove, rec_click, join_plan_answer */
         }
         t = t.parentNode;
       }
@@ -805,13 +850,61 @@
     return null;
   }
 
+  /* A toggle reports which way it was pointing when it was pressed.
+
+     WHY THIS EXISTS. "Are people using the audio button and then muting the
+     music or playing it?" could not be answered. The reader's sound control
+     sends ui_click and nothing else, so a mute and an unmute were the same
+     row in the same report, and the count of them together answered neither
+     half of the question.
+
+     WHY aria-pressed AND NOT A SPECIAL CASE FOR THE SOUND BUTTON. aria-pressed
+     is the platform's own word for "this control is a toggle and here is its
+     state" — it is already on the sound button and on the save bookmark
+     because both had to be reachable from a screen reader, not because anyone
+     was thinking about analytics. Reading it is therefore free, it is correct
+     for every toggle this site ever adds, and it needs no cooperation from
+     any page. A branch on className would have been a special case that goes
+     stale the first time the button is restyled.
+
+     WHAT THE VALUE MEANS, EXACTLY. This listener is registered in the CAPTURE
+     phase, so it runs before the control's own handler flips anything. The
+     value is therefore the state the control was in AT THE MOMENT IT WAS
+     PRESSED, which is a thing that was observed, not a thing inferred about
+     what happened next:
+
+         was_on true   the sound was on and they pressed it  -> a mute
+         was_on false  the sound was off and they pressed it -> a play
+
+     It is deliberately NOT "the state it ended up in". That would be a guess
+     about a handler this file does not own: a control that is disabled, that
+     throws, or that opens a dialog instead of toggling would be reported as
+     having changed when it did not. Wrong in a way nobody would ever notice
+     is the one kind of wrong this file is not allowed to be.
+
+     A control with no aria-pressed sends no was_on at all, rather than a
+     false — absent means "not a toggle", false means "a toggle that was off",
+     and collapsing those two would put every button on the site into the
+     "was off" bucket. */
+  function toggleState(n) {
+    try {
+      var v = n.getAttribute("aria-pressed");
+      if (v === "true") return true;
+      if (v === "false") return false;
+    } catch (e) {}
+    return null;                       /* not a toggle */
+  }
+
   try {
     document.addEventListener("click", function (ev) {
       try {
         var n = controlOf(ev && ev.target);
         if (!n) return;
         if (skipControl(n)) return;
-        capture("ui_click", { page: PAGE, control: clip(controlName(n), CLIP) });
+        var props = { page: PAGE, control: clip(controlName(n), CLIP) };
+        var was = toggleState(n);
+        if (was !== null) props.was_on = was;
+        capture("ui_click", props);
       } catch (e) {}
       /* No preventDefault, no return value, nothing that can delay the tap. */
     }, true);
@@ -906,6 +999,208 @@
     if (document.visibilityState === "hidden") leaving();
     else storyResume();
   });
+
+  /* ======================================================================
+     WHEN THE SITE BREAKS IN SOMEBODY ELSE'S BROWSER.
+
+     Nothing listened on window.onerror or unhandledrejection before this, on
+     any page, ever. A reader whose story threw on card three saw a dead deck
+     and left, and the only trace it left on the dashboard was a stack_dropoff
+     that looked exactly like boredom. Those two are the same shape in every
+     report the site has, and they need completely different fixes.
+
+     ONE EVENT NAME, `client_error`, with five parameters:
+
+         message   what threw, scrubbed and clipped (see below)
+         source    the file, as a path. Never a full URL, never a query
+         line      the line number, a number
+         page      the same page name every other event here carries
+         release   the RELEASE constant at the top of this file
+
+     There is no `stack` parameter, on purpose. A stack is many lines of many
+     URLs and this site puts secrets in URLs — ?restore=<token> is a working
+     key to a paid season, and Stripe's success redirect carries a session_id.
+     One rejected fetch inside a promise chain that was handed a restore link
+     would put that token in an analytics event, in two vendors, forever. So
+     the stack is used LOCALLY, to find a file and a line, and then dropped;
+     what leaves is a path and an integer.
+
+     ---------------------------------------------------------------------
+     THE RATE LIMIT IS THE POINT.
+
+     A render loop is not a hypothetical here: both readers repaint on a
+     MutationObserver and on scroll, so a throw inside one of those is a throw
+     per frame — sixty a second, for as long as the reader stays. Unlimited,
+     one phone on one story would post tens of thousands of events, drown the
+     genuine traffic in the same charts the owner is trying to read, and be
+     billed for by two vendors. An error report that makes the dashboard
+     useless has done more damage than the bug it was reporting.
+
+     Two limits, both counted per page load, both arithmetic — no timers, no
+     clock, nothing that can be wrong on a phone whose clock is wrong:
+
+       1. THE SAME ERROR IS SENT ONCE. Signature is message + source + line.
+          A loop throws the identical error every frame, so the loop costs
+          exactly one event.
+       2. AT MOST ERR_MAX EVENTS, whatever they are. A loop throwing a
+          different error every frame is rarer and nastier, and this is the
+          ceiling that makes the worst case a known, small number rather than
+          an unbounded one. Eight is enough to see a cascade start; nobody
+          debugs from the ninth.
+
+     So one page load cannot cost more than ERR_MAX events. That is a bound
+     that can be stated, not a rate that has to be believed.
+
+     ---------------------------------------------------------------------
+     NOT WHILE THE PAGE IS LEAVING.
+
+     A navigation cancels every request in flight, and the rejections that
+     produces ("Failed to fetch", "The operation was aborted") are not faults
+     — they are what leaving a page looks like from inside it. Reporting them
+     fills the report with the site working correctly. `pagehide` fires before
+     the page goes, and this file already listens to it, so from that moment
+     nothing more is sent.
+
+     pagehide is also how a page enters the back/forward cache, and a page can
+     come back out of it. `pageshow` clears the flag, or a reader who taps
+     Back would have a live page that has silently stopped reporting for the
+     rest of its life. No `unload` and no `beforeunload` listener is added
+     here: either one would disqualify every page on this site from bfcache,
+     which js/gate.js depends on and says so.
+
+     ---------------------------------------------------------------------
+     IT CANNOT BECOME THE BUG.
+
+     addEventListener, not window.onerror — assigning onerror would silently
+     replace whatever the page had, and js/scenes.js already listens for
+     `error` its own way. Nothing here calls preventDefault, so the browser
+     still logs to the console exactly as before, and a devtools breakpoint
+     still stops where it always did. `sending` guards re-entry, so a throw
+     inside the reporting path cannot report itself into a loop. And the whole
+     handler is wrapped: a failure to report an error must not be an error.
+     ====================================================================== */
+
+  var ERR_MAX  = 8;         /* hard ceiling on client_error, per page load */
+  var errSeen  = {};        /* signature -> 1, so one loop costs one event */
+  var errSent  = 0;
+  var sending  = false;
+  var leftPage = false;     /* set on pagehide, cleared on pageshow        */
+
+  /* Anything that could be a credential, taken out before the string is sent.
+     Order matters: URLs first, so their query strings are gone before the
+     long-run rule below gets a chance to look at what was in them. */
+  function scrub(v) {
+    try {
+      var s = String(v == null ? "" : v);
+      /* A URL keeps its origin and path and loses its query and fragment.
+         ?restore=<token> and ?session_id=<id> both live in a query. */
+      s = s.replace(/(https?:\/\/[^\s'"()]*?)[?#][^\s'"()]*/gi, "$1");
+      /* user:pass@host, which some fetch errors echo back verbatim. */
+      s = s.replace(/(https?:\/\/)[^\s'"()@\/]*@/gi, "$1");
+      /* An email address is PII wherever it turns up, and a thrown auth error
+         is entirely capable of quoting the one that was just typed. */
+      s = s.replace(/[^\s'"<>()]+@[^\s'"<>()]+\.[A-Za-z]{2,}/g, "<email>");
+      /* A long unbroken run of token characters is a token, an id or a hash.
+         Nothing written in English gets to twenty-four characters without a
+         space, a hyphen at a word break or a full stop, so this cannot eat a
+         real sentence; it does eat a Firebase uid, a Stripe id and a restore
+         token that arrived by some route the rules above did not cover. */
+      s = s.replace(/[A-Za-z0-9_-]{24,}/g, "<id>");
+      return s;
+    } catch (e) { return ""; }
+  }
+
+  /* A file, not a URL: the path, with the origin, the query and the fragment
+     gone. "/js/read.js" rather than
+     "https://factbox.app/js/read.js?restore=<token>". */
+  function fileOf(v) {
+    try {
+      var s = String(v == null ? "" : v);
+      if (!s) return "";
+      s = s.split("#")[0].split("?")[0];
+      s = s.replace(/^https?:\/\/[^\/]+/i, "");
+      return clip(s, 60);
+    } catch (e) { return ""; }
+  }
+
+  /* A rejection has no source or line of its own. Its stack has both, so the
+     stack is read HERE and thrown away: the first frame that names a file and
+     a line wins, and only the path and the integer leave this function. */
+  function fromStack(stk) {
+    var out = { source: "", line: 0 };
+    try {
+      var m = String(stk || "").match(/((?:https?:\/\/|\/)[^\s'"()]+?):(\d+):\d+/);
+      if (m) { out.source = fileOf(m[1]); out.line = Number(m[2]) || 0; }
+    } catch (e) {}
+    return out;
+  }
+
+  function report(message, source, line) {
+    if (sending) return;                 /* no reporting the reporter       */
+    sending = true;
+    try {
+      if (leftPage) return;              /* the page is going; not a fault  */
+      if (errSent >= ERR_MAX) return;
+
+      var msg = clip(scrub(message), CLIP);
+      if (!msg) return;                  /* nothing to say is not an error  */
+      var src = fileOf(source);
+      var ln  = Number(line) || 0;
+
+      var sig = msg + "|" + src + "|" + ln;
+      if (errSeen[sig] === 1) return;    /* the loop, paid for once         */
+      errSeen[sig] = 1;
+      errSent++;
+
+      capture("client_error", {
+        message: msg, source: src, line: ln, page: PAGE, release: RELEASE
+      });
+    } catch (e) {
+      /* Deliberately silent. A failure to report an error is not an error. */
+    } finally { sending = false; }
+  }
+
+  /* An uncaught exception. `false` for the phase: a window listener that is
+     not in the capture phase does not see resource load failures, and a
+     missing image or a blocked font is not a client error — it is a 404, and
+     it would be the loudest thing in the report. */
+  try {
+    addEventListener("error", function (ev) {
+      try {
+        /* A resource error is a plain Event with no message. Belt and braces:
+           the phase above should already have excluded it. */
+        if (!ev || typeof ev.message !== "string" || !ev.message) return;
+        report(ev.message, ev.filename, ev.lineno);
+      } catch (e) {}
+      /* No preventDefault: the console still gets it, and so does devtools. */
+    }, false);
+  } catch (e) {}
+
+  /* A promise nobody caught. `reason` is whatever was thrown, which is an
+     Error most of the time and absolutely anything the rest of it. */
+  try {
+    addEventListener("unhandledrejection", function (ev) {
+      try {
+        var r = ev && ev.reason, msg = "", at = { source: "", line: 0 };
+        if (r && typeof r === "object") {
+          msg = String(r.message || r.name || "");
+          at = fromStack(r.stack);
+        }
+        if (!msg) { try { msg = String(r); } catch (e2) { msg = ""; } }
+        if (!msg || msg === "[object Object]") msg = "rejected with no reason";
+        /* Marked in the message rather than in a sixth parameter: a rejection
+           and a throw are different bugs, and the person who reads this is
+           reading the message anyway. Parameters are the scarce thing here —
+           GA4 registers fifty of them for the whole property. */
+        report("[rejection] " + msg, at.source, at.line);
+      } catch (e) {}
+    }, false);
+  } catch (e) {}
+
+  addEventListener("pagehide", function () { leftPage = true; });
+  /* Out of the back/forward cache and live again. Without this, one Back tap
+     leaves the reader on a page that will never report anything again. */
+  addEventListener("pageshow", function () { leftPage = false; });
 
   /* ---- The notice ------------------------------------------------------ */
   function notice() {
