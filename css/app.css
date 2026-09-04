@@ -66,8 +66,12 @@
   --coral:#3B9EF4;                     /* bright blue — fills and buttons */
   --coral-deep:#1B5FA8;
   --accent-ink:#1A5BA1;                /* the blue you may WRITE in */
-  --crimson:#A81F38;                   /* the one colour that means STOP: 4.94:1
-                                          on the page, 5.90:1 on a card */
+  --crimson:#A81F38;                   /* the one colour that means STOP: 5.48:1
+                                          on the page, 6.06:1 on a card. Both
+                                          figures re-measured after the repaint
+                                          moved --ground and --raise; the old
+                                          comment said 4.94/5.90, which was true
+                                          of the cream this palette replaced. */
   --teal:#8CA75D;                      /* sage — the second accent, as a fill */
   --teal-ink:#3B5119;                  /* sage you may write in: 6.1:1 on cream,
                                           5.1:1 on its own .30 wash */
@@ -534,6 +538,9 @@ img{max-width:100%;display:block}
    version of this rule keyed off a class on <html> that nothing ever set, so
    it silently did nothing. */
 .vrail{transition:opacity .25s ease}
+/* The rail is hidden on the end panes. display:flex outranks the UA's
+   [hidden]{display:none}, so setting the attribute did nothing. */
+.vrail[hidden]{display:none !important}
 .vrail.is-off{opacity:0}
 
 @media (prefers-reduced-motion: reduce){

@@ -390,3 +390,16 @@ a.go {
   .sb-cancel-wrap { margin-top: 22px; }
   .sb-fan { display: none; }
 }
+
+/* [hidden] twins.
+
+   An author rule setting `display:` beats the user agent's
+   `[hidden]{display:none}` — author sheets outrank UA before specificity is
+   even consulted. So every class in this file that sets a display needs one
+   of these, or `el.hidden = true` changes an attribute and nothing else.
+
+   Caught in a browser, not by a static check: #sb-fan and four .sb-fact rows
+   were shipping with the attribute set and still drawing. This bug family has
+   now appeared five times in this repo; tools/check-regressions.js guards it. */
+.sb-fan[hidden],
+.sb-fact[hidden]{display:none !important}

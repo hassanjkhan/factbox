@@ -67,7 +67,7 @@
 <!--
   SIGN IN.
 
-  Three ways in, in the order they actually convert on this site's traffic:
+  Two ways in, in the order they actually convert on this site's traffic:
 
     1. Google, one tap, biggest thing on the page. Nearly everyone arrives
        inside the Instagram or TikTok webview already signed into a Google
@@ -77,20 +77,45 @@
 
     2. Email and password, because it is the one that always works, including
        for the reader who does not want Google anywhere near this.
+
+  There is no Apple button. The design for the in-story auth sheet adds one and
+  this screen does not, and the provider is not confirmed configured in
+  Firebase — a third button that throws is worse than two that work. If it
+  turns out to be available it goes on both surfaces in the same change.
 -->
 
 <main class="lib">
   <header class="mast">
-    <!-- The wordmark is the way home: /explore is the shelf. The anchor sits
-         inside the <p> so the header keeps the box, the margin and the baseline
-         it already had, and so the target is the word rather than the width of
-         the row. aria-label because a screen reader reading FACTBOX as all
-         capitals may spell it; the accessible name is the product name. -->
-    <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
-    <nav class="tabs" aria-label="Sections">
-      <a href="/explore">Explore</a>
-      <a href="/library">Library</a>
-      <span class="acct" id="fb-acct"></span></nav>
+    <!-- The wordmark is the way home: /explore is the shelf, and on THIS page
+         it is the only way home, because the design drops the section nav (see
+         the note below). The anchor sits inside the <p> so the header keeps the
+         box, the margin and the baseline it already had, and so the target is
+         the word rather than the width of the row. aria-label because a screen
+         reader reading FACTBOX as all capitals may spell it; the accessible
+         name is the product name, and the tile is alt="" so the lockup is
+         announced once.
+
+         The tile is 20px here and 24px everywhere else, and the word is
+         --fs-fine rather than --fs-meta: the design sets a quieter mark on the
+         auth screen, where the headline directly under it is the thing to
+         read. width/height are on the tag so the masthead reserves the box
+         before the file lands — this is the first thing on the page. -->
+    <p class="mark"><a href="/explore" aria-label="Factbox"><img src="/img/logo-96.png"
+       alt="" width="20" height="20" decoding="async">FACTBOX</a></p>
+    <!-- NO <nav class="tabs"> here, and that is the design, not an omission.
+
+         Every other page carries Explore / Library / the account insignia. This
+         one is a single-purpose screen: one question, two tabs answering it,
+         and a way out. The insignia in particular is circular furniture on this
+         page — signed out it points at /login, which is where the reader
+         already is, and signed in the page itself shows the "You are signed in"
+         panel with Account on it. js/acct.js mounts only if #fb-acct exists and
+         returns quietly when it does not, so dropping the element is the whole
+         change; that file is untouched.
+
+         The wordmark above is still /explore, the noscript line below points at
+         the free stories, and the "sign-in will not start" panel carries its
+         own way out. No state of this page is a dead end. -->
     <h1 id="au-title">Sign in to Factbox</h1>
   </header>
 
@@ -114,7 +139,7 @@
     <button class="au-2nd" id="au-out" type="button">Sign out</button>
   </section>
 
-  <!-- ===== the three ways in ============================================ -->
+  <!-- ===== the two ways in ============================================== -->
   <section class="au-panel" id="au-main" aria-labelledby="au-main-h">
 
     <div class="au-switch" role="tablist" aria-label="Sign in or create an account">
@@ -157,14 +182,27 @@
                placeholder="At least six characters">
       </label>
       <p class="jn-err" id="au-err" hidden role="alert"></p>
-      <p class="au-say" id="au-say" hidden role="status"></p>
-      <button class="go" id="au-go" type="submit" style="margin-top:16px">Sign in</button>
+      <button class="go" id="au-go" type="submit">Sign in</button>
     </form>
 
-    <div class="jn-row">
-      <button class="au-link" id="au-forgot" type="button">Forgot your password?</button>
-      <button class="jn-skip" id="au-swap" type="button">Create an account</button>
-    </div>
+    <!-- 3 · the one thing left to offer someone who cannot get in.
+
+         It is alone on its row. There used to be a second link beside it —
+         "Create an account" / "I already have an account" — and it did exactly
+         what the two tabs at the top of this panel do, two inches away. Two
+         controls for one job is the reader working out which one is the real
+         one. The tabs are the switch; this is the recovery.
+
+         Only on the sign-in tab: setMode() hides it for "Create account",
+         where forgetting a password you have not chosen yet is not a thing
+         that can have happened. -->
+    <button class="au-link" id="au-forgot" type="button">Forgot your password?</button>
+
+    <!-- The reset confirmation, and the "you already have an account" nudge.
+         Not an error, so not .jn-err: it is the sage note, under the form it
+         answers. A direct child of the panel, which is why css/auth.css writes
+         it as `.au-panel > p.au-say` — see the note there. -->
+    <p class="au-say" id="au-say" hidden role="status"></p>
 
   </section>
 
@@ -185,10 +223,14 @@
       <a href="/explore">two free stories</a> read fine without it.</p>
   </noscript>
 
-  <p class="fine" style="margin-top:34px">
-    <a href="/account">Account</a> ·
+  <!-- The legal row: three items, not four. "Account" was one of them, and it
+       is the one destination on this list a signed-out reader cannot use —
+       /account sends them straight back here. Signed in, the panel above this
+       one carries its own Account button. "Contact us" is /support said in
+       words, which is what a reader in trouble is looking for. -->
+  <p class="fine" id="au-legal">
     <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
-    <a href="/support">Support</a>
+    <a href="/support">Contact us</a>
   </p>
 </main>
 
@@ -357,7 +399,6 @@
 
   var tabIn    = el("au-tab-in");
   var tabUp    = el("au-tab-up");
-  var swap     = el("au-swap");
   var gBtn     = el("au-google");
   var gT       = el("au-google-t");
   var gErr     = el("au-google-err");
@@ -386,7 +427,6 @@
     try { if (tabIn) tabIn.setAttribute("aria-selected", up ? "false" : "true"); } catch (e) {}
     try { if (tabUp) tabUp.setAttribute("aria-selected", up ? "true" : "false"); } catch (e) {}
     text(go, up ? "Create my account" : "Sign in");
-    text(swap, up ? "I already have an account" : "Create an account");
     text(title, up ? "Create your Factbox account" : "Sign in to Factbox");
     text(gT, up ? "Sign up with Google" : "Continue with Google");
     show(forgot, !up);
@@ -397,7 +437,6 @@
 
   on(tabIn, "click", function () { setMode("in"); focus(mail); });
   on(tabUp, "click", function () { setMode("up"); focus(mail); });
-  on(swap,  "click", function () { setMode(mode === "up" ? "in" : "up"); focus(mail); });
 
   /* --- render ----------------------------------------------------------- */
   var FBU = null;

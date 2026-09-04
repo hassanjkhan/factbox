@@ -23,8 +23,9 @@ The page was rebuilt in September 2026 against a design mockup drawn at
    Signed-in only, and only because `js/progress.js` gates reading memory on
    the account that owns it. Signed out this slot is empty and collapses.
 5. **Continue** — the most recently touched unfinished story, with its bar.
-6. **Today's Factbox** — a 16/10 plate, the eyebrow, the hook in the display
-   serif, the facts line, and the Start story pill.
+6. **Today's Factbox** — a 16/10 plate, the eyebrow, the story's **title** in
+   the display serif, the facts line, and the Start story pill. It used to be
+   the hook; see *One story, one headline* below.
 7. **Trending now** — a horizontal rail of 136px covers (158px above 700px).
 8. **Binge a series** — one row per subject, opening the next unread story.
 9. **All stories** — the mosaic: all 51, edge to edge, on `--night`.
@@ -32,19 +33,105 @@ The page was rebuilt in September 2026 against a design mockup drawn at
 ## The two fonts
 
 DM Sans is the site. **Newsreader** is `--display` in `css/app.css` and sets
-exactly two things here: the `h1` and Today's hook. A token cannot fetch a
+exactly two things here: the `h1` and Today's Factbox headline. A token cannot fetch a
 font, so **both `index.html` and `explore.html` carry Newsreader in their
 Google Fonts `<link>`**. Drop that and the two headlines fall to Georgia,
 which is the fallback in the token and the reason the page still reads.
 
-## Titles and hooks are cleaned
+## One story, one headline
 
-Three hooks in `data/index.json` end in a markdown source link — stack 09 to
-the IAEA, 10 to Vatican News, 08 mid-sentence. `clean()` in `js/today.js`
-strips the markup and keeps the link text; `firstSentence()` then cuts the
-hook to its first sentence. 33 of the 51 hooks are shortened by it, from an
-average of 126 characters to 74. **A citation must never appear in a
-headline** — the credit belongs on the card, where `read.html` draws it.
+**Every surface that lists a story shows its `title`.** Today's Factbox, the
+Continue row, Trending, Binge a series, the mosaic, and every cover on
+`/library`. There is no surface left that headlines a story with its `hook`.
+
+Today's Factbox was the exception and it was the visible one. It rendered
+`firstSentence(s.hook)`, so on 2026-09-04 stack 18 read
+
+> *We are almost certain Cleopatra and two of her trusted servants died on
+> August 12, 30 BCE, as Octavian took control of Egypt.*
+
+in the hero, and **"How Cleopatra died"** on its own cover three sections
+below it, in the Continue row, and on `/library`. One story, two headlines,
+one screen. The title is what the rest of the site already showed, so the
+title won.
+
+**This diverges from the design mockup and the divergence is deliberate.**
+`Explore.dc.html` line 74 binds the hero to `{{ today.hook }}` and runs it
+through `firstSentence()`. The instruction to use the title is newer than the
+mockup and came from the owner. Do not "fix" this back to match the doc.
+
+The hook is untouched in Firestore and untouched on the story itself, where it
+is still the opening line. It is simply not a headline.
+
+### The hero is now underfilled, and the honest fix is not padding
+
+A hook set 3 clamped lines / 102.7px at 390. A title sets 1–2 lines /
+34.9–69.9px. That is 33–68px of panel the hero no longer uses, and it is most
+visible above 1024 where the words are a fixed column beside the plate rather
+than a band under it. Do not close it with letter-spacing, a taller plate or a
+bigger pill. **The candidate that fills it with meaning is the hook, demoted to
+a subtitle under the title** — the data is already in `catalogue/v1.stacks[]`,
+it is the sentence that used to be the headline, and title-over-hook is the
+ordinary shape of a cover. That is a design decision, not a bug fix, so it is
+not in this change.
+
+### The headline box, retuned for titles
+
+`.tdy-hook` in `css/today.css` (the class name is a fossil — it styles the hero
+headline, and the headline is the title). Sized for hooks it was
+`clamp(1.7rem,7.7vw,2.4rem)` clamped to **3** lines. It is now
+
+    font-size: clamp(1.8rem, 8vw, 2.5rem);   /* 30px @375, 31.2 @390, 34.4 @430 */
+    line-height: 1.12;
+    -webkit-line-clamp: 2;
+
+**8vw is a measured ceiling, not a taste.** Across all 51 titles in real
+Chrome: at 8vw every title sets in two lines or fewer with **zero**
+truncation at 375, 390 and 430. One notch up, at 8.1vw, *"Who decided which
+books got into the Bible?"* (43 chars) goes to three lines and is clipped at
+375 and 390. So 8vw is the largest type that keeps every title in the season
+whole inside a two-line box.
+
+Season titles are 9–46 characters, mean 27 — shorter than the 21–60/45 the
+brief estimated. Shortest *"Chernobyl"*, longest *"Biblical creatures look
+nothing like paintings"*. At 390: 20 titles set one line, 31 set two.
+
+**Three lines had stopped being a guard** — nothing in the season could reach
+it. Two lines is a guard again: it is the shape a ~45-character headline
+wants, and it bites just past the longest real title (a synthetic 45-char
+string clips; the real 46-char title does not — wrapping, not character count,
+decides). It catches the day someone files a 90-character title.
+
+**"Start story" against the fold**, measured, worst-case title in the season:
+
+| viewport  | before (hook, 3 lines) | after (title, 2 lines) |
+|-----------|------------------------|------------------------|
+| 375 × 667 | 80.5px **below**       | 49px **below**         |
+| 375 × 812 | —                      | 96px above             |
+| 390 × 844 | 80.4px above           | 113.2px above          |
+| 430 × 932 | 125.5px above          | 161.6px above          |
+
+Every viewport gained 31–36px of headroom. **375 × 667 (iPhone SE) still
+misses**, and it missed before this change too — the headline is one line
+there and is not what is costing the space; the 257px masthead above the card
+plus a 16/10 plate is. That is `css/app.css` and `index.html`, not this file.
+
+## Titles are cleaned
+
+Three **hooks** in `data/index.json` end in a markdown source link — stack 09
+to the IAEA, 10 to Vatican News, 08 mid-sentence. No title carries one today.
+`clean()` in `js/today.js` strips the markup and keeps the link text, and
+**every title still goes through it**, on this page and in `js/library.js`,
+which now keeps the same guard. The guard is about where a string is going,
+not where it came from: **a citation must never appear in a headline** — the
+credit belongs on the card, where `read.html` draws it. On today's data
+`clean()` is a no-op over all 51 titles; it is there for the day a title picks
+a link up.
+
+`firstSentence()` survives in `js/today.js` as the hero's **fallback only** —
+`clean(s.title) || firstSentence(s.hook)`. It is the right degrade for a story
+filed with no title (it is exactly what the line rendered before) and the wrong
+headline for a story that has one. It cuts nothing on any of the 51 stories.
 
 ## The mosaic, and the two things it has to get right
 
@@ -99,6 +186,12 @@ than `display:none`, so it stays in the link's accessible name and
   answer. The local arithmetic at the bottom of `todayPick()` is reached only
   when there is no `access.js` at all. **Do not add a second date
   calculation.**
+- **A story's headline is its `title`, on every surface.** If you add a shelf,
+  a search result or a related-story row, it shows `clean(s.title)`. The one
+  place left in the codebase that headlines a story with its hook is
+  `promise()` in `js/recommend.js`, which draws the end-of-story "up next"
+  card on the reader — it is owned by the conversion-flow rebuild and is
+  tracked separately.
 - **The `.card` contract**: `data-id`, `data-free`, `data-meta`, `data-label`,
   `data-pct` and the `is-unread` / `is-reading` / `is-done` / `is-free`
   classes. Other code decorates these without knowing which section drew them.

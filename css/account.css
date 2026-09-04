@@ -568,6 +568,11 @@ body{background:var(--ground); color:var(--parchment)}
   font-size:var(--fs-micro); font-weight:var(--w-label); color:var(--dimmer);
 }
 .ac-dots{display:flex; margin:8px 2px 0}
+/* [hidden] twins: an author display: beats the UA [hidden] rule, so these
+   stayed on screen with the attribute set. Confirmed by forcing .hidden
+   in Chrome — both computed display:flex. */
+.ac-days[hidden],
+.ac-dots[hidden]{display:none !important}
 .ac-dot{
   flex:1 1 0; display:flex; align-items:center; justify-content:center;
   position:relative;

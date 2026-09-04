@@ -528,10 +528,31 @@
           '<p class="tdy-kicker">Today’s Factbox</p>' +
           /* One eyebrow, not two: the subject line that used to sit here said
              "DISASTER" over a hook whose first six words are about Chernobyl.
-             And the hook is cleaned and cut to its first sentence — see
-             clean() and firstSentence() at the top of this file. It falls back
-             to the title, itself cleaned, for a story with no hook. */
-          '<h2 class="tdy-hook">' + esc(firstSentence(s.hook) || clean(s.title)) + '</h2>' +
+
+             THE HEADLINE IS THE TITLE, NOT THE HOOK. It used to be
+             firstSentence(s.hook), and that put a 124-character sentence where
+             every other surface on the site puts a name: the same story read
+             "We are almost certain Cleopatra and two of her trusted servants
+             died on August 12, 30 BCE..." in this box and "How Cleopatra died"
+             on the cover three sections below it, in the Continue row, and on
+             /library. One story, two headlines, on one screen. The title is
+             what the rest of the site already shows, so the title wins here.
+
+             Still through clean(): a citation must never reach a headline, and
+             that guard is about where the string is going, not where it came
+             from. No title in the season carries a markdown link today — the
+             three that do are hooks — so clean() is a no-op on this data and
+             kept as the guard for the day a title picks one up.
+
+             firstSentence() is now only the fallback, for a story with no
+             title. It is the right fallback and the wrong headline: it is what
+             this line rendered before, so a title-less story degrades to the
+             old behaviour rather than to an empty <h2>.
+
+             NOTE FOR ANYONE READING THE DESIGN DOC: the mockup at
+             Explore.dc.html binds this to {{ today.hook }}. This is deliberate
+             and it is newer than the mockup. Do not "fix" it back. */
+          '<h2 class="tdy-hook">' + esc(clean(s.title) || firstSentence(s.hook)) + '</h2>' +
           '<p class="tdy-facts">' + total + ' cards · ' + esc(mins(s.secs)) + '</p>' +
           '<a class="go" href="' + esc(href(s)) + '">Start story</a>' +
         '</div>' +

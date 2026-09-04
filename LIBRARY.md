@@ -137,6 +137,27 @@ In order, and each section is omitted entirely when it is empty:
 Stack `01` links to `story.html`; everything else to `read.html?s=ID`. Locked
 stacks keep the existing `.locked` / `.lock` treatment.
 
+### Every cover here shows the story's `title`
+
+It always did — this page was the reference for what "right" looked like when
+Today's Factbox on `/explore` was fixed to match it. `card()`, `savedCell()`'s
+`aria-label`, and the `.resume` block all headline a story with `s.title`, and
+nothing on this page renders a `hook`. See *One story, one headline* in
+`EXPLORE.md`.
+
+Two things changed here in that pass:
+
+- **Titles now go through `clean()`**, the same three-pass citation strip
+  `js/today.js` keeps, duplicated locally rather than imported so that this
+  page cannot go blank because one script 404ed. No title in
+  `data/index.json` carries a markdown source link today — three hooks do —
+  so it is a **no-op on current data** and a guard for the day one picks one
+  up. It exists here because `/explore` cleans its titles: if only one of the
+  two pages cleaned, one story could get two names again, which is the whole
+  thing that pass was for.
+- The `aria-label` on **Remove** is cleaned too, so the accessible name of that
+  control names the story the same way the visible cover does.
+
 ### The stats line
 
 Three numbers, each derived from storage that already exists:

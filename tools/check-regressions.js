@@ -31,6 +31,61 @@ const CHECKS = [
     },
   },
   {
+    name: "every hideable class ships its own [hidden] twin",
+    why: "An author rule setting `display:` beats the user agent's " +
+         "`[hidden]{display:none}` — author sheets outrank UA before " +
+         "specificity is consulted. So `el.hidden = true` changes an " +
+         "attribute and nothing else, and the element stays on screen. " +
+         "This family has hit .ob, .au-link, .au-2nd, .sb-fan, .sb-fact " +
+         "and .row. A node.hidden assertion passes the whole time; only a " +
+         "rendered check or a screenshot catches it.",
+    pass: () => {
+      /* Every class that (a) sets a display and (b) is used in markup on an
+         element carrying the hidden attribute, must have a [hidden] rule. */
+      const sheets = fs.readdirSync(path.join(ROOT, "css"))
+        .filter((f) => f.endsWith(".css")).map((f) => "css/" + f);
+      const pages = fs.readdirSync(ROOT).filter((f) => f.endsWith(".html"));
+      const sets = (s) => {
+        const out = new Set();
+        const re = /(^|[},])\s*([^{}@]*?)\{([^}]*)\}/g;
+        let m;
+        while ((m = re.exec(s))) {
+          /* A rule whose display IS none cannot leak — that is the safe
+             pattern (.sp-sent ships display:none and is revealed by a
+             sibling rule). Only a visible display beats the UA sheet. */
+          const dm = m[3].match(/(?:^|[;\s])display\s*:\s*([a-z-]+)/);
+          if (!dm || dm[1] === "none") continue;
+          /* Only the SUBJECT of each selector — its last compound. A rule
+             like `.sp-sent b{display:block}` styles the <b>, not .sp-sent,
+             and crediting the ancestor produces false positives. Commas
+             split alternatives; whitespace and combinators split compounds. */
+          m[2].split(",").forEach((sel) => {
+            const last = sel.trim().split(/[\s>+~]+/).filter(Boolean).pop() || "";
+            (last.match(/\.[a-zA-Z][\w-]*/g) || []).forEach((c) => out.add(c.slice(1)));
+          });
+        }
+        return out;
+      };
+      let display = new Set(), guarded = new Set();
+      for (const f of sheets.concat(pages)) {
+        const src = read(f);
+        sets(src).forEach((c) => display.add(c));
+        (src.match(/\.([a-zA-Z][\w-]*)\[hidden\]/g) || [])
+          .forEach((c) => guarded.add(c.slice(1).replace("[hidden]", "")));
+      }
+      const risky = new Set();
+      for (const f of pages) {
+        const tags = read(f).match(/<[a-zA-Z][^>]*\bhidden\b[^>]*>/g) || [];
+        for (const t of tags) {
+          const cm = t.match(/class="([^"]*)"/);
+          if (cm) cm[1].split(/\s+/).filter(Boolean).forEach((c) => risky.add(c));
+        }
+      }
+      const bad = [...risky].filter((c) => display.has(c) && !guarded.has(c));
+      return bad.length ? `no [hidden] twin for: ${bad.sort().join(", ")}` : true;
+    },
+  },
+  {
     name: "the streak treats FBP timestamps as milliseconds",
     why: "js/progress.js returns `at: r[2] * 1000`, already milliseconds. " +
          "Dividing by 1000 again before the day number makes every streak 0.",

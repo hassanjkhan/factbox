@@ -56,6 +56,135 @@ that and nothing else.
 a provider button, an "or" rule, a labelled fact row and a state chip. It
 defines no colour of its own; every value is a token from `app.css`.
 
+`login.html` carries **no `<nav class="tabs">` and no `#fb-acct`**, and that is
+the design rather than an omission — every other page in the mockups has the
+Explore / Library row and this screen does not. It is a single-purpose page:
+one question, two tabs answering it, and a way out. The account insignia in
+particular is circular here — signed out it points at `/login`, which is where
+the reader already is, and signed in this page shows its own panel with Account
+on it. `js/acct.js` mounts only if `#fb-acct` exists and returns quietly when it
+does not, so dropping the element is the whole change and that file is
+untouched. `account.html` keeps both.
+
+The way out is the wordmark, which is `/explore` on all thirteen pages. The
+noscript line and the "sign-in will not start" panel each carry their own.
+
+### The sign-in screen's layout
+
+The figures below are the design's and are asserted at eight viewports. They
+live in `css/auth.css` under `body.au`, so the account screen — which loads the
+same file — keeps the rhythm it was measured with.
+
+```
+ 26   .mast padding-top
+ 18   under the wordmark        (12px word, 20px tile: quieter than the 13/24
+                                 every other page uses, because the headline
+                                 directly under it is the thing to read)
+  —   the headline, --fs-hero, which floors at 28px
+ 16   the panel's margin-top — the whole gap under the headline
+  2   under the tab row
+ 14   above the Google button
+ 16   above the "or" rule and 16 below it
+ 14   above each field
+ 18   above the submit button
+  6   above "Forgot your password?"
+ 30   above the legal row
+```
+
+**No subtitle under the headline.** Asked for, and the design agrees: the two
+tabs answer "what is this screen for" faster than a sentence does.
+
+**The legal row is three items** — Privacy · Terms · Contact us. "Account" was a
+fourth and it is the one destination on that list a signed-out reader cannot
+use; `/account` sends them straight back here.
+
+**There is no Apple button.** The design for the in-story auth sheet adds one
+and this screen does not, and the Firebase Apple provider is not confirmed
+configured. A third button that throws is worse than two that work. If it turns
+out to be available it goes on both surfaces in the same change.
+
+### `?next=` is a whitelist and must stay one
+
+A return address a stranger can set is an open redirect unless it is checked.
+`nextURL()` in `login.html` accepts one optional leading slash, then a path
+starting with a letter or digit made only of letters, digits, dot, underscore,
+hyphen and slash, with an optional query and fragment — then refuses `..`,
+refuses a backslash, and refuses `/login` itself. Anything else becomes
+`/explore`, which is where the reader wanted to be anyway. **Widen it and it
+stops being a whitelist.**
+
+It accepts clean URLs because this site serves clean URLs and every caller
+passes one. Seventeen cases, driven end to end through the real page — a stub
+`FBU` says "signed in", `paint()` calls `leave()`, and the assertion is where
+Chrome actually went:
+
+| `?next=` | lands on |
+|---|---|
+| `account` | `/account` |
+| `%2Fexplore` | `/explore` |
+| `%2Fstories` | `/explore`, via `/stories`, which forwards itself |
+| `%2Fjoin%3Ffrom%3Dpaywall%26s%3D44` | `/join?from=paywall&s=44` |
+| `library` | `/library` |
+| `account.html` | `/account.html` |
+| `%2Fread%3Fs%3D05%23card3` | `/read?s=05#card3` |
+| `settings` | `/settings` |
+| `%2F%2Fevil.example` | `/explore` |
+| `https%3A%2F%2Fevil.example` | `/explore` |
+| `%2F%5Cevil.example` | `/explore` |
+| `javascript%3Aalert(1)` | `/explore` |
+| `%2F..%2F..%2Fetc%2Fpasswd` | `/explore` |
+| `..%252f..%252f` | `/explore` |
+| `%09%2F%2Fevil.example` | `/explore` |
+| `login` | `/explore` |
+| `%2Flogin.html%3Fnext%3Daccount` | `/explore` |
+
+Not `URLSearchParams`: it is missing on the older in-app webviews this site
+targets, and this runs on a top-level-reachable path.
+
+### `.au-panel > p` — the trap, and the seven times it has been sprung
+
+`.au-panel > p` is (0,1,1). Any bare-class rule for a paragraph that is a direct
+child of a panel is (0,1,0) and **loses silently**: it keeps its own colour by
+inheritance and loses its margin, its size and its measure. Five of the seven
+known instances are on `/login`, and four of them were found in one sitting by
+asking the question of every paragraph in the panel rather than of the one
+somebody had noticed:
+
+| element | what it lost |
+|---|---|
+| `.au-or` | the 520px box and the rhythm — 191px left of centre at 1440 |
+| `.jn-err` | 16px/400 body copy in `--dim` instead of 14px/600 crimson |
+| `#au-google-err` | the box: 215px left of centre at 1440 |
+| `#au-say` | the box: 215px left of centre at 1440 |
+| `.au-dead > p` | the box: 191px left of centre at 1440 |
+| `.au-who` | margin-top 0 instead of 14, and 16px/400 instead of `--fs-sub` |
+
+The first two are fixed by naming the element twice —
+`.au-panel > p.au-or, .au-or{…}` — which is the idiom to copy. The box ones are
+fixed once, by `body.au .au-panel > p{margin-left:auto; margin-right:auto}`:
+the base rule caps a paragraph at 44ch with no auto margins because it was
+written for a left-aligned column, so on a centred panel the words were centred
+inside a rectangle pinned to the left edge. **Under 44ch of panel — every
+phone — the two rectangles coincide and all four looked perfect.** That is why
+it survived; it is only visible on a wide screen.
+
+### `[hidden]` is not enough on its own
+
+An author rule of the same weight beats the UA sheet's `[hidden]{display:none}`,
+because author sheets outrank the UA sheet before specificity is consulted. So
+**any class in `css/auth.css` that sets `display` must also carry its own
+`[hidden]`**, or the attribute does nothing. Two were missing:
+
+- `.au-link` — `setMode("up")` set `forgot.hidden = true` and "Forgot your
+  password?" stayed on screen, under "Create my account", on the tab where the
+  reader has not chosen a password yet.
+- `.au-2nd` — `#au-resend` ships with the attribute in the markup and is only
+  meant to appear for an unverified address. It was on screen for everybody.
+
+Neither is caught by asserting `node.hidden`, which was true the whole time.
+It takes `getComputedStyle` or a screenshot, and the render tests now assert
+that **every element wearing `[hidden]` computes to `display:none`**.
+
 ### Any other page that wants FBU
 
 ```html
@@ -405,7 +534,7 @@ that works:
 | gstatic blocked | `FBU` exists, `ready()` resolves signed-out after 8s, every method rejects with *"Could not reach the sign-in service."* |
 | Firestore denied or offline | `premium()` stays false, `billingKnown()` stays false, and `account.html` says *"Looking up your plan"* rather than reporting FREE to somebody who is paying. |
 | The page script throws before it can reveal anything | The `au-js` failsafe in `<head>` removes the hiding class after four seconds no matter what. The reader gets the real markup — the form, the copy, the links out. This is the bug that shipped a wordless page twice; the timer is unconditional for exactly that reason. |
-| No JavaScript at all | `<noscript>` on both pages. `account.html`'s points at the Stripe portal, which is Stripe's own page and cancels a plan without us. |
+| No JavaScript at all | `<noscript>` on both pages. `account.html`'s points at the Stripe portal, which is Stripe's own page and cancels a plan without us. `/login` renders **232 characters** of real copy with JavaScript off — the wordmark, the headline, both tabs, the Google button, the rule, both fields, the button, the recovery link, the noscript sentence and the legal row. It was 255 before the design dropped the section nav and two legal links; the bar exists to catch a WORDLESS page, and 232 characters of usable copy is not one. |
 
 Nothing on either page renders "signed out" and then flips. Both wait on
 `ready()` behind a spinner that carries a sentence, because on a cold webview
@@ -469,7 +598,7 @@ of its 35 sentences contains `auth/`, `fb/` or the word Firebase.
 rejects, one with a code that does not exist), `ok`, and `google` (a redirect
 that came back empty). Each run asserts: zero script errors, `au-js` removed so
 nothing is left hidden, exactly one panel showing and the right one, the
-expected copy present, and at least 250 characters of visible text — the check
+expected copy present, and at least 200 characters of visible text — the check
 that would have caught the wordless page.
 
 It snapshots the visible DOM after **every** simulated tap, not just at the
@@ -487,3 +616,72 @@ sign-in stays put and shows a sentence.
 `TZ=UTC` only pins the expected date strings; the page formats renewal dates in
 the reader's own timezone, which is correct — `currentPeriodEnd` is an instant,
 not a date.
+
+---
+
+## 10 · The `/login` rebuild — what was run, and what it measured
+
+The design pass on this screen was verified in **real Chrome**, not in jsdom:
+`tools/serve-like-pages.py 8899 .` (a plain `http.server` 404s every clean URL
+and has produced a false result on this project before — `/explore` was checked
+for a 200 first), and puppeteer-core driving
+`/Applications/Google Chrome.app`. Everything below was green.
+
+**`?next=`, 17 of 17.** The table in §2. Driven end to end: a stub `FBU` says
+"signed in", the page's own `paint()` calls `leave()`, and the assertion is
+`location` after the browser has actually gone there — not a copy of the regex
+agreeing with itself. Every hostile shape landed on `/explore`; zero
+`pageerror`.
+
+**The "or" rule, measured rather than eyeballed.** At all eight viewports:
+the word's box centre sits **0.01px** from the panel's centre line, the two
+rules differ by **0.02px**, and the air is **16.00px above and 16.00px below**.
+The vertical figure is one value on both sides *because* the neighbours are not
+symmetrical — `.au-prov` has no bottom margin, and the first `.jn-field`'s
+14px top margin collapses into this rule's 16. Nudging the bottom margin to
+"match" would have opened the gap, not closed it.
+
+**Contrast, every text run against its real composited ground.** 17 runs on the
+sign-in panel with both message paragraphs forced visible. All clear; worst is
+`--dimmer` at **5.10:1** against a 4.5 requirement. `--crimson` on `--ground`
+measures **5.48:1** here, not the 4.94 quoted in `css/app.css` — both clear, but
+that comment is optimistic in the reader's favour rather than pessimistic, and
+whoever owns `app.css` may want to re-check it.
+
+**Tap targets.** 11 controls, every one ≥44px tall. The legal row's three links
+are 12px fine print by design and get the invisible-band treatment `.mark a`
+already uses — 44px tall, ±4px wide, which the measured 8.8px separator gap
+allows without one band stealing a tap from its neighbour. The band hangs 14px
+below the words, so `.lib`'s reservation grows by exactly 14px: without that,
+375×667 and 932×430 landscape each had under 2px of slack and the band put a
+tappable thing inside the toolbar's strip.
+
+**Nothing below `--bottom-safe`** at 375×667, 390×844, 430×932, 768×1024,
+1024×768, 1440×900, 1920×1080 and 932×430 landscape. No horizontal scroll at
+any of them. Zero `pageerror` and zero `console.error` at all eight.
+
+**65 behavioural assertions**, all passing: both tabs and every string that
+follows the mode; empty submit → *"Type your email address first."*; email with
+no password → *"Type your password first."*; a malformed address → a sentence
+with a full stop and no code; forgot with an empty field → *"Type your email
+address first, then tap this again."*; Google refused from an unauthorised host
+→ *"Sign-in is not allowed from this address. Open factbox.app and try there."*,
+both as `FBU.message()` maps it and as the page prints it; an invented code
+(`auth/quantum-flux-detected`) → a real sentence. The visible DOM is snapshotted
+after **every** tap and scanned for `auth/`, `Firebase`, `[object Object]`,
+`undefined`, `NaN` and `Invalid Date`, and every element wearing `[hidden]` is
+asserted to compute to `display:none`. Plus the three non-form states: signed
+in, `js/auth.js` aborted at the network, and JavaScript switched off entirely.
+
+**The repo's own checks**, all green: `check-structure.py` (19 pages, 0
+problems), `check-regressions.js` (19 guarded, 0 reintroduced),
+`check-analytics.js` (10 guards, 0 broken), `check-account-cache.js` (12
+invariants, 0 broken), `check-page.js "login.html" "form" ""` (1 match, no
+script errors).
+
+**Three bugs found and fixed on the way**, none of them cosmetic and none of
+them visible on a phone: `.au-link[hidden]` and `.au-2nd[hidden]` (see §2), and
+the four paragraph boxes pinned to the left edge above 44ch of panel. All three
+are the same shape — an author rule quietly out-ranking something it was never
+meant to beat — and all three passed every attribute-level assertion that
+existed.

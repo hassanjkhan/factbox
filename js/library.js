@@ -34,6 +34,29 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
   }
+  /* A TITLE IS NEVER ALLOWED TO CARRY A SOURCE CITATION.
+
+     The same guard js/today.js keeps, for the same reason and by the same
+     three passes: a parenthesised markdown link, a bare parenthesised URL, an
+     ordinary inline link. The corpus files its sources inline with the prose,
+     which is right on a card and wrong on a cover — "...the Bible? ([Vatican
+     News](https://...))" under a plate is a URL where a name belongs.
+
+     No title in data/index.json carries one today; three hooks do. This is a
+     guard against the day one does, and it exists here because the hero on
+     /explore now shows a title too: if a title is only cleaned on one of the
+     two pages, one story gets two names again, which is the whole thing this
+     change was for. Duplicated rather than imported: this page must not go
+     blank because one script 404ed. */
+  function clean(s) {
+    return String(s == null ? "" : s)
+      .replace(/\s*\(\[[^\]]*\]\([^)]*\)\)\s*/g, " ")
+      .replace(/\s*\(https?:\/\/[^)]*\)\s*/g, " ")
+      .replace(/\s*\[([^\]]*)\]\([^)]*\)/g, " $1")
+      .replace(/\s+/g, " ")
+      .replace(/^\s+|\s+$/g, "");
+  }
+
   /* Half-minute steps, the same arithmetic as FB.minutes in gate.js. Whole
      minutes gave 49 of the 51 stories the same "2 min" label. If this and
      gate.js disagree, one story shows two lengths on two pages. */
@@ -145,7 +168,7 @@
           (locked ? '<span class="lock" aria-hidden="true">🔒</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
-        '<h3>' + esc(s.title) + '</h3>' +
+        '<h3>' + esc(clean(s.title)) + '</h3>' +
         '<p class="meta">' + esc(meta) + '</p>' +
       '</a>';
   }
@@ -155,7 +178,7 @@
      sits under the cover in its own cell instead. */
   function savedCell(s) {
     return '<div class="savecell">' + card(s) +
-      '<button class="unsave" type="button" data-fbt="-" data-unsave="' + esc(s.id) + '" aria-label="Remove ' + esc(s.title) + ' from your library">Remove</button></div>';
+      '<button class="unsave" type="button" data-fbt="-" data-unsave="' + esc(s.id) + '" aria-label="Remove ' + esc(clean(s.title)) + ' from your library">Remove</button></div>';
   }
 
   function section(title, note, items, render) {
@@ -299,7 +322,7 @@
               '<a class="resume" href="' + esc(cont.href) + '">' +
                 '<div class="plate"><img alt="" src="/img/thumbs/' + esc(cont.stack.img) + '.webp"' +
                      heroFallback(cont.stack.img) + '></div>' +
-                '<div class="t"><b>' + esc(cont.stack.title) + '</b>' +
+                '<div class="t"><b>' + esc(clean(cont.stack.title)) + '</b>' +
                 '<span>' + esc(cont.label) + '</span></div>' +
               '</a>';
     }

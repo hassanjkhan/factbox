@@ -158,27 +158,46 @@ body{background:var(--ground); color:var(--parchment)}
 /* .tdy-subject — a second small-caps line naming the topic, under the eyebrow
    — is gone. Two eyebrows stacked over a headline is a masthead, and the
    subject is already the first thing the hook says. The panel is now eyebrow,
-   hook, facts, button, which is four things rather than five.
+   title, facts, button, which is four things rather than five.
 
-   The hook is the second and last place the display serif appears. Same face
-   and weight as the h1 above it: 30px at 390, which is 7.7vw. */
+   THE CLASS NAME IS A FOSSIL. js/today.js now puts the story's TITLE in this
+   box, not its hook — one story must not carry two different headlines on two
+   screens, and every other surface on the site shows the title. The selector
+   is left named .tdy-hook because it is the only styling hook the hero
+   headline has and renaming a class in this project has centred a whole page
+   before. It styles the hero headline; the headline is the title.
+
+   The title is the second and last place the display serif appears. Same face
+   and weight as the h1 above it. */
 .tdy-hook{
   margin:0;
   font-family:var(--display); font-weight:var(--w-display);
-  font-size:clamp(1.7rem,7.7vw,2.4rem);
-  line-height:1.14; letter-spacing:-.012em; text-wrap:balance;
-  /* Three lines, hard.
+  /* Retuned for titles. The hook set this at 7.7vw because it had to survive a
+     159-character first sentence; a title is 9 to 46 characters (51 stories,
+     mean 27), so the same box can carry bigger type.
 
-     firstSentence() already cuts the hook at its first full stop, and that is
-     the right cut — it never ends mid-thought and it never swallows a source
-     citation. But the season's first sentences run to 159 characters, and at
-     30px on a 390px phone the longest becomes six lines: "Start story" lands
-     below the fold on the one screen whose entire job is to be tapped.
+     8vw is the ceiling, and it is a measured ceiling rather than a taste: at
+     8vw the longest title in the season, "Biblical creatures look nothing like
+     paintings" (46 chars), sets to exactly two lines with no truncation at 375,
+     390 and 430. One notch above it — 8.1vw — and "Who decided which books got
+     into the Bible?" (43 chars) goes to three lines and gets clipped at 375 and
+     390. So this is the largest type that keeps every title in the season whole
+     inside the two-line box below. 30px at 375, 31.2px at 390, 34.4px at 430. */
+  font-size:clamp(1.8rem,8vw,2.5rem);
+  line-height:1.12; letter-spacing:-.012em; text-wrap:balance;
+  /* Two lines, hard.
 
-     So the SENTENCE stays honest and the BOX is bounded. Measured on stack 22,
-     the longest in the season: 6 lines -> 3, and the button moves from 148px
-     below the fold to 116px above it. */
-  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3;
+     It was three, sized for hooks. A title never needs three and no title in
+     the season reaches two-and-a-bit, so three lines was a ceiling nothing
+     could touch — the clamp had stopped being a guard. Two lines is a guard
+     again: it is the shape a ~45-character headline actually wants, and it is
+     what catches the day someone files a 90-character title.
+
+     The bound is still what keeps "Start story" reachable. Measured at
+     390x844: the hook set this box to 3 lines / 102.7px and the button landed
+     80px above the fold; the title sets it to 1-2 lines / 34-68px and the
+     button clears the fold by 149px on the longest title in the season. */
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
   overflow:hidden;
 }
 .tdy-facts{
@@ -576,4 +595,23 @@ body{background:var(--ground); color:var(--parchment)}
   /* js/today.js swaps the standfirst with no dip at all under this setting;
      the transition is removed here so the two cannot half-apply. */
   .lib.today #tdy-blurb{transition:none}
+}
+
+/* Short viewports — the iPhone SE and anything else 700px or less.
+
+   "Start story" is the one control this page exists to be tapped, and at
+   375x667 it sat 15px below the fold: the masthead is 257px and the 16/10
+   plate another 212, which is 469 of a 667px screen before the headline.
+   That was true before the hero moved from the hook to the title too; the
+   shorter headline gained 31-36px and still did not clear it.
+
+   So on short screens only, the furniture gives way and the content does
+   not: less air above the wordmark, a tighter headline, and a smaller gap
+   before the card. No text is hidden, nothing is truncated, and every value
+   here is inert above 700px. */
+@media (max-height: 700px){
+  .lib.today .mast{ padding-top:10px; padding-bottom:0 }
+  .lib.today .mast h1{ margin-bottom:6px; line-height:1.04 }
+  .lib.today .mast p:not(.mark){ margin-bottom:0 }
+  .tdy-card{ margin-top:14px }
 }

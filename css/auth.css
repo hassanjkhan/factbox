@@ -56,7 +56,11 @@ body{background:var(--ground); color:var(--parchment)}
    -------------------------------------------------------------------------- */
 .au-prov{
   display:flex; align-items:center; justify-content:center; gap:11px;
-  width:100%; max-width:520px; margin:18px auto 0;
+  /* 14px, which is the design's figure. It was 18: the tab row above it
+     already carries 2px of its own bottom margin and the tabs are 44px tall
+     targets around 15px of type, so 18 read as a gap rather than as the
+     Google button belonging to the tab you just chose. */
+  width:100%; max-width:520px; margin:14px auto 0;
   min-height:52px; padding:14px 18px;
   border:0; border-radius:var(--pill); cursor:pointer;
   /* Light blue, not --parchment. That token used to be near-white, which is
@@ -102,12 +106,24 @@ body{background:var(--ground); color:var(--parchment)}
    `flex:1 1 auto` on empty content, so they grow equally and the word lands in
    the middle of whatever box it is given. It was given the wrong box.
 
-   520px, auto side margins and matching 22px margins: same width and same
-   axis as .au-prov and .au-2nd, and equal air above and below. */
+   520px, auto side margins and matching margins top and bottom: same width and
+   same axis as .au-prov and .au-2nd, and equal air above and below.
+
+   THE VERTICAL FIGURE IS 16, and it has to be a single value on both sides for
+   the air to come out even, because the two neighbours are not symmetrical:
+
+     above   .au-prov's margin-bottom is 0, so the gap is this rule's 16
+     below   the first .jn-field's margin-top is 14, and adjacent siblings'
+             margins COLLAPSE — so the gap is max(16,14) = 16, not 30
+
+   Which is why nudging the bottom margin down to "match" would have opened the
+   gap rather than closing it. Measured in Chrome at 390: 16.00px above the
+   rule and 16.00px below it, and the word's own box centred to 0.00px of the
+   panel's centre line at every viewport in the table. */
 .au-panel > p.au-or, .au-or{
   display:flex; align-items:center; gap:12px;
   width:100%; max-width:520px;
-  margin:22px auto;
+  margin:16px auto;
   font-size:var(--fs-meta); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
   color:var(--dimmer); text-transform:uppercase;
 }
@@ -122,7 +138,10 @@ body{background:var(--ground); color:var(--parchment)}
    -------------------------------------------------------------------------- */
 .au-switch{
   display:flex; gap:22px; align-items:center;
-  margin:6px 2px 2px; padding:0;
+  /* No top margin of its own: the panel's own margin-top is the gap under the
+     headline, and stacking a second one on top of it made that gap 20 where
+     the design asks for 16. */
+  margin:0 2px 2px; padding:0;
 }
 .au-switch button{
   position:relative; background:none; border:0; cursor:pointer;
@@ -167,6 +186,24 @@ body{background:var(--ground); color:var(--parchment)}
   color:var(--dim); text-decoration:underline; text-underline-offset:3px;
 }
 .au-link[disabled]{color:var(--dimmer); text-decoration:none; cursor:default}
+/* And it has to be able to go away.
+
+   `hidden` is a UA-stylesheet rule — `[hidden]{display:none}` at (0,1,0) — and
+   an author rule of the SAME weight beats it, because author sheets outrank
+   the UA sheet before specificity is even consulted. So `display:inline-flex`
+   two lines up quietly cancelled the attribute, and setMode("up") setting
+   forgot.hidden = true did nothing a reader could see: "Forgot your password?"
+   sat under "Create my account", on the tab where the reader has not chosen a
+   password yet.
+
+   It reads as the same defect as .au-or and .jn-err — a bare class beating
+   something it was never meant to beat — and it is the third one on this page.
+   Every other hideable thing in this file already carries its own [hidden]:
+   .au-wait, .au-say, .au-panel. This one did not.
+
+   Not caught by asserting node.hidden, which was true the whole time. It takes
+   getComputedStyle, or a screenshot. */
+.au-link[hidden]{display:none}
 
 /* The invisible reCAPTCHA host. It must be in the document and must survive
    the page's re-renders; it is never seen. */
@@ -236,6 +273,13 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .au-2nd:active{transform:scale(.99)}
 .au-2nd[disabled]{color:var(--dimmer); cursor:default}
+/* The same hole .au-link had, found by auditing every hideable thing on the
+   page after the first one turned up. `display:flex` above beats the UA
+   sheet's `[hidden]{display:none}`, so #au-resend — "Resend the verification
+   email", which ships with the `hidden` attribute in the markup and is only
+   meant to appear for an unverified address — was on screen for everybody who
+   reached the signed-in panel. */
+.au-2nd[hidden]{display:none}
 
 /* Sign out is the one destructive action on this page, and it sat directly
    under "Manage billing" looking exactly like it. Red is the convention for
@@ -273,7 +317,13 @@ body{background:var(--ground); color:var(--parchment)}
 
 /* A row of two small facts under a heading — "Signed in as …" on the account
    screen — where a whole .au-rows block would be too much furniture. */
-.au-who{
+/* `.au-panel > p.au-who` for the third time in this file, and it is the same
+   defect .au-or and .au-say were written up for: this is a direct child <p> of
+   the panel, so the bare class (0,1,0) lost every declaration in it to
+   `.au-panel > p` (0,1,1). Measured before the fix, on the signed-in panel:
+   margin-top 0 rather than 14, and the line set at 16px/400 body copy rather
+   than at --fs-sub. */
+.au-panel > p.au-who, .au-who{
   margin:14px 0 0; font-size:var(--fs-sub); line-height:1.5; color:var(--dim);
 }
 .au-who b{color:var(--parchment); font-weight:var(--w-head); word-break:break-word}
@@ -337,9 +387,6 @@ html.au-js .au-panel{display:none}
 /* The title belongs to the shared .mast, which every other page wants left.
    Scoped to this page's body so nothing else moves. */
 body.au h1, body.au .mast{text-align:center}
-body.au .tabs{justify-content:center}
-body.au .tabs .acct{position:absolute; right:0; top:0}
-body.au .mast{position:relative}
 
 /* The footer note and the noscript line sit outside .au-panel, so the rule
    above does not reach them. Left alone they would be the only left-aligned
@@ -348,3 +395,128 @@ body.au .lib > .fine,
 body.au .lib noscript .fine{
   text-align:center; margin-left:auto; margin-right:auto; max-width:46ch;
 }
+
+/* --------------------------------------------------------------------------
+   The sign-in screen's own geometry.
+
+   Everything above this line is shared with the account screen, which loads
+   this file too. Everything below is the /login design and nothing else, so it
+   is scoped to body.au — the account screen keeps the rhythm it was measured
+   with. The figures are the design's; the values are app.css tokens.
+
+   The vertical stack at 390, top to bottom:
+
+     26  .mast padding-top
+     18  under the wordmark
+      —  the headline, --fs-hero (28px at 390), line-height 1.1
+     16  the panel's margin-top, which is the whole gap under the headline
+      2  under the tab row
+     14  above the Google button
+     16  above the "or" rule and 16 below it (see the note on .au-or)
+     14  above each field
+     18  above the submit button
+      6  above "Forgot your password?"
+     30  above the legal row
+   -------------------------------------------------------------------------- */
+
+/* The wordmark. Centred like everything else on this page — .mark is a flex
+   row, so text-align:center on .mast does not reach it and it sat hard left
+   under a centred headline. Quieter than the other twelve pages' mark: the
+   design sets 12px and a 20px tile here against 13px and 24px elsewhere,
+   because the headline directly beneath it is the thing to read. */
+body.au .mark{justify-content:center; font-size:var(--fs-fine); margin:0 0 18px}
+body.au .mark img{width:20px; height:20px}
+
+/* 26px above, nothing below: the panel's own margin-top is the gap under the
+   headline, so .mast must not add a second one. Same for the h1's own
+   margin-bottom, which app.css sets to 10 for pages that put a standfirst
+   under it. This page has no subtitle — deliberately, and the design agrees;
+   the tabs answer "what is this screen for" faster than a sentence would. */
+body.au .mast{padding:26px 2px 0}
+body.au .mast h1{margin:0; line-height:1.1}
+body.au .au-panel{margin-top:16px}
+
+/* 14, not .jn-field's 16. The label above each box is 14px type; 16 between a
+   button and the next label reads as a section break. */
+body.au .au-panel .jn-field{margin:14px 0 0}
+
+/* The submit button. .go is margin:0 auto, so the top gap belongs to whoever
+   uses it; here it is 18 — larger than the 14 between the two fields, so the
+   button reads as the end of the form rather than as a third field. */
+body.au #au-go{margin-top:18px}
+
+/* "Forgot your password?" sits close under the button it rescues. It is an
+   .au-link, which is inline-flex, so the centring on .au-panel reaches it
+   through text-align and it needs no auto margins. */
+body.au #au-forgot{margin-top:6px}
+
+/* The reset confirmation is two lines of prose, so it is set left inside a
+   centred panel — a centred paragraph of that length is a ragged diamond. */
+body.au .au-say{text-align:left}
+
+/* Every paragraph in a centred panel is centred as a BOX, not only as text.
+
+   `.au-panel > p` caps a paragraph at 44ch with margin `0 0 4px` — no auto
+   side margins, because it was written for a left-aligned column. Turning the
+   panel centred left that cap in place and the box pinned to the left edge, so
+   the words were centred inside the wrong rectangle: the same failure the note
+   on .au-or describes, and .au-or was only the one somebody happened to look
+   at. Measured at 1440, box centre against panel centre:
+
+     #au-google-err  -215.0px    the Google failure sentence
+     #au-say         -215.0px    the reset confirmation
+     #au-dead > p    -191.2px    "Something between here and Google…"
+     .au-who         -191.2px    "Signed in as …"
+     .au-or             0.0px    already fixed, and the reason to look
+
+   Under 44ch of panel — every phone — the two rectangles coincide and all four
+   look perfect, which is why this survived. It is 0-2-1, so it also out-ranks
+   the 2px side margins in .jn-err and .au-say; those are a left-column
+   indent, and there is no left column here. The 44ch measure stays: a centred
+   column of prose wants a measure.
+
+   Scoped to body.au. The account screen is a left-aligned column and this
+   would be wrong there. */
+body.au .au-panel > p{margin-left:auto; margin-right:auto}
+
+/* The legal row. 30px of air above it, and no more: it is the last thing on
+   the page and .lib's own --bottom-safe padding already keeps it, and every
+   tap target on this page, clear of the Instagram and TikTok toolbar. */
+body.au #au-legal{margin-top:30px}
+
+/* Its three links measured 40x16, 34x16 and 61x16 — fine print you have to
+   aim at, on the row a reader taps when they are trying to work out what they
+   agreed to or how to reach a human. SPEC.md §3 says --tap, everywhere.
+
+   The same invisible band .mark a::after uses, for the same reason: the design
+   sets this row as 12px fine print and it should stay 12px fine print, so the
+   target grows and the layout does not move a pixel. The account screen solves
+   the identical row with inline-flex and a min-height, which it can afford
+   because nothing there is centred around it; here that would push the line
+   box to 44px and drag the "·" separators off the words' baseline.
+
+   4px each side, not more, and that number is measured rather than picked: the
+   separators leave 8.8px between one link's right edge and the next one's
+   left, so ±4 leaves 0.8px of gap and no band can steal a tap meant for its
+   neighbour. Vertically 44px, horizontally 41.6 to 69.3. */
+body.au #au-legal a{position:relative}
+body.au #au-legal a::after{
+  content:""; position:absolute; left:-4px; right:-4px; top:50%;
+  height:var(--tap); transform:translateY(-50%);
+}
+
+/* And the page reserves for the band, not for the glyphs.
+
+   .lib ends the document --bottom-safe above its own foot, which is what keeps
+   the last control clear of the Instagram and TikTok toolbar. The legal row is
+   the last control, and its band is centred on a 16px line, so it hangs 14px
+   below the words. Measured before this rule: at 375x667 the row left 88.1px
+   of reservation and needed 86.7 — 1.4px of slack — and the band spent 14 of
+   it, putting a tappable thing 12.6px inside the toolbar's strip. 932x430
+   landscape was the same story with 1.9px of slack.
+
+   So the reservation grows by exactly the overhang. Anywhere the page is
+   already taller than the screen this is 14px of scroll nobody reaches for;
+   where it matters it is the difference between a link you can hit and one the
+   toolbar is sitting on. */
+body.au .lib{padding-bottom:calc(var(--bottom-safe) + 14px)}

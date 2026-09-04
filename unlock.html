@@ -80,6 +80,9 @@
   .note b{display:block;font-size:var(--fs-note);font-weight:var(--w-head);margin-bottom:6px}
   .note p{font-size:var(--fs-meta);color:var(--dimmer);line-height:var(--lh-body)}
   .row{display:flex;gap:10px;flex-wrap:wrap}
+  /* An author display: beats the UA [hidden] rule, so #links stayed on
+     screen with the attribute set. */
+  .row[hidden]{display:none !important}
   .row a{flex:1;text-align:center}
 </style>
 </head>
