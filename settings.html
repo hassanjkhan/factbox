@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox · Settings</title>
+<meta name="description" content="Your name and email, your subscription, the help pages, and the way to sign out.">
+<!-- The paper ground, matching what body actually paints. It was the
+     retired night value on all thirteen paper pages, which puts a
+     near-black bar above a cream page in Android Chrome and iOS
+     Safari. Only the four reader/story pages are #0E0B12. -->
+<meta name="theme-color" content="#E7E0D3">
+<!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
+     so it is the one that must exist; the rest are the better versions for the
+     places that look for them. The .ico packs 16, 32 and 48. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- site.webmanifest's theme_color is #DCD5C8, the same cream the meta above
+     declares and the same cream body paints. The three must not disagree. -->
+<link rel="manifest" href="/site.webmanifest">
+<meta name="robots" content="noindex,nofollow">
+<link rel="canonical" href="https://factbox.app/settings">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- DM Sans only. This screen carries no display serif, so Newsreader is
+     deliberately not requested. A page that adds --display must add the
+     Newsreader family to this link itself; a token cannot fetch a font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
+<link rel="stylesheet" href="/css/account.css">
+<link rel="stylesheet" href="/css/auth.css">
+
+<!-- Same anti-flip class as login.html and /account, same unconditional
+     timer. The timer is the whole point of the class being safe: if the page
+     script throws, or never loads, or the SDK hangs, the reader gets the real
+     markup — every row, the help pages, the billing link — instead of a hidden
+     page. This site has shipped blank twice, both times from a script that
+     threw before it could reveal anything. -->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "au-js";
+    setTimeout(function () {
+      try { h.className = h.className.replace(/(^|\s)au-js(\s|$)/g, " "); } catch (e) {}
+    }, 4000);
+  } catch (e) {}
+})();
+</script>
+
+</head>
+<body>
+
+<!--
+  SETTINGS. Quiet by design.
+
+  Three groups and one button: who you are, what you are paying, where the
+  help is, and the way out. Nothing on this screen is a preference, because
+  there is nothing here to prefer — the site has one theme, sends no
+  notifications and has no reminder times to honour, and a settings page full
+  of switches that do nothing is worse than a short one.
+
+  THIS IS A REAL PAGE, NOT A STUB. GitHub Pages resolves /settings to
+  settings.html before settings/index.html, which is exactly how a redirect
+  stub at login.html once shadowed the real sign-in page and served a white
+  screen on every clean URL on the site (SPEC.md 2.4). Every row below ships
+  in the markup with its real destination in its href. With JavaScript off,
+  or broken, this page is a working list of links and a working billing
+  portal; the script only fills in the two values and enables Sign out.
+
+  NAME AND EMAIL ARE FACTS, NOT CONTROLS. The mockup draws them as tappable
+  rows. They are not tappable here, and that is deliberate: changing a display
+  name is Firebase's updateProfile, and js/auth.js — the only file allowed to
+  touch the SDK — exposes no wrapper for it, so a chevron on that row would
+  promise a screen that does not exist. When FBU gains a setName(), these
+  become links and this comment goes.
+
+  BILLING. The row points at /subscription, which another agent owns and which
+  landed while this page was being written. That screen carries the plan, the
+  cancellation flow and Stripe's own portal behind it; nothing here knows or
+  decides anything about a subscription, and it must not start to — a second
+  telling of what was charged can only ever disagree with the first.
+
+  The href is in the markup, not set by script, so the route survives auth
+  never answering and survives JavaScript being off. The <noscript> line below
+  additionally names the Stripe portal directly, because that is the one
+  billing URL that depends on nothing of ours at all.
+
+  SIGNING OUT does three things in a fixed order, and the order is asserted by
+  tools/check-account-cache.js: FBU.signOut(), then FBX.forgetLegacy(), then
+  location.replace("/"). forgetLegacy() clears the unlock flag from
+  localStorage AND from the cookie mirror, because js/progress.js heals either
+  store from the other — clearing only localStorage un-signed-out nobody, and
+  for a long time signing out never actually locked the browser. Both stores,
+  or neither.
+
+  IT DOES NOT TOUCH READING PROGRESS OR SAVED STORIES. Those live in FBP and
+  FBS, keyed to the account that owns them, and they simply stop being visible
+  when nobody is signed in. The line under the button says so, because a
+  reader is entitled to know before they tap it.
+-->
+
+<main class="lib">
+  <header class="mast">
+    <p class="mark"><a href="/explore" aria-label="Factbox"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
+    <a class="ac-back" href="/account">← Account</a>
+    <h1>Settings</h1>
+  </header>
+
+  <div class="au-wait" id="st-wait" role="status" hidden>
+    <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+    <span class="fbload-say">Looking you up in the ledger…</span>
+  </div>
+
+  <!-- ===== signed in ==================================================== -->
+  <section class="au-panel ac-left" id="st-in" hidden aria-labelledby="st-in-h">
+    <!-- The same load-bearing wrapper as /account: `.au-panel > p` in
+         css/auth.css is (0,1,1) and would out-rank every bare .ac- class on a
+         <p> that is a direct child of the panel. Inside this div none of them
+         is. Do not flatten it. -->
+    <div class="ac-body">
+      <h2 id="st-in-h" class="jn-vh">Settings</h2>
+
+      <p class="ac-eyebrow">Account</p>
+      <dl class="ac-rows">
+        <div class="ac-row">
+          <dt>Name</dt>
+          <dd id="st-name">your account</dd>
+        </div>
+        <div class="ac-row">
+          <dt>Email</dt>
+          <dd id="st-email">your account</dd>
+        </div>
+      </dl>
+      <div class="ac-rows">
+        <a class="ac-row" id="st-billing" href="/subscription">
+          <span>Subscription</span>
+          <span class="ac-arrow" id="st-billing-v">Manage →</span>
+        </a>
+      </div>
+
+      <p class="ac-eyebrow">Help</p>
+      <div class="ac-rows">
+        <a class="ac-row" href="/support"><span>Contact us</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+        <a class="ac-row" href="/credits"><span>Artwork credits</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+        <a class="ac-row" href="/privacy"><span>Privacy</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+        <a class="ac-row" href="/terms"><span>Terms</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+      </div>
+
+      <p class="ac-signout-wrap">
+        <button class="ac-signout" id="st-out" type="button">Sign out</button>
+      </p>
+      <p class="ac-signout-note">This locks the browser again. What you have
+      read stays on your account and comes back when you sign in.</p>
+
+      <p class="jn-err" id="st-err" hidden role="alert"></p>
+    </div>
+  </section>
+
+  <!-- ===== signed out =================================================== -->
+  <!-- The help pages belong to everybody, so a signed-out reader gets the
+       whole Help group rather than a wall. Only the two facts about an account
+       and the way out of one are missing, because there is no account. -->
+  <!-- NOT [hidden]. This panel ships VISIBLE and the script hides it once it
+       knows somebody is signed in.
+
+       That is the whole no-JavaScript story for this page, and it is the same
+       rule SPEC.md 2.2 states: text is visible by default and JavaScript opts
+       into hiding it. With scripting off, `au-js` is never added to <html>, so
+       this panel stays on screen and the reader gets the help pages, the
+       subscription route and a way to sign in — a working page rather than an
+       apology. With scripting on, `html.au-js .au-panel{display:none}` in
+       css/auth.css hides it for the beat auth takes to answer, so it never
+       flashes at somebody who IS signed in, and the unconditional 4s timer in
+       the head brings it back if the page script never gets there. -->
+  <section class="au-panel ac-left" id="st-out-panel" aria-labelledby="st-out-h">
+    <div class="ac-body">
+      <h2 id="st-out-h">You are not signed in</h2>
+      <p style="color:var(--dim);font-size:var(--fs-note);line-height:var(--lh-body);margin:0 0 4px;max-width:44ch">Your
+      name, your email and your subscription live behind your account. The help
+      pages below do not.</p>
+
+      <div class="ac-rows">
+        <a class="ac-row" href="/login?next=settings"><span>Sign in</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+        <a class="ac-row" href="/subscription"><span>Subscription</span><span class="ac-arrow">Manage →</span></a>
+      </div>
+
+      <p class="ac-eyebrow">Help</p>
+      <div class="ac-rows">
+        <a class="ac-row" href="/support"><span>Contact us</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+        <a class="ac-row" href="/credits"><span>Artwork credits</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+        <a class="ac-row" href="/privacy"><span>Privacy</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+        <a class="ac-row" href="/terms"><span>Terms</span><span class="ac-arrow" aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <noscript>
+    <p class="fine" style="margin-top:24px;text-align:left">
+      <b>This page needs JavaScript to show your name and email, and to sign
+      you out.</b> Everything else on it is working above: the help pages, and
+      the route to your subscription. If that route will not open either, the
+      <a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+      rel="noopener">billing portal</a> is Stripe's own page and needs nothing
+      from us.</p>
+  </noscript>
+
+  <p class="fine ac-fine" style="margin-top:34px;text-align:center">
+    <a href="/account">Account</a> · <a href="/explore">Explore</a> ·
+    <a href="/library">Library</a>
+  </p>
+</main>
+
+<script type="module" src="/js/auth.js"></script>
+<script src="/js/progress.js"></script>
+<script src="/js/access.js"></script>
+<script src="/js/gate.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var GENERIC = "Something went wrong. Try that again in a moment.";
+
+  function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+  function show(n, on) { try { if (n) n.hidden = !on; } catch (e) {} }
+  function text(n, s) { try { if (n) n.textContent = s; } catch (e) {} }
+  function on(n, ev, fn) {
+    try { if (n && n.addEventListener) n.addEventListener(ev, fn, false); } catch (e) {}
+  }
+
+  /* The same second wall as login.html and /account. A Firebase error code is
+     a debugging aid; it is never a sentence, and it never reaches this page. */
+  function safeText(s) {
+    var t;
+    try { t = String(s == null ? "" : s); } catch (e) { return GENERIC; }
+    if (!t) return GENERIC;
+    if (t.indexOf("auth/") !== -1) return GENERIC;
+    if (t.indexOf("Firebase") !== -1 || t.indexOf("firebase") !== -1) return GENERIC;
+    if (t.indexOf("permission-denied") !== -1) return GENERIC;
+    if (t.length > 220) return GENERIC;
+    return t;
+  }
+
+  function nameText() {
+    var s = "";
+    try { s = String(FBU.name() || ""); } catch (e) {}
+    if (!s) {
+      var m = "";
+      try { m = String(FBU.email() || ""); } catch (e2) {}
+      var at = m.indexOf("@");
+      s = at > 0 ? m.slice(0, at) : "";
+    }
+    if (!s) { try { s = String(FBU.phone() || ""); } catch (e3) {} }
+    s = s.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "your account";
+    if (s.indexOf("auth/") !== -1) return "your account";
+    if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "your account";
+    return s.length > 60 ? s.slice(0, 59) + "…" : s;
+  }
+
+  var wait  = el("st-wait");
+  var pIn   = el("st-in");
+  var pOut  = el("st-out-panel");
+  var eName = el("st-name");
+  var eMail = el("st-email");
+  var eBill = el("st-billing");
+  var eBillV= el("st-billing-v");
+  var eOut  = el("st-out");
+  var eErr  = el("st-err");
+
+  function reveal() {
+    try {
+      var h = document.documentElement;
+      if (h) h.className = h.className.replace(/(^|\s)au-js(\s|$)/g, " ").replace(/^\s+|\s+$/g, "");
+    } catch (e) {}
+  }
+
+  function whenFBU(cb) {
+    var done = false;
+    function go() {
+      if (done) return;
+      done = true;
+      try { cb(window.FBU || null); } catch (e) {}
+    }
+    if (window.FBU) { go(); return; }
+    try { window.addEventListener("fbu-ready", go, false); } catch (e) {}
+    try {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", go, false);
+      } else {
+        setTimeout(go, 0);
+      }
+    } catch (e) {}
+    try { setTimeout(go, 4000); } catch (e) { go(); }
+  }
+
+  var FBU = null;
+
+  /* All the billing row has ever had to decide is what to call itself. The
+     renewal date, the price and a plan name are Stripe's record, and a second
+     telling of it can only ever disagree with the first — a reader who wants
+     the detail taps this and gets what was actually charged.
+
+     The href is never touched by this script. It is /subscription in the
+     markup and it stays there: a subscriber whose billing read does not come
+     back — offline, denied, or Firestore slow — must still be able to reach
+     the screen that can cancel their plan, so only the verb changes. */
+  function paintBilling() {
+    var sub = null, prem = false, known = false;
+    try { prem = !!FBU.premium(); } catch (e) {}
+    try { sub = FBU.subscription(); } catch (e) {}
+    try { known = !!FBU.billingKnown(); } catch (e) {}
+    if (!eBillV) return;
+    if (!known) { text(eBillV, "Manage →"); return; }
+    /* subscription() is null for a cancelled reader still inside a paid
+       period, and premium() is still true for them — so "cancel" is offered
+       on the strength of a live subscription, never on the flag alone. */
+    text(eBillV, sub ? "Cancel or manage →" : (prem ? "Manage →" : "Manage →"));
+  }
+
+  function paint() {
+    reveal();
+    try {
+      if (window.FBLoad && FBLoad.done && wait) {
+        FBLoad.done(wait, function () { show(wait, false); });
+      } else { show(wait, false); }
+    } catch (e) { show(wait, false); }
+
+    var inNow = false;
+    try { inNow = !!(FBU && FBU.signedIn()); } catch (e) {}
+
+    /* No third "could not start" panel here, and that is deliberate. If auth
+       never loads, everything this page is FOR still works — the help pages
+       and the billing portal are plain links — so the signed-out panel is the
+       honest thing to show, not an apology screen. */
+    if (!inNow) {
+      show(pIn, false);
+      show(pOut, true);
+      return;
+    }
+
+    show(pOut, false);
+    show(pIn, true);
+
+    var mail = "";
+    try { mail = FBU.email() || ""; } catch (e) {}
+    if (!mail) { try { mail = FBU.phone() || ""; } catch (e2) {} }
+    text(eName, nameText());
+    text(eMail, mail || "your account");
+    paintBilling();
+  }
+
+  function busy(n, label) {
+    try { if (n) { n.disabled = true; n.setAttribute("data-was", n.textContent || ""); n.textContent = label; } }
+    catch (e) {}
+  }
+  function idle(n) {
+    try {
+      if (!n) return;
+      n.disabled = false;
+      var w = n.getAttribute("data-was");
+      if (w) n.textContent = w;
+    } catch (e) {}
+  }
+
+  on(eBill, "click", function () {
+    try { if (window.FB && FB.track) FB.track("billing_portal"); } catch (e) {}
+  });
+
+  on(eOut, "click", function () {
+    if (!FBU) return;
+    show(eErr, false);
+    busy(eOut, "Signing out…");
+    try {
+      FBU.signOut().then(function () {
+      /* Out means out, and out means gone from here.
+
+         The browser-level unlock in localStorage survives a Firebase
+         sign-out — nothing about signing out touches localStorage — so a
+         browser that had ever been unlocked stayed unlocked: every story
+         readable, no padlock on any cover. FBX owns that flag, so FBX clears
+         it, from localStorage AND from the cookie mirror. js/progress.js
+         heals either store from the other, so clearing one alone put the flag
+         straight back on the next page load.
+
+         And staying on this page after signing out leaves the reader looking
+         at settings for an account they no longer have. replace(), not href,
+         so Back does not return to it. */
+      try { if (window.FBX && FBX.forgetLegacy) FBX.forgetLegacy(); } catch (x) {}
+      try { if (window.FB && FB.track) FB.track("signout"); } catch (x) {}
+      try { location.replace("/"); } catch (x) { location.href = "/"; }
+      }, function (e) {
+        idle(eOut);
+        var m = "";
+        try { if (window.FBU && window.FBU.message) m = window.FBU.message(e); } catch (x) {}
+        text(eErr, safeText(m));
+        show(eErr, true);
+        paint();
+      });
+    } catch (e) { idle(eOut); paint(); }
+  });
+
+  show(wait, true);
+
+  whenFBU(function (api) {
+    FBU = api;
+    if (!FBU) { paint(); return; }
+    try { FBU.onReady(function () { paint(); }); } catch (e) { paint(); }
+    try { FBU.onChange(function () { paint(); }); } catch (e) {}
+    /* premium and the subscription both arrive after auth state does, and
+       both can change while this page is open — a webhook landing seconds
+       after a checkout is the common case. */
+    try { FBU.onPremium(function () { paintBilling(); }); } catch (e) {}
+    try { FBU.onSubscription(function () { paintBilling(); }); } catch (e) {}
+    try { setTimeout(function () { if (wait && !wait.hidden) paint(); }, 10000); } catch (e) {}
+  });
+})();
+</script>
+
+<script src="/js/analytics.js"></script>
+</body>
+</html>

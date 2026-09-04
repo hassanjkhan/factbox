@@ -19,11 +19,16 @@ node check-page.js  "firststory.html" ".beat"  "Cleopatra"
 node check-plates.js "index.html"     ".card"        # every cover has a fallback
 node check-regressions.js                            # bugs that must not come back
 node check-analytics.js                              # the instrumentation is still there
-node check-page.js  "stories.html"   ".card"    "Be disgustingly"
+# NOT stories.html — it is a forwarder now (location.replace to /explore),
+# and jsdom cannot navigate, so this reports a script error for a page that
+# is working exactly as intended. /explore below is the real coverage.
+node check-page.js  "explore.html"   ".card"    "Be disgustingly"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
 node check-page.js  "read.html?s=44" ".paywall" "Your next story is already waiting"
 node check-page.js  "index.html"     ".card"    "Be disgustingly"
-node check-page.js  "start.html"     "button"   "Remember history"
+# The apostrophe on that page is &rsquo;, so match a span without one —
+# a check that fails on a typographic quote teaches people to ignore it.
+node check-page.js  "start.html"     "button"   "actually remember"
 node check-page.js  "credits.html"   "table tr" "Share-alike"
 ```
 

@@ -52,6 +52,41 @@
       .replace(/"/g, "&quot;");
   }
 
+  /* A TITLE OR A HOOK IS NEVER ALLOWED TO CARRY A SOURCE CITATION.
+
+     Three hooks in data/index.json end in a markdown link — stack 09 to the
+     IAEA archive, 10 to Vatican News, 08 mid-sentence — because the corpus
+     keeps its sources inline with the prose it took them from. That is right
+     in a card and wrong in a headline: rendered raw across Today's Factbox it
+     reads "...went catastrophically wrong. ([IAEA Archives](https://...))",
+     which is a URL painted 30px high over a museum plate.
+
+     The credit belongs on the card, where read.html already draws it as
+     .cite. Here the markup is stripped and the link text kept, so nothing is
+     lost from the sentence and nothing is added to it. Three passes: a
+     parenthesised link, a bare parenthesised URL, and an ordinary inline
+     link, which is the order they actually occur in. */
+  function clean(s) {
+    return String(s == null ? "" : s)
+      .replace(/\s*\(\[[^\]]*\]\([^)]*\)\)\s*/g, " ")
+      .replace(/\s*\(https?:\/\/[^)]*\)\s*/g, " ")
+      .replace(/\s*\[([^\]]*)\]\([^)]*\)/g, " $1")
+      .replace(/\s+/g, " ")
+      .replace(/^\s+|\s+$/g, "");
+  }
+
+  /* A preview shows the hook's FIRST SENTENCE. Several hooks in the season
+     are two or three sentences — stack 09 is three — and the whole of one set
+     across a 16:10 plate is a paragraph where a headline belongs. The reader
+     gets the rest of it on the first card, half a second later.
+
+     No /s flag and no named groups: ES5. [\s\S] is the portable any-char. */
+  function firstSentence(s) {
+    var t = clean(s);
+    var m = t.match(/^[\s\S]*?[.?!](?=\s|$)/);
+    return (m ? m[0] : t).replace(/^\s+|\s+$/g, "");
+  }
+
   /* Half-minute steps, the same arithmetic as FB.minutes in gate.js. Whole
      minutes label 49 of the 51 stories "2 min", which is the one number a
      reader wants from that line carrying no information at all. */
@@ -318,7 +353,7 @@
           (s.free ? '<span class="freetag">FREE</span>' : '') +
           (st.pct ? '<i class="readbar" style="width:' + st.pct + '%"></i>' : '') +
         '</div>' +
-        '<h3>' + esc(s.title) + '</h3>' +
+        '<h3>' + esc(clean(s.title)) + '</h3>' +
         '<p class="meta">' + esc(st.label || facts) + '</p>' +
       '</a>';
   }
@@ -359,25 +394,37 @@
     return n;
   }
 
-  function finishedOf(map) {
-    var k, n = 0;
-    for (k in map) { if (has(map, k) && map[k] && map[k].done) n++; }
-    return n;
-  }
-
   function touchedOf(map) {
     var k, n = 0;
     for (k in map) { if (has(map, k)) n++; }
     return n;
   }
 
-  function stat(value, label) {
-    return '<li class="tdy-stat"><b>' + esc(value) + '</b><span>' + esc(label) + '</span></li>';
+  /* Minutes learned: each story's own listed runtime, pro-rated by the share
+     of its cards read. It is the same arithmetic js/library.js's stats line
+     uses — deliberately, so the two pages cannot quote a reader two different
+     totals — and for the same reason: NOTHING HERE MEASURES TIME SPENT. We do
+     not record how long anybody looked at anything. This is "you have been
+     through 12 minutes' worth of story", which is a fact about the catalogue
+     and the reader's place in it, and it is the only honest version. */
+  function learnedMins(stacks) {
+    var secs = 0, i, s, total, st, read;
+    for (i = 0; i < (stacks ? stacks.length : 0); i++) {
+      s = stacks[i];
+      if (!s || !s.id) continue;
+      total = cardCount(s);
+      if (!total) continue;
+      st = pstate(s.id, total);
+      if (st.status === "done") read = total;
+      else if (st.status === "reading") read = Math.min(total, (st.card || 0) + 1);
+      else read = 0;
+      if (read) secs += (Number(s.secs) || 0) * read / total;
+    }
+    return Math.max(1, Math.round(secs / 60));
   }
 
   function greetHTML(map) {
     var streak = streakOf(map);
-    var done = finishedOf(map);
     /* The mast's headline stays. It used to be swapped for "Welcome back.
        Ready for 5 minutes?", which meant the page introduced itself to a
        stranger and greeted a regular — two different pages sharing a URL. The
@@ -388,10 +435,12 @@
        now, and they sit under the headline rather than replacing it. Not an
        h1 any more, because the mast's h1 is no longer hidden and a page with
        two visible h1s is a page a screen reader reads twice. */
-    var out = '<ul class="tdy-stats">';
-    if (streak > 0) out += stat(streak, "day streak");
-    out += stat(done, done === 1 ? "story finished" : "stories finished");
-    return out + '</ul>';
+    var out = '<p class="tdy-streak">';
+    /* Nought is not a streak, and "0 day streak" is a scold. The line simply
+       starts at the minutes on the day a streak lapses. */
+    if (streak > 0) out += '<b>' + esc(streak) + '</b> day streak \u00b7 ';
+    out += '<b>' + esc(learnedMins(STACKS)) + '</b> min learned';
+    return out + '</p>';
   }
 
   /* --- Continue -----------------------------------------------------------
@@ -420,18 +469,29 @@
              pct: best.r.pct || 0 };
   }
 
+  /* "Continue: <title>", then how far in and how much is left.
+
+     Both numbers come out of the record js/progress.js keeps — the card index
+     and the number of cards in the story — so this is the same fact the bar
+     underneath draws, said in words. "N left" rather than "Card N of M"
+     because this row is an invitation and the number that answers "shall I?"
+     is the one that is still ahead. The last card gets its own sentence: "0
+     left" is arithmetic, not English. */
   function continueHTML(c) {
     if (!c) return "";
-    var where = c.total ? ("Card " + (c.card + 1) + " of " + c.total)
-                        : "In progress";
+    var inCards = c.card + 1;
+    var left = Math.max(0, (c.total || 0) - inCards);
+    var where;
+    if (!c.total) where = "In progress";
+    else if (left > 0) where = "You\u2019re " + inCards + " cards in. " + left + " left \u2192";
+    else where = "You\u2019re on the last card \u2192";
     return '' +
       '<a class="tdy-cont" href="' + esc(href(c.stack)) + '">' +
         '<div class="plate"><img loading="eager" decoding="async" alt="" ' +
              'src="/img/thumbs/' + esc(c.stack.img) + '.webp"' +
              heroFallback(c.stack.img) + '></div>' +
         '<div class="t">' +
-          '<p class="tdy-eyebrow">Continue</p>' +
-          '<b>' + esc(c.stack.title) + '</b>' +
+          '<b>Continue: ' + esc(clean(c.stack.title)) + '</b>' +
           '<span class="tdy-where">' + esc(where) + '</span>' +
           '<div class="tdy-bar"><i style="width:' + Math.max(2, Math.min(100, c.pct)) + '%"></i></div>' +
         '</div>' +
@@ -457,8 +517,12 @@
         '</div>' +
         '<div class="tdy-body">' +
           '<p class="tdy-kicker">Today’s Factbox</p>' +
-          '<p class="tdy-subject">' + esc(subjectName(s.topic)) + '</p>' +
-          '<h2 class="tdy-hook">' + esc(s.hook || s.title) + '</h2>' +
+          /* One eyebrow, not two: the subject line that used to sit here said
+             "DISASTER" over a hook whose first six words are about Chernobyl.
+             And the hook is cleaned and cut to its first sentence — see
+             clean() and firstSentence() at the top of this file. It falls back
+             to the title, itself cleaned, for a story with no hook. */
+          '<h2 class="tdy-hook">' + esc(firstSentence(s.hook) || clean(s.title)) + '</h2>' +
           '<p class="tdy-facts">' + total + ' cards · ' + esc(mins(s.secs)) + '</p>' +
           '<a class="go" href="' + esc(href(s)) + '">Start story</a>' +
         '</div>' +
@@ -517,7 +581,6 @@
     var next = nextIn(list);
     if (!next || !next.stack) return "";
     var done = doneIn(list);
-    var pct = list.length ? Math.round(done / list.length * 100) : 0;
     var where = done + " of " + list.length + " read";
     if (!done && !back) {
       var note = subjectNote(key, list.length);
@@ -532,10 +595,13 @@
         '<div class="plate"><img loading="lazy" decoding="async" alt="" ' +
              'src="/img/thumbs/' + esc(next.stack.img) + '.webp"' +
              heroFallback(next.stack.img) + '></div>' +
+        /* No progress bar in this row. The sentence beside it already says
+           "3 of 11 read", and a bar under a 58px plate is a second drawing of
+           one number in a tile that is mostly not tall enough for it. The
+           Continue row keeps its bar: there the bar is the whole point. */
         '<div class="t">' +
           '<b>' + esc(subjectName(key)) + '</b>' +
           '<span class="tdy-where">' + esc(where) + '</span>' +
-          (done ? '<div class="tdy-bar"><i style="width:' + Math.max(2, pct) + '%"></i></div>' : '') +
         '</div>' +
       '</a>';
   }
@@ -550,7 +616,10 @@
     return '' +
       '<section class="row">' +
         '<div class="sechead"><h2>Binge a series</h2>' +
-        '<span>picks up where you left off</span></div>' +
+        /* How many there are, counted off the data rather than written down,
+           so a ninth subject cannot make this line a lie. */
+        '<span>' + keys.length + (keys.length === 1 ? " subject" : " subjects") +
+        '</span></div>' +
         '<div class="tdy-series">' + out + '</div>' +
       '</section>';
   }
@@ -624,14 +693,23 @@
     return 6;
   }
 
-  /* The rhythm. Nine is coprime with two, three and four, so the feature
-     tiles do not line up into a column whatever the grid is that day.
-       0 -> 2x2   4 -> tall   6 -> wide   everything else square */
+  /* The rhythm. Eight steps, three shapes: a 2x2 opening each block and a
+     tall tile five along from it, everything else a square. The wide-but-short
+     tile the old nine-step rhythm carried is gone — at 125px a 2x1 is a letter
+     box, and with the 2x2 already in the block it read as a second, worse
+     version of the same idea.
+
+       0 -> 2x2   5 -> tall   everything else square
+
+     A shape that will not fit where the packer has reached steps down (2x2 to
+     tall), which is deterministic because the packer is fed the same tiles in
+     the same order every time. Return codes are unchanged so mosAttempt does
+     not have to know the rhythm changed: 4 is "two by two", 3 is "tall", 2 is
+     "wide" and is now never asked for, 1 is a square. */
   function mosDesire(i) {
-    var m = i % 9;
+    var m = i % 8;
     if (m === 0) return 4;
-    if (m === 4) return 3;
-    if (m === 6) return 2;
+    if (m === 5) return 3;
     return 1;
   }
 
@@ -711,7 +789,7 @@
     return '' +
       '<section class="row">' +
         '<div class="sechead"><h2>All stories</h2>' +
-        '<span>' + stacks.length + ' to read</span></div>' +
+        '<span>' + stacks.length + ' stories</span></div>' +
         '<div class="tdy-mosaic" id="tdy-all">' + out + '</div>' +
       '</section>';
   }

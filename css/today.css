@@ -53,34 +53,44 @@ body{background:var(--ground); color:var(--parchment)}
    ever does.
    -------------------------------------------------------------------------- */
 
-.tdy-say{margin:0 2px}
+.tdy-say{margin:0}
 /* Nothing to say and nothing to space: a first-time reader's greeting is the
    headline in the mast, and this slot must not leave a gap under it. */
 .tdy-say:empty{display:none}
 
-/* The same size and weight as the mast h1 it stands in for, so swapping one
-   for the other moves nothing. */
-.tdy-head{
-  margin:0; font-size:var(--fs-hero); font-weight:var(--w-head);
-  letter-spacing:var(--ls-head); line-height:1.08; text-wrap:balance;
+/* The headline, in the display serif.
+
+   --display is Newsreader at --w-display (500), and it appears in exactly two
+   places on this page: here and on Today's hook. That pair is what makes the
+   page read as an edition rather than as an app screen; every other word is
+   DM Sans. The face is fetched by the Google Fonts <link> in explore.html and
+   index.html, because a token cannot fetch a font — if that link is ever
+   dropped this rule falls to Georgia, which is the point of the stack.
+
+   34px is the size the design is drawn at, on a 390px phone. clamp rather
+   than a fixed length because the same headline has to hold a 375px phone and
+   a 1920px window: 8.72vw is 34.0px at 390, 32.7 at 375, 37.5 at 430, and it
+   stops at 44 so a desktop gets a headline rather than a poster. */
+.lib.today .mast h1{
+  margin:16px 0 10px;
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:clamp(1.95rem,8.72vw,2.75rem);
+  line-height:1.06; letter-spacing:-.012em;
 }
 
-/* Two numbers, side by side, both from this browser's own reading memory. */
-.tdy-stats{display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 0; padding:0; list-style:none}
-.tdy-stat{
-  flex:0 0 auto; padding:9px 14px;
-  border-radius:15px; background:var(--raise);
-  box-shadow:inset 0 0 0 1px var(--hair);
+/* The streak line. One sentence carrying two numbers, where there used to be
+   two stat pills — the same information in the space of one line, and a line
+   that does not compete with the headline it sits under.
+
+   It exists only for a reader with reading memory, and js/progress.js gates
+   that on the account which owns it: signed out, this slot is empty and
+   :empty above collapses it. That is a privacy gate, not a layout one. */
+.tdy-streak{
+  margin:16px 2px 2px;
+  font-size:var(--fs-note); font-weight:var(--w-label); line-height:1.5;
+  color:var(--dim); font-variant-numeric:tabular-nums;
 }
-.tdy-stat b{
-  display:block; font-size:1.24rem; font-weight:var(--w-head); line-height:1.15;
-  font-variant-numeric:tabular-nums;
-}
-.tdy-stat span{
-  display:block; margin-top:2px;
-  font-size:var(--fs-micro); font-weight:var(--w-label); letter-spacing:var(--ls-caps);
-  text-transform:uppercase; color:var(--dimmer);
-}
+.tdy-streak b{color:var(--parchment); font-weight:var(--w-head)}
 
 /* --------------------------------------------------------------------------
    Continue. One wide row for the single story the reader is in the middle of,
@@ -91,18 +101,18 @@ body{background:var(--ground); color:var(--parchment)}
 .tdy-cont{
   display:flex; gap:14px; align-items:center;
   margin:20px 0 0; padding:12px;
-  border-radius:18px; background:var(--raise);
+  border-radius:20px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
   text-decoration:none; color:inherit;
   transition:transform .18s ease;
 }
 .tdy-cont:active{transform:scale(.99)}
-.tdy-cont .plate{width:74px; flex:0 0 74px; border-radius:12px; aspect-ratio:3/4}
+.tdy-cont .plate{width:74px; flex:0 0 74px; border-radius:14px; aspect-ratio:3/4}
 .tdy-cont .t{min-width:0; flex:1 1 auto}
-.tdy-eyebrow{
-  margin:0 0 4px; font-size:var(--fs-micro); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--accent-ink);
-}
+/* .tdy-eyebrow was a small-caps "Continue" above the title. The row now says
+   "Continue: <title>" in one line of 17px, which is the design's own shape and
+   one less thing stacked in a 74px-tall box. The rule is deleted rather than
+   left unused; .tdy-kicker below is the eyebrow this page still has. */
 .tdy-cont b{
   display:block; font-size:var(--fs-lead); font-weight:var(--w-head);
   line-height:var(--lh-tight);
@@ -129,7 +139,7 @@ body{background:var(--ground); color:var(--parchment)}
 
 .tdy-today{
   margin:26px 0 0; overflow:hidden;
-  border-radius:22px; background:var(--raise);
+  border-radius:24px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
 }
 .tdy-art{position:relative; aspect-ratio:16/10; background:var(--night)}
@@ -145,13 +155,31 @@ body{background:var(--ground); color:var(--parchment)}
   margin:0 0 11px; font-size:var(--fs-micro); font-weight:var(--w-label);
   letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--accent-ink);
 }
-.tdy-subject{
-  margin:0 0 8px; font-size:var(--fs-fine); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
-}
+/* .tdy-subject — a second small-caps line naming the topic, under the eyebrow
+   — is gone. Two eyebrows stacked over a headline is a masthead, and the
+   subject is already the first thing the hook says. The panel is now eyebrow,
+   hook, facts, button, which is four things rather than five.
+
+   The hook is the second and last place the display serif appears. Same face
+   and weight as the h1 above it: 30px at 390, which is 7.7vw. */
 .tdy-hook{
-  margin:0; font-size:clamp(1.38rem,5.6vw,2rem); font-weight:var(--w-head);
-  line-height:1.16; letter-spacing:var(--ls-hero); text-wrap:balance;
+  margin:0;
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:clamp(1.7rem,7.7vw,2.4rem);
+  line-height:1.14; letter-spacing:-.012em; text-wrap:balance;
+  /* Three lines, hard.
+
+     firstSentence() already cuts the hook at its first full stop, and that is
+     the right cut — it never ends mid-thought and it never swallows a source
+     citation. But the season's first sentences run to 159 characters, and at
+     30px on a 390px phone the longest becomes six lines: "Start story" lands
+     below the fold on the one screen whose entire job is to be tapped.
+
+     So the SENTENCE stays honest and the BOX is bounded. Measured on stack 22,
+     the longest in the season: 6 lines -> 3, and the button moves from 148px
+     below the fold to 116px above it. */
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3;
+  overflow:hidden;
 }
 .tdy-facts{
   margin:13px 0 0; font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
@@ -198,13 +226,13 @@ body{background:var(--ground); color:var(--parchment)}
 }
 .tdy-serie{
   display:flex; gap:12px; align-items:center;
-  padding:10px; border-radius:16px;
+  padding:10px; border-radius:20px;
   background:var(--raise); box-shadow:inset 0 0 0 1px var(--hair);
   text-decoration:none; color:inherit;
   transition:transform .18s ease;
 }
 .tdy-serie:active{transform:scale(.985)}
-.tdy-serie .plate{width:58px; flex:0 0 58px; border-radius:11px; aspect-ratio:3/4}
+.tdy-serie .plate{width:58px; flex:0 0 58px; border-radius:8px; aspect-ratio:3/4}
 .tdy-serie .t{min-width:0; flex:1 1 auto}
 .tdy-serie b{
   display:block; font-size:var(--fs-sub); font-weight:var(--w-head);
@@ -232,9 +260,9 @@ body{background:var(--ground); color:var(--parchment)}
    room, and the title sits under the picture where it is easy to read. This
    section is the opposite object — the whole catalogue, all fifty-one — and it
    is drawn the opposite way, so that the two cannot be mistaken for each
-   other: tiles packed with no gutter at all, in four sizes, the title burned
-   into the bottom left of the painting and the reader's place in the story on
-   a pill in the top right.
+   other: tiles packed with no gutter at all, in three sizes on an eight-step
+   rhythm, the title burned into the bottom left of the painting and — only for
+   a story the reader is in the middle of — their place in it on a pill.
 
    The tile is app.css's .card, unchanged. Same element, same classes, same
    .plate with the read bar and the padlock inside it. js/today.js adds one
@@ -261,7 +289,14 @@ body{background:var(--ground); color:var(--parchment)}
    gradient running towards it goes grey through the middle rather than simply
    thinning out. app.css has no --glass-0 and app.css is not this file's to
    edit, so it is declared here, from the same rgb as --glass. */
-:root{--glass-0:rgba(14,11,18,0)}
+/* --glass-0 now lives in app.css, beside --ground-0 and --raise-0. */
+/* The rgb above is --glass's own, 9 12 22. It used to be 14 11 18, which was
+   --glass's rgb before the repaint and was left behind by it: on a browser
+   that interpolates un-premultiplied, a gradient running from rgba(9,12,22,.62)
+   to rgba(14,11,18,0) crosses a hue it should not. Zero alpha hides it in
+   Chrome and does not everywhere. app.css should own --glass-0 beside --glass
+   and --ground-0 — it is requested in the report; until it does, this is the
+   one colour literal on this page and it is derived, not chosen. */
 
 .tdy-mosaic{
   display:grid;
@@ -301,6 +336,16 @@ body{background:var(--ground); color:var(--parchment)}
      not run. Then every tile is a square and the section still reads. */
   aspect-ratio:1;
   border-radius:0;
+  /* --night, not app.css's --raise. On the cream page a plate's own backdrop
+     IS cream and that is right; inside this wall it is a lit hole in a dark
+     room for as long as the painting takes to arrive — and with fifty-one
+     lazy images that is most of the wall on a cold scroll. app.css's own note
+     on --night says it: "a cream flash there is the one thing worse than a
+     dark one". It is also what stands behind a plate that never arrives at
+     all, and a white title on cream is unreadable where a white title on
+     --night is not. Measured on a throttled load: eight tiles cream at once
+     before this, none after. */
+  background:var(--night);
   /* app.css lifts a cover off the page with a drop shadow. Edge to edge there
      is no page between them to cast onto, and fifty-one of them stack into a
      grey haze. */
@@ -351,6 +396,11 @@ body{background:var(--ground); color:var(--parchment)}
   text-shadow:0 1px 3px var(--glass-deep);
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
   overflow:hidden;
+  /* A finished tile gives 38px of its width to the tick, and the longest
+     titles in the season are wider than what is left. Without somewhere to
+     break, the clamp slices a word mid-stem on a 125px tile; with these it
+     breaks and hyphenates instead. */
+  overflow-wrap:anywhere; hyphens:auto; -webkit-hyphens:auto;
 }
 /* A tile two columns wide is twice the painting, so it can carry the title at
    the size the rest of the site sets a card title in. */
@@ -367,9 +417,19 @@ body{background:var(--ground); color:var(--parchment)}
 .tdy-mosaic > .card.is-done h3{right:38px}
 
 /* Card 6 of 9, top right, on its own glass so it is legible over a white
-   painting as well as a dark one. Unread, this line is the card count and the
-   runtime instead — the same element either way, which is the element
-   applyLocked() and applyOpen() rewrite. */
+   painting as well as a dark one.
+
+   ONLY for a story the reader is in the middle of. The catalogue line — "8
+   cards · 3½ min" — is inventory, and inventory painted across fifty-one
+   museum plates is not a reason to tap any of them; the one thing worth
+   saying over a painting is where the reader got to. So the pill is drawn for
+   .is-reading and for nothing else.
+
+   The element itself always exists, and it is hidden by being taken out of
+   sight rather than out of the document — display:none would strip the line
+   from the link's accessible name, and it would also mean applyLocked() and
+   applyOpen() were writing into nothing. They go on rewriting it; the reader
+   simply does not see it until it says something worth reading. */
 .tdy-mosaic > .card .meta{
   position:absolute; z-index:2;
   top:7px; right:7px; max-width:calc(100% - 14px);
@@ -402,6 +462,17 @@ body{background:var(--ground); color:var(--parchment)}
 .tdy-mosaic > .card.is-reading .meta{
   color:var(--accent-lift); font-weight:var(--w-strong);
   background:linear-gradient(var(--glass),var(--glass)), var(--glass-deep);
+}
+
+/* Not reading, or locked — a locked cover shows no progress at all, which is
+   what applyLocked() enforces on the text and this enforces on the pill. Clip,
+   not display:none: see the note above. */
+.tdy-mosaic > .card:not(.is-reading) .meta,
+.tdy-mosaic > .card.locked .meta{
+  width:1px; height:1px; padding:0; overflow:hidden; white-space:nowrap;
+  clip:rect(0 0 0 0); clip-path:inset(50%);
+  background:none; box-shadow:none;
+  -webkit-backdrop-filter:none; backdrop-filter:none;
 }
 
 /* The pill has the top right corner, so the padlock takes the other one. */
@@ -477,7 +548,11 @@ body{background:var(--ground); color:var(--parchment)}
 }
 
 @media (min-width:1024px){
-  .lib.today{max-width:1180px}
+  /* The column stays app.css's 900px at every width above this one, which is
+     the container the design is drawn inside. It used to open to 1180px here.
+     A 1920px window therefore shows the same page a 1024px window does, moved
+     to the middle of the screen: the mosaic settles at five columns, the rails
+     hold five and a half covers and go on scrolling, and nothing stretches. */
 
   .tdy-today{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.08fr); align-items:stretch}
   /* The plate now fills whatever height the words need, rather than setting

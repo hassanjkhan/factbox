@@ -35,9 +35,21 @@ const CHECKS = [
     why: "js/progress.js returns `at: r[2] * 1000`, already milliseconds. " +
          "Dividing by 1000 again before the day number makes every streak 0.",
     pass: () => {
-      const s = read("js/today.js");
-      if (!/streakOf/.test(s)) return true;          // feature removed, fine
-      return /r\.at \/ DAY_MS/.test(s) && !/r\.at \* 1000/.test(s) && !/at \/ 1000/.test(s);
+      /* Every copy of this arithmetic, not just the first one written. The
+         guard read only js/today.js, so when account.html grew its own week
+         row the check went quiet without going red — a guard that passes
+         because it is looking somewhere else is worse than no guard. */
+      const files = ["js/today.js", "account.html", "js/recommend.js"];
+      let seen = false;
+      for (const f of files) {
+        const s = read(f);
+        if (!/streakOf/.test(s)) continue;           // this file has no copy
+        seen = true;
+        if (!/r\.at \/ DAY_MS/.test(s)) return `${f}: streakOf does not divide by DAY_MS`;
+        if (/r\.at \* 1000/.test(s))    return `${f}: multiplies r.at by 1000 again`;
+        if (/at \/ 1000/.test(s))       return `${f}: divides at by 1000 again`;
+      }
+      return true;                                   // nobody has one, fine
     },
   },
   {

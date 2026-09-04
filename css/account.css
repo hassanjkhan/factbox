@@ -446,3 +446,383 @@ body{background:var(--ground); color:var(--parchment)}
   color:var(--accent-ink); font-weight:var(--w-strong); text-decoration:none;
   display:inline-block; padding:9px 6px; min-height:var(--tap); line-height:26px;
 }
+
+/* ==========================================================================
+   THE ACCOUNT SCREEN AND ITS SETTINGS — /account and /settings
+
+   Everything below is prefixed .ac- so it cannot collide with .jn- (the
+   funnel, above), .au- (css/auth.css, which loads AFTER this file) or
+   anything the core owns. Colours are app.css tokens only; there is not one
+   literal in this block.
+
+   TWO SPECIFICITY TRAPS, BOTH ALREADY PAID FOR ON THIS SITE.
+
+   1. css/auth.css loads after this file and carries `.au-panel > p` at
+      (0,1,1). Every eyebrow, name and streak line here is a <p>, and a bare
+      class is (0,1,0) — it would lose, exactly the way .au-or and .au-say
+      did before their selectors were doubled up. Rather than double seven
+      selectors, both pages wrap their contents in ONE .ac-body div, so no <p>
+      of ours is a DIRECT child of .au-panel and the rule cannot reach them.
+      That wrapper is load-bearing. Do not flatten it.
+
+   2. `.au-panel{text-align:center}` in auth.css centres the sign-in screen.
+      The mockup's account and settings screens are a left-aligned column, so
+      .ac-body sets text-align:left and the two centred things on the page —
+      the sign-out button and the legal line — opt back in for themselves.
+   -------------------------------------------------------------------------- */
+
+.ac-body{text-align:left}
+
+/* The eyebrow over every section. 11px, small capitals, --dimmer: 5.1:1 on
+   --ground and 5.4:1 on --raise, which is what app.css's own note measures it
+   at and what an 11px label needs. */
+.ac-eyebrow{
+  margin:30px 2px 12px;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
+}
+/* The first eyebrow on a screen follows the header, not another section. */
+.ac-body > .ac-eyebrow:first-child{margin-top:22px}
+
+.ac-sec[hidden]{display:none}
+
+/* --------------------------------------------------------------------------
+   Who you are. The insignia at 52px, the name, and one line under it.
+
+   The circle is the same fill and hairline as .acct-btn.is-in in app.css —
+   deliberately, because it is the same object at a different size, and the
+   reader should recognise the thing they tapped to get here.
+   -------------------------------------------------------------------------- */
+.ac-who{
+  display:flex; align-items:center; gap:13px; margin:6px 2px 0;
+}
+.ac-avatar{
+  flex:0 0 52px; width:52px; height:52px; border-radius:var(--pill);
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent-wash);
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
+  color:var(--accent-ink);
+  font-size:1.3125rem; font-weight:var(--w-head); line-height:1;
+}
+/* Signed out, or a name we do not have, gets app.css's drawn figure rather
+   than an initial — the same glyph .acct-ini.is-anon draws in the masthead,
+   scaled to this circle. An emoji here would be somebody else's artwork at a
+   different size on every platform, sitting beside our own wordmark. */
+.ac-avatar .acct-ini.is-anon{width:20px; height:20px}
+.ac-avatar .acct-ini.is-anon::before{
+  width:10px; height:10px; margin-left:-5px;
+  box-shadow:inset 0 0 0 2px currentColor;
+}
+.ac-avatar .acct-ini.is-anon::after{
+  width:20px; height:10px; margin-left:-10px; border-radius:11px 11px 0 0;
+  box-shadow:inset 0 0 0 2px currentColor;
+}
+.ac-whotext{min-width:0}
+.ac-name{
+  margin:0; font-size:1.3125rem; font-weight:var(--w-head);
+  letter-spacing:var(--ls-title); line-height:var(--lh-tight);
+  color:var(--parchment); word-break:break-word;
+}
+.ac-member{
+  margin:3px 0 0; font-size:var(--fs-meta); font-weight:var(--w-label);
+  color:var(--dimmer); word-break:break-word;
+}
+
+/* --------------------------------------------------------------------------
+   Your Factbox — three counts.
+
+   Every one of them is counted from what js/progress.js actually stores, and
+   the whole row is [hidden] when there is no reading record. There is no
+   zero state here: three zeroes under "Your Factbox" is a worse screen than
+   no row at all, and a count invented to fill the space would be a lie.
+   -------------------------------------------------------------------------- */
+.ac-stats{
+  display:flex; align-items:stretch; margin:0 2px; padding:0; list-style:none;
+}
+.ac-stats li{flex:1 1 0; padding:0 4px; min-width:0}
+.ac-stats b{
+  display:block; font-size:1.6875rem; font-weight:var(--w-head);
+  line-height:1; letter-spacing:var(--ls-hero);
+  font-variant-numeric:tabular-nums; color:var(--parchment);
+}
+.ac-stats span{
+  display:block; margin-top:5px;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
+}
+
+/* --------------------------------------------------------------------------
+   This week. Seven columns, a letter over each, a dot under it.
+
+   A filled dot is --coral, which app.css calls a FILL and never type — it is
+   used here as exactly that, a 9px disc with no words on it. An unfilled one
+   is --tint-3, the token app.css names for "an unfilled track or dot".
+
+   The connector between two consecutive filled days is drawn as a ::before on
+   the later dot, so a run of days reads as a run rather than as seven
+   separate marks. It is decorative: the row is still legible with it gone.
+   -------------------------------------------------------------------------- */
+.ac-days{display:flex; margin:0 2px}
+.ac-days span{
+  flex:1 1 0; text-align:center;
+  font-size:var(--fs-micro); font-weight:var(--w-label); color:var(--dimmer);
+}
+.ac-dots{display:flex; margin:8px 2px 0}
+.ac-dot{
+  flex:1 1 0; display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.ac-dot i{
+  display:block; width:9px; height:9px; border-radius:var(--pill);
+  background:var(--tint-3);
+}
+.ac-dot.is-on i{background:var(--coral)}
+/* Today's dot keeps a ring whether or not it is filled, so "where am I in
+   this row" never depends on the fill alone. */
+.ac-dot.is-today i{box-shadow:0 0 0 3px var(--accent-wash)}
+.ac-dot.is-on.is-run::before{
+  content:""; position:absolute; right:50%; left:-50%; top:50%;
+  height:3px; margin-top:-1.5px; background:var(--coral); border-radius:2px;
+}
+.ac-streak{
+  margin:12px 2px 0; font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--parchment); font-variant-numeric:tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Currently exploring. One series, its cover, how far in, and the way on.
+
+   This is app.css's .plate inside a lifted card, the same object .tdy-serie
+   is on the front page — a subject is a row, not a list of covers, and the
+   plate is the story the tap actually opens.
+   -------------------------------------------------------------------------- */
+.ac-serie{
+  display:flex; gap:14px; align-items:center;
+  padding:12px; border-radius:20px;
+  background:var(--raise); box-shadow:inset 0 0 0 1px var(--hair);
+  text-decoration:none; color:inherit;
+  transition:transform .18s ease;
+}
+.ac-serie:active{transform:scale(.985)}
+.ac-serie .plate{width:74px; flex:0 0 74px; border-radius:14px}
+.ac-serie .ac-serie-t{min-width:0; flex:1 1 auto}
+.ac-serie b{
+  display:block; font-size:var(--fs-lead); font-weight:var(--w-head);
+  line-height:var(--lh-tight); letter-spacing:var(--ls-title);
+}
+.ac-serie .ac-serie-n{
+  display:block; margin-top:4px;
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
+  font-variant-numeric:tabular-nums;
+}
+.ac-serie .ac-bar{
+  margin-top:9px; height:6px; border-radius:var(--pill);
+  background:var(--tint-3); overflow:hidden;
+}
+.ac-serie .ac-bar i{
+  display:block; height:100%; background:var(--coral); border-radius:var(--pill);
+}
+.ac-serie .ac-serie-go{
+  display:block; margin-top:9px;
+  font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--accent-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Your history. app.css's .card and .plate unchanged; only the track count
+   and the title size are this page's, because three covers across a 390px
+   phone is a 108px tile and a 15px title wraps to four lines on it.
+   -------------------------------------------------------------------------- */
+.ac-sechead{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+}
+.ac-sechead .ac-eyebrow{margin-bottom:0}
+.ac-seeall{
+  flex:none; font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--accent-ink); text-decoration:none;
+  /* A real target. The row above reads as a label; this is a link people tap
+     on the move, so it gets the site's 44px rather than the height of 14px
+     of text. The negative margin keeps the baseline where the design put it. */
+  display:inline-flex; align-items:center; min-height:var(--tap);
+  padding:0 2px; margin:calc((var(--tap) - 1.25rem) / -2) 0;
+}
+.ac-hist{
+  display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr));
+  margin:12px 2px 0;
+}
+.ac-hist .card h3{
+  font-size:var(--fs-meta);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+/* --------------------------------------------------------------------------
+   A row you tap. Settings on /account; every line on /settings.
+
+   Hairlines rather than a filled card, because on /settings there are eight
+   of them in two groups and eight filled cards is a page of furniture. The
+   group draws the line above each row and the last row in a group closes it,
+   so a group reads as a block whichever rows the script leaves visible.
+   -------------------------------------------------------------------------- */
+.ac-rows{margin:8px 0 0; padding:0}
+.ac-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin:0; padding:15px 2px; min-height:var(--tap);
+  border-top:1px solid var(--hair);
+  text-decoration:none; color:inherit;
+  font-size:1rem; font-weight:var(--w-strong);
+}
+.ac-row[hidden]{display:none}
+.ac-rows > .ac-row:last-child{border-bottom:1px solid var(--hair)}
+/* The value on the right of a row, and the arrow. Both are --dimmer, which
+   is 5.1:1 on --ground — this is a 15px label, not decoration. */
+.ac-row dt, .ac-row > span:first-child{
+  margin:0; font-size:1rem; font-weight:var(--w-strong); color:var(--parchment);
+}
+.ac-row dd, .ac-row > span:last-child, .ac-row .ac-arrow{
+  margin:0; flex:0 1 auto; min-width:0; text-align:right;
+  font-size:var(--fs-sub); font-weight:var(--w-label); color:var(--dimmer);
+  word-break:break-word;
+}
+/* The Settings row on /account is the one row on that screen, so it carries a
+   line above AND below and a little more air, exactly as the mockup draws it. */
+.ac-lead{
+  margin-top:32px; padding:16px 2px;
+  border-top:1px solid var(--hair); border-bottom:1px solid var(--hair);
+}
+
+/* The back link on /settings. Same size and weight as a nav tab, in --dim
+   (6.4:1 on --ground) rather than --dimmer, because it is the only way out of
+   this screen and a way out should not be the quietest thing on it. */
+.ac-back{
+  display:inline-flex; align-items:center;
+  min-height:var(--tap); padding:10px 2px;
+  font-size:var(--fs-sub); font-weight:var(--w-strong);
+  color:var(--dim); text-decoration:none;
+}
+.ac-back:hover{color:var(--parchment)}
+
+/* --------------------------------------------------------------------------
+   Sign out. The one destructive control on the site.
+
+   COLOUR ONLY, and no fill. A red button competes with the blue primary
+   action elsewhere on the page and turns signing out into an alarm, when the
+   reader is signing out, not deleting an account — the same reasoning
+   .au-2nd.is-danger carries in css/auth.css, which this replaces on the
+   settings screen. --crimson on --raise measures 5.90:1 and on --ground
+   4.94:1, against the 4.5:1 that 15px/600 needs; both grounds are quoted
+   because this button sits on the bare page here and inside a panel there.
+
+   The disabled state drops to --dimmer: a control that is greyed out must not
+   also be shouting.
+   -------------------------------------------------------------------------- */
+.ac-signout-wrap{margin:34px 0 0; text-align:center}
+.ac-signout{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:var(--tap); padding:10px 16px;
+  background:none; border:0; cursor:pointer;
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  color:var(--crimson);
+}
+.ac-signout[disabled]{color:var(--dimmer); cursor:default}
+.ac-signout-note{
+  margin:6px auto 0; max-width:40ch; text-align:center;
+  font-size:var(--fs-fine); font-weight:var(--w-body);
+  color:var(--dimmer); line-height:var(--lh-body);
+}
+
+/* The empty state. It is a real sentence with a way out of it, never a blank
+   column and never a row of grey dots pretending to be a week. */
+.ac-empty{
+  margin:24px 0 0; padding:16px 16px;
+  border-radius:16px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  font-size:var(--fs-note); font-weight:var(--w-label);
+  color:var(--dim); line-height:var(--lh-body);
+}
+.ac-empty[hidden]{display:none}
+.ac-empty a{color:var(--accent-ink); font-weight:var(--w-strong)}
+
+/* --------------------------------------------------------------------------
+   Both ends of the range.
+
+   The mockup is 390x844 and everything above is written for it. .lib already
+   caps the column at 900px and centres it, so at 1440 and 1920 this page is
+   the same 900px column sitting in the middle of the window rather than a
+   row of eight stats stretched across a desktop monitor — the two screens
+   are a phone's screens and they do not become something else on a laptop.
+
+   What DOES change with room: the history grid takes more tracks, because a
+   108px cover is a phone compromise and there is no reason to keep it at
+   1440. Six is the cap; beyond that the covers start to look like thumbnails
+   of themselves.
+   -------------------------------------------------------------------------- */
+@media (min-width:560px){
+  .ac-hist{grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px 13px}
+  .ac-hist .card h3{font-size:var(--fs-sub)}
+  /* Three counts and seven dots are phone-shaped objects. Stretched across
+     .lib's full 900px they stop being a row and become three numbers a long
+     way apart, with a week's worth of dots reading as a timeline. 520px is
+     the site's own measurement — .go, .fine and .au-2nd all stop there — so
+     they sit at the head of the column rather than across the window. */
+  .ac-stats, .ac-days, .ac-dots, .ac-streak{max-width:520px}
+}
+@media (min-width:820px){
+  .ac-hist{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .ac-serie{transition:none}
+}
+
+/* The legal / navigation line at the foot of both screens.
+
+   The mockup draws it as one quiet 12px sentence with the links set in the
+   same colour as the words around them. Two things are wrong with that as
+   shipped code, and both are cheap to fix without changing how the line
+   reads: a 16px-tall link is fine print a reader has to aim at on a moving
+   bus, and a link the same colour as its sentence is only a link if you can
+   see colour at all.
+
+   So the hit areas grow to the site's --tap and the links carry an underline.
+   The row still reads as fine print — the type size, the weight and the
+   colour are untouched, and the negative margin keeps the line's own height
+   exactly where .fine put it. This is the same trade css/auth.css's #ac-legal
+   makes, in the one place on these two screens that needs it. */
+.ac-fine a{
+  display:inline-flex; align-items:center;
+  min-height:var(--tap); padding:0 5px;
+  margin:calc((var(--tap) - 1.2em) / -2) 0;
+  text-decoration:underline; text-underline-offset:3px;
+}
+/* The negative margin above pulls the LAYOUT box back to the height of the
+   text, but the 44px HIT box still hangs about 14px below the last line — and
+   this paragraph is the last thing on both pages, so that overhang eats into
+   the strip .lib reserves for the in-app toolbar. Measured at 932x430, the
+   tightest of the eight viewports, it left 2px of clearance against a 64px
+   --bottom-safe, and a real phone's safe-area inset would have taken that.
+   This gives the overhang back and then the same again as cushion, written as
+   the overhang's own expression so it tracks --tap rather than being a magic
+   number that goes stale the day the tap size moves. Measured after: 17px of
+   clearance at 932x430 and 375x667, the two tightest, and more everywhere
+   else. It costs nothing to look at — it is the last line on the page. */
+.ac-fine{margin-bottom:calc(var(--tap) - 1.2em)}
+
+/* Three corrections found by looking at the rendered page rather than at the
+   markup, which is the only way any of them shows up.
+
+   1. TWO GROUPS OF ROWS DREW TWO HAIRLINES. The last row of a group closes it
+      with a border-bottom and the first row of the next opens with a
+      border-top, so /settings had a doubled line — with an 8px gap in it —
+      between Email and Subscription. Adjacent groups share one line.
+   2. THE EYEBROW AFTER THE VISUALLY-HIDDEN HEADING. `:first-child` cannot
+      match it: h2.jn-vh is the first child of .ac-body and takes up no space,
+      so the first eyebrow on a screen was carrying the 30px meant to separate
+      one section from the next.
+   3. THE PADLOCK ON THE SERIES COVER. app.css's .lock is 26px, drawn for a
+      148px shelf cover. On this row's 74px plate it covered a third of the
+      painting. Same treatment css/today.css gives .tdy-serie, for the same
+      reason and at the same size. */
+.ac-rows + .ac-rows{margin-top:0}
+.ac-rows + .ac-rows > .ac-row:first-child{border-top:0}
+.ac-body > h2 + .ac-eyebrow{margin-top:22px}
+.ac-serie .lock{right:4px; top:4px; width:20px; height:20px; font-size:.58rem}

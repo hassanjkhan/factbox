@@ -15,8 +15,13 @@
    css/reader-rail.css — read.html loads that file last and no other page loads
    it at all, so it is the reader's scope with no class on <html> to set and no
    :has() to depend on. If you add a page that needs night, load that file.
-   The composed story pages (story.html and its copies) are self-contained and
-   never see this stylesheet.
+   The composed story pages (story.html, cleopatra.html, firststory.html) DO
+   load this stylesheet — they are composed from read.html, which loads it, and
+   then reader-rail.css repaints :root on top. They were once self-contained;
+   they have not been for some time, and the note said otherwise until a
+   palette repaint made it matter. It is the reason the reader came through
+   that repaint intact: it inherits these tokens and then overrides the ones
+   the night ground needs.
    ========================================================================== */
 
 :root{
@@ -30,7 +35,7 @@
      have touched several hundred declarations across nine stylesheets for no
      gain; the value is the thing that matters and this note is the warning.
 
-     --coral is a FILL, never type. At 2.0:1 on cream it is a colour you put
+     --coral is a FILL, never type. At 2.2:1 on cream it is a colour you put
      words on, not a colour you write words in. --accent-ink is the same blue
      taken down until it clears on the page, on a card AND on the washes, and
      it is what every link, eyebrow and coloured label uses.
@@ -43,19 +48,24 @@
      something is written on either. Both were taken down until the worst of
      the four surfaces clears 4.5:1. The four, measured:
 
-       --accent-ink #1D5288   ground 5.52  raise 6.58  --accent-wash 4.93
-                              --menu 7.16
+       --accent-ink #1A5BA1   ground 5.24  raise 5.79  --accent-wash 4.60
+                              --menu 6.51
+
+     The mockup's own blue is #1B5FA8, which measures 4.92 on the page and
+     4.32 on --accent-wash — under. #1A5BA1 is that colour taken down 4%,
+     which is invisible side by side and clears the wash at 4.60.
        --teal-ink   #3B5119   ground 6.07  raise 7.24  --accent-wash 5.43
                               sage wash rgba(140,167,93,.30) 5.09
 
      The sage wash is the binding constraint on --teal-ink and --accent-wash on
      --accent-ink. Anything new laid on a wash is measured on the wash.
      ---------------------------------------------------------------------- */
-  --parchment:#1D3159;                 /* navy — the reading colour */
-  --ink:#443A3A; --ink-soft:#6E625F;   /* dark brown, and it softened */
-  --coral:#4C9BE8;                     /* bright blue — fills and buttons */
-  --coral-deep:#3B82CC;
-  --accent-ink:#1D5288;                /* the blue you may WRITE in */
+  --parchment:#172E5B;                 /* navy — the reading colour */
+  --ink:#172E5B; --ink-soft:#3C4E71;   /* navy, and it softened: 10.1 and 6.4
+                                          on the page, 11.2 and 7.0 on a card */
+  --coral:#3B9EF4;                     /* bright blue — fills and buttons */
+  --coral-deep:#1B5FA8;
+  --accent-ink:#1A5BA1;                /* the blue you may WRITE in */
   --crimson:#A81F38;                   /* the one colour that means STOP: 4.94:1
                                           on the page, 5.90:1 on a card */
   --teal:#8CA75D;                      /* sage — the second accent, as a fill */
@@ -66,16 +76,17 @@
   /* Not repainted. --night is the backstop BEHIND a plate — .beat and .tdy-art
      show it for the milliseconds before the painting decodes, and a cream flash
      there is the one thing worse than a dark one. */
-  --night:#1B1620;
+  --night:#0F1420;
 
-  --ground:#DCD5C8;                    /* cream — the page */
-  --raise:#EDE8DE;                     /* a card lifted off it */
+  --ground:#E7E0D3;                    /* cream — the page */
+  --raise:#F1EBDF;                     /* a card lifted off it */
   /* The transparent end of a fade over --ground / --raise. `transparent` is
      rgba(0,0,0,0) and older webviews interpolate it un-premultiplied, which
      greys the middle of every gradient on a light ground. */
-  --ground-0:rgba(220,213,200,0);
-  --raise-0:rgba(237,232,222,0);
-  --hair:rgba(29,49,89,.16);
+  --ground-0:rgba(231,224,211,0);
+  --raise-0:rgba(241,235,223,0);
+  --glass-0:rgba(9,12,22,0);      /* the clear end of a scrim over a plate */
+  --hair:rgba(23,46,91,.14);
 
   /* --dim and --dimmer are NOT her .66 / .5.
 
@@ -83,12 +94,12 @@
      Inverted onto cream the same alphas measure 3.8:1 and 2.6:1, and every one
      of their users — .meta under a cover, .fine under the buy button, an
      unselected tab, .statline small — is 12-15px body text that needs 4.5:1.
-     Raised until they clear it on the WORSE of the two grounds (#DCD5C8):
-     .82 → 5.7:1 on the page and 6.4:1 on a card, .74 → 4.6:1 and 5.1:1.
+     Raised until they clear it on the WORSE of the two grounds (#E7E0D3):
+     .82 → 6.4:1 on the page and 6.8:1 on a card, .74 → 5.1:1 and 5.4:1.
      They read closer together than they do on night. That is the honest cost
      of a light ground, and it is cheaper than illegible metadata. */
-  --dim:rgba(29,49,89,.82);
-  --dimmer:rgba(29,49,89,.74);
+  --dim:rgba(23,46,91,.82);
+  --dimmer:rgba(23,46,91,.74);
 
   /* ---- Surfaces that are not the page ------------------------------------
      Every one of these was a hard-coded near-white or near-black rgba() before
@@ -96,24 +107,24 @@
      as rgba(255,247,237,.09) is "a little lighter than whatever is behind it",
      and on cream that is a little lighter than cream.
      ---------------------------------------------------------------------- */
-  --tint:rgba(29,49,89,.07);           /* a quiet chip on --raise */
-  --tint-2:rgba(29,49,89,.12);         /* the same chip, pressed */
-  --tint-3:rgba(29,49,89,.18);         /* an unfilled track or dot */
-  --accent-wash:rgba(76,155,232,.16);  /* a chosen option's ground */
-  --accent-edge:rgba(33,90,151,.34);   /* its hairline */
-  --on-accent:#0B1B2E;                 /* type on a --coral fill — 5.9:1 */
-  --menu:#FBF8F2;                      /* the account popover, and the notice */
+  --tint:rgba(23,46,91,.06);           /* a quiet chip on --raise */
+  --tint-2:rgba(23,46,91,.12);         /* the same chip, pressed */
+  --tint-3:rgba(23,46,91,.18);         /* an unfilled track or dot */
+  --accent-wash:rgba(59,158,244,.16);  /* a chosen option's ground */
+  --accent-edge:rgba(27,95,168,.32);   /* its hairline */
+  --on-accent:#06182E;                 /* type on a --coral fill — 6.3:1 */
+  --menu:#FAF6EE;                      /* the account popover, and the notice */
 
   /* Glass over ARTWORK stays dark in both grounds: the lock badge and the
      reader's own pills sit on a painting, never on the page. --on-glass is
      what you may write on them (8.4:1 over the lock badge's composite). */
-  --glass:rgba(14,11,18,.62);
-  --glass-deep:rgba(14,11,18,.72);
-  --on-glass:#FFF7ED;
+  --glass:rgba(9,12,22,.62);
+  --glass-deep:rgba(9,12,22,.72);
+  --on-glass:#F4EFE6;
   /* The quieter line on the same glass: a source credit, never a sentence.
      Alpha rather than opacity, because opacity would fade the text-shadow the
      words are relying on at the same time. */
-  --on-glass-soft:rgba(255,247,237,.76);
+  --on-glass-soft:rgba(244,239,230,.76);
 
   /* ---- The focus ring ----------------------------------------------------
      ONE token, because four rules each picked their own colour and three of
@@ -140,11 +151,11 @@
   /* Shadow is a light source, and on cream the light is coming from the same
      place — so these are navy at low alpha, not black at .45, which on paper
      reads as soot around every cover. */
-  --shadow-1:0 6px 20px rgba(29,49,89,.16);   /* a cover lifted off the page */
-  --shadow-2:0 14px 40px rgba(29,49,89,.22);  /* a menu or a notice above it */
-  --shadow-go:0 8px 22px rgba(33,90,151,.28); /* the primary button's own */
-  --glow-accent:0 0 10px rgba(76,155,232,.55);/* the read bar's trail */
-  --accent-lift:#9CCBF7;                      /* the sweep along the load bar */
+  --shadow-1:0 6px 20px rgba(23,46,91,.14);   /* a cover lifted off the page */
+  --shadow-2:0 14px 40px rgba(23,46,91,.22);  /* a menu or a notice above it */
+  --shadow-go:0 8px 22px rgba(27,95,168,.26); /* the primary button's own */
+  --glow-accent:0 0 10px rgba(59,158,244,.5);/* the read bar's trail */
+  --accent-lift:#8FC4FA;                      /* the sweep along the load bar */
 
   /* ---- Type --------------------------------------------------------------
      DM Sans, four real weights. Every page's <head> asks Google for
@@ -168,6 +179,13 @@
      .64rem and .82rem; these are the rungs they collapse to. rem, not px, so
      the ladder tracks the reader's own text size.
      ---------------------------------------------------------------------- */
+  /* The display serif. Newsreader at 500 sets the headline and
+     Today's hook; every other word on the site is DM Sans. Any page
+     that uses it must add Newsreader to its own Google Fonts link -
+     a token cannot fetch a font. */
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --w-display:500;
+
   --ui:"DM Sans",ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
 
   --w-head:700; --w-strong:600; --w-label:500; --w-body:400;
@@ -273,8 +291,20 @@ img{max-width:100%;display:block}
      7px reads as the 8 it is meant to be. */
   gap:7px;
   color:inherit; text-decoration:none; border-radius:6px;
+  /* The lockup is 24px tall — the logo's height, which the design sets. As a
+     TARGET that is 24px, and this is the way back to Explore from twelve
+     pages. Same treatment as .acct-btn: an invisible 44px-tall band centred
+     on it, costing no layout, so the masthead's baseline does not move.
+     Measured at 390: the band runs 24->68 and the first tab starts at 74, so
+     it cannot steal a tap meant for Explore. */
+  position:relative;
   transition:color .16s ease;
 }
+.mark a::after{
+  content:""; position:absolute; left:0; right:0; top:50%;
+  height:var(--tap); transform:translateY(-50%);
+}
+
 .mark a:hover{color:var(--parchment)}
 /* No border-radius here. The PNG's corners are already rounded and
    transparent; a radius on top clips them a second time and flattens them.
@@ -765,7 +795,7 @@ img{max-width:100%;display:block}
 .fbload-fill{
   display:block; height:100%; width:4%; border-radius:999px;
   background:linear-gradient(90deg,
-    var(--coral,#4C9BE8) 0%, var(--accent-lift,#9CCBF7) 45%, var(--coral,#4C9BE8) 100%);
+    var(--coral,#3B9EF4) 0%, var(--accent-lift,#8FC4FA) 45%, var(--coral,#3B9EF4) 100%);
   background-size:220% 100%;
   /* 1.8s, not 3.2s. Pagination and the gate fix put first content on screen
      at around 900ms, so the old curve was still down at a third of the track
@@ -824,6 +854,15 @@ html.no-motion .fbload-fill{
   font:var(--w-head) var(--fs-note)/1 var(--ui, inherit);
   -webkit-tap-highlight-color:transparent;
   transition:background .18s ease, box-shadow .18s ease, transform .12s ease;
+  /* The disc is 34px because the design says 34px. The TARGET is 44px,
+     because a thumb is a thumb: this pseudo-element is invisible, centred,
+     and costs no layout — the row's height and the header's baseline are
+     unchanged. Without it this is the only control on Explore under --tap. */
+  position:relative;
+}
+.acct-btn::after{
+  content:""; position:absolute; left:50%; top:50%;
+  width:var(--tap); height:var(--tap); transform:translate(-50%,-50%);
 }
 .acct-btn:hover{background:var(--tint-2)}
 .acct-btn:active{transform:scale(.94)}

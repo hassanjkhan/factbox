@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Factbox · Subscription</title>
+<meta name="description" content="Your Factbox plan, what it costs, when it renews, and how to cancel it.">
+<!-- The paper ground, matching what body actually paints. css/app.css's
+     --ground is #E7E0D3; the other paper pages still declare the older
+     #DCD5C8 and are a sweep somebody else owns. This page declares what it
+     is, so there is no bar of a different cream above it. -->
+<meta name="theme-color" content="#E7E0D3">
+<!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
+     so it is the one that must exist; the rest are the better versions for the
+     places that look for them. The .ico packs 16, 32 and 48. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<!-- Different for every reader, and nothing here is worth a crawler's time. -->
+<meta name="robots" content="noindex,nofollow">
+<link rel="canonical" href="https://factbox.app/subscription">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- DM Sans is the site. Newsreader is --display, which the save screens set
+     their headline in; app.css says in as many words that a page using
+     --display must add the family to its own link, because a custom property
+     cannot fetch a font. One request, both families. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
+<link rel="stylesheet" href="/css/app.css">
+<script src="/js/loader.js"></script>
+<link rel="stylesheet" href="/css/subscription.css">
+
+<!--
+  THE ANTI-FLIP, and the reason the static panel exists.
+
+  This page cannot know anything about a reader's plan until Firebase answers,
+  and a subscription screen that shows one state and then corrects itself is
+  either a support email or a refund request depending on which way round it
+  flips. So: the body ships a complete static panel, .sb-js hides it the
+  instant this script runs, and the page script sets .sb-ready once it has
+  actually drawn something.
+
+  If this script never runs — JavaScript off — the static panel stays and the
+  reader gets real words and a link to Stripe's own billing page, which
+  cancels a subscription with nothing from us.
+
+  If it runs but the page script dies, the timer below finds no .sb-ready and
+  puts the static panel back. Six seconds rather than four because
+  FBX.CAP_MS and the Firestore billing read both settle inside that, and a
+  panel that reappears underneath a working page would be worse than the wait.
+-->
+<script>
+(function () {
+  try {
+    var h = document.documentElement;
+    if (!h) return;
+    h.className = (h.className ? h.className + " " : "") + "sb-js";
+    setTimeout(function () {
+      try {
+        if (h.className.indexOf("sb-ready") !== -1) return;
+        h.className = h.className.replace(/(^|\s)sb-js(\s|$)/g, " ");
+      } catch (e) {}
+    }, 6000);
+  } catch (e) {}
+})();
+</script>
+
+</head>
+<body>
+
+<!--
+  YOUR SUBSCRIPTION, AND HOW TO END IT.
+
+  Five screens, in the order the design gives them: the plan, the reason we
+  are being left, one save attempt, the confirmation, and the receipt. The
+  steps are hash routes (#cancel, #offer, #confirm, #done) so the phone's Back
+  button walks back out of the flow the way a reader expects it to.
+
+  WHAT ACTUALLY CANCELS. Stripe's own billing portal, and only that. The
+  confirmation screen's red button sends the reader there; Stripe takes the
+  cancellation, handles the proration and sends the confirmation email; the
+  webhook in functions/index.js writes cancel_at_period_end back into
+  customers/{uid}/subscriptions/{id}; js/auth.js is watching that document
+  live, and THAT is what draws the receipt screen. Nothing on this page sets
+  a flag, and #done cannot be reached by typing it into the address bar —
+  js/subscription.js refuses to render it unless Stripe says the subscription
+  is ending. A screen that says "Subscription cancelled." without a
+  cancellation behind it is the worst thing this page could do.
+
+  WHERE EVERY NUMBER COMES FROM. customers/{uid}/subscriptions/{id}, written
+  by the Stripe webhook from the price object Stripe charged: amount,
+  currency, interval, current_period_end. Not from js/account.js's PRICING,
+  which is what a reader may BUY, and not from arithmetic on a date. If a
+  fact is missing, its line is not on the screen. There is no default price
+  and no computed renewal date anywhere in this page.
+
+  THE SAVE OFFER IS OFF. The design offers 50% off for another year. There is
+  no discounted price and no coupon in the Stripe account — STRIPE.md §2 is
+  the measurement, and it lists three prices on one product and nothing else.
+  So the screen is built, it is switched off from one object at the top of
+  js/subscription.js, and readers who say "too expensive" get the same
+  "anything we should know?" screen as everybody else until a real coupon
+  exists. STRIPE.md §10 is the click-path for turning it on.
+-->
+
+<main class="lib">
+  <header class="mast">
+    <p class="mark"><a href="/explore" aria-label="Factbox"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
+    <nav class="tabs" aria-label="Sections">
+      <a href="/explore">Explore</a>
+      <a href="/library">Library</a>
+      <span class="acct" id="fb-acct"></span></nav>
+  </header>
+
+  <div class="sb-wait" id="sb-wait" role="status" hidden>
+    <div class="fbload-track" aria-hidden="true"><i class="fbload-fill"></i></div>
+    <span class="fbload-say">Checking the ledger…</span>
+  </div>
+
+  <!-- ===== the static page, for a reader with no JavaScript ============== -->
+  <section class="sb-panel" id="sb-static" aria-labelledby="sb-static-h">
+    <h2 id="sb-static-h">Your subscription</h2>
+    <p>This page shows the plan you are on, what it costs, when it renews, and
+    gives you a way to cancel it. It needs JavaScript to read your account,
+    and this browser is not running any.</p>
+    <p>Cancelling does not need us. The billing portal below is Stripe's own
+    page: it asks for the email you paid with, sends you a link, and from
+    there you can cancel, change your card or download an invoice. You keep
+    full access until the end of the period you have already paid for.</p>
+    <a class="go" id="sb-static-portal" data-fbt="-"
+       href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+       rel="noopener">Cancel plan or manage billing</a>
+    <a class="sb-2nd" href="/settings">Settings</a>
+    <a class="sb-2nd" href="/account">Your account</a>
+    <a class="sb-2nd" href="/explore">Back to the stories</a>
+  </section>
+
+  <!-- ===== step 1 — the plan ============================================= -->
+  <section class="sb-step" id="sb-1" hidden aria-labelledby="sb-1-h">
+    <div class="sb-head">
+      <a class="sb-back" href="/settings">← Settings</a>
+      <h1 id="sb-1-h">Subscription</h1>
+    </div>
+
+    <div class="sb-plan">
+      <p class="sb-eyebrow">Your plan</p>
+      <p class="sb-plan-name" id="sb-plan-name">Your plan</p>
+      <p class="sb-plan-state" id="sb-plan-state" hidden></p>
+      <p class="sb-plan-price" id="sb-plan-price" hidden></p>
+      <p class="sb-plan-when" id="sb-plan-when" hidden></p>
+    </div>
+
+    <!-- data-fbt="-" keeps js/analytics.js's delegated listener from counting
+         this as a generic ui_click on top of the billing_portal event the
+         handler in js/subscription.js sends. One tap, one event. -->
+    <a class="sb-row" id="sb-portal" data-fbt="-"
+       href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">
+      <b>Payment &amp; invoices</b>
+      <span aria-hidden="true">→</span>
+    </a>
+    <p class="sb-under">Opens Stripe’s own billing page. It asks for the email
+    you paid with.</p>
+
+    <p class="sb-live" id="sb-1-live" role="status" hidden></p>
+
+    <p class="sb-cancel-wrap">
+      <button class="sb-quiet" id="sb-start" type="button"
+              data-fbt="sub_cancel_start">Cancel subscription</button>
+    </p>
+  </section>
+
+  <!-- ===== step 2 — the reason =========================================== -->
+  <section class="sb-step" id="sb-2" hidden aria-labelledby="sb-2-h">
+    <div class="sb-head">
+      <button class="sb-back" type="button" data-step="plan" data-fbt="sub_back_plan">← Subscription</button>
+      <h1 id="sb-2-h">Before you go…</h1>
+    </div>
+    <p class="sb-say is-narrow">What’s the main reason you’re leaving?</p>
+    <div class="sb-reasons" role="radiogroup" aria-labelledby="sb-2-h" id="sb-reasons">
+      <button class="sb-reason" type="button" role="radio" aria-checked="false"
+              data-reason="price" data-fbt="sub_why_price">
+        <span>It costs more than I want to spend</span><i aria-hidden="true">✓</i>
+      </button>
+      <button class="sb-reason" type="button" role="radio" aria-checked="false"
+              data-reason="usage" data-fbt="sub_why_usage">
+        <span>I’m not reading it</span><i aria-hidden="true">✓</i>
+      </button>
+      <button class="sb-reason" type="button" role="radio" aria-checked="false"
+              data-reason="content" data-fbt="sub_why_content">
+        <span>Not enough stories I want</span><i aria-hidden="true">✓</i>
+      </button>
+      <button class="sb-reason" type="button" role="radio" aria-checked="false"
+              data-reason="other" data-fbt="sub_why_other">
+        <span>Something else</span><i aria-hidden="true">✓</i>
+      </button>
+    </div>
+  </section>
+
+  <!-- ===== step 3 — one save attempt ===================================== -->
+  <section class="sb-step" id="sb-3" hidden aria-labelledby="sb-3-h">
+    <div class="sb-head">
+      <button class="sb-back" type="button" data-step="cancel" data-fbt="sub_back_reason">← Back</button>
+      <h1 id="sb-3-h" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Before you cancel</h1>
+    </div>
+
+    <!-- THE PRICE BRANCH IS SWITCHED OFF AT SOURCE. It stays in the document
+         because it is finished work waiting on a Stripe coupon, and because
+         building it later from a description is how the number ends up typed
+         instead of derived. js/subscription.js will not show it unless
+         SAVE_OFFER passes every check in offerLive(), and today it does not. -->
+    <div class="sb-offer" id="sb-off-price" hidden>
+      <p class="sb-eyebrow">Before you go</p>
+      <p class="sb-off-big" id="sb-off-big"></p>
+      <p class="sb-off-off">OFF</p>
+      <div class="sb-fan" id="sb-fan" aria-hidden="true" hidden></div>
+      <h2 class="sb-serif">Keep Factbox for another year.</h2>
+      <p class="sb-lead">Every story. Half the price.</p>
+      <p class="sb-off-line" id="sb-off-price-line"></p>
+      <p class="sb-off-terms" id="sb-off-terms"></p>
+      <div class="sb-actions">
+        <button class="go" type="button" id="sb-accept" data-fbt="sub_offer_take"></button>
+        <button class="sb-quiet" type="button" data-step="confirm"
+                data-fbt="sub_offer_decline">No thanks, continue cancellation</button>
+      </div>
+    </div>
+
+    <div id="sb-off-usage" hidden>
+      <h2 class="sb-serif">Five minutes is enough.</h2>
+      <p class="sb-say" style="margin-top:12px">One story when you have five
+      minutes. No streaks to keep up.</p>
+      <p class="sb-usage" id="sb-usage" hidden></p>
+      <div class="sb-actions">
+        <button class="go" type="button" data-step="plan" data-fbt="sub_keep_usage">Keep my subscription</button>
+        <button class="sb-quiet" type="button" data-step="confirm"
+                data-fbt="sub_offer_decline_usage">Continue cancellation</button>
+      </div>
+    </div>
+
+    <div id="sb-off-content" hidden>
+      <h2 class="sb-serif">There’s more waiting.</h2>
+      <div class="sb-recs" id="sb-recs" hidden></div>
+      <div class="sb-actions">
+        <button class="go" type="button" data-step="plan" data-fbt="sub_keep_content">Keep Factbox</button>
+        <button class="sb-quiet" type="button" data-step="confirm"
+                data-fbt="sub_offer_decline_content">Continue cancellation</button>
+      </div>
+    </div>
+
+    <div id="sb-off-other" hidden>
+      <h2 class="sb-serif">Anything we should know?</h2>
+      <!-- This box is wired to the same Cloud Function /support posts to, so
+           what is typed here reaches the two people who make Factbox. Nothing
+           on the screen claims it arrived, because a claim we cannot check is
+           the one thing this repo will not print. -->
+      <label for="sb-note" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Anything we should know?</label>
+      <textarea class="sb-note-field" id="sb-note" rows="3" placeholder="Optional."></textarea>
+      <p class="sb-off-terms" style="text-align:left;margin-left:2px">Goes to the
+      same inbox as our support form.</p>
+      <div class="sb-actions">
+        <button class="go" type="button" data-step="plan" data-fbt="sub_keep_other">Keep my subscription</button>
+        <button class="sb-quiet" type="button" data-step="confirm"
+                data-fbt="sub_offer_decline_other">Continue cancellation</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== step 4 — the confirmation ===================================== -->
+  <section class="sb-step" id="sb-4" hidden aria-labelledby="sb-4-h">
+    <div class="sb-head">
+      <button class="sb-back" type="button" data-step="offer" data-fbt="sub_back_offer">← Back</button>
+      <h1 id="sb-4-h">Cancel Factbox?</h1>
+    </div>
+    <p class="sb-say" id="sb-4-say">You keep full access until the end of the
+    period you have already paid for. After that, your subscription won’t
+    renew.</p>
+    <dl class="sb-facts">
+      <div class="sb-fact" id="sb-fact-until" hidden>
+        <dt>Access until</dt>
+        <dd id="sb-until-1"></dd>
+      </div>
+      <div class="sb-fact">
+        <dt>Your reading</dt>
+        <dd>Stays in your account</dd>
+      </div>
+    </dl>
+    <div class="sb-actions">
+      <button class="go" type="button" data-step="plan" data-fbt="sub_keep_confirm">Keep my subscription</button>
+      <!-- The button that leaves for Stripe. It is an <a> so a reader can see
+           where it goes and open it in another tab, and so it still works if
+           the click handler never binds. -->
+      <a class="sb-quiet is-danger" id="sb-cancel" data-fbt="-"
+         href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+         rel="noopener">Cancel subscription</a>
+    </div>
+    <p class="sb-live">Stripe takes the cancellation on its own page, so that
+    what you end up with is Stripe’s record of it and not ours.</p>
+  </section>
+
+  <!-- ===== step 5 — the receipt ==========================================
+       Only ever drawn when Stripe has said the subscription is ending. -->
+  <section class="sb-step" id="sb-5" hidden aria-labelledby="sb-5-h">
+    <div class="sb-head">
+      <a class="sb-back" href="/settings">← Settings</a>
+      <h1 id="sb-5-h">Subscription cancelled.</h1>
+    </div>
+    <p class="sb-say is-narrow" id="sb-5-say">Your subscription will not renew.
+    You keep every story until the period you have paid for runs out.</p>
+    <dl class="sb-facts">
+      <div class="sb-fact" id="sb-fact-until-2" hidden>
+        <dt>Access until</dt>
+        <dd id="sb-until-2"></dd>
+      </div>
+      <div class="sb-fact">
+        <dt>Changed your mind</dt>
+        <dd>Restart in the billing portal</dd>
+      </div>
+    </dl>
+    <div class="sb-actions">
+      <a class="go" href="/explore" data-fbt="sub_done_read">Keep reading</a>
+      <a class="sb-2nd" id="sb-portal-2" data-fbt="-"
+         href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+         rel="noopener">Payment &amp; invoices</a>
+    </div>
+  </section>
+
+  <!-- ===== a reader with nothing to cancel ===============================
+       One panel, five sets of words. It ships with the commonest of the five
+       — signed in, reading free — so the markup is never a shell. -->
+  <section class="sb-panel" id="sb-none" hidden aria-labelledby="sb-none-h">
+    <h2 id="sb-none-h">You don’t have a subscription</h2>
+    <p id="sb-none-say">There is nothing here to cancel. Factbox is fifty-one
+    history stories, one free every day, and a subscription opens all of them.</p>
+    <a class="go" id="sb-none-go" href="/join">See the plans</a>
+    <a class="sb-2nd" id="sb-none-2nd" href="/explore">Back to the stories</a>
+    <a class="sb-2nd" id="sb-none-3rd" href="/support">Ask us about it</a>
+  </section>
+
+  <!-- ===== signed out ==================================================== -->
+  <section class="sb-panel" id="sb-out" hidden aria-labelledby="sb-out-h">
+    <h2 id="sb-out-h">Sign in to see your subscription</h2>
+    <p>Your plan, what it costs and when it renews live behind your account
+    rather than on this phone, so this page needs you signed in.</p>
+    <a class="go" href="/login?next=subscription">Sign in</a>
+    <a class="sb-2nd" href="/explore">Back to the stories</a>
+  </section>
+
+  <!-- ===== sign-in could not start ======================================= -->
+  <section class="sb-panel" id="sb-dead" hidden aria-labelledby="sb-dead-h">
+    <h2 id="sb-dead-h">Your account will not load in this browser</h2>
+    <p>Something between here and Google is blocking sign-in — usually an
+    in-app browser with storage switched off. Opening factbox.app in Safari or
+    Chrome fixes it almost every time. Cancelling works either way: the portal
+    below is Stripe’s own page and needs nothing from us.</p>
+    <a class="go" id="sb-portal-3" data-fbt="-"
+       href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+       rel="noopener">Cancel plan or manage billing</a>
+    <a class="sb-2nd" href="/explore">Back to the stories</a>
+    <a class="sb-2nd" href="/support">Tell support</a>
+  </section>
+
+  <!-- No <noscript> here on purpose. #sb-static above IS the no-JavaScript
+       page: it is visible by default and only the inline script in the <head>
+       hides it, so a reader with JavaScript off gets a full explanation and a
+       working link to Stripe rather than one line of apology. A <noscript>
+       under it would say the same thing a second time. -->
+
+  <p class="fine" style="margin-top:34px;text-align:center">
+    <a href="/settings">Settings</a> · <a href="/privacy">Privacy</a> ·
+    <a href="/terms">Terms</a> · <a href="/support">Support</a>
+  </p>
+</main>
+
+<!-- Load order matters in one place: progress.js MUST come before gate.js,
+     because gate.js's claim() strips the query string at parse time and
+     progress.js needs Stripe's session_id out of it first. access.js is FBX,
+     account.js is FBA — this page reads both and writes to neither. -->
+<script src="/js/progress.js"></script>
+<script src="/js/access.js"></script>
+<script src="/js/gate.js"></script>
+<script src="/js/account.js"></script>
+<!-- js/auth.js is a module, so the browser defers it: it runs after the
+     document is parsed and BEFORE DOMContentLoaded, whatever position this
+     tag is in. js/subscription.js is ES5 and cannot read window.FBU at the
+     moment it runs, and does not — it uses the whenFBU() bridge. -->
+<script type="module" src="/js/auth.js"></script>
+<script src="/js/subscription.js"></script>
+
+<script src="/js/analytics.js"></script>
+<script src="/js/acct.js"></script>
+</body>
+</html>

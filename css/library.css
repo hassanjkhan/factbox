@@ -21,16 +21,16 @@
 .statline{
   margin:16px 2px 2px;
   font-size:var(--fs-note); line-height:1.5; font-weight:var(--w-label);
-  color:var(--dim,rgba(29,49,89,.82));
+  color:var(--dim);
   font-variant-numeric:tabular-nums;
 }
 .statline b{
-  color:var(--parchment,#1D3159); font-weight:var(--w-head);
+  color:var(--parchment); font-weight:var(--w-head);
 }
 .statline small{
   display:block; margin-top:6px; max-width:46ch;
   font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.45;
-  color:var(--dimmer,rgba(29,49,89,.74));
+  color:var(--dimmer);
 }
 
 /* --------------------------------------------------------------------------
@@ -41,16 +41,16 @@
 .empty{
   margin:26px 0 4px; padding:22px 18px;
   border-radius:18px;
-  background:var(--raise,#EDE8DE);
-  box-shadow:inset 0 0 0 1px var(--hair,rgba(29,49,89,.16));
+  background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
 }
 .empty h2{
   margin:0 0 9px; font-size:var(--fs-h3); font-weight:var(--w-head);
-  letter-spacing:var(--ls-head); color:var(--parchment,#1D3159);
+  letter-spacing:var(--ls-head); color:var(--parchment);
 }
 .empty p{
   margin:0; font-size:var(--fs-sub); line-height:var(--lh-body); max-width:44ch;
-  color:var(--dim,rgba(29,49,89,.82));
+  color:var(--dim);
 }
 .emptygo{
   display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -76,14 +76,14 @@
   min-height:var(--tap,44px); padding:0 12px;
   border:0; border-radius:var(--pill,999px);
   background:transparent;
-  color:var(--dimmer,rgba(29,49,89,.74));
+  color:var(--dimmer);
   font-family:var(--ui,system-ui,-apple-system,sans-serif);
   font-size:var(--fs-meta); font-weight:var(--w-strong); cursor:pointer;
   transition:color .16s ease, background-color .16s ease;
 }
 .unsave:hover,.unsave:active{
-  color:var(--parchment,#1D3159);
-  background:var(--tint,rgba(29,49,89,.07));
+  color:var(--parchment);
+  background:var(--tint);
 }
 
 /* --------------------------------------------------------------------------
@@ -93,9 +93,9 @@
 .libnote{
   margin:26px 0 0; padding:14px 16px;
   border-radius:14px;
-  background:var(--accent-wash,rgba(76,155,232,.16));
-  box-shadow:inset 0 0 0 1px var(--accent-edge,rgba(33,90,151,.34));
-  color:var(--dim,rgba(29,49,89,.82));
+  background:var(--accent-wash);
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
+  color:var(--dim);
   font-size:var(--fs-note); line-height:1.5;
 }
 /* The heading was --butter, which is a FILL colour in both grounds: amber on
@@ -105,14 +105,14 @@
    kind of message rather than as another blue link. */
 .libnote b{
   display:block; margin-bottom:4px;
-  color:var(--teal-ink,#476220); font-weight:var(--w-head);
+  color:var(--teal-ink); font-weight:var(--w-head);
 }
 
 /* The one thing that shows when the season itself could not be fetched. It is
    copy, not a blank page — that distinction is the whole point. */
 .libfail{
   margin:30px 0 0; font-size:var(--fs-sub); line-height:var(--lh-body);
-  color:var(--dim,rgba(29,49,89,.82));
+  color:var(--dim);
 }
 
 /* The save button (FBS.button) is styled inline in js/saves.js so no

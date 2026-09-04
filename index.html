@@ -9,7 +9,7 @@
      retired night value on all thirteen paper pages, which puts a
      near-black bar above a cream page in Android Chrome and iOS
      Safari. Only the four reader/story pages are #0E0B12. -->
-<meta name="theme-color" content="#DCD5C8">
+<meta name="theme-color" content="#E7E0D3">
 <!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
      so it is the one that must exist; the rest are the better versions for the
      places that look for them. The .ico packs 16, 32 and 48. Before these the
@@ -43,7 +43,17 @@
 <link rel="preload" href="/data/index.json" as="fetch" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<!-- Two families, one request. DM Sans is the whole site; Newsreader is the
+     display serif css/app.css names as --display, and it sets exactly two
+     things on this page - the headline and Today's hook. A token cannot
+     fetch a font, so the page that uses it has to ask for it: without this
+     line both fall to Georgia, which is the fallback in the token and is
+     why the page is still readable if Google is blocked. Weights 400, 500
+     and 600 because --w-display is 500 and a browser given only 500 will
+     synthesise the other two rather than decline them.
+     display=swap: the words are the product, so they appear immediately in
+     the fallback instead of after a round trip on cellular. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
 <link rel="stylesheet" href="/css/app.css">
 <script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/today.css">
@@ -86,6 +96,14 @@
   <!-- The greeting slot. Empty for a first-time reader, whose greeting is the
        headline above; filled by js/today.js for anyone with reading memory. -->
   <div class="tdy-say" id="tdy-say"></div>
+
+  <!-- Where js/progress.js mounts a restore-link or restore-failed panel.
+       Empty on an ordinary visit; it only ever has content on the load that
+       comes back from checkout, or after a broken restore link. /explore has
+       carried this slot since it was written and `/` did not, so the same
+       panel appeared in two different places on one page served at two
+       URLs. Without it progress.js falls back to placing itself. -->
+  <div id="fb-notice"></div>
 
   <div id="view">
     <!-- Filled by js/today.js. If the season cannot be fetched, that script

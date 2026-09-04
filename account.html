@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Account</title>
-<meta name="description" content="Your Factbox account: how you sign in, what your plan is, and when it renews.">
+<meta name="description" content="Your Factbox: what you have read, where you are in a series, and the way through to your settings.">
 <!-- The paper ground, matching what body actually paints. It was the
      retired night value on all thirteen paper pages, which puts a
      near-black bar above a cream page in Android Chrome and iOS
      Safari. Only the four reader/story pages are #0E0B12. -->
-<meta name="theme-color" content="#DCD5C8">
+<meta name="theme-color" content="#E7E0D3">
 <!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
      so it is the one that must exist; the rest are the better versions for the
      places that look for them. The .ico packs 16, 32 and 48. Before these the
@@ -24,8 +24,18 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta name="robots" content="noindex,nofollow">
 <link rel="canonical" href="https://factbox.app/account">
+<!-- The reading record is joined against the season to draw the series card
+     and the history grid, so this page now fetches the index the way /library
+     does. In the head, so the preload scanner starts it in the first few
+     milliseconds rather than when the parser reaches js/gate.js at the foot
+     of the body. -->
+<link rel="preload" href="/data/index.json" as="fetch" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- DM Sans only. This screen and /settings carry no display serif — the
+     mockup sets every word on both of them in the UI face — so Newsreader is
+     deliberately not requested here. A page that adds --display must add the
+     Newsreader family to this link itself; a token cannot fetch a font. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css">
 <script src="/js/loader.js"></script>
@@ -55,34 +65,49 @@
 <!--
   YOUR ACCOUNT.
 
-  Four things, in the order they were asked for: the reader's name, a way to
-  cancel the subscription, a way to read the privacy policy, and a way to sign
-  out. Around them the facts that make those four make sense: which email, how
-  you sign in, whether that email is verified, what your plan is, when it
-  renews or when the trial ends, and what it costs.
+  Rebuilt to the mockup: who you are, what you have actually read, the series
+  you are in the middle of, the covers you have been through, and one row
+  through to /settings. Billing, name, email, help and signing out all moved
+  there, which is where the mockup puts them and where a reader looks for
+  them.
 
-  THERE IS NO "CHANGE YOUR NAME" HERE. It would be four lines of page, but the
-  write itself is Firebase's updateProfile, and js/auth.js — the only file
-  allowed to touch the SDK — exposes no wrapper for it. Adding one is that
-  file's call, not this page's; until it exists the name shown here is the one
-  the provider supplied, and the fallback is the local part of the email.
+  EVERY NUMBER ON THIS PAGE IS COUNTED FROM WHAT js/progress.js STORES, OR IT
+  IS NOT HERE. FBP gates the whole reading record on the account that owns the
+  cache: signed out, or on a cache tagged with somebody else's uid, FBP.all()
+  is {} and FBP.state() answers "unread" for every story. So a signed-out
+  reader gets the empty state and never another reader's history. There is no
+  zero state either — three zeroes under "Your Factbox" and seven grey dots
+  under "This week" describe the furniture, not the reader, so the sections
+  are simply absent until there is something true to put in them.
 
-  WHERE THE PLAN COMES FROM. `customers/{uid}.premium` — one boolean, written
-  by the Stripe webhook, readable by exactly one signed-in reader, never
-  writable from a browser. The subscription document underneath it supplies
-  the dates and the amount, and nothing else on this site decides anything
-  from it. If the two ever disagree, the boolean is right.
+  WHAT THE RECORD CANNOT SUPPORT, AND IS THEREFORE NOT CLAIMED. FBP keeps ONE
+  timestamp per story — the last time it was touched — so a day whose only
+  story was later re-opened has left the record. The week row and the streak
+  under it are built from those timestamps and can therefore under-count and
+  never over-count, which is the direction this has to fail in. They are
+  labelled as a count of days, exactly as js/recommend.js labels the identical
+  row on the completion screen, and the streak uses js/today.js's streakOf()
+  arithmetic unchanged. Nothing here says "longest streak", "days in a row
+  this month", or anything else needing a history this site does not keep.
 
-  WHAT SIGNING OUT DOES NOT DO. It does not touch reading progress or saved
-  stories. Those live in this browser (FBP and FBS), not in the account, and
-  wiping them on sign-out would mean lending someone your phone for one story
-  costs you fifty-one stories' worth of place-keeping. The copy on the button
-  says so, because a reader is entitled to know before they tap it. AUTH.md
-  carries the full reasoning.
+  WHAT THIS PAGE MUST NOT CALL. FBP.unlocked() is not a pure read: it heals
+  the unlock flag from the cookie mirror back into localStorage, and
+  FBP.continueReading() calls it internally. Either one on this page would
+  re-mint the flag that FBX.forgetLegacy() clears on sign-out — the bug where
+  signing out never actually locked the browser. Access questions on this page
+  go to FBX, which is the one file allowed to answer them.
+
+  THERE IS NO "CHANGE YOUR NAME" HERE OR ON /settings. It would be four lines
+  of page, but the write itself is Firebase's updateProfile, and js/auth.js —
+  the only file allowed to touch the SDK — exposes no wrapper for it. Adding
+  one is that file's call, not this page's; until it exists the name shown is
+  the one the provider supplied, and the fallback is the local part of the
+  email.
 
   Every panel here ships its real copy. The script hides what it is not
   showing. If it never runs, this page is a readable explanation of what an
-  account is with a link to the billing portal on it — not a blank screen.
+  account is with a working way through to settings and to billing — not a
+  blank screen.
 -->
 
 <main class="lib">
@@ -92,7 +117,8 @@
          it already had, and so the target is the word rather than the width of
          the row. aria-label because a screen reader reading FACTBOX as all
          capitals may spell it; the accessible name is the product name. -->
-    <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
+    <p class="mark"><a href="/explore" aria-label="Factbox"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
     <nav class="tabs" aria-label="Sections">
       <a href="/explore">Explore</a>
       <a href="/library">Library</a>
@@ -106,53 +132,98 @@
   </div>
 
   <!-- ===== signed in ==================================================== -->
-  <section class="au-panel" id="ac-in" hidden aria-labelledby="ac-in-h">
-    <h2 id="ac-in-h" class="jn-vh">Account</h2>
+  <!-- .ac-left because css/auth.css loads after css/account.css and centres
+       .au-panel for the sign-in screen. This screen is the mockup's
+       left-aligned column. (0,2,0) beats (0,1,0), which is the whole fix. -->
+  <section class="au-panel ac-left" id="ac-in" hidden aria-labelledby="ac-in-h">
+    <!-- ONE wrapper, and it is load-bearing. `.au-panel > p` in css/auth.css
+         is (0,1,1) and would out-rank every bare .ac- class on a <p> that is a
+         direct child of the panel — the same defect that silently took the box
+         off .au-or and .au-say. Inside this div none of them is a direct
+         child, so the rule cannot reach them. Do not flatten it. -->
+    <div class="ac-body">
+      <h2 id="ac-in-h" class="jn-vh">Account</h2>
 
-    <dl class="au-rows">
-      <!-- The name first. It is what a reader opens this page to confirm, and
-           it is what the header shows them on every other page — the two are
-           the same string, derived the same way, so they cannot disagree. -->
-      <div class="au-row">
-        <dt>Name</dt>
-        <dd id="ac-name">your account</dd>
+      <div class="ac-who">
+        <span class="ac-avatar" id="ac-avatar" aria-hidden="true"><span class="acct-ini is-anon"></span></span>
+        <div class="ac-whotext">
+          <p class="ac-name" id="ac-name">your account</p>
+          <p class="ac-member" id="ac-member">Signed in</p>
+        </div>
       </div>
-      <div class="au-row">
-        <dt>Signed in as</dt>
-        <dd id="ac-email">your account</dd>
-      </div>
-    </dl>
 
-    <p class="au-say" id="ac-note" hidden role="status"></p>
-    <p class="jn-err" id="ac-err" hidden role="alert"></p>
+      <!-- Three counts, all exact. Hidden until there is a record to count.
+           Minutes is deliberately not one of them: it is an estimate pro-rated
+           from each story's listed length, so it needs the word "about" to be
+           true, and a three-digit tile has nowhere to put it. /library still
+           carries it, in the sentence form that has room for the qualifier. -->
+      <section class="ac-sec" id="ac-stats-sec" hidden>
+        <p class="ac-eyebrow">Your Factbox</p>
+        <ul class="ac-stats" id="ac-stats"></ul>
+      </section>
 
+      <section class="ac-sec" id="ac-week-sec" hidden>
+        <p class="ac-eyebrow">This week</p>
+        <!-- The letters and the dots are two rows of the same seven columns.
+             The strip is decoration — the line under it carries the meaning —
+             so it is hidden from a screen reader rather than read out as seven
+             empty items, exactly as the completion screen's row is. -->
+        <div class="ac-days" id="ac-days" aria-hidden="true"></div>
+        <div class="ac-dots" id="ac-dots" aria-hidden="true"></div>
+        <p class="ac-streak" id="ac-streak"></p>
+      </section>
 
+      <section class="ac-sec" id="ac-serie-sec" hidden>
+        <p class="ac-eyebrow">Currently exploring</p>
+        <div id="ac-serie"></div>
+      </section>
 
-    <!-- Cancelling is Stripe's job, on Stripe's page, with Stripe's record of
-         what was charged. A cancel button here that only sets a flag would be
-         a lie the first time a card is charged after it. -->
-    <a class="au-2nd" id="ac-portal" href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
-       rel="noopener" hidden>Cancel plan or manage billing</a>
+      <section class="ac-sec" id="ac-hist-sec" hidden>
+        <div class="ac-sechead">
+          <p class="ac-eyebrow">Your history</p>
+          <a class="ac-seeall" href="/library">See all →</a>
+        </div>
+        <div class="ac-hist" id="ac-hist"></div>
+      </section>
 
-    <!-- A reader who came looking for the privacy policy nearly always wants
-         one of the other two within the next thirty seconds, so all three sit
-         together, above the sign-out button rather than below it. -->
+      <!-- Ships visible and is hidden the moment a record turns up. A reader
+           with nothing read yet gets a sentence and a way out of it, never a
+           column of absent sections. -->
+      <p class="ac-empty" id="ac-empty">You have not read anything yet, so there
+      is nothing here to show you. <a href="/explore">Start with today's story</a>
+      and this page fills itself in.</p>
 
+      <a class="ac-row ac-lead" href="/settings">
+        <span>Settings</span>
+        <span class="ac-arrow" aria-hidden="true">→</span>
+      </a>
 
-    <!-- is-danger is the colour and nothing else: same shape, same weight,
-         same ground as "Manage billing" above it. It is the one action here
-         that undoes something, and it looked identical to the one that does
-         not. See .au-2nd.is-danger in css/auth.css. -->
-    <button class="au-2nd is-danger" id="ac-out" type="button">Sign out</button>
+      <p class="au-say" id="ac-note" hidden role="status"></p>
+      <p class="jn-err" id="ac-err" hidden role="alert"></p>
+    </div>
   </section>
 
   <!-- ===== signed out =================================================== -->
-  <section class="au-panel" id="ac-out-panel" hidden aria-labelledby="ac-out-h">
+  <!-- NOT [hidden]. This one panel ships VISIBLE and the script hides it once
+       it knows somebody is signed in — SPEC.md 2.2's rule, that text is
+       visible by default and JavaScript opts into hiding it. With scripting
+       off, `au-js` never reaches <html>, so this stays on screen and the page
+       is a readable explanation with three working links out of it instead of
+       a masthead over nothing. With scripting on, css/auth.css's
+       `html.au-js .au-panel{display:none}` hides every panel for the beat auth
+       takes, so a signed-in reader never sees it, and the unconditional 4s
+       timer in the head brings it back if the page script never gets there.
+
+       #ac-in and #ac-dead stay [hidden]: one is a record that does not exist
+       until it is counted, and the other is an apology for a failure that has
+       not happened. -->
+  <section class="au-panel" id="ac-out-panel" aria-labelledby="ac-out-h">
     <h2 id="ac-out-h">Sign in to see your account</h2>
-    <p>Your plan, your renewal date and your billing all live behind your
-    account rather than on this phone, so this page needs you signed in.</p>
+    <p>What you have read follows your account rather than this phone, so this
+    page needs you signed in. Your plan and your billing live behind it too.</p>
     <a class="go" id="ac-signin" href="/login?next=account"
        style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Sign in</a>
+    <a class="au-2nd" href="/settings">Settings</a>
     <a class="au-2nd" href="/explore">Back to the stories</a>
   </section>
 
@@ -165,20 +236,23 @@
     below is Stripe's own page and needs nothing from us.</p>
     <a class="go" href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener"
        style="text-align:center;text-decoration:none;line-height:1.2;margin-top:16px">Cancel plan or manage billing</a>
+    <a class="au-2nd" href="/settings">Settings</a>
     <a class="au-2nd" href="/explore">Back to the stories</a>
     <a class="au-2nd" href="/support">Tell support</a>
   </section>
 
   <noscript>
     <p class="fine" style="margin-top:24px;text-align:left">
-      <b>This page needs JavaScript.</b> To cancel or change a plan without it,
-      open the <a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">billing
-      portal</a> — it is Stripe's own page and works on its own.</p>
+      <b>This page needs JavaScript to count what you have read.</b>
+      <a href="/settings">Settings</a> works without it, and to cancel or change
+      a plan you can open the <a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600"
+      rel="noopener">billing portal</a> directly — it is Stripe's own page and
+      works on its own.</p>
   </noscript>
 
-  <p class="fine" style="margin-top:34px;text-align:center">
+  <p class="fine ac-fine" style="margin-top:34px;text-align:center">
     <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
-    <a href="/support">Support</a>
+    <a href="/support">Contact us</a>
   </p>
 </main>
 
@@ -190,8 +264,7 @@
 (function () {
   "use strict";
 
-  var GENERIC = "Something went wrong. Try that again in a moment.";
-  var PORTAL  = "https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600";
+  var DAY_MS = 86400000;
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
   function show(n, on) { try { if (n) n.hidden = !on; } catch (e) {} }
@@ -199,62 +272,14 @@
   function on(n, ev, fn) {
     try { if (n && n.addEventListener) n.addEventListener(ev, fn, false); } catch (e) {}
   }
-  function cls(n, s) { try { if (n) n.className = s; } catch (e) {} }
-
-  /* The same second wall as login.html. A Firebase error code is a debugging
-     aid; it is never a sentence, and it never reaches this page. */
-  function safeText(s) {
-    var t;
-    try { t = String(s == null ? "" : s); } catch (e) { return GENERIC; }
-    if (!t) return GENERIC;
-    if (t.indexOf("auth/") !== -1) return GENERIC;
-    if (t.indexOf("Firebase") !== -1 || t.indexOf("firebase") !== -1) return GENERIC;
-    if (t.indexOf("permission-denied") !== -1) return GENERIC;
-    if (t.length > 220) return GENERIC;
-    return t;
+  function has(o, k) {
+    try { return Object.prototype.hasOwnProperty.call(o, k); } catch (e) { return false; }
   }
-  function errText(e) {
-    var m = "";
-    try { if (window.FBU && window.FBU.message) m = window.FBU.message(e); } catch (x) {}
-    if (!m) { try { m = (e && e.friendly) ? e.friendly : ""; } catch (x) {} }
-    return safeText(m);
-  }
-
-  /* Dates a reader reads, not an ISO string. toLocaleDateString is present on
-     every webview that can run the SDK, but it is wrapped anyway: a thrown
-     date formatter must not cost someone their renewal date. */
-  var MON = ["January","February","March","April","May","June","July",
-             "August","September","October","November","December"];
-  function dateText(ms) {
-    var n = Number(ms);
-    if (!isFinite(n) || n <= 0) return "";
-    try {
-      var d = new Date(n);
-      try {
-        var s = d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-        if (s) return s;
-      } catch (e) {}
-      return d.getDate() + " " + MON[d.getMonth()] + " " + d.getFullYear();
-    } catch (e) { return ""; }
-  }
-
-  function moneyText(sub) {
-    try {
-      if (!sub) return "";
-      var a = sub.amount;
-      if (typeof a !== "number" || !isFinite(a)) return "";
-      /* Stripe carries amounts in the currency's smallest unit. */
-      var cur = String(sub.currency || "usd").toUpperCase();
-      var sym = (cur === "USD") ? "$" : (cur === "GBP" ? "£" : (cur === "EUR" ? "€" : ""));
-      var v = (a / 100).toFixed(2);
-      var head = sym ? (sym + v) : (v + " " + cur);
-      var iv = String(sub.interval || "");
-      if (iv === "month")  return head + " every month";
-      if (iv === "year")   return head + " a year";
-      if (iv === "week")   return head + " every week";
-      if (iv === "day")    return head + " every day";
-      return head;
-    } catch (e) { return ""; }
+  function esc(s) {
+    try { if (window.FB && FB.esc) return FB.esc(s); } catch (e) {}
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   /* The header on every page shows this same string. One function, one rule:
@@ -275,7 +300,24 @@
     if (!s) return "your account";
     if (s.indexOf("auth/") !== -1) return "your account";
     if (s.indexOf("Firebase") !== -1 || s.indexOf("firebase") !== -1) return "your account";
-    return s.length > 60 ? s.slice(0, 59) + "\u2026" : s;
+    return s.length > 60 ? s.slice(0, 59) + "…" : s;
+  }
+
+  /* The line under the name. The email, because it is the fact a reader opens
+     this page to confirm and the one they quote to support.
+
+     NOT "member since". Firebase carries a creationTime on the raw user
+     object, but js/auth.js — the only file allowed to touch the SDK — exposes
+     no accessor for it, and reaching around FBU into FBU.user().metadata to
+     print a date would make this page the second file with an opinion about
+     the SDK's shape. A wrapper there is a two-line change; until it exists
+     the honest line is the address you signed in with. */
+  function memberText() {
+    var m = "";
+    try { m = String(FBU.email() || ""); } catch (e) {}
+    if (!m) { try { m = String(FBU.phone() || ""); } catch (e2) {} }
+    if (!m || m.indexOf("auth/") !== -1) return "Signed in";
+    return m.length > 64 ? m.slice(0, 63) + "…" : m;
   }
 
   var wait   = el("ac-wait");
@@ -284,11 +326,15 @@
   var pDead  = el("ac-dead");
 
   var eName  = el("ac-name");
-  var eEmail = el("ac-email");
-  var eNote  = el("ac-note");
+  var eMember= el("ac-member");
+  var eAvatar= el("ac-avatar");
   var eErr   = el("ac-err");
-  var ePortal= el("ac-portal");
-  var eOut   = el("ac-out");
+
+  var secStat = el("ac-stats-sec"), eStats = el("ac-stats");
+  var secWeek = el("ac-week-sec"), eDays = el("ac-days"), eDots = el("ac-dots"), eStreak = el("ac-streak");
+  var secSerie= el("ac-serie-sec"), eSerie = el("ac-serie");
+  var secHist = el("ac-hist-sec"), eHist = el("ac-hist");
+  var eEmpty  = el("ac-empty");
 
   function reveal() {
     try {
@@ -322,44 +368,355 @@
   }
 
   var FBU = null;
+  var STACKS = null;
 
-  /* --- the plan block ------------------------------------------------------
-     Three shapes, and each has to be true rather than merely reassuring:
+  /* ------------------------------------------------------------------------
+     THE READING RECORD
 
-       premium, with a subscription   → the pill, the date, the amount
-       premium, with no subscription  → the pill and an honest "no renewal
-                                        date on file", which is what a comped
-                                        or manually granted account looks like
-       not premium                    → the free two, and the way to change it
+     Every read below goes through FBP's gated accessors — state() and all().
+     snapshot() is deliberately never touched: it returns the map whether or
+     not the cache belongs to this reader, which is the exact privacy bug the
+     gate exists for.
+     ---------------------------------------------------------------------- */
 
-     A fourth case exists and is deliberately not dressed up as one of the
-     three: the billing read did not come back at all — offline, denied, or
-     Firestore slow. That says so, rather than reporting "Free" to somebody
-     who is paying. */
-  /* All that is left of the plan block: which billing button to show.
-
-     The pill, the plan sentence and the renewal and price rows are gone. They
-     were this page's own retelling of what Stripe already knows, and a second
-     telling can only ever disagree with the first — a reader who wants the
-     detail taps Manage billing and gets Stripe's record of what was actually
-     charged, which is the only version that can be right. */
-  function paintPlan() {
-    var sub = null, prem = false, known = false;
-    try { prem = !!FBU.premium(); } catch (e) {}
-    try { sub = FBU.subscription(); } catch (e) {}
-    try { known = !!FBU.billingKnown(); } catch (e) {}
-
-    show(ePortal, false);
-    if (!known) return;
-    if (!prem) {
-      /* Cancelled but still inside the paid period still has something to
-         manage. With no subscription at all there is nothing to cancel. */
-      if (sub) { text(ePortal, "Cancel plan or manage billing"); show(ePortal, true); }
-      return;
-    }
-    text(ePortal, sub ? "Cancel plan or manage billing" : "Manage billing");
-    show(ePortal, true);
+  function pstate(id, total) {
+    try {
+      if (window.FBP && FBP.state) {
+        var st = FBP.state(id, total);
+        if (st && st.status) return st;
+      }
+    } catch (e) {}
+    return { status: "unread", card: 0, total: total || 0, pct: 0, label: "", at: 0 };
   }
+
+  function memory() {
+    try { if (window.FBP && FBP.all) return FBP.all() || {}; } catch (e) {}
+    return {};
+  }
+
+  function cardCount(s) {
+    try { return (s && s.cards && s.cards.length) ? s.cards.length : 0; } catch (e) { return 0; }
+  }
+
+  /* Stack 01 is the fully illustrated build and lives at its own page, so its
+     cover points there rather than at the generic reader — the same rule the
+     rest of the site follows. */
+  function href(s) {
+    if (!s || !s.id) return "/explore";
+    if (s.id === "01") return "/cleopatra";
+    return "/read?s=" + encodeURIComponent(s.id);
+  }
+
+  /* The same srcset-clearing fallback js/today.js writes, so a missing
+     thumbnail lands on the stack hero rather than on a broken-image icon. */
+  function heroFallback(slot) {
+    return ' data-fallback="/img/stacks/' + esc(slot) + '.webp"' +
+           ' onerror="this.onerror=null;this.removeAttribute(\'srcset\');' +
+           'this.src=this.getAttribute(\'data-fallback\')"';
+  }
+
+  /* Display names for the subjects come from js/explore.js on window.FBTAX.
+     That file is not loaded here, so this falls back to the key itself
+     tidied up — a missing name file costs a prettier heading, never a
+     section. */
+  function subjectName(key) {
+    try {
+      if (window.FBTAX && FBTAX.TOPICS) {
+        var t = FBTAX.TOPICS, i;
+        for (i = 0; i < t.length; i++) { if (t[i] && t[i].key === key) return t[i].name; }
+      }
+    } catch (e) {}
+    var s = String(key == null ? "" : key).replace(/_/g, " ");
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : "All stories";
+  }
+
+  /* --- the counts ---------------------------------------------------------
+     Three, and every one of them is a count of records that exist:
+       stories  stacks whose status is "done"
+       cards    every card of a finished stack, plus (furthest + 1) of one in
+                progress — js/library.js's statsLine() arithmetic, unchanged
+       series   subjects holding at least one story the reader has opened
+     ---------------------------------------------------------------------- */
+  function countsOf(stacks) {
+    var out = { done: 0, cards: 0, series: 0, touched: 0 };
+    var subs = {}, i, s, st, read;
+    for (i = 0; i < stacks.length; i++) {
+      s = stacks[i];
+      if (!s || !s.cards) continue;
+      st = pstate(s.id, cardCount(s));
+      if (st.status === "done") { out.done++; read = cardCount(s); }
+      else if (st.status === "reading") { read = Math.min(cardCount(s), (st.card || 0) + 1); }
+      else { continue; }
+      out.touched++;
+      out.cards += read;
+      if (s.topic && !subs[s.topic]) { subs[s.topic] = 1; out.series++; }
+    }
+    return out;
+  }
+
+  function statHTML(v, label) {
+    return '<li><b>' + esc(String(v)) + '</b><span>' + esc(label) + '</span></li>';
+  }
+
+  function paintStats(c) {
+    if (!eStats || !c.touched) { show(secStat, false); return; }
+    eStats.innerHTML =
+      statHTML(c.done, c.done === 1 ? "story" : "stories") +
+      statHTML(c.cards, c.cards === 1 ? "card" : "cards") +
+      statHTML(c.series, c.series === 1 ? "series" : "series");
+    show(secStat, true);
+  }
+
+  /* --- the week -----------------------------------------------------------
+     The UTC day number, the same arithmetic js/access.js and js/today.js use,
+     so this row and the streak on the front page can never disagree about
+     which day it is.
+
+     FBP.rec() already returns milliseconds. Dividing again here is the bug
+     tools/check-regressions.js guards on the shelf, and it makes every streak
+     zero. */
+  function dayNumber(ms) {
+    try {
+      var d = (ms == null) ? new Date() : new Date(ms);
+      var n = Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / DAY_MS);
+      return (isFinite(n) && n > 0) ? n : 0;
+    } catch (e) { return 0; }
+  }
+
+  function daySet(map) {
+    var days = {}, k, r;
+    for (k in map) {
+      if (!has(map, k)) continue;
+      r = map[k];
+      if (!r || !r.at) continue;
+      days[Math.floor(r.at / DAY_MS)] = 1;
+    }
+    return days;
+  }
+
+  /* js/today.js's streakOf(), unchanged. Yesterday counts as the anchor as
+     well as today, so a reader who has not opened anything yet this morning
+     still has their streak. */
+  function streakOf(days) {
+    var today = dayNumber(), n = 0;
+    var cur = days[today] ? today : (days[today - 1] ? today - 1 : 0);
+    if (!cur) return 0;
+    while (days[cur]) { n++; cur--; }
+    return n;
+  }
+
+  var DAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"];
+
+  function paintWeek(map) {
+    if (!eDays || !eDots || !eStreak) { show(secWeek, false); return; }
+    var days = daySet(map);
+    var today = dayNumber(), i, dn, isOn, prevOn, n = 0, letters = "", dots = "";
+    if (!today) { show(secWeek, false); return; }
+
+    for (i = 6; i >= 0; i--) {
+      dn = today - i;
+      isOn = !!days[dn];
+      prevOn = !!days[dn - 1];
+      if (isOn) n++;
+      /* Unix day 0 was a Thursday, so (dn + 4) % 7 puts Sunday at 0 — the
+         same UTC basis as the day number itself, rather than a local weekday
+         that would disagree with the dot it sits over. */
+      letters += '<span>' + DAY_LETTER[((dn + 4) % 7 + 7) % 7] + '</span>';
+      dots += '<span class="ac-dot' + (isOn ? " is-on" : "") +
+              (isOn && prevOn && i < 6 ? " is-run" : "") +
+              (i === 0 ? " is-today" : "") + '"><i></i></span>';
+    }
+    if (!n) { show(secWeek, false); return; }
+
+    eDays.innerHTML = letters;
+    eDots.innerHTML = dots;
+
+    /* A count of days, never "N days in a row" unless the record actually
+       shows a run. Both figures are floors: one timestamp per story means a
+       day whose only story was later re-opened has left the record, so this
+       can under-count and can never over-count. */
+    var line = n + (n === 1 ? " day" : " days") + " this week";
+    var st = streakOf(days);
+    if (st > 1) line += " · " + st + "-day streak";
+    text(eStreak, line);
+    show(secWeek, true);
+  }
+
+  /* --- currently exploring ------------------------------------------------
+     One series: the subject holding the most recently touched story. Inside
+     it, the first story not finished — the reader has already chosen the
+     subject, so handing them a menu asks the same question twice. The plate
+     is that story, so the row shows where the tap goes.
+
+     Deliberately NOT FBP.continueReading(): it calls FBP.unlocked(), which
+     heals the unlock flag out of the cookie mirror and back into
+     localStorage. On this page, of all pages, that would put the flag back
+     that signing out has to remove. */
+  function serieOf(stacks) {
+    var groups = {}, bestKey = "", bestAt = -1, i, s, st;
+    for (i = 0; i < stacks.length; i++) {
+      s = stacks[i];
+      if (!s || !s.id || !s.topic) continue;
+      if (!groups[s.topic]) groups[s.topic] = { list: [], done: 0, at: 0 };
+      groups[s.topic].list.push(s);
+      st = pstate(s.id, cardCount(s));
+      if (st.status === "done") groups[s.topic].done++;
+      if (st.status !== "unread" && st.at > groups[s.topic].at) groups[s.topic].at = st.at;
+    }
+    for (var k in groups) {
+      if (!has(groups, k)) continue;
+      if (groups[k].at > bestAt) { bestAt = groups[k].at; bestKey = k; }
+    }
+    if (!bestKey || bestAt <= 0) return null;
+
+    var g = groups[bestKey], next = null;
+    for (i = 0; i < g.list.length; i++) {
+      if (pstate(g.list[i].id, cardCount(g.list[i])).status !== "done") { next = g.list[i]; break; }
+    }
+    /* Every story in the subject is finished. The row still has something
+       true to say, and it points at the first one so the tap is not dead. */
+    var fresh = !!next;
+    if (!next) next = g.list[0];
+    if (!next) return null;
+    return { key: bestKey, next: next, done: g.done, total: g.list.length, fresh: fresh };
+  }
+
+  function paintSerie(stacks) {
+    var r = serieOf(stacks);
+    if (!r || !eSerie) { show(secSerie, false); return; }
+    var pct = r.total ? Math.round(r.done / r.total * 100) : 0;
+    eSerie.innerHTML =
+      '<a class="ac-serie" data-id="' + esc(r.next.id) + '" href="' + esc(href(r.next)) + '">' +
+        '<div class="plate"><img loading="lazy" decoding="async" alt="" ' +
+             'src="/img/thumbs/' + esc(r.next.img) + '.webp"' + heroFallback(r.next.img) + '></div>' +
+        '<div class="ac-serie-t">' +
+          '<b>' + esc(subjectName(r.key)) + '</b>' +
+          '<span class="ac-serie-n">' + r.done + ' of ' + r.total + ' read</span>' +
+          '<div class="ac-bar"><i style="width:' + Math.max(2, pct) + '%"></i></div>' +
+          '<span class="ac-serie-go">' +
+            (r.fresh ? "Continue →" : "Read it again →") +
+          '</span>' +
+        '</div>' +
+      '</a>';
+    show(secSerie, true);
+  }
+
+  /* --- your history -------------------------------------------------------
+     Everything the record has touched, most recently first. Six on a phone is
+     two rows of three; /library is where all of it lives, and the "See all"
+     above this grid says so. */
+  var HIST_N = 6;
+
+  function paintHistory(stacks) {
+    if (!eHist) { show(secHist, false); return; }
+    var map = memory(), rows = [], i, s, r;
+    for (i = 0; i < stacks.length; i++) {
+      s = stacks[i];
+      if (!s || !s.id) continue;
+      r = map[s.id];
+      if (!r || !r.at) continue;
+      rows.push({ s: s, at: r.at });
+    }
+    if (!rows.length) { show(secHist, false); return; }
+    rows.sort(function (a, b) { return b.at - a.at; });
+
+    var out = "";
+    for (i = 0; i < rows.length && i < HIST_N; i++) {
+      s = rows[i].s;
+      out +=
+        '<a class="card" data-id="' + esc(s.id) + '" href="' + esc(href(s)) + '">' +
+          '<div class="plate"><img loading="lazy" decoding="async" alt="" ' +
+               'src="/img/thumbs/' + esc(s.img) + '.webp"' + heroFallback(s.img) + '></div>' +
+          '<h3>' + esc(s.title) + '</h3>' +
+        '</a>';
+    }
+    eHist.innerHTML = out;
+    show(secHist, true);
+  }
+
+  /* --- padlocks -----------------------------------------------------------
+     Draw open, then correct. The same order js/library.js uses and
+     tools/check-regressions.js guards: an unlocked page that gains padlocks a
+     beat later is right twice; a locked page that loses them has already shown
+     a paying reader a wall.
+
+     A locked cover keeps its artwork, dimmed, with a small lock. Never hide
+     the thing you are selling. */
+  function isOpen(s) {
+    if (!s) return true;
+    if (s.free) return true;
+    try { if (window.FBX && FBX.isToday && FBX.isToday(s.id)) return true; } catch (e) {}
+    return false;
+  }
+
+  function applyLocked(can) {
+    try {
+      var byId = {}, i;
+      if (!STACKS) return;
+      for (i = 0; i < STACKS.length; i++) { if (STACKS[i] && STACKS[i].id) byId[STACKS[i].id] = STACKS[i]; }
+      var nodes = document.querySelectorAll(".ac-serie[data-id], .ac-hist .card[data-id]");
+      for (i = 0; i < nodes.length; i++) {
+        var n = nodes[i], s = byId[n.getAttribute("data-id")];
+        var locked = !can && !isOpen(s);
+        var was = n.className.replace(/(^|\s)locked(\s|$)/g, " ").replace(/^\s+|\s+$/g, "");
+        n.className = locked ? (was + " locked") : was;
+        var plate = n.querySelector(".plate");
+        var badge = n.querySelector(".lock");
+        if (locked && plate && !badge) {
+          badge = document.createElement("span");
+          badge.className = "lock";
+          badge.setAttribute("aria-hidden", "true");
+          badge.textContent = "🔒";
+          plate.appendChild(badge);
+        } else if (!locked && badge && badge.parentNode) {
+          badge.parentNode.removeChild(badge);
+        }
+      }
+    } catch (e) {}
+  }
+
+  /* --- the record, drawn -------------------------------------------------- */
+
+  function paintRecord() {
+    if (!STACKS) return;
+    var c = countsOf(STACKS);
+    paintStats(c);
+    paintWeek(memory());
+    paintSerie(STACKS);
+    paintHistory(STACKS);
+    /* The empty state and the record are exclusive: one of them is always on
+       screen, so this section is never a gap. */
+    show(eEmpty, !c.touched);
+    try { if (window.FBX && FBX.paint) FBX.paint(function (can) { applyLocked(can); }); }
+    catch (e) { applyLocked(true); }
+  }
+
+  function clearRecord() {
+    show(secStat, false);
+    show(secWeek, false);
+    show(secSerie, false);
+    show(secHist, false);
+    show(eEmpty, true);
+  }
+
+  function loadSeason() {
+    if (STACKS) { paintRecord(); return; }
+    try {
+      if (!window.FB || !FB.loadIndex) { clearRecord(); return; }
+      FB.loadIndex().then(function (list) {
+        STACKS = (list && list.length) ? list : null;
+        if (!STACKS) { clearRecord(); return; }
+        paintRecord();
+      }, function () {
+        /* The season did not arrive. The empty state is already on screen and
+           says something true; it is not replaced with an error, because
+           "we could not fetch a file" is not the reader's problem to solve. */
+        clearRecord();
+      });
+    } catch (e) { clearRecord(); }
+  }
+
+  /* --- the page ----------------------------------------------------------- */
 
   function paint() {
     reveal();
@@ -389,76 +746,47 @@
     show(pOut, false);
     show(pIn, true);
 
-    var mail = "", prov = "";
-    try { mail = FBU.email() || "your account"; } catch (e) { mail = "your account"; }
-
     text(eName, nameText());
-    text(eEmail, mail);
+    text(eMember, memberText());
 
-    /* No verification row. A reader whose email is unverified can already read
-       everything they have paid for, so the row only ever reported a fact
-       about our records back at the person it was about. Verification still
-       happens; it is just not this page's business. */
-
-    paintPlan();
-  }
-
-  function busy(n, label) {
-    try { if (n) { n.disabled = true; n.setAttribute("data-was", n.textContent || ""); n.textContent = label; } }
-    catch (e) {}
-  }
-  function idle(n) {
+    /* The insignia at 52px. An initial when there is a name to take one from,
+       and app.css's drawn figure when there is not — never an emoji, which is
+       somebody else's artwork at a different size on every platform. */
     try {
-      if (!n) return;
-      n.disabled = false;
-      var w = n.getAttribute("data-was");
-      if (w) n.textContent = w;
+      if (eAvatar) {
+        var n = nameText();
+        var ini = (n && n !== "your account") ? n.charAt(0).toUpperCase() : "";
+        if (ini) { eAvatar.textContent = ini; }
+        else {
+          eAvatar.innerHTML = "";
+          var fig = document.createElement("span");
+          fig.className = "acct-ini is-anon";
+          eAvatar.appendChild(fig);
+        }
+      }
     } catch (e) {}
+
+    loadSeason();
   }
 
-  on(ePortal, "click", function () {
-    try { if (window.FB && FB.track) FB.track("billing_portal"); } catch (e) {}
-  });
-
-  on(eOut, "click", function () {
-    if (!FBU) return;
-    busy(eOut, "Signing out…");
-    try {
-      FBU.signOut().then(function () {
-      /* Out means out, and out means gone from here.
-
-         Two things had to change. The browser-level unlock in localStorage
-         survives a Firebase sign-out — nothing about signing out touches
-         localStorage — so a browser that had ever been unlocked stayed
-         unlocked: every story readable, no padlock on any cover. FBX owns
-         that flag, so FBX clears it.
-
-         And staying on this page after signing out leaves the reader looking
-         at their own account, which is the one screen that has nothing left
-         to say. replace(), not href, so Back does not return to it. */
-      try { if (window.FBX && FBX.forgetLegacy) FBX.forgetLegacy(); } catch (x) {}
-      try { if (window.FB && FB.track) FB.track("signout"); } catch (x) {}
-      try { location.replace("/"); } catch (x) { location.href = "/"; }
-      }, function () { idle(eOut); paint(); });
-    } catch (e) { idle(eOut); paint(); }
-  });
-
-  /* Make sure the portal href is the live one even if the markup drifts. */
-  try { if (ePortal) ePortal.setAttribute("href", (window.FBU && window.FBU.PORTAL) || PORTAL); } catch (e) {}
+  /* FBP answers "is this cache yours?" a beat after auth does, and the answer
+     arrives as a "show" on this listener. Registered once, and it redraws only
+     the record rather than the whole page. */
+  try {
+    if (window.FBP && FBP.onChange) {
+      FBP.onChange(function () {
+        try { if (pIn && !pIn.hidden) { if (STACKS) paintRecord(); else loadSeason(); } } catch (e) {}
+      });
+    }
+  } catch (e) {}
 
   show(wait, true);
 
   whenFBU(function (api) {
     FBU = api;
     if (!FBU) { paint(); return; }
-    try { if (ePortal) ePortal.setAttribute("href", FBU.PORTAL || PORTAL); } catch (e) {}
     try { FBU.onReady(function () { paint(); }); } catch (e) { paint(); }
     try { FBU.onChange(function () { paint(); }); } catch (e) {}
-    /* premium and the subscription both arrive after auth state does, and
-       both can change while this page is open — a webhook landing seconds
-       after a checkout is the common case. */
-    try { FBU.onPremium(function () { paint(); }); } catch (e) {}
-    try { FBU.onSubscription(function () { paintPlan(); }); } catch (e) {}
     try { setTimeout(function () { if (wait && !wait.hidden) paint(); }, 10000); } catch (e) {}
   });
 })();

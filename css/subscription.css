@@ -1,0 +1,429 @@
+/* ==========================================================================
+   Factbox — the subscription screen and the cancellation flow.
+
+   Five screens on one page: the plan, the reason survey, one save attempt,
+   the confirmation, and the receipt. Plus the five answers a reader who has
+   nothing to cancel gets instead.
+
+   EVERY COLOUR HERE IS A TOKEN FROM css/app.css. There is not one hex literal
+   in this file and there must not be: the palette was measured pair by pair
+   and a literal is a value that cannot follow it. Two translations from the
+   design mockup are deliberate and are written down where they happen:
+
+     * the mockup writes its 80px "50 / OFF" in #3B9EF4, which is --coral.
+       app.css's own note says --coral is a FILL, never type — it measures
+       2.2:1 on cream, under the 3:1 that even 80px type needs. So the save
+       offer's number is --accent-ink, the blue this site is allowed to write
+       in. Same shape, same weight, a colour a person can actually read.
+     * the mockup's #1B5FA8 eyebrow blue is --accent-ink for the same reason
+       (#1B5FA8 measures 4.32 on --accent-wash; --accent-ink is that colour
+       taken down 4% until it clears).
+
+   The page uses .lib, .mast, .mark, .tabs, .go, .fine and .fbload from
+   app.css. Everything below is what those do not already cover, and nothing
+   below redefines any of them.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   The anti-flip.
+
+   #sb-static is a complete, honest page in its own right: what this screen is
+   for, and a link to Stripe's own billing page, which cancels a subscription
+   with nothing from us. It ships VISIBLE, so a reader with JavaScript off — or
+   with a webview that refused the module — gets real words and a working way
+   out rather than a blank shell.
+
+   The inline script in the <head> adds .sb-js, which hides it, before the
+   parser reaches the body. If the page script never gets as far as setting
+   .sb-ready on <html>, a timer in that same block takes .sb-js off again and
+   the static panel comes back. (.sb-ready, not .sb-live: .sb-live is a class
+   in this file, and a state flag sharing a styled class name applies that
+   rule to the whole document. It did, and it centred the entire page.) So the failure mode of every part of this page is "the
+   reader sees the Stripe portal link", never "the reader sees nothing".
+   -------------------------------------------------------------------------- */
+html.sb-js #sb-static { display: none; }
+
+/* The waiting state. css/auth.css owns .au-wait and this page does not load
+   that stylesheet, so the one rule it needed lives here. The bar itself, its
+   fill and the sentence under it are all app.css's. */
+.sb-wait {
+  display: flex; flex-direction: column; align-items: stretch; gap: 11px;
+  margin: 26px 0 0; padding: 16px;
+  border-radius: 16px; background: var(--raise);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-size: var(--fs-sub); font-weight: var(--w-strong);
+  color: var(--dim); line-height: 1.4;
+}
+.sb-wait[hidden] { display: none; }
+.sb-wait .fbload-track { max-width: 22rem; }
+
+/* ==========================================================================
+   Shared furniture
+   ========================================================================== */
+
+/* Each step is a section that the script shows or hides. hidden is honoured
+   by the browser; this is here because a display rule elsewhere can outrank
+   it, and one that did would leave two screens stacked on top of each other. */
+.sb-step[hidden], .sb-panel[hidden] { display: none !important; }
+
+/* The fade the mockup puts on every screen after the first. Kept short — it
+   is a step change inside one page, not a page load — and switched off
+   entirely for a reader who has asked for less motion. */
+@keyframes sb-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.sb-step { animation: sb-fade .28s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .sb-step { animation: none; }
+}
+
+/* The way back out of a step. A link on the plan screen (it leaves the page),
+   a button inside the flow (it only changes the step), and they have to look
+   identical because to the reader they are the same control. */
+.sb-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: var(--tap); padding: 10px 0;
+  margin: 0; border: 0; background: none; cursor: pointer;
+  font-family: var(--ui); font-size: var(--fs-sub); font-weight: var(--w-strong);
+  color: var(--dim); text-decoration: none;
+  border-radius: 6px;
+}
+.sb-back:hover { color: var(--parchment); }
+
+/* The eyebrow: small capitals over a fact. */
+.sb-eyebrow {
+  margin: 0;
+  font-size: var(--fs-micro); font-weight: var(--w-label);
+  letter-spacing: var(--ls-caps); text-transform: uppercase;
+  color: var(--dimmer);
+}
+
+/* A paragraph that is the answer to the headline above it. The ch measures
+   come from the mockup and are the whole reason these read as sentences
+   rather than as a wall — they are kept in ch so they track the type size. */
+.sb-say {
+  margin: 0; max-width: 36ch;
+  font-size: var(--fs-body); font-weight: var(--w-body);
+  line-height: var(--lh-body); color: var(--dim);
+}
+.sb-say.is-narrow { max-width: 34ch; }
+
+/* The serif headline the mockup uses on the save screens. --display is
+   Newsreader; subscription.html adds it to its own Google Fonts link,
+   because a token cannot fetch a font. */
+.sb-serif {
+  margin: 0;
+  font-family: var(--display); font-weight: var(--w-display);
+  font-size: clamp(1.75rem, 8vw, 2.125rem);
+  line-height: 1.08; letter-spacing: -.012em;
+  text-wrap: balance;
+}
+
+/* The quiet second action under a .go. It is a real button with a real target
+   the whole time — the reader is mid-cancellation and a control that looks
+   decorative here reads as a trap. */
+.sb-quiet {
+  display: flex; align-items: center; justify-content: center;
+  width: auto; margin: 6px auto 0;
+  min-height: var(--tap); padding: 10px 12px;
+  background: none; border: 0; cursor: pointer;
+  font-family: var(--ui); font-size: var(--fs-sub); font-weight: var(--w-strong);
+  color: var(--dim);
+  text-decoration: underline; text-underline-offset: 3px;
+  border-radius: 6px;
+}
+.sb-quiet:hover { color: var(--parchment); }
+/* The one control on this page that ends the subscription. --crimson is the
+   site's only "this undoes something" colour: 4.94:1 on the page. */
+.sb-quiet.is-danger { color: var(--crimson); }
+.sb-quiet.is-danger:hover { color: var(--crimson); filter: brightness(.88); }
+
+.sb-actions { margin: 26px 0 0; }
+
+/* Where a step's own words end and the buttons begin. */
+.sb-head { padding: 4px 2px 0; }
+.sb-head h1 {
+  margin: 4px 0 10px;
+  font-size: var(--fs-hero); font-weight: var(--w-head);
+  line-height: 1.08; letter-spacing: var(--ls-head);
+  text-wrap: balance;
+}
+
+/* ==========================================================================
+   Step 1 — the plan
+   ========================================================================== */
+
+.sb-plan { margin: 16px 0 0; }
+.sb-plan-name {
+  margin: 10px 0 0;
+  font-size: 1.3125rem; font-weight: var(--w-head);
+  letter-spacing: var(--ls-title); line-height: 1.2;
+}
+/* The state of the subscription, in the sage ink. --teal-ink is the one
+   colour on this site that means "this is fine" — 6.07:1 on the page. */
+.sb-plan-state {
+  margin: 6px 0 0;
+  font-size: var(--fs-sub); font-weight: var(--w-strong);
+  color: var(--teal-ink);
+}
+/* Cancelling, or a card that failed, is not "this is fine". */
+.sb-plan-state.is-ending { color: var(--dim); }
+.sb-plan-state.is-late   { color: var(--crimson); }
+.sb-plan-price {
+  margin: 14px 0 0;
+  font-size: clamp(1.6rem, 7vw, 1.75rem); font-weight: var(--w-head);
+  letter-spacing: var(--ls-head); line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sb-plan-when {
+  margin: 7px 0 0;
+  font-size: var(--fs-note); font-weight: var(--w-label);
+  color: var(--dimmer); font-variant-numeric: tabular-nums;
+}
+
+/* The row that leaves for Stripe. Rules above and below, nothing else — it is
+   a destination, not a card. */
+.sb-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 26px 0 0; padding: 15px 2px;
+  border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair);
+  min-height: var(--tap);
+  text-decoration: none; color: inherit;
+}
+.sb-row b { font-size: var(--fs-lead); font-weight: var(--w-strong); }
+.sb-row span {
+  font-size: var(--fs-sub); font-weight: var(--w-label); color: var(--dimmer);
+  flex: 0 0 auto;
+}
+.sb-row:hover b { color: var(--accent-ink); }
+.sb-under {
+  margin: 10px 2px 0;
+  font-size: var(--fs-meta); font-weight: var(--w-body);
+  line-height: var(--lh-body); color: var(--dimmer);
+}
+
+.sb-cancel-wrap { margin: 34px 0 0; text-align: center; }
+/* The cancel affordance on step 1 is deliberately the quietest thing on the
+   screen and deliberately not hidden. A cancel link a reader cannot find is
+   how a subscription becomes a chargeback. */
+.sb-cancel-wrap .sb-quiet { margin: 0 auto; }
+
+/* ==========================================================================
+   Step 2 — the reason
+   ========================================================================== */
+
+.sb-reasons {
+  display: flex; flex-direction: column; gap: 9px;
+  margin: 22px 0 0;
+}
+.sb-reason {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: var(--tap);
+  padding: 14px 16px; border: 0; border-radius: 14px;
+  background: var(--raise); color: var(--parchment);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-family: var(--ui); font-size: var(--fs-body); font-weight: var(--w-strong);
+  line-height: var(--lh-tight); text-align: left; cursor: pointer;
+  transition: background .16s ease, box-shadow .16s ease;
+}
+.sb-reason > span { flex: 1 1 auto; min-width: 0; }
+.sb-reason:active { transform: scale(.995); }
+.sb-reason[aria-checked="true"] {
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--accent-edge);
+}
+/* The tick. Present in the markup at all times so the row does not change
+   width when it is chosen — only its opacity moves. */
+.sb-reason i {
+  flex: 0 0 auto; font-style: normal;
+  font-size: var(--fs-sub); font-weight: var(--w-head);
+  color: var(--accent-ink); opacity: 0;
+  transition: opacity .16s ease;
+}
+.sb-reason[aria-checked="true"] i { opacity: 1; }
+
+/* ==========================================================================
+   Step 3 — the one save attempt
+   ========================================================================== */
+
+.sb-offer { text-align: center; }
+
+/* THE SAVE OFFER'S NUMBER.
+
+   --accent-ink, not the mockup's --coral. See the note at the top of this
+   file: --coral is 2.2:1 on cream and this is type, not a fill. */
+.sb-off-big {
+  margin: 6px 0 0;
+  font-size: clamp(4rem, 21vw, 5rem); font-weight: var(--w-head);
+  line-height: .84; letter-spacing: -.045em;
+  color: var(--accent-ink); font-variant-numeric: tabular-nums;
+}
+.sb-off-off {
+  margin: 0;
+  font-size: clamp(1.75rem, 9vw, 2.125rem); font-weight: var(--w-head);
+  line-height: 1; letter-spacing: .1em;
+  color: var(--accent-ink);
+}
+.sb-off-line {
+  margin: 16px 0 0;
+  font-size: var(--fs-lead); font-weight: var(--w-strong);
+  font-variant-numeric: tabular-nums;
+}
+.sb-off-terms {
+  margin: 4px 0 0;
+  font-size: var(--fs-meta); font-weight: var(--w-body);
+  color: var(--dimmer); font-variant-numeric: tabular-nums;
+}
+.sb-offer .sb-serif { margin: 24px auto 0; max-width: 24ch; }
+.sb-offer .sb-lead {
+  margin: 10px 0 0;
+  font-size: var(--fs-lead); font-weight: var(--w-label); color: var(--dim);
+}
+
+/* The fan of covers. Decoration, and it says so: aria-hidden in the markup,
+   and every tile is a --raise plate whether or not its artwork arrives. */
+.sb-fan {
+  display: flex; align-items: center; justify-content: center;
+  margin: 20px 0 0; min-height: 108px;
+}
+.sb-fan i {
+  display: block; width: 68px; height: 90px; margin: 0 -13px;
+  border-radius: 10px; background: var(--raise);
+  box-shadow: var(--shadow-1), inset 0 0 0 1px var(--hair);
+  background-size: cover; background-position: center 32%;
+}
+.sb-fan i:nth-child(1) { transform: rotate(-13deg) translateY(7px); }
+.sb-fan i:nth-child(2) { transform: rotate(-6deg)  translateY(2px); }
+.sb-fan i:nth-child(3) { transform: rotate(0deg); z-index: 2; }
+.sb-fan i:nth-child(4) { transform: rotate(6deg)   translateY(2px); }
+.sb-fan i:nth-child(5) { transform: rotate(13deg)  translateY(7px); }
+
+/* The usage line, and the "there's more waiting" grid. Both are real numbers
+   or they are not on screen; the script hides them rather than inventing. */
+.sb-usage {
+  margin: 14px 0 0;
+  font-size: var(--fs-lead); font-weight: var(--w-strong); color: var(--parchment);
+}
+.sb-recs {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px; margin: 22px 0 0;
+}
+.sb-recs a { text-decoration: none; color: inherit; }
+.sb-recs .sb-rec-plate {
+  position: relative; aspect-ratio: 3 / 4; overflow: hidden;
+  border-radius: 14px; background: var(--raise);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+.sb-recs .sb-rec-plate img { width: 100%; height: 100%; object-fit: cover; object-position: center 32%; }
+.sb-recs b {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
+  margin: 8px 0 0;
+  font-size: var(--fs-meta); font-weight: var(--w-strong); line-height: var(--lh-tight);
+}
+.sb-recs span {
+  display: block; margin: 3px 0 0;
+  font-size: var(--fs-fine); font-weight: var(--w-label);
+  color: var(--dimmer); font-variant-numeric: tabular-nums;
+}
+
+/* The note box on the "something else" branch. */
+.sb-note-field {
+  width: 100%; margin-top: 16px; padding: 13px 15px;
+  border: 0; border-radius: 14px;
+  background: var(--raise); color: var(--parchment);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-family: var(--ui); font-size: var(--fs-body); font-weight: var(--w-body);
+  line-height: var(--lh-body);
+  -webkit-appearance: none; appearance: none; resize: vertical;
+}
+.sb-note-field:focus-visible { box-shadow: inset 0 0 0 1px var(--accent-edge); }
+
+/* ==========================================================================
+   Step 4 — the confirmation, and step 5 — the receipt
+   ========================================================================== */
+
+.sb-facts { margin: 22px 0 0; }
+.sb-fact {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 14px 2px; border-top: 1px solid var(--hair);
+}
+.sb-fact:last-child { border-bottom: 1px solid var(--hair); }
+.sb-fact dt {
+  font-size: var(--fs-micro); font-weight: var(--w-label);
+  letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--dimmer);
+}
+.sb-fact dd {
+  margin: 0; text-align: right;
+  font-size: var(--fs-sub); font-weight: var(--w-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A .go that is an <a>. app.css's .go is written for a <button>, so the two
+   lines that make a link look like a button live here rather than there. */
+a.go {
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none; line-height: 1.2;
+}
+
+/* The live status line under a step's buttons: "if you cancelled just now,
+   give it a moment". Never an error code, never a colour that shouts. */
+.sb-live {
+  margin: 14px auto 0; max-width: 520px; text-align: center;
+  font-size: var(--fs-meta); font-weight: var(--w-label);
+  line-height: var(--lh-body); color: var(--dimmer);
+}
+
+/* ==========================================================================
+   The answers for a reader who has no subscription to cancel
+   ========================================================================== */
+
+.sb-panel { margin: 8px 0 0; }
+.sb-panel h2 {
+  margin: 0 0 10px;
+  font-size: var(--fs-h1); font-weight: var(--w-head);
+  line-height: var(--lh-head); letter-spacing: var(--ls-head);
+  text-wrap: balance;
+}
+.sb-panel p {
+  margin: 0 0 12px; max-width: 44ch;
+  font-size: var(--fs-body); font-weight: var(--w-body);
+  line-height: var(--lh-body); color: var(--dim);
+}
+.sb-panel .go, .sb-panel a.go { margin-top: 16px; }
+/* The second and third ways out of a panel: full width, quiet, tappable. */
+.sb-2nd {
+  display: block; width: 100%; max-width: 520px;
+  margin: 10px auto 0; padding: 13px 20px; min-height: var(--tap);
+  border: 0; border-radius: var(--pill);
+  background: var(--tint); color: var(--parchment);
+  font-family: var(--ui); font-size: var(--fs-sub); font-weight: var(--w-strong);
+  text-align: center; text-decoration: none; line-height: 1.2; cursor: pointer;
+}
+.sb-2nd:hover { background: var(--tint-2); }
+
+/* ==========================================================================
+   Wider than a phone
+
+   The mockup is 390 x 844 and this page is 900px of .lib at most, so the only
+   thing a desktop window changes is how much air is around it. Two rules:
+   the flow steps stop growing their measure, and the recommendation grid
+   keeps its three columns rather than stretching three covers to 300px each.
+   ========================================================================== */
+@media (min-width: 700px) {
+  .sb-recs { max-width: 520px; margin-left: auto; margin-right: auto; }
+  .sb-fan i { width: 78px; height: 104px; }
+  .sb-facts { max-width: 520px; }
+}
+
+/* The short landscape window an in-app browser gives you when the phone is
+   turned: 932 x 430 leaves about 300px of usable height. Nothing here is
+   pinned to the viewport, so it simply scrolls — this only takes the air out
+   of the top so the first line is above the fold. */
+@media (max-height: 460px) and (orientation: landscape) {
+  .sb-head { padding-top: 0; }
+  .sb-actions { margin-top: 18px; }
+  .sb-cancel-wrap { margin-top: 22px; }
+  .sb-fan { display: none; }
+}

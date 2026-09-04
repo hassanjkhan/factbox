@@ -66,7 +66,12 @@ body{background:var(--ground); color:var(--parchment)}
      button floating on night. */
   background:var(--butter); color:var(--parchment);
   font-family:var(--ui); font-size:var(--fs-lead); font-weight:var(--w-strong);
-  box-shadow:0 6px 18px rgba(29,49,89,.18);
+  /* The one shadow on this file that was still written out by hand, in the
+     OLD navy (29,49,89). The repaint moved the palette to (23,46,91) and this
+     literal did not come with it, so it was the previous scheme's shadow
+     sitting under a button on the new ground. --shadow-1 is that same lifted
+     -off-the-page shadow, and it tracks the token. */
+  box-shadow:var(--shadow-1);
   transition:transform .15s ease, filter .15s ease;
 }
 .au-prov:active{transform:translateY(1px) scale(.99)}

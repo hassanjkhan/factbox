@@ -52,6 +52,12 @@ reported by Stripe, for the links this site actually links to.
 All three are prices on one product, `prod_VBdImvMmh9CI5L`
 ("Factbox - Season One"), on account `acct_1RKKQAAhj1M3E8Tl`, livemode.
 
+**There is no coupon, no promotion code and no discounted price on this
+account.** The measurement above found three prices on one product and nothing
+else, and there is no `coupon`, `promotion_code`, `discount` or
+`allow_promotion_codes` anywhere in this repository. That is why the save offer
+on `/subscription` ships switched OFF — §10.
+
 Two things the measurement also settled:
 
 - **The 3-day trial is real and it is live.** Each link's checkout renders
@@ -92,9 +98,9 @@ editable copy.
 extend or end a trial.
 
 **Do not change prices without asking Hassan.** Editing a link constant changes
-what customers are charged. Cancellation is Stripe's own billing portal — the
-link is in `js/account.js` and on the profile page; we do not build a cancel
-flow.
+what customers are charged. Cancellation is still Stripe's own billing portal
+and nothing else — but there is now a flow in front of it at `/subscription`,
+which is §9. Nothing in this repository can cancel a subscription.
 
 ## 3. The webhook
 
@@ -335,6 +341,9 @@ constant, so there is nothing else to edit.
 - **Create the $35.00/year price and its Payment Link (§7).** Nothing in a
   coding session can do this, and until it exists the site must keep showing
   $35.88.
+- **Create the save offer's coupon, if the save offer is wanted at all (§10).**
+  Until it exists, `/subscription` shows no discount to anybody, which is
+  correct, because there is no discount.
 - Change any price, or create, archive and deactivate Payment Links.
 - Change the free-trial length on a link — the 3-vs-7 test starts here, not in
   the code.
@@ -347,3 +356,187 @@ constant, so there is nothing else to edit.
   $10 budget alert).
 
 Ask before touching pricing, the number of free stories, or `LEGAL.md`.
+
+
+## 9. Cancelling — the flow at `/subscription`, and what actually ends a plan
+
+`subscription.html` · `css/subscription.css` · `js/subscription.js`
+
+Five screens on one page: **the plan → why are you leaving → one save attempt
+→ confirm → the receipt.** Hash routes (`#cancel`, `#offer`, `#confirm`,
+`#done`) so the phone's Back button walks back out of it.
+
+**Stripe's billing portal is what cancels. Nothing here can.** The confirm
+screen's red button is an `<a>` pointing at
+`https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600` — the same URL
+`/account`, `/support` and `/terms` already carry, and the same one
+`FBU.PORTAL` returns. Stripe takes the cancellation on its own page, works out
+the proration, and sends the confirmation email. Then:
+
+```
+reader taps "Cancel subscription" on /subscription#confirm
+   -> sessionStorage records WHICH subscription they went to cancel
+   -> Stripe's portal. Stripe cancels it.
+   -> customer.subscription.updated -> the webhook in functions/index.js
+   -> customers/{uid}/subscriptions/{id}.cancelAtPeriodEnd = true
+   -> js/auth.js's live snapshot -> FBU.onSubscription
+   -> and THAT is what draws "Subscription cancelled."
+```
+
+**The receipt screen is drawn by Stripe's answer and by nothing else.**
+`render()` refuses `#done` unless `FBU.subscription().cancelAtPeriodEnd` is
+true, so typing `#done` into the address bar gets the plan screen. A reader who
+opens the portal and changes their mind comes back to a plan that still says
+*Active*. There is no local flag, no optimistic state and no way for this site
+to claim a cancellation that did not happen.
+
+**Why the portal and not a Cloud Function on the Stripe API.** Fewer moving
+parts on the path that carries revenue: no second writer, no API key in a new
+place, and no reimplementation of proration, dunning and the confirmation
+email. `functions/index.js` stays a read-only-to-us webhook that nothing in a
+session needs to touch.
+
+### Every figure on those screens, and where it comes from
+
+All of them come off `customers/{uid}/subscriptions/{id}` — the document the
+webhook writes straight from the price object Stripe charged — through
+`FBU.subscription()`. **Not from `PRICING`**, which is the ladder a reader may
+*buy*; a subscriber on the retired quarterly rung is charged something that is
+not in the offer.
+
+| On screen | Field | If it is missing |
+|---|---|---|
+| "Annual plan" | `priceId` matched against `FBA.pricing()`, else the interval | "Your plan" |
+| "Active" / "Free trial" / "Payment overdue" / "Cancelling" | `status`, `cancelAtPeriodEnd` | the line is not shown |
+| "$35.88 a year" | `amount` + `currency` + `interval` + `intervalCount` | the line is not shown |
+| "Renews 23 March 2027" | `currentPeriodEnd` | the line is not shown |
+| "keep full access until …" | `currentPeriodEnd` | the sentence drops the date rather than inventing one |
+
+There is no default amount, no assumed currency, and above all **no computed
+renewal date**. "A year after the last one" is a guess, and a guess about
+somebody's money is a lie with arithmetic in front of it.
+
+### Who sees it
+
+Only a reader with a **live Stripe subscription**. `FBX.owns()` is "did they
+buy it" and `FBX.can()` is "may they read"; a cancel flow is narrower than
+either. Signed out gets the sign-in panel, a free reader gets the plans, an
+admin is told nothing is being charged, a comped account is told there is no
+subscription on file, and a legacy restore-link buyer is told that is a one-off
+unlock and not a subscription. None of them is shown a cancel button.
+
+### Instrumentation
+
+No new event names. The steps ride on `ui_click` (every control carries a
+`data-fbt`, which is what `js/analytics.js` reports as `control`) and the two
+hops to Stripe send the existing `billing_portal`. The note box on the "anything
+we should know?" screen posts to the same Cloud Function `/support` posts to,
+as `kind: "help"`, and the screen says so.
+
+
+## 10. The save offer — OFF, and exactly what turns it on
+
+The design offers **50% off for another year** on the save screen. **It is
+switched off and it must stay off until the coupon exists**, because §2 is the
+measurement and there is no coupon, promotion code or discounted price on
+`acct_1RKKQAAhj1M3E8Tl`. A save screen quoting a discount nobody can redeem is
+worse than no save screen: it is the $35-vs-$35.88 defect with a bigger gap.
+
+Until then, a reader who says "it costs more than I want to spend" gets the
+*"Anything we should know?"* screen, which asks a real question and quotes no
+figure.
+
+The screen itself is built and works. One object at the top of
+`js/subscription.js` is the whole switch:
+
+```js
+var SAVE_OFFER = {
+  on:          false,
+  percentOff:  0,       /* the number printed in 80px type: 50 means "50% OFF" */
+  amountCents: 0,       /* WHAT STRIPE WILL ACTUALLY CHARGE, in cents         */
+  currency:    "usd",
+  months:      12,      /* how long the discounted period runs                */
+  thenCents:   0,       /* what Stripe charges AFTER those months, in cents   */
+  link:        "",      /* the URL that applies it. Empty keeps it off.       */
+  id:          ""       /* the coupon or price id, for re-verification        */
+};
+```
+
+`thenCents` is the one that is easy to get wrong, and it differs between the
+two shapes below. A **coupon** reverts to the price it was applied to, so
+`thenCents` is the reader's current amount — `3588`. A **discounted price on a
+Payment Link does not revert**: it renews at the discounted amount forever, so
+`thenCents` is `1794`. The screen prints it in the sentence beginning *"Then"*,
+and it is configured rather than assumed precisely because those two answers
+are different and only one of them is true for whichever you built.
+
+### What Hassan has to create in Stripe
+
+Live mode, on the existing product **Factbox - Season One**
+(`prod_VBdImvMmh9CI5L`). Two shapes work; pick one.
+
+**Either — a discounted price and a Payment Link for it** (the same shape as §7
+and the one this site already understands):
+
+1. Product catalog → Products → **Factbox - Season One** → **+ Add another
+   price**. Amount **17.94**, currency **USD**, recurring, **Yearly**. Save and
+   copy the `price_…` id. *(17.94 is exactly half of the 35.88 the annual plan
+   charges today. If the annual price moves to $35.00 first, this becomes
+   **17.50** and `amountCents` becomes `1750` — the two must always match, and
+   the code refuses to render if they do not.)*
+2. Payment links → **+ New** → Existing product → that new price. **No free
+   trial** — this is an existing subscriber, not a new one.
+3. After payment → Redirect customers to, pasted literally:
+   `https://factbox.app/stories?unlocked=1&session_id={CHECKOUT_SESSION_ID}`
+4. Create link, copy the `https://buy.stripe.com/…` URL.
+5. Send back **the price id and the link URL**, and `SAVE_OFFER` becomes:
+   `on: true, percentOff: 50, amountCents: 1794, currency: "usd", months: 12,
+   thenCents: 1794, link: "<the new buy.stripe.com URL>",
+   id: "<the new price_… id>"`. `thenCents` is 1794 and not 3588 here: this
+   price renews at its own amount and never goes back up.
+
+   *Caveat worth knowing before you choose this shape:* it creates a **second**
+   subscription rather than repricing the first, so the reader must then cancel
+   the old one in the portal. That is one more step for them and one more thing
+   to explain.
+
+**Or — a coupon, applied in the portal** (cleaner for the reader, more setup):
+
+1. Product catalog → **Coupons** → **+ New**. Percentage discount **50%**,
+   Duration **Repeating**, **12 months**, applies to the annual price. Save and
+   copy the `coupon_…` id.
+2. Settings → Billing → **Customer portal** → turn on the flow that offers the
+   coupon when a customer starts a cancellation, and attach the coupon to it.
+3. Then `link` is the portal URL, `id` is the coupon id, and **`thenCents` is
+   `3588`** — a coupon expires and the subscription goes back to the price it
+   was applied to.
+
+### The check the code makes anyway
+
+`offerLive()` will not draw the screen unless **all** of `on`, `link`,
+`percentOff` (1–99), `amountCents` (> 0) and `thenCents` (> 0) are set, the
+currency matches the reader's own subscription, **and**
+
+```
+Math.round(sub.amount * (100 - percentOff) / 100) === amountCents
+```
+
+— the figure on the screen has to be the figure the till produces, for *that
+reader*. So a quarterly subscriber, or anyone on an amount the discount does
+not resolve to, is never shown it; they get the no-figure screen instead. Fill
+in three of the seven fields and nothing appears. That is deliberate: a half-
+configured discount must fail closed.
+
+### How to verify it afterwards
+
+- **In Stripe.** Open the new link (or start a cancellation in the portal) in a
+  private window. The header must read **$17.94**, and there must be **no
+  trial**.
+- **On the site.** `/subscription` → Cancel subscription → *"It costs more than
+  I want to spend"*. The screen must read **50% OFF**, **"$17.94 for the next 12
+  months"**, and then either **"Then $35.88 a year."** (a coupon) or **"Then
+  $17.94 a year."** (a discounted price) — whichever is true of the thing you
+  built. If any of the three disagrees with Stripe by a cent, `amountCents` or
+  `thenCents` is wrong; fix it there and nowhere else.
+- **In the address bar.** Tap the button and check you land on the id you
+  created.

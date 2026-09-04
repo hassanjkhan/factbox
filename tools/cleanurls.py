@@ -35,7 +35,8 @@ import pathlib, re, sys
 # login stub did (SPEC.md 2.4): GitHub Pages resolves /stories to stories.html
 # before stories/index.html.
 PAGES = ["explore", "library", "read", "join", "credits",
-         "unlock", "privacy", "terms", "support", "login", "account"]
+         "unlock", "privacy", "terms", "support", "login", "account",
+         "settings", "subscription"]
 ASSET_DIRS = ["css", "js", "img", "data", "audio", "tools"]
 
 

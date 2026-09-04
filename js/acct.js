@@ -11,9 +11,11 @@
    BUTTON. IT SHOULD JUST BE AN UPPER RIGHT HAND PROFILE INSIGNIA THAT OPENS A
    DROP DOWN TO EITHER SIGN IN OR SIGN UP."
 
-   Signed out the menu offers Sign in and Create account. Signed in it shows the
-   reader's name, their account and their library. Escape closes it; so does a
-   click anywhere else; so does moving focus out of it.
+   Signed out there is no menu: the insignia IS the sign-in button, and it
+   carries no aria-haspopup, because announcing a popup that never opens is a
+   lie to a screen reader. Signed in it shows the reader's name, their account,
+   their library and their settings. Escape closes it; so does a click anywhere
+   else; so does moving focus out of it.
 
    ---------------------------------------------------------------------------
    The contract with a page
@@ -96,6 +98,12 @@
       }
       menu.appendChild(item("/account", "Your account"));
       menu.appendChild(item("/library", "Your library"));
+      /* Settings is a screen of its own now — name, email, subscription, the
+         help pages and the way out. It is one row down on /account, but this
+         menu is on nine pages and that row is on one, so a reader who wants
+         to cancel or to sign out should not have to pass through the account
+         screen to find out where it went. */
+      menu.appendChild(item("/settings", "Settings"));
     }
     /* Signed out there is no menu at all — see the click handler. A menu of
        one destination is a tap spent choosing between "Sign in" and "Create

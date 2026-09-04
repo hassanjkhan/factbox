@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Sign in</title>
 <meta name="description" content="Sign in to Factbox to read all fifty-one stories on any phone. Google or email.">
-<!-- The paper ground, matching what body actually paints. It was the
-     retired night value on all thirteen paper pages, which puts a
-     near-black bar above a cream page in Android Chrome and iOS
-     Safari. Only the four reader/story pages are #0E0B12. -->
-<meta name="theme-color" content="#DCD5C8">
+<!-- The paper ground, matching what body actually paints. Verified against
+     getComputedStyle(document.body).backgroundColor in real Chrome, not
+     assumed: the site-wide repaint moved --ground #DCD5C8 -> #E7E0D3 and this
+     meta did not come with it, which puts a bar of the OLD cream above the new
+     one. Only the four reader/story pages are #0E0B12, and reader-rail.css
+     still paints those, so they are unchanged. -->
+<meta name="theme-color" content="#E7E0D3">
 <!-- Icons. /favicon.ico is what a browser asks for with no link tag at all,
      so it is the one that must exist; the rest are the better versions for the
      places that look for them. The .ico packs 16, 32 and 48. Before these the
@@ -19,7 +21,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<!-- site.webmanifest's theme_color is #DCD5C8, the same cream the meta above
+<!-- site.webmanifest's theme_color is #E7E0D3, the same cream the meta above
      declares and the same cream body paints. The three must not disagree. -->
 <link rel="manifest" href="/site.webmanifest">
 <meta name="robots" content="noindex,follow">

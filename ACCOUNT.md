@@ -3,6 +3,11 @@
 `join.html` · `js/account.js` (`FBA`) · `css/account.css`, plus the
 `checkout()` area of `js/gate.js`.
 
+Sections 1-9 are the **funnel**: what `/join` asks, what `FBA` stores and where
+the prices live. Section 10 is the **two account screens** — `/account` and
+`/settings` — which share `css/account.css` with the funnel and share nothing
+else with it.
+
 ---
 
 ## 1. What the funnel is, and where it came from
@@ -404,3 +409,283 @@ Two things that check must keep asserting:
   explained our hosting model to a reader who came here to read about
   Cleopatra. If one of them comes back, the funnel has started explaining
   itself again. Add to that list, never subtract from it.
+
+
+---
+
+# 10. The account screens — `/account` and `/settings`
+
+`account.html` · `settings.html` · the `.ac-` block at the foot of
+`css/account.css` · `js/acct.js`.
+
+Rebuilt from the design mockup's screens 2f and 2g. Before that, `/account`
+was four rows — name, signed in as, manage billing, sign out — and there was
+no settings screen at all.
+
+## 10.1 What is on each
+
+**`/account` is a progress page.** Masthead and tabs, the reader's insignia,
+name and email, then four sections drawn entirely from the reading record:
+
+| Section | What it is | Source |
+|---|---|---|
+| Your Factbox | three counts: stories finished, cards read, series touched | `FBP.state()` per stack, joined to `data/index.json` |
+| This week | seven day letters, seven dots, one line under them | the `at` timestamps in `FBP.all()` |
+| Currently exploring | the subject holding the most recently touched story, how far in, and the next story in it | `FBP.state()` grouped by `topic` |
+| Your history | up to six covers, most recently touched first, and "See all →" to `/library` | `FBP.all()` sorted on `at` |
+
+Then one row through to `/settings`, and the legal line. Billing, name, email
+and signing out all live on `/settings` now, which is where the mockup puts
+them and where a reader looks for them.
+
+**`/settings` is quiet by design.** An Account group (Name, Email,
+Subscription), a Help group (Contact us, Artwork credits, Privacy, Terms), and
+Sign out. Nothing on it is a *preference*, because there is nothing here to
+prefer: the site has one theme, sends no notifications, and has no reminder
+times to honour. A settings page full of switches that do nothing is worse
+than a short one.
+
+## 10.2 Every number is real or it is absent
+
+`FBP` gates the whole reading record on the account that owns the cache. Signed
+out, or on a cache tagged with a different uid, `FBP.all()` is `{}` and
+`FBP.state()` answers `"unread"` for every story. So a signed-out reader gets
+the empty state and **never another reader's history**. Verified in Chrome:
+signed out, `#ac-stats` has zero items and `#ac-hist` zero covers.
+
+**There is no zero state either.** Three zeroes under "Your Factbox" and seven
+grey dots under "This week" describe the furniture, not the reader. Each
+section is `[hidden]` until it has something true in it, and a signed-in reader
+with nothing read yet gets one sentence with a link out of it. Measured: with
+no record, `document.querySelectorAll(".ac-dot").length` is **0** — the dots
+are not in the DOM at all, rather than in it and grey.
+
+### What the record cannot support, and is therefore not claimed
+
+`js/progress.js` stores **one** timestamp per story — `r[2]`, the last time
+that story was touched, overwritten on every touch. There is no per-day log
+anywhere on this site. So a day whose only story was later re-opened has left
+the record, and both the week row and the streak **under-count and can never
+over-count**, which is the direction this has to fail in.
+
+That is exactly the resolution `js/today.js` and `js/recommend.js` already
+ship, and this screen borrows both framings rather than inventing a third:
+
+- the line is **"5 days this week"** — a count of days, the wording
+  `js/recommend.js`'s `weekRow()` uses on the completion screen
+- the streak is appended only when it is greater than one, and it uses
+  `js/today.js`'s `streakOf()` arithmetic unchanged
+
+Nothing here says "longest streak", "days in a row this month", or anything
+else needing a history this site does not keep. **`FBA.streak()` is not a
+streak** — it is the number of days a reader said in onboarding they were
+*aiming* for. Never render it as one.
+
+`RECALL_CLAIM_PCT` is `null` and stays `null`. Neither of these screens quotes
+a percentage, a survey or any statistic at all.
+
+**If you move the streak here, extend the guard.**
+`tools/check-regressions.js`'s "the streak treats FBP timestamps as
+milliseconds" only reads `js/today.js`. `FBP.rec()` returns `at: r[2] * 1000`,
+already milliseconds; dividing again makes every streak zero. `account.html`
+divides by `DAY_MS` and by nothing else, but the guard does not know that.
+
+## 10.3 Two calls this page must never make
+
+`FBP.unlocked()` **is not a pure read.** `dGet()` reads localStorage, finds
+nothing, reads the cookie, and writes the value back — so calling it re-mints
+the unlock flag that `FBX.forgetLegacy()` has to remove. `FBP.continueReading()`
+calls it internally, which is why the "Currently exploring" row builds its own
+next-in-series instead of using it.
+
+Every access question on these two screens goes to **`FBX`**, which is the one
+file allowed to answer them.
+
+## 10.4 Signing out
+
+Three things, in a fixed order, on `/settings`:
+
+```
+FBU.signOut()  →  FBX.forgetLegacy()  →  location.replace("/")
+```
+
+`forgetLegacy()` clears `fb_unlocked_v1` and `fb_unlocked_at_v1` from
+localStorage **and kills the `fb_unlocked_v1` cookie**. Both stores, or
+neither: `js/progress.js` heals either one from the other, so clearing only
+localStorage un-signed-out nobody, and for a long time signing out never
+actually locked the browser.
+
+`replace()`, not `href`, so Back does not return to a settings screen for an
+account that is gone. And the order matters —
+`tools/check-account-cache.js`'s "nothing reloads the page on a sign-out"
+records that `FBU`'s `onChange` fires *inside* `signOut()`, so a reload landing
+between line one and line three destroys the execution context mid-handler.
+
+**It does not touch reading progress or saved stories.** Those live in `FBP`
+and `FBS`, keyed to the account that owns them, and they simply stop being
+visible when nobody is signed in. The line under the button says so.
+
+Measured in Chrome, subscriber → signed out: padlocks on `/explore` went
+**0 → 66**, `localStorage.fb_unlocked_v1` and the cookie both `null`, and both
+still `null` after a second page load.
+
+## 10.5 What is deliberately not built
+
+| Not built | Why |
+|---|---|
+| **Change your name** | The write is Firebase's `updateProfile`, and `js/auth.js` — the only file allowed to touch the SDK — exposes no wrapper. The mockup draws Name and Email as tappable rows; they are plain rows here, because a chevron would promise a screen that does not exist. Add `FBU.setName()` and they become links. |
+| **"Member since"** | Firebase carries `creationTime` on the raw user object, but `FBU` exposes no accessor and reaching around it into `FBU.user().metadata` would make this page the second file with an opinion about the SDK's shape. The line shows the email instead. |
+| **Minutes, as a stat tile** | It is an estimate pro-rated from each story's listed `secs`, so it needs the word "about" to be true, and a three-digit tile has nowhere to put it. `/library`'s `statsLine()` still carries it, in the sentence form that has room for the qualifier. |
+| **A subscription screen** | `/subscription` is another agent's. The Settings row links to it and this page decides nothing about a plan — a second telling of what Stripe charged can only ever disagree with the first. |
+
+## 10.6 Layout, and the two specificity traps
+
+Both screens live inside `.lib`, which caps the column at **900px** and centres
+it. At 1440 and 1920 that is what you get: the same 900px column in the middle
+of the window, not a phone layout stretched across a monitor. Two things do use
+the extra room — the history grid goes 3 → 4 → 6 tracks, and the stat row and
+week strip cap at 520px (the site's own measurement, shared with `.go`,
+`.fine` and `.au-2nd`) so seven dots do not spread into a timeline.
+
+Tested at 375, 390, 430, 768, 1024, 1440, 1920 and landscape 932×430: no
+horizontal overflow at any width, and nothing tappable below `--bottom-safe`.
+
+That last one needs measuring properly rather than eyeballing, and it caught
+something. The footer links get 44px hit areas out of a negative vertical
+margin, so the *layout* box is the height of the text but the *hit* box hangs
+about 14px lower — and that paragraph is the last thing on both pages, right
+above the strip `.lib` reserves for the in-app toolbar. It left **2px** of
+clearance at 932×430. `.ac-fine` now carries a matching bottom margin, written
+as the overhang's own expression so it tracks `--tap`. Re-measured, scrolled to
+the very bottom, lowest tappable against the required strip: 81px vs 64 at
+932×430, 104 vs 87 at 375×667, and more at every other size.
+
+**`css/auth.css` loads after `css/account.css`, and it bites twice.**
+
+1. `.au-panel > p` is (0,1,1). Every eyebrow, name and streak line on these
+   screens is a `<p>`, and a bare class is (0,1,0) — it would lose, the same
+   way `.au-or` and `.au-say` did before their selectors were doubled up.
+   Rather than double seven selectors, **both pages wrap their contents in one
+   `.ac-body` div**, so no `<p>` of theirs is a *direct* child of the panel and
+   the rule cannot reach them. That wrapper is load-bearing. Do not flatten it.
+2. `.au-panel{text-align:center}` centres the sign-in screen. These are
+   left-aligned columns, so the panels carry `.ac-left` — (0,2,0) beats
+   (0,1,0) — and `.ac-body` sets `text-align:left`.
+
+Everything new is prefixed `.ac-` so it cannot collide with `.jn-` (the funnel,
+in the same file), `.au-` or anything the core owns. There is not one colour
+literal in the block; `--display` is not used, which is why neither page asks
+Google for Newsreader.
+
+## 10.7 Nothing renders empty, with or without JavaScript
+
+The signed-out panel on **each** page ships **visible** — no `hidden`
+attribute — and the script hides it once it knows somebody is signed in. That
+is SPEC.md §2.2's rule applied to routing: text is visible by default and
+JavaScript opts into hiding it.
+
+- **Scripting off:** `au-js` never reaches `<html>`, so the panel stays.
+  Measured: `/account` 473 characters of visible text and 11 working links;
+  `/settings` 533 characters and 12 working links, including the whole Help
+  group and the route to the subscription screen.
+- **Scripting on:** `html.au-js .au-panel{display:none}` hides every panel for
+  the beat auth takes to answer, so a signed-in reader never sees it.
+- **Scripting on and broken:** the unconditional 4s timer in each page's head
+  strips `au-js` whatever happened, and the reader gets the real markup.
+
+`#ac-in` and `#ac-dead` stay `[hidden]`: one is a record that does not exist
+until it is counted, the other an apology for a failure that has not happened.
+
+## 10.8 The insignia, and `js/acct.js`
+
+`js/acct.js` still owns the one profile control on all nine pages that carry
+`<span class="acct" id="fb-acct">`. Two behaviours are load-bearing and were
+kept:
+
+- **Signed out there is no menu.** One tap goes straight to
+  `/login?next=<this page>`. A menu of "Sign in" and "Create account" spends a
+  tap choosing between two names for the same screen.
+- **`aria-haspopup` only when there is a popup.** It is removed signed out;
+  announcing a popup that never opens is a lie to a screen reader.
+
+The only change: the signed-in menu gained a third item, **Settings →
+`/settings`**. That menu is on nine pages and the Settings row is on one, so a
+reader who wants to cancel or sign out should not have to pass through
+`/account` to find out where it went.
+
+`?next=` still survives. `login.html`'s `NEXT_OK` is a whitelist on *shape*,
+not a list of known pages, so `?next=settings` needs nothing added to it.
+Verified in Chrome: `/login?next=account` → `/account`,
+`/login?next=settings` → `/settings`.
+
+## 10.9 Analytics
+
+**No new event names.** GA4 caps them, and `tools/check-analytics.js` guard 11
+enforces the format. These screens fire exactly what they fired before:
+
+| Event | Where |
+|---|---|
+| `page_open` | automatic, `js/analytics.js`, one name with a `page` parameter |
+| `ui_click` | automatic, the one delegated listener |
+| `billing_portal` | the Subscription row on `/settings` |
+| `signout` | the Sign out button on `/settings` |
+
+`settings.html` loads `/js/analytics.js`, which guard 1 requires of every page
+in the repo.
+
+## 10.10 Verifying a change
+
+```
+python3 tools/serve-like-pages.py 8899 .     # NOT python3 -m http.server —
+                                             # that 404s every clean URL, and
+                                             # confirming /explore returns 200
+                                             # first is how you know
+cd tools
+node check-page.js "account.html"  ".au-panel" ""
+node check-page.js "settings.html" "a" ""
+node check-regressions.js && node check-analytics.js && node check-account-cache.js
+cd .. && python3 tools/check-structure.py
+```
+
+`check-structure.py` needs **no baseline entry** for a new page: the preload
+ratchet is skipped when a filename is absent from `structure-baseline.json`,
+and everything else it asserts is generic. Do not run `--save` to add one
+unless you mean to re-baseline every other page at the same time.
+
+None of that runs the page in a real browser, and every one of those checks is
+equally true of a page with nothing on it. The things that only Chrome will
+tell you, and that were measured for this rebuild:
+
+- three auth states on both screens — signed out, signed in free, subscriber —
+  plus signed in with no reading record at all
+- padlock count on `/explore` before and after signing out, and the unlock
+  flag in **both** stores after a second page load
+- contrast for every text pair against its real *composited* ground, not
+  against the token it was written with
+- the seven viewports, and that nothing tappable ends below `--bottom-safe`
+- zero `pageerror` in every state
+
+## 10.11 Contrast, measured
+
+Every pair on both screens, composited against the ground actually behind it.
+All clear WCAG AA for their size and weight; the tightest is 5.1:1 against a
+4.5:1 requirement.
+
+| Pair | px/weight | Ground | Ratio |
+|---|---|---|---|
+| Name | 21/700 | `--ground` | 10.14 |
+| Email line, stat labels, eyebrows, day letters, row values | 11–15/400–500 | `--ground` | 5.10 |
+| Stat numbers, week line, row labels, history titles | 13–27/600–700 | `--ground` | 10.14 |
+| Series name | 17/700 | `--raise` | 11.21 |
+| Series count | 13/500 | `--raise` | 5.40 |
+| Series CTA (`--accent-ink`) | 14/600 | `--raise` | 5.79 |
+| "See all →" (`--accent-ink`) | 14/600 | `--ground` | 5.24 |
+| Back link (`--dim`) | 15/600 | `--ground` | 6.34 |
+| **Sign out (`--crimson`)** | 15/600 | `--ground` | **5.48** |
+
+`--crimson` is quoted on both grounds because it is the one control that could
+move: **5.48:1 on `--ground`**, which is the bare page it actually sits on
+today, and **6.06:1 on `--raise`** if it is ever put inside a card. Colour
+only, no fill — a red *button* competes with the blue primary action and turns
+signing out into an alarm, when the reader is signing out, not deleting an
+account.

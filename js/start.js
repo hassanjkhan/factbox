@@ -58,7 +58,8 @@
       2  motivation  Q2. single-select, AUTO-ADVANCES
       3  affirm      not a question — one counted number (see below)
       4  goal        Q3. single-select, AUTO-ADVANCES
-      5  ready       their own answers, their own story, one way back to it
+      5  ready       their own answers, their own story, the way ON to an
+                    account, and the way BACK to the story under it
 
    SINGLE-SELECT AUTO-ADVANCES, after ADVANCE_MS, and the selection is marked
    BEFORE the timer is set so the confirmation is visible first. Multi-select
@@ -615,21 +616,55 @@
     paintBehind();
   }
 
-  /* The last screen's controls. See the comment beside them in join.html for
-     why there are two endings rather than one. */
+  /* Is there a Firebase account on this browser right now? Read, never
+     driven: js/auth.js owns every part of signing anybody in, and this file
+     only wants to know which word goes on a button. Absent SDK, signed out
+     and "not answered yet" all read as false, which is the safe direction —
+     the button then offers to make an account, and the account step skips
+     itself the moment it finds a uid. */
+  function signedIn() {
+    try { return !!(window.FBU && window.FBU.uid && window.FBU.uid()); }
+    catch (e) { return false; }
+  }
+
+  /* The last screen's controls.
+
+     THE ORDER THE FUNNEL RUNS IN, and this is the screen where it is decided.
+     /join is the sign-up funnel: the end of a free story, the paywall and the
+     account menu all arrive here as a reader deciding whether to pay. So the
+     primary control CONTINUES the funnel — it hands the screen to the account
+     step, which is where an account is actually created, and the prices come
+     after that. It used to hand over only when the story behind the sheet was
+     locked, which left a reader who had just tapped "Sign up to read more" on
+     a free story with no way forward at all.
+
+     THE WAY BACK TO THEIR STORY IS NEVER TAKEN AWAY. It is the quiet second
+     line under it, and it is an <a> with a real href, so declining to make an
+     account is one tap and cannot trap anybody.
+
+     THE ONE READER WHO IS NOT SOLD TO is one who already pays. For them the
+     story link is the whole ending, because there is nothing to sell.
+
+     WITH NO SCRIPT only #ob-ready-go is visible, because the other two ship
+     hidden — so a script-less page still ends on a control that works. */
   function paintEnding() {
     var go = el("ob-ready-go"), buy = el("ob-ready-buy"), back = el("ob-ready-back");
-    var open = originOpen();
+    var mine = unlockedNow();
     try {
       if (go) {
         go.setAttribute("href", storyHref(origin));
         text(go, origin ? "Take me back to the story" : "Start my first story");
       }
-      if (back) back.setAttribute("href", storyHref(origin));
+      if (back) {
+        back.setAttribute("href", storyHref(origin));
+        text(back, origin ? "Not now \u2014 back to the story"
+                          : "Not now \u2014 start a free story");
+      }
+      if (buy) text(buy, signedIn() ? "Pick my plan" : "Create my account");
     } catch (e) {}
-    show(go, open);
-    show(buy, !open);
-    show(back, !open);
+    show(go, mine);
+    show(buy, !mine);
+    show(back, !mine);
   }
 
   /* ======================================================================
@@ -844,6 +879,28 @@
     }
   }
 
+  /* ======================================================================
+     SAYING SO WHEN AN ANSWER IS ALREADY TICKED.
+
+     A reader who has been through these questions before gets them again —
+     from a story or from the paywall they are one tap past finishing a story,
+     and a price list is the wrong first move. What they do not get is the
+     work: repaint() marks everything they said last time, so the whole flow
+     is a tap per screen to confirm or change.
+
+     A ticked option with nothing said about it reads as broken, though, so
+     each question carries one line that appears only when there is something
+     to say. It goes the moment they tap on that screen, because from then on
+     the tick is theirs and this session's.
+     ====================================================================== */
+  function knownNode(screen) { return el("ob-known-" + screen); }
+
+  function paintKnown() {
+    show(knownNode("interests"),  picks.interests.length > 0);
+    show(knownNode("motivation"), !!picks.motivation);
+    show(knownNode("goal"),       !!picks.goal);
+  }
+
   /* Multi-select, with the cap made visible. At two answers the unchosen cards
      go inert and say so to assistive technology; they come back the moment one
      is released. */
@@ -899,6 +956,8 @@
       var ms = dwell();
       var took = true;
       try { took = pick(k) !== false; } catch (e2) {}
+      /* Their tick now, not last time's. */
+      show(knownNode(screen), false);
       if (goId) setGo(goId, !!ready());
       if (!took) return;              /* the cap refused it: not an answer */
 
@@ -963,11 +1022,14 @@
     var title = "";
     try { title = (originStack && originStack.title) ? String(originStack.title) : ""; } catch (e) {}
     if (title) {
-      /* "Back to X" is a promise the button can keep only when the story is
-         open to them. When it is not, the true sentence is that it is
-         waiting — and the control under it is the thing that opens it. */
-      text(el("ob-ready-h"), originOpen() ? ("Back to " + title + ".")
-                                          : (title + " is waiting."));
+      /* "Back to X" is a promise only the ending that ACTUALLY ends on the
+         story may make. A reader who already pays gets that ending; everyone
+         else is being handed to the account step, and for them the true
+         sentence is that the story is waiting — with the way back to it on
+         the line underneath. */
+      text(el("ob-ready-h"), (unlockedNow() && originOpen())
+                               ? ("Back to " + title + ".")
+                               : (title + " is waiting."));
     }
     paintEnding();
   }
@@ -1128,6 +1190,7 @@
     } catch (e) {}
 
     setGo("ob-interests-go", picks.interests.length > 0);
+    paintKnown();
   }
 
   /* ======================================================================
