@@ -19,7 +19,7 @@
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Join">
 <meta property="og:description" content="Five minutes a day, one story, and you actually remember it. A free trial before anything is charged.">
-<meta property="og:image" content="https://factbox.app/img/share.jpg">
+<meta property="og:image" content="https://factbox.app/img/share-home.jpg">
 <meta property="og:url" content="https://factbox.app/join">
 <meta name="twitter:card" content="summary_large_image">
 <!-- js/start.js counts screen 4's number out of this file. -->
@@ -468,7 +468,9 @@
     <button class="go" id="jn-buy" type="button" style="margin-top:18px">Start 3 days free</button>
     <p class="jn-terms" id="jn-terms"><b class="jn-trial">Three days free</b>. If you do not cancel
     before the trial ends, the plan you picked starts and renews at that price
-    until you cancel. Cancel any time.</p>
+    until you cancel. Cancel any time. Prices are in US dollars; if your card is
+    in another currency, Stripe converts at checkout and shows you that amount
+    first.</p>
     <p class="fine" id="jn-buy-note" hidden></p>
 
     <div class="jn-aside" id="jn-nostore" hidden>
@@ -1178,7 +1180,12 @@
         text(terms,
           capFirst(A.trialWords()) + ", then " + p.billedText + " " + p.cycle +
           " (" + p.perMonthAbout + " a month). Cancel before the trial ends and " +
-          "you are not charged. After that it renews at that price until you cancel.");
+          "you are not charged. After that it renews at that price until you cancel. " +
+          /* Measured on the live Payment Links: Stripe presents the buyer their
+             own currency and adds a conversion fee, so a Canadian meets CA$51.63
+             where this screen says US$35.88. Stripe shows them that figure before
+             they authorise anything; this is here so it is not a surprise. */
+          ((A.pricing() || {}).currencyNote || ""));
       }
 
       /* If a link has not been created yet, say so on the button, before the

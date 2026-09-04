@@ -106,9 +106,34 @@ var FBA = (function () {
      If you change it, change it in Stripe FIRST. */
   var TRIAL_DAYS = 3;
 
+  /* Said once, wherever a price is shown to someone who has not bought
+     yet. Stripe does the conversion at checkout and shows the buyer the
+     figure in their own currency before they authorise anything, so this
+     sets the expectation rather than making a promise we cannot keep. */
+  var CURRENCY_NOTE = "Prices are in US dollars. If your card is in another currency, Stripe converts at checkout and shows you that amount first.";
+
   var PRICING = {
     currency: "USD",
-    symbol:   "$",
+    /* "US$", not "$".
+
+       MEASURED on the live Payment Links, 4 September 2026, from a Canadian
+       IP: Stripe presents the buyer their OWN currency and adds a conversion
+       fee. The annual link renders
+
+         "3 days free / Then CA$51.63 per year starting September 7, 2026"
+         "1 USD = 1.4390 CAD (includes 4% conversion fee)"
+
+       and 35.88 x 1.4390 = 51.63 exactly, so the amount below is right and
+       only the LABEL was wrong. A bare "$" beside 35.88 reads as dollars-
+       whatever-you-use, and a Canadian who reads it as CAD meets a number
+       44% higher at checkout. That is the same failure as printing $35 for a
+       $35.88 charge, arrived at from the other direction.
+
+       A US buyer sees exactly this figure. Everyone else sees their own
+       currency at Stripe's rate, which is why CURRENCY_NOTE exists and why
+       the subscription page reads its price off Stripe's record, never off
+       this block. */
+    symbol:   "US$",
 
     /* The ladder, longest-lived first in intent, rendered in ORDER below.
 
@@ -403,6 +428,7 @@ var FBA = (function () {
      a caller cannot edit the price list out from under the plan screen. */
   function pricing() {
     var out = { currency: PRICING.currency, symbol: PRICING.symbol,
+                currencyNote: CURRENCY_NOTE,
                 base: PRICING.base, trialDays: TRIAL_DAYS, plans: [] }, i, p, c, k;
     try {
       for (i = 0; i < PRICING.plans.length; i++) {

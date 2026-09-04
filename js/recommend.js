@@ -1535,6 +1535,12 @@ var FBR = (function () {
       if (d) {
         act.appendChild(el("p", "fine pw-fine",
           trialShort() + " · " + zero() + " today · Cancel anytime"));
+        /* Said here too, because this screen prints a figure and the reader
+           may authorise from the next one without reading it again. */
+        try {
+          var cn = FBA.pricing && (FBA.pricing() || {}).currencyNote;
+          if (cn) act.appendChild(el("p", "fine pw-fine pw-cur", cn));
+        } catch (e) {}
       }
 
       /* One wrapper, so the two can sit side by side on a phone turned
