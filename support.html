@@ -121,28 +121,12 @@
   .sp-box.is-sent .go{display:none}
   /* Not in the design, and kept anyway: without it a reader who has sent one
      message cannot send a second without reloading the page. */
-  .sp-again{min-height:var(--tap);padding:0;border:0;background:none;color:var(--parchment);font-family:var(--ui);font-size:var(--fs-meta);font-weight:var(--w-head);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
-  /* ---- The answers ------------------------------------------------------- */
-  .sp-faqs{margin-top:8px}
-  .sp-faq{border-top:1px solid var(--hair)}
-  .sp-faq:last-of-type{border-bottom:1px solid var(--hair)}
-  .sp-faq summary{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:var(--tap);padding:14px 2px;cursor:pointer;font-size:var(--fs-sub);font-weight:var(--w-strong);letter-spacing:var(--ls-title);list-style:none}
-  .sp-faq summary::-webkit-details-marker{display:none}
-  .sp-faq summary::after{content:"";flex:none;width:10px;height:10px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim);transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s ease}
-  .sp-faq[open] summary::after{transform:rotate(-135deg) translate(-3px,-3px)}
-  .sp-a{padding:0 2px 18px}
-  .sp-a p{margin:0 0 11px;font-size:.94rem;line-height:1.65;font-weight:var(--w-body);color:var(--dim)}
-  .sp-a ul{margin:0 0 12px;padding-left:20px}
-  .sp-a li{font-size:.94rem;line-height:1.65;font-weight:var(--w-body);color:var(--dim);margin:0 0 8px}
-  .sp-a strong{color:var(--parchment);font-weight:var(--w-strong)}
   /* app.css sets a{color:inherit}, so a link inside an answer needs saying. */
-  .sp-a a,
   .sp-foot a{color:var(--parchment);text-decoration:underline;text-underline-offset:3px}
   .sp-foot{margin:34px 0 0;font-size:.94rem;line-height:var(--lh-body);color:var(--dim);max-width:62ch}
 
   @media (prefers-reduced-motion:reduce){
-    .sp-faq summary::after{transition:none}
   }
 </style>
 </head>
@@ -218,131 +202,6 @@
     </div>
   </form>
 
-  <h2 class="sp-eyebrow">Questions</h2>
-  <section class="sp-faqs" aria-label="Questions">
-      <details class="sp-faq">
-        <summary>What is Factbox?</summary>
-        <div class="sp-a"><p>A history reader made for a phone. It is fifty-one stories, told across 450
-     cards, each one set on a painting or a photograph from the world's museum
-     collections. A story takes about a minute and a half to two and a half minutes.
-     There is nothing to install: it is a website, and it opens in whatever browser you
-     are already holding.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>What does it cost?</summary>
-        <div class="sp-a"><p><strong>Two stories are free</strong>, with no payment and no sign-up, so you can see
-     what it is before deciding. The rest of the stories are a subscription to the site.</p>
-  <p>Several plans are offered, differing in billing period and price, and some include a
-     free trial. <strong>The price, the billing period and the trial for the plan you pick
-     are shown on the checkout page before you pay</strong> — we do not repeat the numbers
-     here, because a page that repeats prices eventually contradicts the till. Payment is
-     handled by Stripe on Stripe's own page; your card details never touch this site.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>How do I cancel?</summary>
-        <div class="sp-a"><p>Open the <a href="https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600" rel="noopener">billing portal</a> and cancel it yourself. Enter
-     the email you paid with, Stripe sends you a sign-in link, and cancelling takes one tap.
-     You do not have to ask us and you do not have to wait for a reply. The same page lets
-     you switch plans, update a card, and download past invoices.</p>
-  <p>If you would rather we did it, email <a href="mailto:hello@factbox.app">hello@factbox.app</a>
-     and we will cancel it and confirm.</p>
-  <p>If you are on a free trial, cancelling before it ends means you are never charged.
-     After that, cancelling stops the next charge and you keep reading for the period you
-     have already paid for. The <a href="/terms">Terms</a> set out the rest.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>I paid, and now it is asking me to pay again</summary>
-        <div class="sp-a"><p>This is the most common message we get, and it is almost always the same cause.
-     Access is remembered by the <em>browser</em> you paid in, because there is no account
-     to log into. Open the site in a different browser — or on a different phone, or after
-     clearing your browsing data — and it looks like a stranger.</p>
-  <p>The fix is your <strong>restore link</strong>. After you subscribe, the story shelf
-     shows a box headed "Keep this link" with a long factbox.app address in it. Open that
-     link on the new phone and it unlocks there.</p>
-  <ul>
-    <li><strong>Save it now if you have not.</strong> Email it to yourself. It is your only key.</li>
-    <li><strong>Keep it private.</strong> Anyone who has the link has access — it works by possession, not by password.</li>
-    <li><strong>Signing in does exactly this.</strong> Sign in with the same Google account, email or phone number you used, and your subscription is there — that is the whole point of having an account. The restore link below is only for anyone who subscribed before accounts existed.</li>
-    <li><strong>Lost it?</strong> Write to us from the address you paid with, and we will find the payment and send you a working link.</li>
-  </ul>
-  <div class="note">
-    <p>A specific warning about Instagram and TikTok. Both open links inside their own
-       in-app browser, which is not the same browser as Safari or Chrome and sometimes
-       throws its storage away. If you subscribed inside one of those apps, get the restore
-       link out into your real browser as soon as you can.</p>
-  </div></div>
-      </details>
-      <details class="sp-faq">
-        <summary>What happens to my reading progress?</summary>
-        <div class="sp-a"><p>Signed in, it is kept against your account, so it follows you to another
-     phone and comes back if you clear this one. Signed out, it stays in this browser
-     and nowhere else. Either way:</p>
-  <ul>
-    <li>Signed out, clearing your browsing data erases it and <strong>we cannot restore it</strong>, because there is no copy anywhere else. Signed in, it comes back when you sign in again.</li>
-    <li>Signed out, it does not follow you to another phone. The restore link carries your access across; it does not carry your progress.</li>
-    <li>In private browsing, and in a few in-app browsers, the browser refuses to save anything at all. Reading works fine; nothing is remembered afterwards. Where saving is unavailable the site says so rather than pretending the button worked.</li>
-  </ul>
-  <p>The <a href="/privacy">Privacy Policy</a> lists every key the site writes, exactly
-     as the code writes it.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>Nothing is loading</summary>
-        <div class="sp-a"><p>If the shelf says it could not load the stories, that is a network problem between
-     you and the site — reload the page. If a story opens but its picture does not, the
-     text is still there and readable; the plate is the only thing missing.</p>
-  <p>Factbox needs JavaScript to assemble a story. If you block it, you will get a message
-     saying so instead of a blank page.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>The sound is not playing</summary>
-        <div class="sp-a"><p>A story can carry a quiet ambient sound bed behind it — a harbour, a gallery, a
-     door. It is <strong>off unless you turn it on</strong>: one tap on, one tap off, and
-     the site remembers your choice for next time. It is meant to sit under the reading
-     rather than be noticed, so it is deliberately quiet, and quieter still if your system
-     is set to reduce motion.</p>
-  <p>If you have switched it on and hear nothing, check the physical silent switch on the
-     side of the phone, and the volume while the page is open. If your browser cannot play
-     it at all, the control takes itself away rather than sitting there doing nothing.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>Where does the artwork come from?</summary>
-        <div class="sp-a"><p>Every plate is from <strong>Wikimedia Commons</strong> — 361 of them across the season.
-     Most are public domain. The rest are used under Creative Commons licences that require
-     the photographer and the licence to be named and linked, and they are, on the card
-     itself and again in full on the <a href="/credits">artwork credits page</a>, which
-     lists every plate with its source and its licence.</p>
-  <p>We download each file once and serve it from this domain rather than hotlinking
-     Wikimedia, and we do not crop, recolour or filter what we serve.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>Something in a card is wrong</summary>
-        <div class="sp-a"><p>Tell us, and please say which story and which card. This is the most useful message
-     you can send: getting the history right is the whole reason the thing exists, so a
-     correction is a gift rather than a complaint.</p>
-  <p>If your source disagrees with ours, send yours and we will look at both. Where a card
-     rests on a specific document or a disputed reading, the card says so — but not every
-     card carries a citation, and we would rather be told than assumed correct.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>What do you know about me?</summary>
-        <div class="sp-a"><p>If you have an account, we hold your email address, two of your
-     onboarding answers, and — so it follows you between phones — which stories you have
-     read and saved. Your email also goes into the Stripe checkout page so you do not
-     type it twice. Signed out, none of that leaves your browser. Payment is Stripe's,
-     so Stripe holds your billing details and we do not. We measure which stories people
-     finish and how long each card holds you, through PostHog, so that the next stories
-     are better than the last. It stores a random id in your browser and there is a
-     one-tap off switch on the Privacy page. The <a href="/privacy">Privacy Policy</a> is the full
-     account, key by key.</p></div>
-      </details>
-      <details class="sp-faq">
-        <summary>Accessibility</summary>
-        <div class="sp-a"><p>If your system is set to reduce motion, the site respects it: animation and transitions
-     are switched off and the pages simply hold still. Every control is built to a 44-pixel
-     minimum touch target. If something is hard to use with an assistive technology, tell us
-     what and on which page — we would rather fix it than have you work around it.</p></div>
-      </details>
-  </section>
 
   <p class="sp-foot" style="margin-top:34px">Iris Monet Labs LLC —
      <a href="mailto:hello@factbox.app">hello@factbox.app</a>. One address for
