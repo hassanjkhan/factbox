@@ -124,44 +124,37 @@ const CHECKS = [
     },
   },
   {
-    name: "the onboarding records the answer chosen, per question",
-    why: "THE gap this was built for. Six questions that reported only which " +
-         "screen was shown. Without the answer there is no way to tell what " +
-         "readers want, and without the question key a report reads 'q5'.",
+    name: "the retired onboarding is retired in one piece",
+    why: "THIS CHECK REPLACED FIVE. /join used to open with five screens of " +
+         "questions driven by js/start.js, and five guards here asserted that " +
+         "each of them still recorded an answer, a dwell and an abandon. The " +
+         "conversion flow was redesigned around asking for an ACCOUNT inside " +
+         "the story instead of asking questions on the way to a price, so the " +
+         "screens, the engine and its instrumentation are gone together.\n" +
+         "      A check that asserts a flow nobody ships fails for the wrong " +
+         "reason and then gets ignored, which is how a real failure hides " +
+         "behind a stale one — tools/check-shelf.js is the cautionary tale in " +
+         "this repo. So the five are replaced by one, and what it guards is " +
+         "that the retirement stays WHOLE: nobody puts the screens back " +
+         "without the engine, or the engine back without the screens and " +
+         "their instrumentation. Bringing the flow back means bringing back " +
+         "the five guards with it.",
     pass: () => {
-      const s = read("js/start.js");
-      return /track\("start_answer",\s*\{[\s\S]{0,300}?question:[\s\S]{0,120}?answer:/.test(s) &&
-             /var QKEY = \{/.test(s);
-    },
-  },
-  {
-    name: "the onboarding records the dwell on each question",
-    why: "How long a question took is how you tell a question that is hard to " +
-         "answer from one that is boring. Both look the same in a step count.",
-    pass: () => {
-      const s = read("js/start.js");
-      return /track\("start_answer",[\s\S]{0,400}?dwell_ms:\s*ms/.test(s) &&
-             /function dwell\(\)/.test(s) && /DWELL_MAX/.test(s);
-    },
-  },
-  {
-    name: "the onboarding records where the reader walked away",
-    why: "The drop-off curve. Reported on pagehide and on the tab going hidden, " +
-         "which are the only two moments an in-app webview gives you.",
-    pass: () => {
-      const s = read("js/start.js");
-      return /track\("start_abandon",\s*\{[\s\S]{0,300}?step:[\s\S]{0,300}?dwell_ms:[\s\S]{0,120}?answers:/.test(s) &&
-             /on\(window, "pagehide", abandon\)/.test(s);
-    },
-  },
-  {
-    name: "the turn and wait screens carry a dwell too",
-    why: "They are two of the nine screens and a reader can leave on either. " +
-         "Their dwell rides on the next start_step as from_ms rather than " +
-         "costing two more event names.",
-    pass: () => {
-      const s = read("js/start.js");
-      return /p\.from = fromName; p\.from_ms = fromMs;/.test(s);
+      const engine = read("js/start.js");
+      const page = read("join.html");
+      const hasScreens = /id="ob-stage"/.test(page) || /js\/start\.js"><\/script>/.test(page);
+      if (!engine && !hasScreens) return true;
+      if (engine && hasScreens) {
+        /* Somebody has brought it back. The five guards that went with it are
+           what has to come back too, and this check cannot stand in for them. */
+        return "js/start.js and /join's question screens are both back; " +
+               "restore the five start_step / start_answer / start_abandon " +
+               "guards this check replaced";
+      }
+      return engine
+        ? "js/start.js is still here but /join no longer loads it — dead code"
+        : "/join still carries the question screens but js/start.js is gone — " +
+          "five screens with no script to advance them is a dead end";
     },
   },
   {
@@ -201,9 +194,11 @@ const CHECKS = [
     why: "GA4 truncates a long string value and PostHog does not, so the same " +
          "event ends up two different strings in the two sinks. Clip at the " +
          "call site and they agree.",
+    /* js/start.js had its own copy, because it sent its own events without
+       going through analytics.js. It is retired; analytics.js is the only
+       clipper left, which is one fewer place for the two to disagree. */
     pass: () => /function clip\(/.test(read("js/analytics.js")) &&
-                /var CLIP = 100;/.test(read("js/analytics.js")) &&
-                /function clip\(/.test(read("js/start.js")),
+                /var CLIP = 100;/.test(read("js/analytics.js")),
   },
   {
     name: "nothing a reader typed is ever sent",

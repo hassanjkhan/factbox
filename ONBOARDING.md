@@ -50,20 +50,40 @@ So verification means running the page in a DOM and asserting real text is on
 the screen. Status codes prove nothing.
 
 ```sh
-python3 -m http.server 8899 &
+python3 tools/serve-like-pages.py 8899 . &     # NOT python3 -m http.server
 cd tools
 node check-page.js  "stories.html"   ".card"    "Be disgustingly"
 node check-page.js  "read.html?s=02" ".beat"    "seductress"
 node check-page.js  "read.html?s=44" ".paywall" "Your next story is already waiting"
+node check-page.js  "join"           "#jn-plan" "a year"
 node check-story.js ../story.html
 node check-backend.js
 cd .. && python3 tools/check-structure.py
 node tools/check-analytics.js
+node tools/check-regressions.js
+node tools/check-account-cache.js
 ```
+
+**Use `tools/serve-like-pages.py`, not `python3 -m http.server`.** It resolves
+`/foo` to `foo.html` the way GitHub Pages does; a plain `http.server` 404s every
+clean URL on the site and makes a working redirect look broken. Confirm
+`/explore` returns 200 before you trust a single result. That has produced a
+false failure here more than once.
 
 Each exits non-zero on a script error, on finding none of the expected elements,
 or on missing expected text. Run them before every push. If you change anything
 about how a page renders, add a case.
+
+`.paywall` on `read.html?s=44` is the conversion sheet. **Both of its sheets are
+in the DOM from the first frame**, hidden with `visibility:hidden` rather than
+`display:none`, which is what makes that assertion possible: the sheet itself
+only appears when the reader scrolls past the boundary, and no jsdom harness
+scrolls. `RECOMMEND.md` §4 has the rest.
+
+A checker cannot make the gesture, so the boundary is walked in real Chrome
+instead — mouse wheel, trackpad, touch drag and keyboard, plus the bounce that
+must **not** open it. `tools/node_modules` already has `puppeteer-core`; drive
+`/Applications/Google Chrome.app`.
 
 `tools/compose.py` carries the cheap half of the same idea: it refuses to build
 a page whose script looks up an id the page does not contain.
@@ -194,6 +214,61 @@ Cloud Functions on **30 October 2026**; moving to Node 22 is outstanding.
 
 
 ## 8. Known and outstanding
+
+### The conversion flow, and three things in its design that do not ship
+
+The locked-story flow is `RECOMMEND.md` §4. Three things the mockup draws are
+deliberately not built, each with a switch and a condition written beside it in
+`js/recommend.js`:
+
+- **The two percentages** about what "Factbox members" did in thirty days.
+  `PROOF.on` is `false` and `PROOF.stat` is `null`; a copy-only slot renders
+  instead. The figures are marked `verified:false` in the mockup's own source
+  and are claims about a member base this product does not have. Run the study
+  first. See §4e.
+- **$35.00.** Stripe charges **USD 35.88**; there is no $35.00 price on the
+  account. Every figure on the sheet is read out of `js/account.js`, and
+  `tools/check-regressions.js` fails the build on a typed `$<digit>` in
+  `js/recommend.js`, `css/recommend.css` or `read.html`. `STRIPE.md` §7 is the
+  click-path, and `link` and `amountCents` change together in one edit.
+- **"Continue with Apple."** The Firebase project has no Apple provider — the
+  identity toolkit answers `OPERATION_NOT_ALLOWED` for `apple.com` and returns
+  a real auth URI for `google.com`. `APPLE_ON` carries the four steps, in
+  order, and is double-gated on `js/auth.js` growing a `signInApple()`.
+
+**One mismatch to settle, and it is Hassan's, not a coding session's:** the new
+design says "no trial", and all three live Payment Links carry
+`trial_period_days: 3`. The screens still say "3 days free" because the till
+still gives it. If the design is right, the links change first — `STRIPE.md` §7
+step 6 on each of the three, then `TRIAL_DAYS` in `js/account.js`. Never the
+code first.
+
+### /join no longer asks anything
+
+The five onboarding questions are retired. `/join` is the checkout — an email,
+the plan loader, the real prices, sign-in, and the already-paid terminus — and
+it is still a real page, because `/start`, `/firststory` and the three composed
+story pages all link to it and `SPEC.md` §2.4 forbids a stub. `js/start.js` and
+`tools/drive-start.js` went with the questions, and the five guards in
+`tools/check-analytics.js` that asserted their instrumentation are replaced by
+one that asserts the retirement stayed whole.
+
+**The answers still parse.** `js/account.js` keeps every setter and every
+vocabulary, because `js/profile-sync.js`'s `WATCHED` list names them and a
+returning reader's stored record still references them. Removing a vocabulary
+that a stored record uses is how that reader's profile becomes unreadable.
+Nothing about `js/account.js`'s storage layer changed.
+
+Two things this leaves inaccurate, neither of them in a file the conversion
+work owns:
+
+- `start.html` still says "A few quick questions and your feed is built" over a
+  button reading "Build my feed" that goes to `/join`. There are no questions
+  there any more.
+- `privacy.html` §04 still lists `start_step`, `start_answer`, `start_abandon`
+  and `start_ready`. Nothing sends them now.
+
+### Everything else
 
 - `data/stacks.json` is public. Every word of all 51 stories is readable without
   paying. Hassan knows and has decided to leave it for now; the Firestore path

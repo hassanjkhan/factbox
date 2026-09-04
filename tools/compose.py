@@ -239,9 +239,23 @@ _ASK = """
 (function () {
   "use strict";
 
-  /* The funnel's own route, the one the retired deck's button went to:
-     FB.checkout(el, "story") -> /join?from=story. All three of these pages
-     carry it; only the one that sets window.FB_ENDCTA puts it on screen. */
+  /* WHERE THE ASK GOES, IN THE ORDER IT IS TRIED.
+
+     1. window.FB_ENDGATE, published by read.html's end-card block. It opens
+        the account-then-offer sheet OVER this card, which is the same surface
+        a locked story's boundary opens. A stranger who has just finished
+        their first story is asked for an account BEFORE a price, which is the
+        whole point: a checkout with no Firebase uid behind it cannot be
+        attributed and must not start (STRIPE.md 1), and discovering that on
+        the plan screen is discovering it too late.
+
+     2. FB.checkout(el, "story") -> /join?from=story, if the hook is not
+        there — an older cached read.html, or a story that never loaded.
+
+     3. The href, if no script runs at all.
+
+     All three of these pages carry the URL; only the one that sets
+     window.FB_ENDCTA puts the control on screen. */
   var JOIN = "/join?from=story";
   /* The same words and the same destination as join.html's own line. */
   var SIGNIN = "/login?next=%2Fexplore";
@@ -265,6 +279,13 @@ _ASK = """
     a.setAttribute("data-fbt", "-");
     a.textContent = CTA;
     a.addEventListener("click", function (ev) {
+      try {
+        if (typeof window.FB_ENDGATE === "function") {
+          if (ev && ev.preventDefault) ev.preventDefault();
+          window.FB_ENDGATE();
+          return;
+        }
+      } catch (e0) {}
       try {
         if (window.FB && typeof FB.checkout === "function") {
           if (ev && ev.preventDefault) ev.preventDefault();
@@ -367,7 +388,12 @@ for _name, _p, _asks in _written:
         for _need in ('window.FB_ENDCTA = "%s";' % END_CTA,
                       "Already have an account? ",
                       "/login?next=%2Fexplore",
-                      'p.className = "fine ec-signin";'):
+                      'p.className = "fine ec-signin";',
+                      # The ask must reach the account-then-offer sheet, not
+                      # a price screen with no account behind it. Losing this
+                      # line would still render — as a funnel that sends every
+                      # stranger to a checkout that cannot be attributed.
+                      "window.FB_ENDGATE()"):
             if _need not in _p:
                 raise SystemExit(
                     f"BUILD FAILED — {_name} is the page that asks and it is "

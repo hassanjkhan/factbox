@@ -212,146 +212,239 @@ What that setting asks for is less movement, not fewer features. So:
 
 ---
 
-## 4. The wall — `FBR.paywall()`, `.pane.paywall`
+## 4. The wall — `FBR.paywall()`, `.fbg`
 
-Two screens on one pane. `.is-cut`, then `.is-offer`.
+**It is not a pane any more.** It used to be a `.pane` that replaced the deck:
+a manufactured "interruption" screen carrying the story's own first card, then
+an offer screen behind a Continue button. The reader met a reproduction of the
+story, and then a price.
 
-### 4a. The interruption — `.pw-cut`
-
-```
- [ the story's plate, faded back ]
-
-  Genghis Khan built the largest
-  contiguous land empire in history.
-
-  Then he made sure nobody could find his
-  grave. Genghis Khan died in 1227, but the
-  location of his burial remains ▓▓▓▓▓▓▓
-
-  [      Continue      ]
-```
-
-The story is already running and it stops mid-thought. **Nothing is sold on
-this screen and no number is on it** — a price flashed over a cliffhanger that
-has not landed reads as an advertisement rather than as an interruption.
-
-Every word is the story's own. The headline is `cards[0].head`, or the hook if
-the caller had no cards at all. The paragraph is `cards[0].body` — and where
-that is missing, the next card's line, which is not a nicety:
-
-* a locked story opened directly arrives through `FB.loadStory()`, the whole
-  file, and card one has a body;
-* the same wall reached from the end of another story arrives through
-  `FB.loadIndex()`, whose rows carry card **heads and no bodies at all**.
-
-Without the fallback every wall reached that way was a headline over an empty
-screen. Either way it is one card past the hook, and it fades out mid-sentence.
-**Nothing here fetches anything** — it reads what the caller was already
-holding, which is the same discipline the plate pager in `read.html` follows.
-Nothing is written for this screen either, because a cliffhanger somebody
-invented is a cliffhanger the story does not answer.
-
-The whole screen advances on a tap — the same gesture the reader has used
-between every other card — and there is a real `<button>` on it as well,
-because a screen whose only affordance is "tap anywhere" cannot be reached from
-a keyboard and does not say what happens next. `.pw-cut` does not scroll: the
-paragraph is cut off by design, and a box you can scroll to read the rest of it
-is the opposite of an interruption.
-
-### 4b. The offer — `.pw-offer`
+Now a locked story really opens and really runs. `read.html` draws its first
+cards on their own plates, with their own credit lines and the same progress
+rail every other story has, and the run stops at a boundary the reader can see.
+`FBR.paywall()` returns a **fixed overlay** that belongs on the document body,
+and what the reader does at that boundary is what opens it.
 
 ```
- [ the story's cover, a band across the top ]
-  UNLOCK FACTBOX
-  Finish the story.
-  And unlock every story in Factbox. Your
-  next story is already waiting.
-
-  $35.88/year
-  Less than $3 a month
-
-  [ Unlock & keep reading ]
-  3 days free · $0 today · Cancel anytime
-  View other plans      Maybe later
+ 1  the story, running                    read.html
+ 2  .fbg-auth   "Keep reading."           an account, so the progress is theirs
+ 3  .fbg-buy    "Finish the story."       the amount, the terms, one button
+ 4  Stripe                                not ours
+ 5  the story, unlocked                   read.html
 ```
 
-**Not one figure on that screen is typed.** Every one is read out of
-`js/account.js`, which is the single place that knows what Stripe charges:
+Five states, and one of them is Stripe's. A reader who is already signed in
+never sees state 2 at all: `open()` asks `FBU.signedIn()` and goes straight to
+the offer.
 
-| On screen | Read from |
-|---|---|
-| `$35.88` | `plan.billedText` — the charge, to the cent |
-| `/year` | `perLong(plan)`, off `intervalUnit` / `intervalCount`, so a plan billed every three months could never be labelled `/year` |
-| `Less than $3 a month` | `underMonth(plan)`: `perMonthCents` rounded **up** to the next whole unit, with `pricing().symbol` in front of it |
-| `3 days free` | `FBA.trialShort()` |
-| `$0 today` | `zero()` — the symbol and a nought, which is the one figure here that is not a price but the absence of one |
+### 4a. The boundary, in the story — `.fbw-peek`, `.fbw-rule`, `.fbw-gap`
 
-The mockup this screen is cut from renders **`$35` `/year`**. Stripe charges
-**$35.88**. The rule, from the owner: *never display $35 if Stripe will
-actually charge $35.88; pricing displayed to users must exactly match what they
-authorize.* So the layout and the typography were taken and the number was not.
+`read.html` draws `FREE_RUN` cards (two) and adds two things to the last of
+them: the **next card's own opening line**, at the opacity of something you
+cannot read yet, and a hairline with an inline-SVG padlock in it. Below the
+last card sits a tail — the room the gesture needs, and the one way through for
+a reader whose sheet never opened.
 
-`underMonth()` earns its own paragraph. "Less than $3" is true today because
-$35.88 ÷ 12 is $2.99, but it is a claim about a number, and a person typing it
-is a person who will not be here when the number moves. So it is derived:
-round the per-month figure **up**, never down, and if the plan divides into
-whole units exactly — a hypothetical $36.00 a year — the claim is false and is
-not made, and `perMonthAbout` is printed instead. Nothing rounds in our favour.
+Two cards, not one and not three. One card is a headline and the reader has not
+started; three is most of a five-minute story given away on every locked URL,
+and there are fifty-one of them. Two is a hook and its turn, so stopping costs
+something — which is the whole mechanism.
 
+Nothing on the boundary is invented. The peek is the story's own next head,
+dimmed. The rail counts the **whole** story, so a reader on card two of eight
+sees eight: that is the argument, not a hidden fact.
+
+### 4b. The gesture — one more scroll past the boundary
+
+There is no unlock button to hunt for. Trying to keep reading **is** the intent
+signal. `read.html` owns the gesture because it owns the deck; this file owns
+what the gesture opens.
+
+Two independent ways in, guarding different failures:
+
+* **position** — the reader is more than 88px below the top of the boundary
+  card, which is inside the tail. No arming needed, and it deliberately catches
+  a hard flick that goes straight through, because at speed that is what "keep
+  reading" looks like. It cannot be tripped by a bounce: a bounce at a card
+  edge oscillates around that edge by a few pixels, and 88 is most of a
+  paragraph past it. It latches, and un-latches only when the reader comes back
+  up above the line.
+* **gesture** — for the case where the deck *cannot* move: a snapping engine
+  that takes the delta and puts the box back, a tail shorter than the
+  threshold, a reader with no thumb on the glass. 90px of accumulated wheel in
+  one push (400ms of quiet starts a new push), 56px of one upward finger drag,
+  or ArrowDown / PageDown / Space / End. This one **does** need arming —
+  otherwise the momentum of arriving would count as asking — so it waits for
+  the deck to have been quiet for 160ms with the boundary card in place. A
+  gesture copies that arming at its first frame, because a drag moves the deck
+  and would otherwise arm itself out of existence on its own first pixel.
+
+**Snapping goes from mandatory to proximity for a locked run**, through
+`.deck.is-wall` in `css/recommend.css`. `css/app.css` gives the deck
+`scroll-snap-type: y mandatory`, which is right for a story and wrong under a
+boundary: mandatory makes the last card the last position the scroller will
+rest on, so the tail can never be reached, the way-through link in it can never
+be seen, and the one-more-scroll is undone by the engine before it finishes.
+Every other story keeps mandatory.
+
+**Dismissing is not consent.** "Not now", "Maybe later", Escape and a tap on
+the veil all shut the sheet and leave the reader in the story, and both ways in
+disarm — so the position they are left standing at cannot spring the sheet
+straight back at them. Coming back to the boundary and going again re-opens it.
+
+### 4c. The account sheet — `.fbg-auth`
+
+Eyebrow: the story's own title. Head: *"Keep reading."* Sub: *"Save your
+progress, and pick up exactly where you stopped."* Then Continue with Google,
+Continue with email, "Already have an account? Sign in", and "Not now".
+
+**Why an account comes before a price.** It is not a toll on the way to
+checkout. `STRIPE.md` §1: `client_reference_id` is the entire link between a
+payment and an account, and it has to be a Firebase uid. A reader who pays
+without one gets in through a local flag, on that browser only — their money
+does not follow them to a second phone and does not survive clearing the
+browser. The sheet asks for the thing that makes the purchase theirs.
+
+Google is `FBU.signInGoogle()`, which falls back to a redirect inside the
+Instagram and TikTok webviews. Email is `/login?next=<this page>`, the site's
+one real Firebase sign-in, which also creates accounts. Both come back to the
+same story with the same query string on it.
+
+**"Continue with Apple" is in the mockup and is not built.** Firebase has no
+Apple provider on this project — the identity toolkit answers
+`OPERATION_NOT_ALLOWED` for `apple.com` and returns a real auth URI for
+`google.com` — so a button drawn from that design would open a screen that
+cannot sign anybody in, and a sign-in control that fails is worse than one that
+is not there. `APPLE_ON` in `js/recommend.js` carries the four steps that would
+have to happen first, in order. The flag is double-gated: flipping it before
+`js/auth.js` grows a `signInApple()` still draws nothing.
+
+### 4d. The offer — `.fbg-buy`
+
+Eyebrow: the story's title. Head: *"Finish the story."* Sub: *"Unlock every
+story in Factbox. Your next story is already waiting."* Then the proof slot,
+the amount, the button, the terms, and two ghosts.
+
+**The title is the eyebrow, not the headline, and that is a deviation from the
+mockup.** The mockup reads *"Finish Cleopatra."*, built from the subject's
+name. That works because it was drawn on the one subject in the season whose
+name is a proper noun. The other seven names in the taxonomy are group labels —
+"Medieval and modern", "When it all went wrong", "Things you have wrong" — and
+the same sentence over any of them reads *"Finish Medieval and modern."*, which
+is not English. Titles do not survive the slot either: *"Finish 7 Deadly Sins
+Explained."* So the naming moves up one line, where a headline belongs and
+where no grammar is being asserted about it. The mockup's "· 2 of 9" is not
+here either: that number needs the whole index, this screen is handed one
+story, and a position guessed from one record is a number we made up.
+
+**EVERY FIGURE IS READ, NEVER TYPED.** `billedText` is what Stripe charges to
+the cent; `perLong()` is the interval it charges on; `underMonth()` divides it
+down and rounds **up**, so the softer line can never quote a figure below the
+one the reader authorises; `trialShort()` and `zero()` are the terms.
 `tools/check-regressions.js` greps `js/recommend.js`, `css/recommend.css` and
-`read.html` for a dollar sign followed by a digit and fails the build on one.
-That guard is why `firstSentence()` uses a replacer function rather than `"$1"`
-in a regex: a capture-group reference and a typed price look identical to a
-grep, and the honest fix is to stop writing the thing that looks wrong.
+`read.html` for a typed `$<digit>` and fails the build on one.
 
-### Why the button does not say "Start my 3 days free"
+> Stripe charges **USD 35.88** a year, not 35.00. The mockup's ladder says
+> `annual: 3500` "at the $35 the owner wants". There is no $35.00 price in
+> Stripe. Until there is, this screen says what `FBA` says. `STRIPE.md` §7 is
+> the click-path, and `link` and `amountCents` change together in one edit.
+> The currency symbol is `FBA`'s too — `PRICING.symbol` is `"US$"`, because
+> Stripe presents a non-US buyer their own currency and the annual link renders
+> CA$51.63 from a Canadian address.
 
-**It cannot start a trial.** Nothing on the reader page can: checkout is three
-Stripe Payment Links reached from the end of `/join`, and this control opens
-`/join` at its first question. A button that promises a trial and lands on
-"what do you want to remember?" is the same class of untruth as printing a
-round number when the till takes 88 cents more.
+**The trial is stated because the till gives one.** All three live Payment
+Links carry `trial_period_days: 3`. The mockup's changelog says the new design
+is "one $35/year price, no trial" — if the screens stop saying so while Stripe
+still grants it, the screen and the till disagree. Change the links first
+(`STRIPE.md` §7 step 6, on all three, then `TRIAL_DAYS`), never this screen
+first.
 
-So the button names the outcome the reader is buying — unlock, and carry on
-reading — and the trial is on the pane as **terms** under it rather than as the
-button's promise. Nothing about the offer is hidden; only the claim that the
-tap performs it.
+### 4e. The proof slot — `.fbg-proof`, and the statistics that do not ship
 
-It carries the story with it, twice, because the two carriers fail differently:
-`/join?from=<where>&s=<id>` (composed from `FB.joinURL()`, so `from` is still
-sanitised in one place) and `localStorage.fb_return_v1`, which `read.html`
-writes and which is the one that survives the trip out to Stripe and back.
+The mockup's purchase screen carries two percentages about what "Factbox
+members" did in their first thirty days. **Neither renders.** Both are marked
+`verified: false` in the mockup's own source, the designer's changelog says
+outright that they are prototype placeholders with no study behind them, and
+they are claims about a member base this product does not yet have.
 
-### What is deliberately NOT here
+`PROOF` in `js/recommend.js` is the switch, and it ships `on: false`,
+`stat: null`. What renders is the copy-only arm — the A/B arm the mockup itself
+describes — and neither of its lines asserts anything about anybody:
 
-The mockup puts four screens between the interruption and checkout: one
-question, one affirmation, "Save your progress" with Continue with Google and
-Continue with email, and a Stripe hand-off. **None of them is built.**
-Onboarding is `/join`'s, it is being redesigned separately, and a second copy
-of those screens living on the reader page would be a second thing to keep in
-step with it. Where the flow would ask for an account it hands off to
-`/join?from=paywall&s=<id>`, exactly as it did before.
+```
+Make five minutes of screen time count.
+Same phone. Something to show for it.
+```
 
-The affirmation screen's `71%` and `78%` are marked in the mockup's own source
-as unverified placeholders. They are not here either, and nothing on these two
-screens states a statistic.
+To turn the numeric arm on, both of these, in this order:
 
-### "View other plans" — `.pw-sheet`
+1. **Run the study.** A cohort, a definition of the behaviour, a window, and a
+   figure that survives somebody else recomputing it. "Built a consistent
+   learning habit" is not measurable until "consistent" is a number of days in
+   a number of weeks.
+2. Put the measured figure in `PROOF.stat` and its sentence in `PROOF.statCap`,
+   then set `PROOF.on`. Nothing else changes; `.fbg-stat` is already styled.
 
-Exactly the rungs `FBA.plans()` offers, which is two: **Annual**, marked BEST
-VALUE and selected on open, and **Monthly**. Quarterly is retired with
-`offered:false` in `js/account.js` and never reaches this file. The rung the
-offer leads with is listed first — a sheet is a choice with one already made.
+A figure that arrives without step 1 is the same failure as printing a round
+price when the till takes eighty-eight cents more. This is the third time this
+repo has been asked for a number nobody measured; `RECALL_CLAIM_PCT` was null
+for the same reason.
 
-Picking a rung repaints the amount and the per-month line and calls
-`FBA.setPlan()`, which is the value `/join` restores when it paints its plan
-screen, so the price on the wall and the price on the plan screen are the same
-one. The CTA does not change its words; it changes what it carries.
-`perMonthAbout`, never `perMonthText`.
+### 4f. Checkout — the attribution rule, on the reader page
 
----
+The tap that buys is here now, and so is the guard, unchanged from the one
+`join.html` has been carrying, because the rule is `STRIPE.md`'s and not the
+page's:
 
-## 5. The layout rule all four screens obey
+| what is missing | what happens |
+|---|---|
+| no Payment Link | `checkout_blocked{why:"no_link"}`, once per page, and the button says so |
+| no Firebase uid | `checkout_blocked{why:"no_uid"}`, and the reader is put back on the account sheet. `checkout_start` has **not** fired: this checkout did not start |
+| no URL for the plan | `checkout_start` has already fired, so `checkout_blocked{why:"no_url"}` says the reader went nowhere — otherwise it looks exactly like an abandoned payment |
+| nothing | `subscribe_click`, then `checkout_start{attributed:"1"\|"0"}`, then Stripe |
+
+**The one case let through** is auth being genuinely unavailable — a blocked
+CDN, a dead network, a webview too old for the SDK. Blocking there loses the
+sale *and* leaves the reader no way to make an account, which is strictly worse
+than a payment reconciled by hand: `profile-sync` writes `localAccountId` into
+the reader's own document the moment they do sign in, which is what that
+reconciliation joins on. It is counted rather than hidden, so "how much of the
+revenue cannot be attributed" is a number somebody can look at.
+
+`FBA.checkoutURL()` is untouched. It is the one place that builds
+`client_reference_id`, and nothing here goes around it.
+
+### 4g. The origin story
+
+`read.html` writes `localStorage.fb_return_v1` on the tap that leaves for
+Stripe, through the gate's `onStart`. What it writes is the story the reader
+should be handed back to, which is **not always the one the sheet is about**:
+
+* from a locked story — that story.
+* from `/firststory`'s ask — the **next** story, because sending somebody back
+  to the one they just finished is not "more stories".
+
+`explore.html` reads it after `gate.js` claims `?unlocked=1`, checks
+`FBX.canRead(id)`, and `location.replace`s. Its TTL is one hour.
+
+### 4h. "View other plans" — `.pw-sheet`
+
+Unchanged, and kept although the mockup drops it. Exactly the rungs
+`js/account.js` still offers — annual (best value, preselected) and monthly;
+quarterly is retired with `offered:false` over there and never reaches this
+file. Removing the monthly rung is a change to the offer, and `ONBOARDING.md`
+§10 says to ask before touching pricing. Picking calls `FBA.setPlan()`.
+
+### 4i. What is deliberately NOT here
+
+* the mockup's four-step questionnaire and affirmation screens. The redesign
+  retired them; see `join.html`.
+* a plate of its own. The story's card is behind the sheet, still on screen,
+  dimmed by `.fbg-veil` — which is the point of a sheet rather than a screen.
+* any countdown, "today only" or scarcity. The offer is the same at four in the
+  morning as it is now.
+
+## 5. The layout rule every screen here obeys
 
 **The button is never below `--bottom-safe`, and never below the fold.**
 
@@ -362,17 +455,49 @@ against the bottom — `bottom: calc(var(--bottom-safe) + 8px)` — rather than 
 a percentage of the height, which clears the toolbar at every viewport height
 rather than at the one the last person tested on.
 
-**Both action groups sit on the PANE, not inside the screen they belong to**,
-and are hidden with it by a class. `.ec-p2` and `.pw-offer` scroll when the
-copy is taller than the viewport, and an absolutely positioned child of a
-scrolling box scrolls away with its content — which is the bottom anchor
-defeated on exactly the short phones it exists for. `.ec-act` has a second
-reason: `tools/compose.py`'s sign-up block appends its own line beside it.
+**The completion card's action group sits on the PANE, not inside the beat it
+belongs to**, and is hidden with it by a class. `.ec-p2` scrolls when the copy
+is taller than the viewport, and an absolutely positioned child of a scrolling
+box scrolls away with its content — the bottom anchor defeated on exactly the
+short phones it exists for. It has a second reason too: `tools/compose.py`'s
+sign-up block appends its own line beside it.
 
-Measured last controls against the floor, `--bottom-safe` in brackets, in real
-Chrome at 375×667 (87), 390×844 (110), 430×932 (121), 768×1024 (133),
-1440×900 (117), 1920×1080 (140) and 844×390 landscape (64): **nothing on either
-pane crosses it, and nothing is off screen.**
+**The two sheets end their padding on that line rather than on the viewport's**
+— `padding-bottom: calc(var(--bottom-safe) + 10px)` — and are absolutely
+positioned against the host's floor rather than flowed, because two siblings in
+a flex column would reserve space for the hidden one and push the visible one
+up the screen by its height.
+
+**What gives way, and in what order, is the order of what things are for.**
+Breathing room first (700px). Then the proof slot and the currency note, which
+are the two things on the offer that are neither the offer nor the terms
+(620px — set above 568 on purpose, because a 320×568 phone is the smallest
+viewport this site sees and it has to clear). Then, sideways, the eyebrow and
+the sentence under the headline (460px). The price, the button and the terms
+never go at any height, because those three are what the reader is agreeing to.
+
+Measured the LAST control on each sheet — "Not now" and "Maybe later", not the
+button above them — against the floor in real Chrome, after the open
+transition has settled:
+
+| viewport | `--bottom-safe` | floor | last control | sheet scrolls |
+|---|---|---|---|---|
+| 320×568 | 74 | 494 | 484 | no |
+| 375×667 | 87 | 580 | 570 | no |
+| 375×812 | 106 | 706 | 696 | no |
+| 393×852 | 111 | 741 | 731 | no |
+| 430×932 | 121 | 811 | 801 | no |
+| 412×915 | 119 | 796 | 786 | no |
+| 744×1133 | 147 | 986 | 976 | no |
+| 844×390 landscape | 64 | 326 | 316 | no |
+
+**Nothing crosses the floor, nothing scrolls inside a sheet, the body never
+scrolls sideways, and there are zero page errors at any of the eight.**
+
+One trap, written down because it cost a measurement: read the rect **after**
+the open transition. `.fbg-sheet` opens from `translateY(18px)`, and
+`getBoundingClientRect()` mid-transition reports a sheet 18px lower than it
+ends up — which reads exactly like a control 18px under the floor.
 
 ### Contrast, over the real composited artwork
 
@@ -396,10 +521,33 @@ top two thirds of the plate exactly as bright as it was.
 `tools/compose.py` builds `story.html`, `cleopatra.html` and `firststory.html`
 out of `read.html`. On `/firststory` only, it sets `window.FB_ENDCTA`, which
 reaches `endPanel` as `opts.cta`, and a small appended block then swaps the
-control for an `<a href="/join?from=story">` and adds the site's usual "Already
-have an account? Sign in" line under it, marking the card `.has-ask`.
+control for an `<a>` and adds the site's usual "Already have an account? Sign
+in" line under it, marking the card `.has-ask`.
 
-Two consequences, both deliberate:
+**Where that ask goes changed with the rest of this.** It used to navigate to
+`/join?from=story`, which was five screens of onboarding questions and is now
+the plan screen. Sending a stranger there is sending them to a price with no
+account behind it — the exact shape of the bug this rebuild removes: they tap
+to pay, checkout refuses because there is no uid to attribute it to, and they
+discover they needed an account on a screen that never mentioned one.
+
+So the ask opens **the same sheet the locked-story boundary opens**, over the
+end card they are already looking at. Three fallbacks, in order:
+
+1. `window.FB_ENDGATE()`, published by `read.html`'s end-card block. It calls
+   `wall(null, { blank:true, from:"story", head:"Read the rest.", keep:<next
+   story> })`. `null` for the stack is deliberate: nothing was interrupted, the
+   next story on the card may be free, and putting its title on a purchase
+   sheet would be selling something that is already open.
+2. `FB.checkout(el, "story")` → `/join?from=story`, if the hook is not there —
+   an older cached `read.html`, or a story that never loaded.
+3. the `href`, if no script runs at all.
+
+All three composed pages still carry the `/join?from=story` string, and
+`compose.py`'s build gate now also requires `window.FB_ENDGATE()` on the page
+that asks.
+
+Two other consequences of the ask, both unchanged and both deliberate:
 
 * **there is no countdown on that page.** `canAuto` is false whenever
   `opts.cta` is set: walking a reader into the next story while asking them to
@@ -410,8 +558,9 @@ Two consequences, both deliberate:
   positions the ask.
 
 Because compose matches `FBR.endPanel(s, stacks, { n: 3 })` verbatim, nothing
-new may be passed through that call. Three things are set on the returned
-element instead: `el.onLocked(stack)`, `el.reveal()` and `el.leave()`.
+new may be passed through that call. Four things are set on the returned
+element instead: `el.onLocked(stack)`, `el.nextStory`, `el.reveal()` and
+`el.leave()`.
 
 ---
 
@@ -423,7 +572,21 @@ lists what we send.
 `first_completion_screen_viewed`, `first_story_completed`,
 `second_story_shown`, `other_plans_opened`, `annual_selected`,
 `monthly_selected`, `trial_cta_clicked`, `rec_view`, `rec_click`,
-`paywall_view`, `subscribe_click`.
+`paywall_view`, `subscribe_click`, `checkout_start`, `checkout_blocked`.
+
+The last two moved here from `join.html` with the tap that buys. They are the
+same two names that page has always sent, with the same parameters, so the
+funnel is one funnel and not two.
+
+`paywall_view` now fires when the **sheet opens**, which is when the subscribe
+screen is actually shown — the meaning `privacy.html` gives it. It used to fire
+when the wall was drawn. A locked story that a reader abandons on card one is
+counted by `stack_open` and `stack_dropoff{card}`, which is where it belongs.
+
+The account sheet's controls send no event of their own and arrive as
+`ui_click` with `control` set from `data-fbt`: `gate_google`, `gate_apple`,
+`gate_email`, `gate_signin`, `gate_notnow`, `gate_later`. Parameter values, not
+names.
 
 The auto-advance fires **`rec_click`** — it is the same funnel step as tapping
 Start now — with `slot: "auto"` instead of `slot: "1"`. The distinction is a
@@ -439,10 +602,13 @@ sent.
 ## 8. The rail is not part of this
 
 `css/reader-rail.css` owns the Save and sound controls at the foot of the right
-edge, **and the reader's palette**. On both panes the rail is hidden entirely:
-they are the way out of the story rather than part of it, and two floating
-controls land on their words. `read.html` toggles `.fb-rail.is-off` and
-`.vrail.is-off` from its own scroll handler.
+edge, **and the reader's palette**. On the completion pane the rail is hidden
+entirely: it is the way out of the story rather than part of it, and two
+floating controls land on its words. `read.html` toggles `.fb-rail.is-off` and
+`.vrail.is-off` from its own scroll handler, and does the same in the tail
+below a locked run, where there is no card left for the rail to point at. On
+the story itself — including the free run of a locked one — the rail stays,
+because a locked story is a story until it is not.
 
 Nothing in `css/recommend.css` names a colour. Every literal in the reader is
 in the one `:root` block in `css/reader-rail.css`, which read.html loads last.

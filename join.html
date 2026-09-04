@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Join</title>
-<meta name="description" content="Five minutes a day, one story, and you actually remember it. A few quick questions, then pick a plan. A free trial before anything is charged.">
+<meta name="description" content="Five minutes a day, one story, and you actually remember it. Pick a plan and pick up where you left off. A free trial before anything is charged.">
 <meta name="theme-color" content="#E7E0D3">
 <!-- Icons. /favicon.ico is requested by browsers with no link tag at all, so
      it is the one that must exist; the rest are the better versions for the
@@ -22,7 +22,6 @@
 <meta property="og:image" content="https://factbox.app/img/share-home.jpg">
 <meta property="og:url" content="https://factbox.app/join">
 <meta name="twitter:card" content="summary_large_image">
-<!-- js/start.js counts screen 4's number out of this file. -->
 <link rel="preload" href="/data/index.json" as="fetch" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,297 +34,68 @@
 <body>
 
 <!--
-  /join — THREE QUESTIONS, AND THEN THE CHECKOUT.
+  /join — SIGN IN, PICK A PLAN, PAY.
 
-  THE PRINCIPLE THIS PAGE IS BUILT AROUND. A reader arrives here from a story
-  they were already reading, and their intent is "I want to keep reading."
-  Everything between tapping the button and getting back to that story must
-  either teach us something we will actually use, or increase their trust.
-  Anything else is removed.
+  WHAT THIS PAGE WAS, AND WHAT RETIRED IT. Until the reader's conversion flow
+  was rebuilt, /join opened with five screens of onboarding questions: what
+  you can never resist reading about, why you are here, how many minutes a
+  day. The redesigned flow does not ask any of them. A reader who is trying
+  to finish a story is asked for one thing — an account, so the subscription
+  is theirs and not this browser's — and that now happens inside the story
+  itself, in the sheet js/recommend.js puts over it. Interrupting somebody
+  mid-story to ask them three questions was spending the only intent the
+  funnel has on data no screen on this site ever read.
 
       Do not optimise for having an onboarding flow.
       Optimise for preserving intent.
 
-  So the flow that used to be eleven screens and six questions is five screens
-  and three, the entry screen IS the first question rather than a promise
-  before it, and the last screen hands the reader back to the exact story they
-  came from. Target: three real questions, ten to twenty seconds.
+  So the questions are gone, and js/start.js — the five-screen engine that
+  drove them — is retired with them.
 
-  WHAT WAS DELETED, AND WHY. Three questions — what usually gets in the way,
-  how much you scroll, three months from now — plus the standalone intro.
-  Nothing on this site read any of those three answers. Their SETTERS still
-  exist in js/account.js, because js/profile-sync.js's WATCHED list names them
-  and wrap() has to find a property there; what is gone is their use.
+  WHY THIS URL STILL EXISTS, AND IS NOT A REDIRECT. /join is linked from
+  /start, from /firststory, from the three composed story pages, from the
+  boundary of every locked story, and from outside this repo. SPEC.md §2.4:
+  a route that resolves renders something a reader can use — the real thing,
+  or a real message with a way out. A stub that bounces is the bug this site
+  has already shipped once. So /join is what remains of it, which was always
+  the half that mattered:
 
-  TWO HALVES, ONE PAGE.
+      #jn-you      an email, kept on this phone and filled in at checkout
+      #jn-loading  the plan being assembled
+      #jn-plan     the real prices, out of js/account.js
+      #jn-login    sign in, and the restore link
+      #jn-done     this browser has already paid
 
-    1. FIVE SCREENS, below, driven by js/start.js. No nav, no footer, no
-       marketing headline, no step counter — one idea per screen and a thin
-       bar. While they are on screen, js/start.js puts `ob-on` on <body> and
-       css/join.css hides the site chrome. When the reader came from a story
-       it also puts `ob-over` there, and the story sits behind the sheet,
-       blurred and dimmed, so the promise at the top of screen one is a thing
-       they can see rather than a thing we assert.
+  Nothing on it asks what kind of history you like. Everything on it is about
+  the money, which is what somebody arriving here came for.
 
-    2. THE MONEY, after them, driven by the inline script at the foot of this
-       file: the sign-up form (#jn-you), the plan loader (#jn-loading), the
-       plan picker (#jn-plan), sign-in (#jn-login) and the already-paid
-       terminus (#jn-done). Those five sections and every function that drives
-       them are unchanged. The chrome comes back with them, because the
-       Privacy/Terms/Support line next to a price is not a style decision.
+  WHAT THE READER'S ANSWERS DID, AND WHY THE STORE STILL PARSES THEM. Every
+  answer the retired questions collected was written through a window.FBA
+  setter in js/account.js, and js/profile-sync.js mirrors that record to
+  customers/{uid}/profile/onboarding. Those setters and their vocabularies
+  ARE STILL THERE and must stay: profile-sync's WATCHED list names them and
+  wrap() has to find a property to wrap, and a returning reader's stored
+  record still references them. Removing a vocabulary a stored record uses is
+  how that reader's profile becomes unreadable. What is gone is the asking.
 
-  WHERE THE QUESTIONS END AND THE MONEY BEGINS: at </div> closing #ob-stage.
-  Nothing above it names a price, a plan or a trial; nothing below it asks a
-  question. The two halves share exactly one thing, the store.
-
-  WHERE THE ANSWERS GO. Nowhere new. Every answer is written through an
-  existing window.FBA setter in js/account.js — the same localStorage key and
-  cookie mirror this page has always used — and js/profile-sync.js mirrors that
-  record to customers/{uid}/profile/onboarding for a signed-in reader:
-
-      Q1 interests  -> FBA.setInterests([...])   the `interests` array
-      Q2 motivation -> FBA.setMotivation(k)      MOTIVES
-      Q3 goal       -> FBA.setGoal(n)            GOALS: 5 | 10 | 15
-      finished      -> FBA.finishOnboarding()
-
-  Q1's data-k values are GROUPS, and what is stored is each group expanded
-  into the real data/index.json topic keys behind it — cleopatra,
-  ancient_world, new_testament and the rest. js/account.js has always
-  documented that field as "an array of stacks.json topic keys"; the flow
-  before this one put invented keys in it, which no shelf or recommendation
-  could read. The mapping is the Q1 table at the top of js/start.js.
-
-  Q3 OFFERS 15 AND STORES 15. It offered 20 before, because 15 was not in
-  js/account.js's GOALS and would have stored as 0 — that store's word for
-  "nobody answered". GOALS gained 15 instead. The argument is written above
-  GOALS in that file, and every map keyed by a goal in this file carries a
-  "15" row for the same reason.
-
-  EVERY SCREEN BELOW IS IN THE MARKUP WITH ITS REAL COPY, unhidden. The script
-  hides the ones it is not showing. If it never runs, or throws, the reader
-  gets one long readable page — five screens of questions, then the form, then
-  the three real prices — instead of a blank one. This site has shipped blank
-  twice; it does not get to happen here.
-
-  THE NUMBER ON THE AFFIRMATION SCREEN IS COUNTED, NOT CLAIMED. See
-  RECALL_CLAIM_PCT at the top of js/start.js before you touch it.
+  EVERY SCREEN BELOW IS IN THE MARKUP WITH ITS REAL COPY, unhidden. The
+  script hides the ones it is not showing. If it never runs, or throws, the
+  reader gets one long readable page — the form, then the three real prices —
+  instead of a blank one. This site has shipped blank twice; it does not get
+  to happen here.
 -->
 
 <main class="lib">
 
   <!-- ==================================================================
-       PART ONE · the five screens
-       ================================================================== -->
-  <div class="ob" id="ob-main">
-
-    <!-- The story they were reading, behind everything else. js/start.js
-         paints it from data/index.json when /join was reached with ?s=<id>,
-         or with fb_return_v1 still fresh, and hides it otherwise. The <img>
-         ships with no src on purpose: an empty src is a request for this
-         page, and there is nothing to show until we know which story. -->
-    <div class="ob-behind" id="ob-behind" hidden aria-hidden="true">
-      <img class="ob-behind-art" id="ob-behind-art" alt="">
-      <span class="ob-behind-veil"></span>
-      <p class="ob-behind-title" id="ob-behind-title"></p>
-    </div>
-
-    <!-- The sheet the questions sit on. Opaque, so every measurement of
-         contrast below it is a measurement against a real ground rather than
-         against whatever painting happens to be behind it. -->
-    <div class="ob-sheet" id="ob-sheet">
-
-    <div class="ob-top">
-      <button class="ob-back" id="ob-back" type="button" hidden aria-label="Go back one screen"><span aria-hidden="true">&#8592;</span></button>
-      <!-- NOT A LINK, and this is the one place on the site where it is not.
-           Everywhere else FACTBOX goes to /explore. Here it would be an exit
-           from a flow whose entire promise is "we'll bring you right back",
-           placed at the top of the screen where a mis-tap costs the reader
-           the story they were reading. The wordmark below, on the money side,
-           behaves like the rest of the site. -->
-      <p class="ob-mark">FACTBOX</p>
-      <span class="ob-top-pad" aria-hidden="true"></span>
-    </div>
-
-    <div class="ob-track" id="ob-track" role="progressbar"
-         aria-label="How far through" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1"><i id="ob-fill"></i></div>
-
-    <div class="ob-stage" id="ob-stage">
-
-      <!-- ===== 1 · Q1 · interests · THE ENTRY SCREEN ===================
-           Multi-select, one required, two at most. There is no screen before
-           this one: the promise, the question and the way in for someone who
-           already has an account are all here, because a screen that only
-           says "let's begin" is a tap that teaches us nothing.
-
-           The data-k values are GROUPS of data/index.json topic keys and the
-           mapping is the Q1 table in js/start.js. Every one of the eight real
-           topics is in exactly one group, so no story is out of reach of an
-           answer. The labels and the notes under them are FBTAX's own. -->
-      <section class="st-screen" id="sc-interests" data-sc="interests" aria-labelledby="sc-interests-h">
-
-        <!-- Shown only when there is a story behind the sheet. Hidden by
-             js/start.js otherwise, because it would be a promise about a
-             story that does not exist. -->
-        <div class="ob-promise" id="ob-promise" hidden>
-          <p class="ob-promise-h">Your story isn&rsquo;t going anywhere.</p>
-          <p class="ob-promise-p">Three quick questions, then straight back to it.</p>
-        </div>
-
-        <h1 id="sc-interests-h">What can you never resist reading about?</h1>
-        <p class="ob-hint">Pick up to 2.</p>
-
-        <div class="ob-opts" id="ob-interests-opts" role="group" aria-labelledby="sc-interests-h">
-          <button class="ob-opt" type="button" data-k="ancient" aria-pressed="false" aria-disabled="false"><span class="ob-opt-txt"><b>Cleopatra and the ancient world</b><em>Rome, Greece, Alexander</em></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" data-k="bible" aria-pressed="false" aria-disabled="false"><span class="ob-opt-txt"><b>The Bible, up close</b><em>the Ark, the scrolls, Magdalene</em></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" data-k="church" aria-pressed="false" aria-disabled="false"><span class="ob-opt-txt"><b>Saints and sinners</b><em>what the early church argued about</em></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" data-k="modern" aria-pressed="false" aria-disabled="false"><span class="ob-opt-txt"><b>Medieval and modern</b><em>Joan of Arc, Lincoln, Chernobyl</em></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-        </div>
-
-        <div class="ob-act">
-          <button class="go" id="ob-interests-go" type="button" disabled>Continue</button>
-          <!-- THE ONE SIGN-IN IN THE WHOLE FLOW. Subtle, and on the first
-               screen only: a reader who already has an account should not
-               have to answer three questions to find that out, and a reader
-               who does not should not be offered a door on every screen. -->
-          <button class="ob-tiny" id="ob-signin" type="button">Already have an account? <u>Sign in</u></button>
-        </div>
-      </section>
-
-      <!-- ===== 2 · Q2 · motivation · single select, AUTO-ADVANCES =======
-           No Continue button. Tapping marks the answer, the tick draws, and
-           js/start.js moves on after ADVANCE_MS. The four keys are four of
-           the five in MOTIVES in js/account.js; the fifth, missed_school,
-           stays in the vocabulary so old records keep parsing and is simply
-           not offered any more. -->
-      <section class="st-screen" id="sc-motivation" data-sc="motivation" aria-labelledby="sc-motivation-h">
-        <h2 id="sc-motivation-h">What do you want from Factbox?</h2>
-        <div class="ob-opts" id="ob-motivation-opts" role="radiogroup" aria-labelledby="sc-motivation-h">
-          <button class="ob-opt" type="button" role="radio" data-k="smarter" aria-checked="false"><span class="ob-opt-txt"><b>To feel smarter every day</b></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" role="radio" data-k="understand" aria-checked="false"><span class="ob-opt-txt"><b>To actually understand history</b></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" role="radio" data-k="conversation" aria-checked="false"><span class="ob-opt-txt"><b>Better things to talk about</b></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" role="radio" data-k="less_scrolling" aria-checked="false"><span class="ob-opt-txt"><b>Something better than scrolling</b></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-        </div>
-      </section>
-
-      <!-- ===== 3 · the affirmation =====================================
-           NOT A CLAIM ABOUT READERS. One number, one headline, one sentence,
-           one button. The number is counted out of data/index.json at runtime
-           and the markup carries the same count as its fallback. There is no
-           survey behind this page and no sentence on it that pretends there
-           is. Read the block above RECALL_CLAIM_PCT in js/start.js before
-           changing a word. -->
-      <section class="st-screen" id="sc-affirm" data-sc="affirm" aria-labelledby="sc-affirm-h">
-        <div class="ob-centre">
-          <p class="ob-stat" id="ob-stat">450</p>
-          <h2 class="ob-stat-cap" id="sc-affirm-h">cards of history, written to be
-          remembered rather than revised.</h2>
-          <p class="ob-stat-note" id="ob-stat-note">Turns out, learning sticks
-          better when the story is actually worth remembering.</p>
-        </div>
-        <div class="ob-act">
-          <button class="go" id="ob-affirm-go" type="button">Continue</button>
-        </div>
-      </section>
-
-      <!-- ===== 4 · Q3 · daily goal · single select, AUTO-ADVANCES =======
-           5, 10 and 15, and the record stores the number that was tapped.
-           js/account.js's GOALS gained 15 for this screen; before that it
-           held 5, 10, 20 and 45 from the iOS DailyGoal enum, and a 15 would
-           have clamped to 0 — the store's word for a question nobody
-           answered. The argument is above GOALS in that file. -->
-      <section class="st-screen" id="sc-goal" data-sc="goal" aria-labelledby="sc-goal-h">
-        <h2 id="sc-goal-h">How much time do you want to learn each day?</h2>
-        <div class="ob-opts" id="ob-goal-opts" role="radiogroup" aria-labelledby="sc-goal-h">
-          <button class="ob-opt" type="button" role="radio" data-k="5" aria-checked="false"><span class="ob-opt-txt"><b>5 minutes</b></span><span class="ob-flag">Recommended</span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" role="radio" data-k="10" aria-checked="false"><span class="ob-opt-txt"><b>10 minutes</b></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-          <button class="ob-opt" type="button" role="radio" data-k="15" aria-checked="false"><span class="ob-opt-txt"><b>15 minutes</b></span><i class="ob-tick" aria-hidden="true">&#10003;</i></button>
-        </div>
-      </section>
-
-      <!-- ===== 5 · the result ==========================================
-           Their answers, their story, and one button back to it. Everything
-           in the summary is read back from what the reader actually tapped;
-           the markup ships the copy that is true when they tapped nothing, so
-           a thrown script shows a readable screen rather than answers nobody
-           gave. The heading and the last button are rewritten by js/start.js
-           the moment the story's title is known. -->
-      <section class="st-screen" id="sc-ready" data-sc="ready" aria-labelledby="ob-ready-h">
-        <div class="ob-scroll">
-        <p class="ob-eyebrow">That&rsquo;s everything</p>
-        <h2 id="ob-ready-h">Your first story is waiting.</h2>
-
-        <!-- THREE ROWS, AND ONLY THEIR ANSWERS. The story has its own line —
-             it is the headline — and a fourth row repeating it under
-             "Waiting" said the same six words twice on a screen whose whole
-             job is to be short. -->
-        <dl class="ob-card">
-          <div class="ob-row">
-            <dt>Reading</dt>
-            <dd id="ob-sum-feed">The whole shelf, best first</dd>
-          </div>
-          <div class="ob-row">
-            <dt>Each day</dt>
-            <dd id="ob-sum-goal">5 minutes a day</dd>
-          </div>
-          <div class="ob-row">
-            <dt>What for</dt>
-            <dd id="ob-sum-why">Feeling smarter every day</dd>
-          </div>
-        </dl>
-
-        <p class="ob-stat-note ob-ready-note">Saved on this phone. We&rsquo;ll use it
-        to choose what comes after this one.</p>
-        </div><!-- /.ob-scroll -->
-
-        <!-- TWO ENDINGS, AND WHICH ONE A READER GETS IS NOT A PREFERENCE.
-
-             The story they came from is either open to them or it is not, and
-             js/start.js asks js/access.js rather than guessing.
-
-             OPEN  — a free story, or a reader who became a subscriber while
-                     the questions were on screen. #ob-ready-go, an <a>
-                     straight at /read?s=<their story>. One control, done.
-
-             LOCKED — which is every reader who arrived from the paywall.
-                     Sending them back to /read?s=44 sends them to the
-                     identical wall with the identical button, and round they
-                     go: measured, twice. So the primary control hands over to
-                     the money side of this page instead, and #ob-ready-back
-                     keeps the way to the story as a quiet second line rather
-                     than as the answer.
-
-                     The promise on screen one is still kept, and it is kept
-                     by the purchase: Stripe returns the buyer and
-                     localStorage.fb_return_v1 carries the story, which is the
-                     two-carrier contract js/recommend.js's joinFor() and
-                     read.html's rememberStory() set up.
-
-             WITH NO SCRIPT only the <a> is visible, because the other two
-             ship hidden — so a script-less page still ends on a control that
-             works, pointed at the free story. -->
-        <div class="ob-act">
-          <a class="go" id="ob-ready-go" href="/read?s=01" role="button">Start my first story</a>
-          <button class="go" id="ob-ready-buy" type="button" hidden>Unlock it and keep reading</button>
-          <a class="ob-tiny ob-tiny-link" id="ob-ready-back" href="/read?s=01" hidden>Back to the story</a>
-        </div>
-      </section>
-
-    </div><!-- /#ob-stage — THE QUESTIONS END HERE. Everything below is money. -->
-    </div><!-- /.ob-sheet -->
-  </div><!-- /.ob -->
-
-
-  <!-- ==================================================================
-       PART TWO · the checkout. Unchanged.
+       THE CHECKOUT. It is the whole page now.
        ================================================================== -->
   <header class="mast">
     <!-- The wordmark goes home, the way it does on every other page: tapping
          FACTBOX anywhere on the site opens /explore. It is a wordmark and not
          a nav link, so it carries neither an underline nor a link colour, and
          css/join.css resets both and gives it a focus ring — .mark on its own
-         would render an inline <a> whose margin does nothing. The wordmark ON
-         the question screens above is deliberately NOT a link; the comment
-         beside it says why. -->
+         would render an inline <a> whose margin does nothing. -->
     <a class="mark" href="/explore">FACTBOX</a>
     <nav class="tabs" aria-label="Sections">
       <a href="/explore">Explore</a>
@@ -370,8 +140,12 @@
       <button class="go" id="jn-you-go" type="submit" style="margin-top:16px">Build my plan</button>
     </form>
 
+    <!-- No "← Back" here any more. This is the first screen of the page now
+         that the questions above it are retired, so a Back control on it had
+         nowhere to go and stayed on the same screen when tapped — a dead
+         button, which reads as a broken site. The way out is the wordmark and
+         the nav at the top, which are on every screen. -->
     <div class="jn-row">
-      <button class="jn-back" id="jn-you-back" type="button">← Back</button>
       <button class="jn-skip" id="jn-to-login-2" type="button">Already have an account? Sign in</button>
     </div>
   </section>
@@ -552,11 +326,6 @@
      questions were asked; it is now, so it loads it. Every write it makes is
      debounced, guarded and a no-op when signed out or denied. -->
 <script src="/js/profile-sync.js"></script>
-<!-- The five-screen engine. It defines window.FBOB and does not start
-     itself: the router in the inline block below decides whether this reader
-     sees the onboarding or the checkout, so exactly one of the two halves of
-     this page is ever on screen. -->
-<script src="/js/start.js"></script>
 <script>
 /* ==========================================================================
    join.html — the iOS onboarding, ported to the web.
@@ -571,16 +340,16 @@
      ·  #jn-login    sign in, and the restore link
      ·  #jn-done     this browser already paid
 
-   The five onboarding screens above it are driven by js/start.js, which
-   publishes window.FBOB. This block is the ROUTER for the two: on load it
-   decides whether the reader has already been through the questions, and
-   shows exactly one of the two halves. Nothing else co-ordinates them, and
-   neither half can show a screen belonging to the other.
+   There is no other half any more. The five onboarding screens that used to
+   sit above these — and js/start.js, which drove them — are retired with the
+   questions: the redesigned conversion flow asks for an account inside the
+   story instead. So this block is the whole page, and the router at the foot
+   of it decides which ONE of the five panels is on screen.
 
    Every function below that touches a price, a plan, the trial copy or the
-   sign-up form is unchanged from before the questions moved onto this page.
-   `git show HEAD~:join.html` is the file to diff against, and the three
-   places this block was edited at all are marked EDITED.
+   sign-up form is unchanged. What changed is the routing: the branch that
+   used to hand the screen to the questions now goes to the first money
+   screen, and the two functions that talked to the question engine are gone.
 
    Rules, same as every other script on this site:
    - Never throw at top level. Every lookup is guarded and every handler is
@@ -746,15 +515,12 @@
   function next() {
     if (at < STEPS.length - 1) go(STEPS[at + 1]); else go("jn-plan");
   }
-  /* EDITED. Back off the first money screen used to land on the first
-     question, which was on this page. The questions are js/start.js's now, so
-     it hands control back to the screen the reader came from — the result
-     screen — rather than to a panel that no longer exists. */
+  /* Back off the FIRST money screen used to hand control to the question
+     engine, and there is no longer one. #jn-you is the first screen of this
+     page, so Back on it stays on it rather than navigating away from a form
+     the reader may have half filled in. Every later screen steps back one. */
   function back() {
     if (at > 0) { go(STEPS[at - 1]); return; }
-    try {
-      if (window.FBOB && window.FBOB.resume) { money(false); window.FBOB.resume(); return; }
-    } catch (e) {}
     go("jn-you");
   }
 
@@ -1308,20 +1074,9 @@
     } catch (e) {}
   }
 
-  /* --- the seam between the two halves · NEW -------------------------------
-     Two scripts, one page, and exactly one of them showing a screen. The
-     contract is four functions and it is deliberately tiny:
-
-       money(false)  this half lets go of the screen — every panel hidden
-       obOff()       the other half lets go — the five screens hidden and
-                     the site chrome put back
-       FBJN.login()  the onboarding's "Already have an account? Sign in"
-       FBOB.resume() Back off #jn-you returns to the result screen
-
-     Neither side reaches into the other's markup. If js/start.js is missing
-     or throws, obOff() still runs and the money side is a complete page on
-     its own; if this block throws, the five screens are still in the markup
-     and readable. There is no state shared between them except FBA. */
+  /* money(false) hides every panel on the page. It is kept, because the
+     subscriber branch of the router below uses it: a reader who already pays
+     is shown #jn-done and nothing else. */
 
   /* "three days free" -> "Three days free". js/account.js hands the phrase
      back in lower case on purpose, because most of its uses are mid-sentence. */
@@ -1388,66 +1143,17 @@
     } catch (e) {}
   }
 
-  function obOff() {
-    try { if (window.FBOB && window.FBOB.stop) window.FBOB.stop(); } catch (e) {}
-    /* Belt and braces: if js/start.js never loaded, nothing has hidden the
-       five screens or taken the chrome class off, so do both from here. */
-    try {
-      var stage = el("ob-main");
-      if (stage) stage.setAttribute("hidden", "");
-    } catch (e2) {}
-    try {
-      document.body.className = (" " + (document.body.className || "") + " ")
-        .replace(" ob-on ", " ").replace(/^\s+|\s+$/g, "");
-    } catch (e3) {}
-  }
+  /* WHAT USED TO BE HERE. Three functions and a global — obOff(),
+     resumeReady(), startOnboarding() and window.FBJN — were the seam between
+     this page's two halves: the questions above, driven by js/start.js, and
+     the money below. There is one half now, so there is no seam. They are
+     deleted rather than left as no-ops, because a function that talks to a
+     script the page no longer loads is a dead end somebody will call.
 
-  /* A reload of the result screen lands back on the result screen. True only
-     while js/start.js says this tab was on it; false, and every other branch
-     of the router below behaves exactly as it did. */
-  function resumeReady() {
-    try {
-      if (!window.FBOB || !FBOB.pending || !FBOB.resume) return false;
-      if (!FBOB.pending()) return false;
-      return !!FBOB.resume();
-    } catch (e) { return false; }
-  }
-
-  function startOnboarding() {
-    var ran = false;
-    try { if (window.FBOB && window.FBOB.start) ran = !!window.FBOB.start(); } catch (e) {}
-    /* js/start.js absent, or it declined. A page showing five screens of
-       questions and
-       nothing else, with no script to advance them, is a dead end — so fall
-       back to the money side, which is a working page without any of this. */
-    if (!ran) { obOff(); money(false); go("jn-you"); }
-  }
-
-  /* What the onboarding may ask this half to do. Two things, both of which
-     hand the screen over for good. */
-  try {
-    window.FBJN = {
-      login: function () {
-        try { obOff(); loginFrom = "jn-you"; go("jn-login"); } catch (e) {}
-      },
-      plans: function () {
-        try { obOff(); go("jn-plan"); } catch (e) {}
-      },
-      /* NEW, and it is what closes the loop. A reader who came from the
-         paywall, answered the questions and wants to pay had no route to
-         checkout that did not involve typing /join into the address bar a
-         second time — the last button sent them back to the locked story,
-         which is the same wall with the same button on it. Measured twice.
-
-         The result screen's locked ending calls this. It is deliberately the
-         START of the money chain and not the prices: #jn-you is where an
-         account begins, and STRIPE.md 1 is unambiguous that a checkout
-         without one cannot be honoured on a second device. */
-      signup: function () {
-        try { obOff(); go("jn-you"); } catch (e) {}
-      }
-    };
-  } catch (e) {}
+     The one thing that outlived them is FBA. Every answer those questions
+     collected still parses out of js/account.js and still reaches
+     customers/{uid}/profile/onboarding through js/profile-sync.js, for the
+     readers who already answered. See the note at the top of this file. */
 
   /* --- wiring -------------------------------------------------------------
      Every handler is attached inside try/catch and every one of them is
@@ -1455,7 +1161,6 @@
 
   try {
     on(el("jn-you-form"), "submit", submitYou);
-    on(el("jn-you-back"), "click", back);
     on(el("jn-to-login-2"), "click", function () { loginFrom = "jn-you"; go("jn-login"); });
 
     wireLoaderButtons();
@@ -1474,37 +1179,28 @@
     on(el("jn-buy"), "click", buy);
   } catch (e) {}
 
-  /* --- start · EDITED ------------------------------------------------------
-     THE ROUTER. /join is an onboarding and a checkout on one URL, and exactly
-     one of them is on screen. Which one is the only question asked here.
+  /* --- start ---------------------------------------------------------------
+     THE ROUTER, AND IT NOW ASKS ONE QUESTION. /join used to be an onboarding
+     and a checkout on one URL, and five branches decided which of the two was
+     on screen. There is only the checkout now, so all this decides is which
+     of its five panels the reader starts on.
 
-       already paying   -> #jn-done. Nothing to sell.
-       been through the
-       questions, and
-       gave an email    -> #jn-plan. Unchanged: this is the branch that was
-                           `A.has() && A.onboarded()` before, landing on the
-                           same panel.
-       been through the
-       questions, no
-       email yet        -> #jn-you, and on through the loader to the prices.
-                           This is the branch that makes the questions a
-                           one-time thing: finishOnboarding() is stamped on
-                           the result screen, so a reader who has answered
-                           them is never asked again.
-       everyone else    -> the five screens, and this half of the page waits.
+       already paying     -> #jn-done. There is nothing to sell.
+       we know their email -> #jn-plan. They have been here; the prices are
+                             what they came back for.
+       everyone else      -> #jn-you, and on through the loader to the prices.
 
-     ONE EXCEPTION, AND IT IS A REFRESH. Stamping finishOnboarding() on the
-     result screen means a reload OF that screen would be routed straight past
-     it to #jn-you — losing the one button on the site that goes back to the
-     story the reader came from, at the exact moment they are looking at it.
-     So js/start.js writes a sessionStorage marker while that screen is up and
-     clears it when they leave through the button, and FBOB.pending() is how
-     this router asks. Per tab, cleared on exit: a later visit to /join is the
-     plan, not a result screen from an hour ago.
+     A BUG THAT IS GONE RATHER THAN FIXED. The old router had a branch reading
+     `A.has() && A.onboarded()`: a returning reader whose answers were still
+     in the store had the questions SKIPPED and was dropped straight onto the
+     price screen, with no explanation of why the flow they remembered had
+     turned into a bill. There are no questions to skip now, so there is no
+     skip: #jn-plan is simply where somebody we already have an email for
+     starts, and the header above it says what the page is.
 
-     The reader who finishes the questions goes back to their story, not to a
-     price. They meet #jn-plan when they come back — from the paywall, from
-     /firststory, or from the account menu. That is the whole hand-off. */
+     Also gone with it: the sessionStorage marker that let a refresh land back
+     on the questions' result screen, and the FBOB.pending() call that read
+     it. Both belonged to a screen that no longer exists. */
   try {
     if (A) {
       try {
@@ -1524,28 +1220,15 @@
     loadFirstStory();
 
     if (unlocked()) {
-      obOff();
       paid(true);
       go("jn-done");
       track("join_view", { state: "unlocked" });
-    } else if (A && A.has() && A.onboarded()) {
-      obOff();
+    } else if (A && A.has()) {
       go("jn-plan");
       track("join_view", { state: "returning" });
-    } else if (A && A.onboarded() && resumeReady()) {
-      money(false);
-      track("join_view", { state: "result" });
-    } else if (A && A.onboarded()) {
-      obOff();
-      go("jn-you");
-      track("join_view", { state: "signed_up" });
     } else {
-      /* The questions have the screen. Hide every money panel first, so a
-         browser that never runs js/start.js is left with the readable long
-         page rather than the form stacked under the questions. */
-      money(false);
+      go("jn-you");
       track("join_view", { state: "new" });
-      startOnboarding();
     }
   } catch (e) {
     /* Even this must not blank the page: leave every panel visible, which is

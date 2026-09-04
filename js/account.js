@@ -774,7 +774,31 @@ var FBA = (function () {
     } catch (e2) { return false; }
   }
 
-  /* --- onboarding answers ------------------------------------------------- */
+  /* --- onboarding answers -------------------------------------------------
+
+     NOTHING ON THIS SITE ASKS THESE QUESTIONS ANY MORE, AND EVERY ONE OF THEM
+     STAYS. /join opened with five screens of them until the conversion flow
+     was rebuilt around asking for an ACCOUNT inside the story instead; the
+     screens and js/start.js are retired, and the asking with them.
+
+     THREE REASONS NOT TO DELETE THE SETTERS OR THEIR VOCABULARIES:
+
+       1. Readers have already answered. Their record is in localStorage, in a
+          cookie mirror and in customers/{uid}/profile/onboarding. parse()
+          below is what makes that record readable, and a vocabulary it no
+          longer knows is an answer that silently becomes "" — which is this
+          store's word for "never asked". A returning reader's profile would
+          quietly lose things they told us.
+
+       2. js/profile-sync.js's WATCHED list names every setter by string and
+          wraps it. A name it cannot find is not an error there, it is a
+          setter that stops scheduling a sync — and the failure is invisible.
+
+       3. interests() and frequency() were already documented as LEGACY BUT
+          PERMANENT for the same reason, and other layers still read them.
+
+     What is gone is the asking. Nothing here changed.
+     ------------------------------------------------------------------------ */
 
   function interests() {
     try { return rec().i.slice(0); } catch (e) { return []; }

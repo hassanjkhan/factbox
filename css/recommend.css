@@ -8,8 +8,8 @@
    NAMES A COLOUR. The reader's palette is the one `:root` block in
    css/reader-rail.css, which read.html loads after this file.
 
-   TWO SCREENS, AND EACH IS REALLY TWO
-   -----------------------------------
+   TWO SURFACES, AND EACH IS REALLY TWO
+   ------------------------------------
    .pane.rec       the end of a story, played in beats:
                      .ec-p1  what the reader just did, over the plate they
                              finished on. About a second.
@@ -18,18 +18,23 @@
                              putting .is-p1 / .is-p2 on the pane; when neither
                              is set the reader has not arrived yet and the
                              pane is the plate alone.
-   .pane.paywall   the wall, in the same shape:
-                     .pw-cut    the interruption — the story's own opening,
-                                fading out. No price on this screen.
-                     .pw-offer  what it costs to carry on.
-                   .is-cut / .is-offer on the pane say which. BOTH ARE ALWAYS
-                   IN THE DOM: the hidden one is visibility:hidden, which
-                   takes it out of the tab order and out of the accessibility
-                   tree while leaving its words where a checker can read them.
+   .fbg            the wall, and it is no longer a pane. A locked story runs
+                   for real and stops at a boundary; this is what the gesture
+                   past that boundary opens, over the story rather than
+                   instead of it:
+                     .fbg-auth  "Keep reading."  an account, so the progress
+                                is theirs and so a payment can be.
+                     .fbg-buy   the amount, the terms, one button.
+                   .is-auth / .is-buy on .fbg say which. BOTH ARE ALWAYS IN
+                   THE DOM: the hidden one is visibility:hidden, which takes
+                   it out of the tab order and out of the accessibility tree
+                   while leaving its words where a checker can read them.
                    display:none would do the first two and is animatable by
                    nothing, so a crossfade would have to be a second mechanism.
+   .pane.paywall   the fallback, for a page whose account.js or auth never
+                   arrived: one screen, two sentences and a way in.
 
-   THE ONE LAYOUT RULE ALL FOUR OBEY
+   THE ONE LAYOUT RULE THEY ALL OBEY
    ---------------------------------
    THE BUTTON IS NEVER BELOW --bottom-safe, AND NEVER BELOW THE FOLD.
 
@@ -51,8 +56,7 @@
    Shared: the pane, its plate, and the action group pinned to its floor.
    ========================================================================== */
 
-.pane.rec,
-.pane.paywall{
+.pane.rec{
   position:relative;
   /* The plate is full-bleed; the words inside it are not. app.css pads the
      pane itself, so the padding moves inward one level. */
@@ -63,22 +67,29 @@
   text-align:left;
 }
 
+/* The fallback pane, for a page whose recommend.js built the wall and then
+   could not — no plate, no sheet, four elements and a way out. It keeps
+   app.css's own .pane padding, because the horizontal zero above exists for
+   a full-bleed plate and there is no plate on this one; without that the
+   sentence runs into both edges of the phone. */
+.pane.paywall{
+  position:relative;
+  justify-content:center;
+  justify-content:safe center;
+}
+
 /* A full-bleed plate with the reader's own scrim over it. Same element in
    four places, so it is one rule: .ec-plate behind the completion moment,
-   .ec-heroart behind the next story, .pw-cutart behind the interruption,
-   .pw-band across the top of the offer. */
+   .ec-heroart behind the next story. The wall has no plate of its own any
+   more: the story's own card is behind it, still on screen. */
 .ec-plate,
-.ec-heroart,
-.pw-cutart,
-.pw-band{
+.ec-heroart{
   position:absolute; top:0; right:0; bottom:0; left:0;
   overflow:hidden;
   background:var(--night);
 }
 .ec-plate img,
-.ec-heroart img,
-.pw-cutart img,
-.pw-band img{
+.ec-heroart img{
   width:100%; height:100%;
   object-fit:cover; object-position:center 32%;
   display:block;
@@ -88,8 +99,7 @@
   display:block;
   background:var(--pane-scrim);
 }
-.ec-heroart .sc-scrim,
-.pw-band .sc-scrim{background:var(--band-scrim)}
+.ec-heroart .sc-scrim{background:var(--band-scrim)}
 
 /* The action group. Absolute, so the copy above cannot push it down; bottom
    anchored, so it cannot fall under the in-app toolbar.
@@ -97,9 +107,7 @@
    left/right + auto margins is what centres an absolutely positioned box; a
    `margin:0 auto` alone would not, and `inset` is Safari 14.1+ and a share of
    this traffic is older than that. */
-.pane.rec .ec-act,
-.pane.paywall .pw-act,
-.pane.paywall .pw-cutact{
+.pane.rec .ec-act{
   position:absolute;
   left:22px; right:22px;
   bottom:calc(var(--bottom-safe) + 8px);
@@ -112,20 +120,17 @@
 
 /* The two groups whose screen SCROLLS get a ground of their own.
 
-   .ec-p2 and .pw-offer scroll when the copy is taller than the viewport, and
-   it scrolls BEHIND the group — so without this a line of text passes through
+   .ec-p2 scrolls when the copy is taller than the viewport, and it scrolls
+   BEHIND the group — so without this a line of text passes through
    the gap between the button and the link on its way past. The ground has to
    fade, or the same line is cut in half by a hard edge; --ground-0 is the
    transparent end of --ground, because `transparent` is rgba(0,0,0,0) and
    fades through grey on iOS. Both screens paint --ground, so at rest it is
    invisible.
 
-   .pw-cutact is deliberately NOT in this list. Its screen cannot scroll — the
-   paragraph is cut off by design — and the plate swells up behind exactly
-   where the button sits, which is the composition. A ground under it would
-   paint that out. */
-.pane.rec .ec-act,
-.pane.paywall .pw-act{
+   The wall's own action group is no longer in this list because the wall is
+   no longer a pane: it is .fbg, a sheet with its own opaque ground. */
+.pane.rec .ec-act{
   padding-top:22px;
   background:linear-gradient(to top,
     var(--ground) 0%, var(--ground) 64%, var(--ground-0) 100%);
@@ -134,9 +139,7 @@
 /* One class for the crossfade, because all four screens do the same thing:
    fade and lift into place, and go away without leaving a tab stop behind. */
 .ec-p1,
-.ec-p2,
-.pw-cut,
-.pw-offer{
+.ec-p2{
   position:absolute; top:0; right:0; bottom:0; left:0;
   opacity:0; visibility:hidden; pointer-events:none;
   transform:translateY(14px);
@@ -144,9 +147,7 @@
              visibility 0s linear .45s;
 }
 .pane.rec.is-p1 .ec-p1,
-.pane.rec.is-p2 .ec-p2,
-.pane.paywall.is-cut .pw-cut,
-.pane.paywall.is-offer .pw-offer{
+.pane.rec.is-p2 .ec-p2{
   opacity:1; visibility:visible; pointer-events:auto;
   transform:none;
   transition:opacity .45s ease, transform .45s cubic-bezier(.2,.75,.25,1),
@@ -155,25 +156,22 @@
 
 /* An action group belongs to the SCREEN it acts on, and lives on the PANE.
 
-   On the pane, because both .ec-p2 and .pw-offer scroll when the copy is
-   taller than the viewport, and an absolutely positioned child of a scrolling
+   On the pane, because .ec-p2 scrolls when the copy is taller than the
+   viewport, and an absolutely positioned child of a scrolling
    box scrolls away with its content — which is the bottom anchor above
    defeated on exactly the short phones it exists for. And .ec-act has a
    second reason: tools/compose.py's sign-up block appends its own line beside
    it, on the card.
 
    To the screen, because the completion moment is a moment, and a button on
-   it is something to do instead of noticing; and because a price under a
-   cliffhanger that has not landed is an advertisement. */
+   it is something to do instead of noticing. */
 .pane.rec .ec-act,
-.pane.rec .ec-signin,
-.pane.paywall .pw-act{
+.pane.rec .ec-signin{
   opacity:0; visibility:hidden; pointer-events:none;
   transition:opacity .45s ease, visibility 0s linear .45s;
 }
 .pane.rec.is-p2 .ec-act,
-.pane.rec.is-p2 .ec-signin,
-.pane.paywall.is-offer .pw-act{
+.pane.rec.is-p2 .ec-signin{
   opacity:1; visibility:visible; pointer-events:auto;
   transition:opacity .45s ease, visibility 0s linear 0s;
 }
@@ -300,10 +298,20 @@
 .pane.rec .ec-head{
   margin:0; color:var(--parchment);
   font-family:var(--display); font-weight:var(--w-display);
-  font-size:2rem; line-height:1.1; letter-spacing:-.012em;
+  font-size:2.25rem; line-height:1.08; letter-spacing:-.014em;
   text-wrap:balance;
-  /* Three lines, then ellipsis. A handful of hooks are a whole paragraph. */
-  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+  /* RETUNED FOR A TITLE, NOT A HOOK. js/recommend.js draws the story's TITLE
+     here now — see promise() and the note above it — and the titles in this
+     season measure 9 to 46 characters, mean 27, against hooks that ran to a
+     whole paragraph. Three clamped lines at 2rem was a box sized for the old
+     value and left a visible gap under nearly every title.
+
+     So: one step up in size, because a 27-character line has the room for it
+     and this is the headline of the screen; and TWO lines rather than three,
+     which is what the longest title in the season needs at this size. The
+     clamp stays because the fallback is still a hook — a title-less row would
+     otherwise set a paragraph in display serif at 2.25rem. */
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;
 }
 .pane.rec .ec-mins{
@@ -431,188 +439,358 @@ a.ec-go{
 }
 
 /* ==========================================================================
-   2. THE WALL
+   2. THE WALL — a sheet OVER the story, not a screen instead of it.
 
-   2a. THE INTERRUPTION.
+   WHAT THIS REPLACED. Two full-screen panes: a manufactured "interruption"
+   carrying the story's own first card, and an offer screen behind a button.
+   The reader met neither the story nor the offer — they met a reproduction
+   of the story, and then a price.
 
-   The story is already running and it stops mid-thought. Its own opening,
-   its own first paragraph, fading into the ground under the reader's thumb.
-   Nothing is sold on this screen and no number is on it.
+   Now a locked story really opens and really runs. read.html draws its first
+   cards on their own plates, with their own credit lines and the same
+   progress rail every other story has, and the run stops at a boundary the
+   reader can see: the next card's opening line, dimmed, under a hairline and
+   a padlock. Trying to keep reading is what opens the sheet.
 
-   The fade is an element rather than a mask on the text: -webkit-mask-image
-   is not on every webview this ships to, and a mask that does not apply is a
-   hard-cut paragraph, which reads as a bug rather than as an ending.
-   ========================================================================== */
+   TWO SHEETS, ONE HOST, AND BOTH ARE ALWAYS IN THE DOM.
+     .fbg-auth  "Keep reading."   an account, so the progress is theirs
+     .fbg-buy   "Finish …"        the amount, the terms, one button
 
-.pw-cut{
-  display:flex; flex-direction:column; justify-content:flex-start;
-  background:var(--ground);
-  /* Deliberately NOT a scroller: the paragraph under the headline is cut off
-     by design, and a box that can be scrolled to read the rest of it is the
-     opposite of an interruption. */
-  overflow:hidden;
-}
-/* The plate swells BELOW the cut paragraph, not behind it — see --cut-scrim
-   in css/reader-rail.css for the rectangle that made this necessary. It is
-   also the better composition: the words at the top, the painting rising into
-   the space the button sits on. */
-.pw-cutart .sc-scrim{background:var(--cut-scrim)}
-.pw-cuttext{
-  position:relative; z-index:2;
-  padding:calc(var(--top-safe) + 78px) 22px 0;
-}
-.pane.paywall .pw-cuthead{
-  margin:0; color:var(--parchment);
-  font-family:var(--display); font-weight:var(--w-display);
-  font-size:1.5625rem; line-height:1.18; letter-spacing:-.008em;
-  text-wrap:pretty;
-}
-.pw-cutbody{
-  position:relative;
-  margin-top:16px; height:124px; overflow:hidden;
-}
-.pane.paywall .pw-cutbody p{
-  margin:0; color:var(--dim);
-  font-size:var(--fs-lead); font-weight:var(--w-body); line-height:1.62;
-  text-wrap:pretty;
-}
-.pw-cutfade{
-  position:absolute; top:0; right:0; bottom:0; left:0;
-  display:block;
-  background:linear-gradient(to bottom,
-               var(--ground-0) 0%, var(--ground-0) 30%, var(--ground) 96%);
-}
-/* The whole screen advances — the same gesture the reader has used between
-   every other card — and the button is the part of it that has a name, a
-   focus ring and a tab stop. */
-.pw-cut{cursor:pointer}
-.pw-on{width:100%; max-width:520px; margin:0 auto; line-height:1.2}
+   .is-auth / .is-buy on .fbg say which. The hidden one is visibility:hidden,
+   which takes it out of the tab order and out of the accessibility tree while
+   leaving its words where a checker reading the page can find them.
+   display:none would do the first two and is animatable by nothing, so the
+   crossfade would have to be a second mechanism.
 
-/* ==========================================================================
-   2b. THE OFFER.
+   THE SHEETS ARE POSITIONED, NOT FLOWED. Two siblings in a flex column would
+   reserve space for the hidden one and push the visible one up the screen by
+   its height. Both are absolutely positioned against the host's floor, so the
+   one on screen is the only one that has a place on it.
 
-   The cover across the top, the sentence, the amount, one button. Not a
-   pricing table and not three cards; everything else is one tap away in the
-   sheet at the end of this file.
+   THE FLOOR IS --bottom-safe. The Instagram and TikTok in-app browsers draw
+   their own toolbar over the bottom of the viewport and that is essentially
+   all of this traffic, so every sheet's padding ends on that line rather than
+   on the viewport's. A control under it cannot be tapped.
 
-   EVERY FIGURE ON THIS SCREEN IS READ OUT OF js/account.js. There is nothing
+   EVERY FIGURE ON THESE SHEETS IS READ OUT OF js/account.js. There is nothing
    in this file that could carry one — no ::before content, no counter, no
    attr() — and that is deliberate: tools/check-regressions.js greps this
-   stylesheet for a typed price along with the two files that build the screen.
+   stylesheet for a typed price along with the two files that build the
+   screen.
    ========================================================================== */
 
-.pw-offer{
-  display:flex; flex-direction:column; justify-content:flex-start;
-  background:var(--ground);
-  overflow-y:auto; overscroll-behavior:contain;
+.fbg{
+  position:fixed; top:0; right:0; bottom:0; left:0;
+  z-index:60;
+  pointer-events:none;
 }
-.pw-say{padding-bottom:calc(var(--bottom-safe) + 236px)}
-.pw-band{
-  position:relative;
-  flex:0 0 auto;
-  height:min(330px, 39vh);
+
+/* The story stays visible under it. Dimmed, because the sheet is the thing
+   being read now; not hidden, because the sentence the reader stopped on is
+   the whole argument. */
+.fbg-veil{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  background:var(--glass-deep);
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .3s ease, visibility 0s linear .3s;
 }
-.pw-say{
-  position:relative; z-index:2;
-  margin-top:-62px;                     /* the words start inside the plate's foot */
-  padding:0 22px;
+.fbg.is-auth .fbg-veil,
+.fbg.is-buy .fbg-veil{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transition:opacity .3s ease, visibility 0s linear 0s;
 }
-.pane.paywall .pw-eyebrow{
-  margin:0 0 12px; color:var(--accent-ink);
+
+.fbg-sheet{
+  position:absolute; left:0; right:0; bottom:0;
+  z-index:2;
+  width:auto; max-width:520px; margin-left:auto; margin-right:auto;
+  padding:22px 22px calc(var(--bottom-safe) + 10px);
+  border-radius:24px 24px 0 0;
+  background:var(--menu);
+  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
+  text-align:left;
+  max-height:94vh; overflow-y:auto; overscroll-behavior:contain;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transform:translateY(18px);
+  transition:opacity .32s ease, transform .32s cubic-bezier(.2,.75,.25,1),
+             visibility 0s linear .32s;
+}
+.fbg.is-auth .fbg-auth,
+.fbg.is-buy .fbg-buy{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transform:none;
+  transition:opacity .32s ease, transform .32s cubic-bezier(.2,.75,.25,1),
+             visibility 0s linear 0s;
+}
+
+/* ---- the words ----------------------------------------------------------- */
+.fbg .fbg-eyebrow{
+  margin:0 0 10px;
   font-size:var(--fs-micro); font-weight:var(--w-label);
   letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--dimmer);
+  font-variant-numeric:tabular-nums;
 }
-.pane.paywall h2{
-  margin:0; text-align:left; color:var(--parchment);
+.fbg .fbg-head{
+  margin:0; color:var(--parchment);
   font-family:var(--display); font-weight:var(--w-display);
-  font-size:2.5rem; line-height:1.04; letter-spacing:-.016em;
+  font-size:1.875rem; line-height:1.1; letter-spacing:var(--ls-head);
   text-wrap:balance;
 }
-.pane.paywall .pw-sub{
-  margin:14px 0 0; max-width:32ch; color:var(--dim);
-  font-size:var(--fs-lead); font-weight:var(--w-body); line-height:1.5;
+.fbg .fbg-headbig{font-size:2.25rem}
+.fbg .fbg-sub{
+  margin:8px 0 0; max-width:34ch;
+  color:var(--dim);
+  font-size:var(--fs-body); font-weight:var(--w-body); line-height:1.5;
+  text-wrap:pretty;
 }
-/* The amount, and the period it is charged over. Both come out of FBA:
-   billedText is what Stripe takes to the cent, perLong() is the interval it
-   takes it on. */
-.pane.paywall .pw-price{
-  margin:26px 0 0; color:var(--parchment);
-  font-size:1.5rem; font-weight:var(--w-head);
-  letter-spacing:var(--ls-title); line-height:1.1;
+
+/* ---- the account sheet's three doors -------------------------------------
+   One shape, three grounds: the provider that is configured gets the solid
+   button, everything else a hairline. A door that is not there is not drawn
+   greyed out — see APPLE_ON in js/recommend.js. */
+.fbg .fbg-btn{
+  display:flex; align-items:center; justify-content:center; gap:11px;
+  width:100%; margin-top:8px;
+  padding:11px 18px; min-height:46px;
+  border:0; border-radius:var(--pill); cursor:pointer;
+  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  background:var(--parchment); color:var(--menu);
+  line-height:1.2;
+}
+.fbg .fbg-google{margin-top:18px}
+.fbg .fbg-line{
+  background:none; color:var(--parchment);
+  box-shadow:inset 0 0 0 1px var(--tint-3);
+}
+.fbg .fbg-btn[disabled]{opacity:.6; cursor:default}
+.fbg-mark{flex:0 0 20px; width:20px; height:20px; display:block}
+.fbg-mark svg{width:100%; height:100%; display:block}
+
+.fbg .fbg-alt{
+  display:flex; align-items:center; justify-content:center;
+  margin:6px 0 0; min-height:var(--tap);
+  font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--dimmer); text-align:center;
+}
+.fbg .fbg-alt a{color:var(--accent-ink); margin-left:4px}
+
+/* ---- the offer ----------------------------------------------------------- */
+
+/* THE PROOF SLOT. It renders the copy-only arm, and it is built to hold a
+   measured figure the day there is one — see PROOF in js/recommend.js for
+   what would have to be true first. .fbg-stat is the numeric arm and nothing
+   renders it today; it is here so that turning the slot on is one edit in
+   one file rather than two. */
+.fbg-proof{
+  margin:16px 0 0; padding:14px 16px;
+  border-radius:16px;
+  background:var(--tint);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  text-align:center;
+}
+.fbg .fbg-stat{
+  margin:0; color:var(--coral);
+  font-size:2.25rem; font-weight:var(--w-head); line-height:1;
+  letter-spacing:var(--ls-hero);
   font-variant-numeric:tabular-nums;
 }
-.pane.paywall .pw-price b{font-weight:var(--w-head)}
-.pane.paywall .pw-price span{
-  font-size:var(--fs-body); font-weight:var(--w-strong); color:var(--dimmer);
+.fbg .fbg-statcap,
+.fbg .fbg-cap{
+  margin:0; color:var(--dim);
+  font-size:var(--fs-note); font-weight:var(--w-label); line-height:1.45;
+  text-wrap:pretty;
 }
+.fbg .fbg-statcap{margin-top:8px}
+.fbg .fbg-note{
+  margin:4px 0 0; color:var(--dimmer);
+  font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.45;
+}
+
+/* The amount, and the period it is charged over. Both come out of FBA:
+   billedText is what Stripe charges to the cent, perLong() is the interval
+   it charges on. */
+.fbg .fbg-price{
+  margin:16px 0 0; text-align:center;
+  color:var(--parchment);
+  font-size:var(--fs-h3); font-weight:var(--w-body);
+  font-variant-numeric:tabular-nums;
+}
+.fbg .fbg-price b{font-weight:var(--w-head)}
+.fbg .fbg-price span{color:var(--dimmer); font-weight:var(--w-label)}
 /* The same amount divided down and rounded UP, so the softer line can never
-   name a figure below the one the reader authorises. */
-.pane.paywall .pw-per{
-  margin:5px 0 0; color:var(--dimmer);
-  font-size:var(--fs-note); font-weight:var(--w-label);
+   quote a figure below the one the reader authorises. */
+.fbg .fbg-per{
+  margin:2px 0 0; text-align:center;
+  color:var(--dimmer);
+  font-size:var(--fs-note); font-weight:var(--w-body);
   font-variant-numeric:tabular-nums;
 }
 
-/* ---- the actions --------------------------------------------------------- */
-.pw-go{width:100%; max-width:520px; margin:0 auto; line-height:1.2}
-/* The terms, in the order they happen: the trial, what today costs, and that
-   it stops when the reader says so. */
-.pane.paywall .pw-fine{margin:9px auto 2px}
-.pw-ghosts{display:flex; flex-direction:column; align-items:center}
-.pane.paywall .pw-plans,
-.pane.paywall .pw-later{
-  display:block; width:auto; margin:0 auto;
+.fbg .fbg-go{margin-top:16px; line-height:1.2}
+/* The terms, under the button, in the order they happen: the trial, what
+   today costs, and that it stops when the reader says so. */
+.fbg .fbg-fine{margin:9px auto 0; text-align:center}
+
+.fbg-ghosts{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+  gap:2px; margin-top:2px;
+}
+.fbg .fbg-plans,
+.fbg .fbg-later{
+  display:block; width:auto; margin:0;
   border:0; background:none; cursor:pointer;
-  font-family:var(--ui); font-size:var(--fs-sub); font-weight:var(--w-strong);
+  font-family:var(--ui); font-size:var(--fs-note); font-weight:var(--w-strong);
   padding:10px 12px; min-height:var(--tap);
 }
-.pane.paywall .pw-plans{color:var(--accent-ink)}
-.pane.paywall .pw-later{color:var(--dimmer)}
-
-/* Short phones, then a phone turned sideways. The plate gives ground first,
-   because it is the only element that can without losing a word; the two
-   ghosts share a line last, because 88px of stacked ghosts is a quarter of a
-   375px viewport. */
-@media (max-height:760px){
-  .pw-ghosts{flex-direction:row; justify-content:center; gap:2px}
-  .pw-band{height:min(250px, 32vh)}
-  .pane.paywall h2{font-size:2.125rem}
-  .pane.paywall .pw-price{margin-top:18px}
-  .pw-cutbody{height:104px}
+.fbg .fbg-plans{color:var(--accent-ink)}
+.fbg .fbg-later{color:var(--dimmer)}
+/* "Not now" on the account sheet is the same control in the same place. */
+.fbg .fbg-auth .fbg-later{
+  display:block; width:100%; margin-top:2px; text-align:center;
 }
-@media (max-height:640px){
-  .pw-band{height:min(196px, 27vh)}
-  .pw-say{margin-top:-44px}
-  .pane.paywall h2{font-size:1.75rem}
-  .pane.paywall .pw-sub{margin-top:10px; font-size:var(--fs-body)}
-  .pane.paywall .pw-price{margin-top:12px}
-  .pw-cuttext{padding-top:calc(var(--top-safe) + 58px)}
-  .pw-cutbody{height:84px}
-}
-/* Sideways: two columns spend the width that is going spare, and everything
-   is on the screen at once instead of the price table sitting 121px behind
-   the action group, which is what was measured before this rule.
 
-   `min-width` as well as `max-height`, so a genuinely small phone held
-   upright never gets this — there the single column is right. */
-@media (max-height:520px) and (min-width:600px){
-  .pw-offer{
-    display:grid;
-    grid-template-columns:minmax(0,40%) minmax(0,1fr);
-    align-items:center;
-    padding:var(--top-safe) 22px calc(var(--bottom-safe) + 104px) 0;
-    column-gap:20px;
-  }
-  .pw-band{height:auto; align-self:stretch}
-  .pw-say{margin:0; padding:0}
-  .pane.paywall h2{font-size:1.625rem}
-  .pane.paywall .pw-sub{margin-top:8px; font-size:var(--fs-note)}
-  .pane.paywall .pw-price{margin-top:10px}
-  /* .go is padding:16px 20px in app.css; 8px of it is the difference between
-     the terms clearing the action group and not. min-height is --tap, so the
-     button never shrinks below 44px whatever this says. */
-  .pane.paywall .pw-go{padding-top:12px; padding-bottom:12px}
-  .pane.paywall .pw-fine{margin:3px auto 0}
+/* Short phones, then a phone turned sideways.
+
+   THE ORDER THINGS GIVE WAY IN IS THE ORDER OF WHAT THEY ARE FOR. Breathing
+   room first. Then the proof slot and the currency note, which are the two
+   things on the offer that are neither the offer nor the terms. Then the
+   sentence under the headline. The price, the button and the terms never go,
+   at any height, because those three are what the reader is agreeing to.
+
+   The 620px step is set where it is on purpose: a 320x568 phone is the
+   smallest viewport this site sees and 568 has to clear it, so the step sits
+   above 568 rather than at a round number below it. */
+@media (max-height:700px){
+  .fbg-sheet{padding-top:18px}
+  .fbg .fbg-head{font-size:1.625rem}
+  .fbg .fbg-headbig{font-size:1.875rem}
+  .fbg-proof{margin-top:12px; padding:11px 14px}
+  .fbg .fbg-price{margin-top:12px}
+  .fbg .fbg-go{margin-top:12px}
+}
+@media (max-height:620px){
+  .fbg .fbg-head,
+  .fbg .fbg-headbig{font-size:1.4375rem}
+  .fbg .fbg-sub{font-size:var(--fs-note)}
+  .fbg-proof{display:none}
+  .fbg .fbg-cur{display:none}
+  .fbg .fbg-btn{min-height:var(--tap); margin-top:6px}
+  .fbg .fbg-google{margin-top:12px}
+  .fbg .fbg-go{margin-top:10px}
+  .fbg .fbg-fine{margin-top:6px}
+}
+/* Sideways. 390px of height, of which the in-app toolbar takes 64: the
+   sentence under the headline goes, the eyebrow goes with it (the story is
+   right there behind the sheet), and the two ghosts share their line. */
+@media (max-height:460px){
+  .fbg-sheet{padding-top:14px; max-height:96vh}
+  .fbg .fbg-eyebrow{display:none}
+  .fbg .fbg-head,
+  .fbg .fbg-headbig{font-size:1.3125rem}
+  .fbg .fbg-sub{display:none}
+  .fbg .fbg-btn{margin-top:5px}
+  .fbg .fbg-google{margin-top:10px}
+  .fbg .fbg-price{margin-top:8px}
+  .fbg .fbg-per{display:none}
+  .fbg .fbg-go{margin-top:8px}
+  .fbg .fbg-alt,
+  .fbg .fbg-plans,
+  .fbg .fbg-later{min-height:var(--tap); padding-top:6px; padding-bottom:6px}
+}
+
+/* ==========================================================================
+   2b. THE BOUNDARY, in the story itself.
+
+   read.html draws the free run of a locked story as ordinary cards, and adds
+   two things to the last of them: the next card's opening line at the
+   opacity of something you cannot read yet, and a hairline with a padlock in
+   it. Then a tail below the last card — the room the gesture needs, and the
+   one way through for a reader whose sheet never opened.
+
+   THE PADLOCK IS INLINE SVG, NOT AN EMOJI. The mockup draws it as one; an
+   emoji beside this typography is somebody else's artwork, at somebody
+   else's colour, and it is the one glyph on the screen a reader cannot
+   restyle.
+
+   Named fbw-, not lock-: css/app.css already styles .lock, and a class that
+   collides with a styled one is how a whole page ended up centred with every
+   check green.
+   ========================================================================== */
+
+/* ALPHA, NOT OPACITY, AND THE REASON IS TWO REASONS.
+
+   css/app.css's own note: alpha rather than opacity, because opacity fades the
+   text-shadow the words are relying on at the same time as the words. And
+   js/scenes.js adds `.rise` to every <p> inside a .copy, this one included, so
+   the caption choreography ENDS at `opacity:1` — an opacity set here would be
+   overwritten by the animation a beat after the card goes live, which is a
+   bug that only appears once the reader has stopped looking for it.
+
+   So the step down the ladder is a colour: the head is full cream, the body is
+   --dim (.88), and the line the reader cannot have yet is --dimmer (.62), the
+   same alpha every other quiet line in the reader uses. It keeps the rise, so
+   it arrives with the rest of the card rather than being there before it. */
+.beat .fbw-peek{
+  margin:16px 0 0;
+  color:var(--dimmer);
+  font-size:var(--fs-lead); font-weight:var(--w-body); line-height:1.62;
+  text-wrap:pretty;
+  /* It sits BEHIND the card rather than on it, so it gives up the shadow the
+     rest of the copy is lifted by. */
+  text-shadow:none;
+  /* Two lines of it, then it stops. This is a taste of the next card, not
+     the next card. */
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden;
+}
+.beat .fbw-rule{
+  display:flex; align-items:center; gap:12px;
+  margin:18px 0 0;
+}
+.beat .fbw-rule i{
+  flex:1 1 auto; height:1px; display:block;
+  background:var(--accent-edge);
+}
+.beat .fbw-rule span{
+  flex:0 0 auto; width:15px; height:15px; display:block;
+  color:var(--accent-ink);
+}
+.beat .fbw-rule svg{width:100%; height:100%; display:block}
+
+/* The tail. Tall enough that one more scroll is a real gesture rather than a
+   twitch, and it carries a real link: if the scroll watcher never armed — no
+   listeners, a webview that swallows the events, a reader on a keyboard who
+   got here another way — this is the way through, and it works with
+   JavaScript switched off because it is an <a> with an href. */
+/* Proximity, not mandatory, and only while a locked run is on screen.
+
+   css/app.css gives .deck `scroll-snap-type: y mandatory`, which is correct
+   for a story: every card is a full screen and the reader lands on one rather
+   than between two. Under a boundary it is wrong. Mandatory snapping makes
+   the last card the last snap point the scroller will rest on, so the tail
+   below it can never be reached, the way-through link in it can never be
+   seen, and the one-more-scroll gesture is undone by the engine before it
+   finishes. Proximity keeps the card-to-card snap and allows a rest at the
+   foot of the scroller.
+
+   This ADDS a modifier; it does not redefine .deck. read.html puts the class
+   on only for a locked run. */
+.deck.is-wall{scroll-snap-type:y proximity}
+
+.fbw-gap{
+  position:relative;
+  min-height:210px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:24px 22px var(--bottom-safe);
+  background:var(--ground);
+  text-align:center;
+}
+.fbw-gap p{
+  margin:0 0 6px; max-width:32ch;
+  color:var(--dimmer);
+  font-size:var(--fs-note); font-weight:var(--w-body); line-height:1.5;
 }
 
 /* ==========================================================================
@@ -716,5 +894,6 @@ a.ec-go{
   .pane.paywall{scroll-behavior:auto}
   /* With transitions off, `visibility 0s linear .45s` would still hold the
      outgoing screen for most of half a second. */
-  .ec-p1, .ec-p2, .pw-cut, .pw-offer{transition:none}
+  .ec-p1, .ec-p2{transition:none}
+  .fbg-sheet, .fbg-veil{transition:none}
 }

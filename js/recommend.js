@@ -361,31 +361,6 @@ var FBR = (function () {
     return "";
   }
 
-  /* The funnel entrance, with the story attached.
-
-     gate.js's FB.checkout() is the one place that decides what a buy button
-     does, and it builds "/join?from=<where>". It cannot carry a second value,
-     and /join needs one now: a reader arriving from a locked story lands on
-     the first onboarding question with THAT story behind it, and is handed
-     back to it when the questions end. So the path is composed from gate.js's
-     own joinURL() rather than rebuilt — one source for the route, one place
-     that sanitises `from` — and the id is appended here.
-
-     The id is written down twice on purpose. A query string does not survive
-     the trip out to Stripe and back; localStorage does, and does not survive
-     a private window that refuses writes. Two carriers, one fact, and both
-     say the same thing to whichever end reads first. */
-  function joinFor(from, s) {
-    try {
-      if (!window.FB || typeof FB.joinURL !== "function") return "";
-      var u = str(FB.joinURL(from));
-      if (!u) return "";
-      var id = (s && s.id != null) ? String(s.id) : "";
-      if (!id) return u;
-      return u + (u.indexOf("?") === -1 ? "?" : "&") + "s=" + encodeURIComponent(id);
-    } catch (e) { return ""; }
-  }
-
   /* "$35.88/yr". The suffix comes off the interval Stripe bills on, so a
      plan billed every 3 months could never be labelled "/yr" by accident. */
   function perSuffix(p) {
@@ -614,14 +589,13 @@ var FBR = (function () {
            '</svg>';
   }
 
-  /* The first sentence of a hook, with the citation stripped off it.
-
-     A third of the hooks in the season end in a parenthesised source link,
-     and several run to three sentences. On a screen whose whole job is "here
-     is the next story", the first sentence IS the promise; the rest is the
-     story. Never invented, only cut. */
-  function firstSentence(s) {
-    var t = str(s)
+  /* Citations off, whitespace collapsed. A third of the hooks in the season
+     end in a parenthesised source link, and a citation must never reach a
+     headline. It is a no-op on every title in data/index.json today, so on a
+     title it is a guard against later data rather than a fix for current
+     data — which is exactly why it stays on the title path. */
+  function clean(s) {
+    return str(s)
       .replace(/\s*\(\[[^\]]*\]\([^)]*\)\)\s*/g, " ")
       .replace(/\s*\(https?:\/\/[^)]*\)\s*/g, " ")
       /* A function, not "$1": tools/check-regressions.js greps this file
@@ -630,15 +604,37 @@ var FBR = (function () {
       .replace(/\s*\[([^\]]*)\]\([^)]*\)/g, function (whole, txt) { return " " + txt; })
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  /* The first sentence of a hook. Several run to three. Never invented, only
+     cut. */
+  function firstSentence(s) {
+    var t = clean(s);
     var m = t.match(/^[\s\S]*?[.?!](?=\s|$)/);
     return (m ? m[0] : t).trim();
   }
 
-  /* The headline for a story being offered: its hook, cut to one sentence,
-     and its title when it has no hook. */
+  /* THE HEADLINE FOR A STORY BEING OFFERED: ITS TITLE.
+
+     It used to be the hook, cut to one sentence, with the title as the
+     fallback. That made this the last surface in shipped code that headlined
+     a story with something other than its title — so the story a reader was
+     offered next carried a different headline from the cover they then tapped
+     it from. The Explore hero, the trending shelf, the mosaic, the Continue
+     row and every /library surface all draw the title now; this is the one
+     that was left.
+
+     THIS DIVERGES FROM THE DESIGN MOCKUP ON PURPOSE. Explore.dc.html binds
+     its hero to the hook. The instruction to use the title everywhere is
+     newer than that file, and the same note is in EXPLORE.md, js/today.js and
+     css/today.css so that reading the design doc does not talk somebody into
+     reverting it.
+
+     The hook stays as the FALLBACK rather than being deleted: a title-less
+     row would otherwise render an empty headline. */
   function promise(s) {
     if (!s) return "";
-    return firstSentence(s.hook) || str(s.title);
+    return clean(s.title) || firstSentence(s.hook);
   }
 
   /* A cover, 3:4, sized by padding-top rather than aspect-ratio — the latter
@@ -1151,6 +1147,12 @@ var FBR = (function () {
          the clock. Restartable: scrolling back into the story and returning
          plays the moment again rather than dropping the reader on a dead
          screen with a countdown that already ran. */
+      /* The story this card is offering, for a caller that needs to know
+         which one — read.html writes it into fb_return_v1 so a buyer comes
+         back to a story they have not read rather than to a shelf. Null when
+         there is nothing left to offer. */
+      sec.nextStory = showing || null;
+
       sec.reveal = function () {
         once(sec, "__fbSeen", function () {
           track("first_completion_screen_viewed",
@@ -1212,105 +1214,205 @@ var FBR = (function () {
   }
 
   /* ======================================================================
-     2. THE WALL — interrupted, then the offer.
+     2. THE WALL — the story runs, and it is interrupted where it stops.
 
-     TWO SCREENS ON ONE PANE, AND THE ORDER IS THE POINT.
+     WHAT CHANGED, AND WHY IT IS NOT A SCREEN ANY MORE.
 
-       .pw-cut    the interruption. The story is already running: its own
-                  opening, fading out under the reader's thumb. Nothing is
-                  sold here and no price is on the screen.
-       .pw-offer  what it costs to carry on. One eyebrow, one sentence, one
-                  amount, one button.
+     The wall used to be a PANE that replaced the deck: a manufactured
+     "interruption" screen with the story's first card on it, then an offer
+     screen, reached by a button. Two invented screens standing in front of
+     a story the reader was already allowed to start.
 
-     A price flashed over a cliffhanger that has not landed yet is an
-     interruption that reads as an advertisement. The reader meets the story
-     first, and only then the offer — which is also why the first screen
-     carries no number: the mockup this is cut from puts the offer four taps
-     in, and every one of those taps is somewhere the reader chose to go.
+     It is now an OVERLAY over the story itself. A locked story really opens
+     and really runs — read.html draws its first cards, on their own plates,
+     with their own credit lines and the same progress rail every other story
+     has — and the run simply stops. Trying to keep reading is what asks for
+     an account:
 
-     BOTH SCREENS ARE IN THE DOM FROM THE FIRST FRAME. Building the offer
-     lazily would mean a pane that says nothing to anything reading the page
-     rather than looking at it, and it is what the paywall check asserts.
+         1  the story, running                     (read.html)
+         2  .fbg-auth   "Keep reading."            an account to save it
+         3  .fbg-buy    "Finish <the subject>."    the price, and the button
+         4  Stripe                                 not ours
+         5  the story, unlocked                    (read.html)
 
-     WHAT IS NOT HERE: the sign-in and account screens that sit between these
-     two in the mockup. Onboarding is /join's, it is being redesigned, and a
-     second copy of it on the reader page would be a second thing to keep in
-     step. Where the flow would ask for an account it hands off to
-     /join?from=paywall&s=<id>, exactly as it does today.
+     THE GESTURE IS THE INTENT SIGNAL. There is no unlock button to hunt for
+     at the foot of the page: one more scroll past the boundary opens the
+     sheet. read.html owns the gesture, because it owns the deck; this file
+     owns what the gesture opens. What it must never be is a hair trigger —
+     see "the boundary" in read.html for the arming rule.
 
-     No countdown, no "today only", no scarcity of any kind. The offer is
-     the same at four in the morning as it is now.
+     BOTH SHEETS ARE IN THE DOM FROM THE FIRST FRAME, hidden with
+     visibility:hidden rather than display:none. That keeps them out of the
+     tab order and out of the accessibility tree while leaving their words
+     where a checker reading the page can find them, which is what the
+     paywall check in ONBOARDING.md asserts, and it is what makes the
+     crossfade one mechanism instead of two.
+
+     THREE THINGS THE MOCKUP DRAWS THAT ARE NOT DRAWN HERE, each with the
+     one thing that would have to become true first — see PROOF, APPLE_ON
+     and the note over the price block below. Nothing about them is hidden:
+     each is a switch with its condition written next to it.
+
+     No countdown, no "today only", no scarcity of any kind. The offer is the
+     same at four in the morning as it is now.
      ====================================================================== */
 
-  /* The interruption. The story's own opening, cut off mid-thought.
+  /* ---- who is holding the phone -----------------------------------------
+     js/auth.js is the only thing that knows, and it may not have arrived.
+     Every question below answers "no" rather than throwing, because a wall
+     that cannot tell whether somebody is signed in must still be a wall with
+     a way through it. */
+  function fbu() {
+    try { return (window.FBU && window.FBU.__factbox) ? window.FBU : null; } catch (e) { return null; }
+  }
+  function signedIn() {
+    try { var U = fbu(); return !!(U && U.signedIn && U.signedIn()); } catch (e) { return false; }
+  }
+  function uidNow() {
+    try {
+      var U = fbu();
+      if (U && U.uid && U.uid()) return String(U.uid());
+    } catch (e) {}
+    return "";
+  }
+  /* True ONLY when the SDK never arrived — a blocked CDN, a dead network, a
+     webview too old to parse it. A reader who is merely signed out is not
+     this case: they can sign in, and the sheet above asks them to. This is
+     the one exception STRIPE.md allows to the attribution rule, and it is
+     counted rather than hidden. */
+  function authDead() {
+    try {
+      var U = fbu();
+      if (!U) return true;
+      if (U.unavailable && U.unavailable()) return true;
+      if (U.ok && !U.ok() && U.known && U.known()) return true;
+    } catch (e) { return true; }
+    return false;
+  }
 
-     Every word on it comes out of the story's own record — its first card,
-     or its hook when the caller was handed an index row without one. Nothing
-     is written for this screen, because a cliffhanger somebody invented is a
-     cliffhanger the story does not answer. */
-  function cutScreen(s, onGo) {
-    var wrap = el("div", "pw-cut");
-    if (s && s.img) wrap.appendChild(coverPlate(s, "pw-cutart"));
+  /* This page, as a return address, so /login hands the reader back to the
+     exact story they were reading — query string and all. login.html
+     whitelists the value; a path with ?s=<id> on it passes. */
+  function hereNext() {
+    try {
+      return encodeURIComponent(String(location.pathname || "/") + String(location.search || ""));
+    } catch (e) { return encodeURIComponent("/explore"); }
+  }
+  function loginURL() { return "/login?next=" + hereNext(); }
 
-    var cards = null;
-    try { cards = (s && s.cards && s.cards.length) ? s.cards : null; } catch (e) {}
-    var c = cards ? cards[0] : null;
+  /* ---- "Continue with Apple" · NOT SHIPPED, AND HERE IS THE SWITCH -------
+     The mockup puts an Apple button between Google and email. Firebase has
+     no Apple provider configured on this project — the identity toolkit
+     answers OPERATION_NOT_ALLOWED for apple.com and returns a real auth URI
+     for google.com — so a button drawn from that design would open a screen
+     that cannot sign anybody in. A sign-in control that fails is worse than
+     one that is not there, so it is not drawn.
 
-    var box = el("div", "pw-cuttext");
-    box.appendChild(el("p", "pw-cuthead",
-      (c && c.head) ? str(c.head) : promise(s)));
+     TO TURN IT ON, in this order:
+       1. Apple Developer: a Services ID for factbox.app, a Sign in with
+          Apple key, and factbox-7cb97.firebaseapp.com/__/auth/handler as the
+          return URL.
+       2. Firebase console -> Authentication -> Sign-in method -> Apple,
+          enabled, with that Services ID and key.
+       3. js/auth.js: a signInApple() beside signInGoogle(), built on
+          OAuthProvider("apple.com"), with the same popup-then-redirect
+          fallback — Instagram and TikTok webviews block window.open.
+       4. APPLE_ON = true here.
+     The second condition is not redundant: if this flag is flipped before
+     step 3 lands, the button still does not appear, because there is nothing
+     for it to call. */
+  var APPLE_ON = false;
+  function appleReady() {
+    try {
+      var U = fbu();
+      return !!(APPLE_ON && U && typeof U.signInApple === "function");
+    } catch (e) { return false; }
+  }
 
-    /* The paragraph that gets cut off, and WHERE it comes from depends on how
-       much of the story the caller was handed.
+  /* ---- the proof slot · NO STATISTIC SHIPS ------------------------------
+     The mockup's purchase screen carries two percentages about what "Factbox
+     members" did in their first thirty days. Both are marked verified:false
+     in the mockup's own source, and the designer's changelog says outright
+     that they are prototype placeholders with no study behind them. They are
+     also claims about a member base this product does not yet have. So the
+     slot is built and the figures are not: `stat` is null, `on` is false,
+     and what renders is the copy-only arm — which is the A/B arm the mockup
+     itself describes, and which says nothing that cannot be defended.
 
-       A locked story opened directly arrives through FB.loadStory(), which is
-       the whole file: card one has a body and that body is the paragraph.
-       The same wall reached from the end of another story arrives through
-       FB.loadIndex(), whose rows carry card HEADS and no bodies at all — so
-       the paragraph is the next card's line instead. Without this, every wall
-       reached that way was a headline over an empty screen.
+     This is the third time this repo has been asked for a number nobody
+     measured. js/start.js's RECALL_CLAIM_PCT is null for the same reason.
 
-       Either way it is one card past the hook and it fades out mid-sentence.
-       Nothing here reaches for text the caller did not already have. */
-    var body = (c && c.body) ? str(c.body) : "";
-    if (!body && cards) {
-      for (var ci = 1; ci < cards.length; ci++) {
-        var nx = cards[ci];
-        if (nx && (nx.body || nx.head)) { body = str(nx.body || nx.head); break; }
-      }
+     TO TURN IT ON, both of these, in this order:
+       1. Run the study. A cohort, a definition of the behaviour, a window,
+          and a figure that survives somebody else recomputing it. "Built a
+          consistent learning habit" is not measurable until "consistent" is
+          a number of days in a number of weeks.
+       2. Put the measured figure in `stat` and its sentence in `cap`, then
+          set `on` to true. Nothing else changes: the numeric arm renders
+          from the same slot.
+     A figure that arrives without step 1 is the same failure as printing a
+     round price when the till takes eighty-eight cents more. */
+  var PROOF = {
+    on: false,
+    stat: null,
+    /* The measured claim's sentence goes here with the figure. */
+    statCap: "",
+    /* The copy-only arm, which is what ships. Neither line asserts anything
+       about anybody: they describe what the product is. */
+    cap: "Make five minutes of screen time count.",
+    note: "Same phone. Something to show for it."
+  };
+
+  function proofSlot() {
+    var box = el("div", "fbg-proof");
+    if (PROOF.on && PROOF.stat) {
+      box.appendChild(el("p", "fbg-stat", str(PROOF.stat)));
+      box.appendChild(el("p", "fbg-statcap", str(PROOF.statCap)));
+      return box;
     }
-    if (body) {
-      var fade = el("div", "pw-cutbody");
-      fade.appendChild(el("p", null, body));
-      fade.appendChild(el("i", "pw-cutfade"));
-      box.appendChild(fade);
-    }
-    wrap.appendChild(box);
+    box.appendChild(el("p", "fbg-cap", str(PROOF.cap)));
+    if (PROOF.note) box.appendChild(el("p", "fbg-note", str(PROOF.note)));
+    return box;
+  }
 
-    /* The whole screen advances, which is the gesture the reader has used
-       between every other card — and there is a real control on it as well,
-       because a screen whose only affordance is "tap anywhere" cannot be
-       reached from a keyboard and does not say what happens next. */
-    var act = el("div", "pw-cutact");
-    var on = el("button", "go pw-on", "Continue");
-    on.type = "button";
-    act.appendChild(on);
-    wrap.appendChild(act);
+  /* Google's mark, inline, at the size the sheet uses it. Drawn rather than
+     fetched: this file adds no request, and an <img> that 404s inside a
+     sign-in button is a button that looks broken. */
+  function googleMark() {
+    var box = el("span", "fbg-mark");
+    box.setAttribute("aria-hidden", "true");
+    box.innerHTML =
+      '<svg viewBox="0 0 48 48" focusable="false">' +
+        '<path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.9 2.6 13.8l7.8 6.1C12.3 14 17.6 9.5 24 9.5z"/>' +
+        '<path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.3z"/>' +
+        '<path fill="#FBBC05" d="M10.4 28.4a14.6 14.6 0 010-9.3l-7.8-6.1a24 24 0 000 21.5l7.8-6.1z"/>' +
+        '<path fill="#34A853" d="M24 47.5c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.4 0-11.7-4.5-13.6-10.4l-7.8 6.1C6.5 42.1 14.6 47.5 24 47.5z"/>' +
+      '</svg>';
+    return box;
+  }
 
-    function go(ev) {
-      try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
-      onGo();
-    }
-    on.addEventListener("click", go);
-    wrap.addEventListener("click", function (ev) {
-      /* The button owns its own tap. */
-      try {
-        var t = ev && ev.target;
-        if (t && t.closest && t.closest(".pw-on")) return;
-      } catch (e) {}
-      go(ev);
-    });
-    return wrap;
+  /* THE STORY'S OWN TITLE, as the eyebrow on both sheets — and it is the
+     eyebrow rather than the headline for a reason.
+
+     The mockup's sheets read "Finish Cleopatra." and "continue with
+     Cleopatra", built from the subject's name. That works because it was
+     drawn on the one subject in the season whose name is a proper noun. The
+     other seven names in the taxonomy are GROUP labels — "Medieval and
+     modern", "When it all went wrong", "Things you have wrong" — and the
+     same sentence over any of them reads "Finish Medieval and modern.",
+     which is not English.
+
+     Titles are headlines rather than nouns, so they do not survive the slot
+     either: "Finish 7 Deadly Sins Explained." So the naming moves up one
+     line. The title labels the sheet, where a headline belongs and where no
+     grammar is being asserted about it, and the sentence under it is one
+     that is true of every story in the season.
+
+     Also NOT here: the mockup's "· 2 of 9". That number needs the whole
+     index; this screen is handed one story, and a position guessed from one
+     record is a number we made up. */
+  function storyLine(s) {
+    try { return str(s && s.title); } catch (e) { return ""; }
   }
 
   /* The sheet. Exactly the rungs js/account.js offers — two of them today,
@@ -1420,159 +1522,328 @@ var FBR = (function () {
     return wrap;
   }
 
-  /* paywall(stack, opts) -> a .pane element.
+  /* paywall(stack, opts) -> an OVERLAY element, not a pane.
+
+     It is `position:fixed` and belongs on <body>, because the deck scrolls
+     and a sheet inside a scrolling box scrolls away with its content — the
+     same reason "View other plans" has always been appended to <body>.
+
      opts: { from, onLater, onStart }
-       from     a short slug for the analytics property and for the funnel
-                entrance: "paywall" from a locked story, "endcard" from the
-                completion screen.
-       onLater  what "Maybe later" does. Absent, it goes to /explore.
+       from     a short slug for the analytics property: "paywall" from a
+                locked story, "endcard" from the completion screen.
+       onLater  what "Maybe later" does. Absent, it just shuts the sheet and
+                leaves the reader in the story, which is where they were.
        onStart  called with the chosen plan key just before checkout, so the
                 caller can remember where the reader was. This file writes no
                 storage of its own and is not about to start.
+       head     the offer sheet's headline. It defaults to "Finish the
+                story.", which is right when the reader was stopped in the
+                middle of one. It is NOT right at the end of a free story on
+                /firststory, where nothing was interrupted and what is being
+                offered is the rest of the season — so that caller passes its
+                own sentence rather than this screen guessing from context it
+                does not have.
+
+     The element it returns carries its own controls:
+       .open()      the right sheet for who is holding the phone
+       .openAuth()  the account sheet
+       .openBuy()   the offer
+       .shut()      neither, and the story is readable again
+       .reveal()    what read.html has always called; it opens.
+       .leave()     a no-op, for the same reason.
+
      Always returns an element. Never throws. */
   function paywall(stack, opts) {
-    var sec;
+    var host;
     try {
       opts = opts || {};
       var from = str(opts.from) || "paywall";
-      sec = el("section", "pane paywall pw is-cut");
-
       var s = stack && typeof stack === "object" ? stack : null;
       var d = trialDays();
       var lead = leadPlan();
-
-      /* ONE PRIMARY ACTION, AND IT IS NOT "START MY 3 DAYS FREE".
-
-         This button cannot start a trial. Nothing on the reader page can:
-         checkout is three Stripe Payment Links reached from the end of
-         /join, and this control opens /join at its first question. A button
-         that promises a trial and lands on "what do you want to remember?"
-         is the same class of untruth as printing a round number when the
-         till takes 88 cents more, which is the rule the whole of this repo
-         is built around.
-
-         So the button names the outcome the reader is buying — unlock, and
-         carry on reading — and the trial is stated on the pane as TERMS
-         rather than as the button's promise: three days free, nothing today,
-         cancel any time, over the real annual figure. Everything about the
-         offer is on the screen before the tap.
-
-         It is also the momentum: the reader is engaged with one particular
-         story, and that story goes with them — see joinFor() above. */
       var state = { key: lead ? lead.key : "", ctaLabel: "Unlock & keep reading" };
 
-      function showOffer() {
-        try {
-          sec.classList.remove("is-cut");
-          sec.classList.add("is-offer");
-        } catch (e) { sec.className = "pane paywall pw is-offer"; }
+      host = el("div", "paywall fbg");
+      host.setAttribute("data-from", from);
+
+      /* The story stays visible under the sheet. It is the thing being sold,
+         and a reader who can still see the sentence they stopped on is
+         answering a different question from one looking at an advertisement
+         that replaced it. */
+      var veil = el("div", "fbg-veil");
+      veil.setAttribute("aria-hidden", "true");
+      host.appendChild(veil);
+
+      /* ---- step 2 · the account ------------------------------------------
+         WHY AN ACCOUNT COMES BEFORE THE PRICE. It is not a toll on the way
+         to checkout. STRIPE.md §1: client_reference_id is the entire link
+         between a payment and an account, and it has to be a Firebase uid.
+         A reader who pays without one gets in through a local flag, on this
+         browser only — their money does not follow them to a second phone
+         and does not survive clearing the browser. So the sheet asks for the
+         thing that makes the purchase theirs, and says what it is for.
+
+         A reader who is already signed in never sees this sheet at all. */
+      var auth = el("section", "fbg-sheet fbg-auth");
+      auth.setAttribute("role", "dialog");
+      auth.setAttribute("aria-modal", "true");
+      auth.setAttribute("aria-label", "Keep reading");
+
+      var eyebrow = storyLine(s);
+      if (eyebrow) auth.appendChild(el("p", "fbg-eyebrow", eyebrow));
+      auth.appendChild(el("h2", "fbg-head", "Keep reading."));
+      auth.appendChild(el("p", "fbg-sub",
+        "Save your progress, and pick up exactly where you stopped."));
+
+      var gbtn = el("button", "fbg-btn fbg-google");
+      gbtn.type = "button";
+      /* Named, not opted out: this control sends no event of its own, so it
+         arrives as ui_click with `control` set to this. No new event name —
+         GA4 caps how many it will take. */
+      gbtn.setAttribute("data-fbt", "gate_google");
+      gbtn.appendChild(googleMark());
+      gbtn.appendChild(el("span", null, "Continue with Google"));
+      auth.appendChild(gbtn);
+
+      /* Apple, only when there is something behind it. See APPLE_ON. */
+      var abtn = null;
+      if (appleReady()) {
+        abtn = el("button", "fbg-btn fbg-line", "Continue with Apple");
+        abtn.type = "button";
+        abtn.setAttribute("data-fbt", "gate_apple");
+        auth.appendChild(abtn);
       }
 
-      /* ---- screen one: the interruption ---------------------------------- */
-      if (s) {
-        sec.appendChild(cutScreen(s, function () {
-          var cut = false;
-          try { cut = sec.classList.contains("is-cut"); }
-          catch (e) { cut = sec.className.indexOf("is-cut") > -1; }
-          if (!cut) return;
-          showOffer();
-          /* Focus moves with the screen. Without this the reader is on a new
-             screen and the keyboard is still on the button that left. */
-          try { go.focus(); } catch (e2) {}
-        }));
-      } else {
-        /* No story to be interrupted by — open on the offer. */
-        showOffer();
-      }
+      var mbtn = el("button", "fbg-btn fbg-line fbg-mail", "Continue with email");
+      mbtn.type = "button";
+      mbtn.setAttribute("data-fbt", "gate_email");
+      auth.appendChild(mbtn);
 
-      /* ---- screen two: the offer ------------------------------------------ */
-      var offer = el("div", "pw-offer");
+      var already = el("p", "fbg-alt");
+      already.appendChild(document.createTextNode("Already have an account? "));
+      var inLink = el("a", null, "Sign in");
+      inLink.href = loginURL();
+      inLink.setAttribute("data-fbt", "gate_signin");
+      already.appendChild(inLink);
+      auth.appendChild(already);
 
-      /* What they are unlocking, at the top of the screen and full width. The
-         picture is the argument; a 60px thumbnail with a sentence beside it
-         is a list item. */
-      if (s && s.img) offer.appendChild(coverPlate(s, "pw-band"));
+      var authLater = el("button", "ghost fbg-later", "Not now");
+      authLater.type = "button";
+      authLater.setAttribute("data-fbt", "gate_notnow");
+      auth.appendChild(authLater);
 
-      var say = el("div", "pw-say");
-      say.appendChild(el("p", "pw-eyebrow", "Unlock Factbox"));
-      say.appendChild(el("h2", null, "Finish the story."));
+      host.appendChild(auth);
+
+      /* ---- step 3 · the offer --------------------------------------------
+         One headline, one reason, one amount, one button, and the terms
+         under it in the order they happen. Every figure is READ out of
+         js/account.js — see the block over acct() — and when FBA is not
+         there the numbers are simply not drawn. A missing price is a smaller
+         failure than an invented one. */
+      var buy = el("section", "fbg-sheet fbg-buy");
+      buy.setAttribute("role", "dialog");
+      buy.setAttribute("aria-modal", "true");
+      buy.setAttribute("aria-label", "Finish the story");
+
+      if (eyebrow) buy.appendChild(el("p", "fbg-eyebrow", eyebrow));
+      buy.appendChild(el("h2", "fbg-head fbg-headbig",
+        str(opts.head) || "Finish the story."));
       /* Two sentences, both true of the same tap: this story finishes, and
-         the shelf behind it opens. Fixed copy, not the story's own hook —
-         the hook opens with the title on a third of the corpus, so title
-         over hook printed the same line twice and read as a rendering bug. */
-      say.appendChild(el("p", "pw-sub",
-        "And unlock every story in Factbox. Your next story is already waiting."));
+         the shelf behind it opens. */
+      buy.appendChild(el("p", "fbg-sub",
+        "Unlock every story in Factbox. Your next story is already waiting."));
 
-      /* --- the figure, and it is READ, never typed -------------------------
-         billedText is what Stripe charges, to the cent; perLong() is the
-         period it charges over; underMonth() is that figure divided down and
-         rounded UP, so the softer line can never quote a price below the one
-         the reader authorises. FBA absent — an old cached file, a blocked
-         request — and the block is simply not drawn. A missing price is a
-         smaller failure than an invented one. */
+      buy.appendChild(proofSlot());
+
       var priceP = null, perP = null;
       if (lead && lead.billedText) {
-        priceP = el("p", "pw-price");
+        priceP = el("p", "fbg-price");
         priceP.appendChild(el("b", null, str(lead.billedText)));
         priceP.appendChild(el("span", null, perLong(lead)));
-        say.appendChild(priceP);
+        buy.appendChild(priceP);
         var per = underMonth(lead);
-        if (per) { perP = el("p", "pw-per", per); say.appendChild(perP); }
+        if (per) { perP = el("p", "fbg-per", per); buy.appendChild(perP); }
       }
-      offer.appendChild(say);
 
-      /* --- the actions ------------------------------------------------------ */
-      var act = el("div", "pw-act");
-
-      var go = el("button", "go pw-go", state.ctaLabel);
+      var go = el("button", "go fbg-go", state.ctaLabel);
       go.type = "button";
-      go.setAttribute("data-fbt", "-");        /* sends trial_cta_clicked */
-      act.appendChild(go);
+      go.setAttribute("data-fbt", "-");          /* sends trial_cta_clicked */
+      buy.appendChild(go);
 
-      /* The terms, under the button, in the order they happen: the trial,
-         what it costs today, and that it can be stopped. Every one of the
-         three is account.js's own answer. */
+      /* The terms, under the button: the trial, what it costs today, and
+         that it can be stopped. All three are account.js's own answers, and
+         the trial is stated because the three live Payment Links really do
+         grant one. See RECOMMEND.md if the design ever stops saying so —
+         the links have to change first, not this screen. */
+      var fine = null;
       if (d) {
-        act.appendChild(el("p", "fine pw-fine",
-          trialShort() + " · " + zero() + " today · Cancel anytime"));
-        /* Said here too, because this screen prints a figure and the reader
-           may authorise from the next one without reading it again. */
+        fine = el("p", "fine fbg-fine",
+          trialShort() + " · " + zero() + " today · Cancel anytime");
+        buy.appendChild(fine);
         try {
-          var cn = FBA.pricing && (FBA.pricing() || {}).currencyNote;
-          if (cn) act.appendChild(el("p", "fine pw-fine pw-cur", cn));
+          var cn = acct() && FBA.pricing ? (FBA.pricing() || {}).currencyNote : "";
+          if (cn) buy.appendChild(el("p", "fine fbg-fine fbg-cur", cn));
         } catch (e) {}
       }
 
-      /* One wrapper, so the two can sit side by side on a phone turned
-         sideways where 88px of stacked ghosts is a quarter of the viewport. */
-      var ghosts = el("div", "pw-ghosts");
-
-      var more = el("button", "ghost pw-plans", "View other plans");
+      var ghosts = el("div", "fbg-ghosts");
+      var more = el("button", "ghost fbg-plans", "View other plans");
       more.type = "button";
-      more.setAttribute("data-fbt", "-");      /* sends other_plans_opened */
+      more.setAttribute("data-fbt", "-");        /* sends other_plans_opened */
       ghosts.appendChild(more);
-
-      /* The only way out. "Back to stories" used to sit under it going to the
-         same place as the fixed "back to Stories" pill at the top left of this
-         same screen, which is one destination offered twice. */
-      var later = el("button", "ghost pw-later", "Maybe later");
+      var later = el("button", "ghost fbg-later", "Maybe later");
       later.type = "button";
+      later.setAttribute("data-fbt", "gate_later");
       ghosts.appendChild(later);
+      buy.appendChild(ghosts);
 
-      act.appendChild(ghosts);
-      sec.appendChild(offer);
-      /* On the PANE, not inside .pw-offer. That screen scrolls when the copy
-         is taller than the viewport, and an absolutely positioned child of a
-         scrolling box scrolls away with its content — which would take the
-         button under the fold on exactly the short phones the bottom anchor
-         exists for. css/recommend.css hides it with the screen instead. */
-      sec.appendChild(act);
+      host.appendChild(buy);
 
-      /* --- selection --------------------------------------------------------
-         The chosen rung is remembered through FBA.setPlan(), which is the
-         same value /join restores when it paints the plan screen. So the
-         button "following the selection" is not a second checkout path — it
-         is the one the site already has, told which rung was picked. */
+      /* ---- which sheet, and when ------------------------------------------
+         Render-then-correct, the same discipline as the access gate: the
+         sheet that opens is the one that matches the answer we have, and it
+         is replaced when a better answer arrives. A reader who signs in
+         through the Google REDIRECT leg leaves this page entirely and comes
+         back to it, so "where was I" has to survive that trip. It rides in
+         sessionStorage, keyed to the story, and it is the only thing this
+         file stores. */
+      var STEP_KEY = "fb_gate_v1";
+      function remember(step) {
+        try {
+          sessionStorage.setItem(STEP_KEY, JSON.stringify(
+            { s: s ? str(s.id) : "", step: step }));
+        } catch (e) {}
+      }
+      function remembered() {
+        try {
+          var raw = sessionStorage.getItem(STEP_KEY);
+          if (!raw) return 0;
+          var o = JSON.parse(raw);
+          if (!o || o.s !== (s ? str(s.id) : "")) return 0;
+          return Math.floor(Number(o.step)) || 0;
+        } catch (e) { return 0; }
+      }
+      function forget() {
+        try { sessionStorage.removeItem(STEP_KEY); } catch (e) {}
+      }
+
+      function paint(cls) {
+        try {
+          host.className = "paywall fbg" + (cls ? " " + cls : "");
+        } catch (e) {}
+      }
+
+      var seen = false;
+      function report() {
+        if (seen) return;
+        seen = true;
+        /* paywall_view, not a new name for the same moment: it is what
+           privacy.html tells readers we send and what every funnel already
+           counts. GA4 caps distinct names and a near-identical second one
+           would split both. */
+        track("paywall_view", { stack: s ? str(s.id) : "", from: from });
+      }
+
+      function openAuth() { paint("is-auth"); remember(2); report(); focusIn(auth); }
+      function openBuy()  { paint("is-buy");  remember(3); report(); focusIn(buy); }
+      /* Shutting is not leaving. The reader is still in the story, the
+         boundary is one scroll behind them, and read.html re-arms the gesture
+         through onShut so the sheet can be asked for again. */
+      function shut() {
+        paint("");
+        try { if (typeof host.onShut === "function") host.onShut(); } catch (e) {}
+      }
+
+      /* Focus follows the sheet. Without this the reader is looking at a new
+         surface and the keyboard is still on the card behind it. */
+      function focusIn(sheet) {
+        try {
+          var t = sheet.querySelector("button, a[href]");
+          if (t && t.focus) t.focus();
+        } catch (e) {}
+      }
+
+      function open() {
+        if (signedIn()) { openBuy(); return; }
+        openAuth();
+      }
+
+      /* Signing in through the redirect leg reloads this page. If the reader
+         had already reached the sheet for THIS story and now has an account,
+         put them back where they were rather than making them find the
+         boundary again. */
+      function restore() {
+        try {
+          var was = remembered();
+          if (!was) return false;
+          if (was >= 2 && signedIn()) { openBuy(); return true; }
+        } catch (e) {}
+        return false;
+      }
+
+      /* An account arriving while the sheet is open — a popup sign-in, or a
+         late FBU — moves the reader on rather than leaving them looking at a
+         question they have just answered. */
+      try {
+        var U = fbu();
+        if (U && U.onChange) {
+          U.onChange(function () {
+            try {
+              if (host.className.indexOf("is-auth") === -1) return;
+              if (signedIn()) openBuy();
+            } catch (e) {}
+          });
+        }
+      } catch (e) {}
+
+      /* ---- what the controls do ------------------------------------------- */
+
+      gbtn.addEventListener("click", function () {
+        var U = fbu();
+        if (!U || !U.signInGoogle) { location.href = loginURL(); return; }
+        remember(2);
+        try { gbtn.disabled = true; } catch (e0) {}
+        try {
+          Promise.resolve(U.signInGoogle()).then(function () {
+            try { gbtn.disabled = false; } catch (e1) {}
+            if (signedIn()) openBuy();
+          }, function () {
+            /* A blocked popup becomes a redirect inside js/auth.js, so the
+               only failures that land here are ones the reader can act on.
+               The email door is always open and never depends on a popup. */
+            try { gbtn.disabled = false; } catch (e2) {}
+          });
+        } catch (e3) {
+          try { gbtn.disabled = false; } catch (e4) {}
+          location.href = loginURL();
+        }
+      });
+
+      if (abtn) {
+        abtn.addEventListener("click", function () {
+          var U = fbu();
+          if (!U || typeof U.signInApple !== "function") { location.href = loginURL(); return; }
+          remember(2);
+          try {
+            Promise.resolve(U.signInApple()).then(function () {
+              if (signedIn()) openBuy();
+            }, function () {});
+          } catch (e) { location.href = loginURL(); }
+        });
+      }
+
+      /* Email is /login, which is the site's one real Firebase sign-in and
+         also creates accounts. It carries this page as its return address,
+         so the reader comes back to the story with the story still on it. */
+      mbtn.addEventListener("click", function () {
+        remember(2);
+        try { location.href = loginURL(); } catch (e) {}
+      });
+      inLink.addEventListener("click", function () { remember(2); });
+
+      authLater.addEventListener("click", function () { shut(); });
+
+      /* ---- the plan, and the sheet that changes it ------------------------ */
       var sheet = null;
 
       function pick(key) {
@@ -1597,31 +1868,88 @@ var FBR = (function () {
         else if (p.key === "monthly") track("monthly_selected", { from: from });
       }
 
+      /* ---- checkout · THE ATTRIBUTION RULE, ON THE READER PAGE -------------
+         This used to hand off to /join and let that page do it. /join no
+         longer asks anything, so the tap that buys is here now, and so is
+         the guard that goes with it — unchanged from join.html's, because
+         the rule is STRIPE.md's, not the page's:
+
+           no Firebase uid  -> checkout_blocked{why:"no_uid"}, and the reader
+                               goes to sign in rather than to Stripe
+           no Payment Link  -> checkout_blocked{why:"no_link" / "no_url"} and
+                               the button says so, before the tap where it can
+           otherwise        -> checkout_start{attributed:"1"|"0"}, then Stripe
+
+         THE ONE CASE LET THROUGH is auth being genuinely unavailable.
+         Blocking there loses the sale AND leaves the reader no way to make an
+         account, which is strictly worse than a payment reconciled by hand:
+         profile-sync writes localAccountId into the reader's own document the
+         moment they do sign in, which is what that reconciliation joins on.
+         It is counted, not hidden — attributed 0 is a number somebody can
+         look at rather than a thing nobody knew.
+
+         checkoutURL() is js/account.js's, untouched: it is the one place
+         that builds client_reference_id. */
+      var blockedSaid = false;
       function start(btn) {
         track("trial_cta_clicked", { plan: str(state.key), from: from });
-        /* Carry the rung the reader was actually looking at, whether they
-           opened the sheet or not. /join restores it through FBA.plan() and
-           paints the plan screen with it selected, so the price on the wall
-           and the price on the plan screen are the same one. Written on the
-           TAP, never at render: a plan nobody has acted on is not a choice. */
-        try { if (acct() && FBA.setPlan && state.key) FBA.setPlan(state.key); } catch (e) {}
-        try { if (typeof opts.onStart === "function") opts.onStart(state.key); } catch (e) {}
-        try { if (sheet && sheet.close) sheet.close(); } catch (e) {}
-        var url = joinFor(from, s);
-        if (url) {
-          /* The same event FB.checkout would have sent from the same tap.
-             This path is taken instead of it, never as well as it, so the
-             funnel counts one click and not two. */
-          track("subscribe_click", { from: from });
-          try { location.href = url; return; } catch (e) {}
+
+        var A = acct();
+        if (A && A.anyLinkReady && !A.anyLinkReady()) {
+          if (!blockedSaid) {
+            blockedSaid = true;
+            track("checkout_blocked", { plan: str(state.key), why: "no_link" });
+          }
+          say(btn, "Checkout is not open yet",
+              "Payments are not switched on for this site yet. Nothing was " +
+              "charged and nothing was sent.");
+          return;
         }
-        /* No joinURL — an older cached gate.js. The one place that decides
-           what a buy button does still knows the way, it just cannot carry
-           the story. A reader in the funnel beats a dead button. */
+
+        try { if (A && A.setPlan && state.key) A.setPlan(state.key); } catch (e) {}
+        try { if (typeof opts.onStart === "function") opts.onStart(state.key); } catch (e1) {}
+        try { if (sheet && sheet.close) sheet.close(); } catch (e2) {}
+
+        var uid = uidNow();
+        if (!uid && !authDead()) {
+          /* checkout_start has NOT fired: this checkout did not start. */
+          track("checkout_blocked", { plan: str(state.key), why: "no_uid" });
+          remember(3);
+          openAuth();
+          return;
+        }
+
+        /* The same event a buy button has always sent from the same tap. It
+           is sent instead of FB.checkout's, never as well as it, so the
+           funnel counts one click and not two. */
+        track("subscribe_click", { from: from });
+        track("checkout_start", { plan: str(state.key), attributed: uid ? "1" : "0" });
+
+        var url = "";
+        try { if (A && A.checkoutURL) url = str(A.checkoutURL(state.key)); } catch (e3) {}
+        if (!url) {
+          /* checkout_start has already fired and the reader is going nowhere.
+             Without this the funnel shows a checkout that started and never
+             completed, which is what an abandoned payment looks like too —
+             two very different problems, one shape in the report. */
+          track("checkout_blocked", { plan: str(state.key), why: "no_url" });
+          say(btn, "Checkout is not open yet",
+              "Payments are not switched on for this site yet. Nothing was " +
+              "charged and nothing was sent.");
+          return;
+        }
+        forget();
+        try { location.href = url; } catch (e4) {}
+      }
+
+      /* A dead end that explains itself. Never a code, never a blank sheet. */
+      function say(btn, label, note) {
+        try { if (btn) { btn.textContent = label; btn.disabled = true; } } catch (e) {}
         try {
-          if (window.FB && typeof FB.checkout === "function") { FB.checkout(btn, from); return; }
+          if (!buy.querySelector(".fbg-note")) {
+            buy.insertBefore(el("p", "fine fbg-note", note), ghosts);
+          }
         } catch (e2) {}
-        location.href = "/join";
       }
 
       state.pick = pick;
@@ -1640,26 +1968,41 @@ var FBR = (function () {
       });
 
       later.addEventListener("click", function () {
+        shut();
         try {
-          if (typeof opts.onLater === "function") { opts.onLater(); return; }
+          if (typeof opts.onLater === "function") opts.onLater();
         } catch (e) {}
-        location.href = "/explore";
       });
 
-      sec.reveal = function () {
-        once(sec, "__fbSeen", function () {
-          /* paywall_view, not a new name for the same moment. It is what
-             privacy.html tells readers we send and what every funnel already
-             counts, and a second near-identical name would split both. */
-          track("paywall_view", { stack: s ? str(s.id) : "", from: from });
-        });
-      };
-      /* The wall is drawn and seen in the same breath, unlike the end card
-         which is built a dozen cards before anyone reaches it. */
-      sec.reveal();
+      /* Escape and the veil both mean "let me look at the story again". They
+         do not navigate: the reader is still in the story, and the boundary
+         is one scroll away when they want it. */
+      veil.addEventListener("click", function () { shut(); });
+      function onKey(ev) {
+        try {
+          if (!ev || (ev.key !== "Escape" && ev.key !== "Esc")) return;
+          if (host.className.indexOf("is-") === -1) return;
+          shut();
+        } catch (e) {}
+      }
+      try { document.addEventListener("keydown", onKey, false); } catch (e) {}
 
-      return sec;
+      host.onShut = null;
+      host.open = open;
+      host.openAuth = openAuth;
+      host.openBuy = openBuy;
+      host.shut = shut;
+      host.restore = restore;
+      /* read.html has always called reveal() on the pane it just built, and
+         leave() when the reader scrolls off it. One opens; the other is a
+         no-op, because a sheet is not something you scroll past. */
+      host.reveal = open;
+      host.leave = function () {};
+      paint("");
+      return host;
     } catch (e) {
+      /* Never nothing. The same two sentences, the same way in, the same way
+         out, and not one number it cannot price. */
       try {
         var f = el("section", "pane paywall pw is-offer");
         f.appendChild(el("h2", null, "Finish the story."));
@@ -1671,9 +2014,14 @@ var FBR = (function () {
         var b = el("a", "ghost", "Back to stories");
         b.href = "/explore";
         f.appendChild(b);
+        f.open = function () {};
+        f.openAuth = f.open; f.openBuy = f.open; f.shut = f.open;
+        f.onShut = null;
+        f.restore = function () { return false; };
         f.reveal = function () {};
+        f.leave = function () {};
         return f;
-      } catch (e2) { return sec || null; }
+      } catch (e2) { return host || null; }
     }
   }
 

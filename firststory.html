@@ -182,13 +182,34 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      the hero plate, which is why a stack costs one image to read; the
      supplementary plates are spread across the interior so the middle of a
      long stack is not the same painting eight times. */
-  function beat(c, plate, cap, cr, n, stack) {
+  /* The padlock on the boundary, inline. The mockup draws it as an emoji;
+     an emoji beside this typography is somebody else's artwork, at somebody
+     else's colour, and it is the one glyph on a card a reader cannot
+     restyle. Every other icon on this site is an inline SVG and so is this. */
+  var LOCK_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
+      ' stroke-linecap="round" stroke-linejoin="round" focusable="false">' +
+      '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect>' +
+      '<path d="M8.25 10.5V7.5a3.75 3.75 0 0 1 7.5 0v3"></path>' +
+    '</svg>';
+
+  function beat(c, plate, cap, cr, n, stack, peek) {
     var cls = "beat is-" + (c.beat || "card").replace(/[^a-z]/gi, "")
             + (c.long ? " is-long" : "");
     var body = c.body
       ? "<p>" + FB.esc(c.body) + "</p>" : "";
     var cite = c.src
       ? '<p class="cite">' + FB.esc(c.src) + "</p>" : "";
+    /* The boundary, on the last card of a locked run: the NEXT card's own
+       opening line at the opacity of something you cannot read yet, then a
+       hairline with a padlock in it. Nothing invented — it is the story's
+       own words, dimmed, so "there is more" is a thing the reader can see
+       rather than a thing a screen asserts. */
+    var edge = peek
+      ? '<p class="fbw-peek">' + FB.esc(peek) + "</p>" +
+        '<div class="fbw-rule" aria-hidden="true"><i></i><span>' +
+          LOCK_SVG + "</span><i></i></div>"
+      : "";
     /* Six camera variants, cycled by card index, so consecutive cards never
        share a move — a stack of nine identical slow pushes reads as a stall
        rather than as motion. Deterministic, so it is the same on every reload. */
@@ -212,7 +233,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
             ' onerror="this.onerror=null;this.src=this.getAttribute(\'data-fallback\')">' +
         '</div>' +
         '<div class="copy">' +
-          '<h2>' + FB.esc(c.head) + '</h2>' + body + cite +
+          '<h2>' + FB.esc(c.head) + '</h2>' + body + cite + edge +
         '</div>' +
         '<p class="plate-credit">' + FB.creditLine(cap, cr) + '</p>' +
       '</section>';
@@ -273,13 +294,19 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
 
   /* opts is passed straight through to FBR.paywall: where the reader came
      from, what "Maybe later" does, and what to remember before checkout. */
-  function buildPaywall(s, from, later) {
+  /* sell  the story the sheet is ABOUT. null is legitimate: the ask at the
+           end of /firststory is about the season, not about one story.
+     keep  the story to hand the buyer back to after Stripe. Usually the same
+           one; on /firststory it is the NEXT story, because sending somebody
+           back to the one they just finished is not "more stories". */
+  function buildPaywall(sell, from, later, head, keep) {
     try {
       if (window.FBR && FBR.paywall) {
-        return FBR.paywall(s, {
+        return FBR.paywall(sell, {
           from: from,
+          head: head,
           onLater: later,
-          onStart: function () { rememberStory(s); }
+          onStart: function () { rememberStory(keep); }
         });
       }
     } catch (e) {}
@@ -346,16 +373,45 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     fn();
   }
 
-  function showPaywall(s) {
-    var pane = buildPaywall(s, "paywall", function () {
-      location.href = "/explore";
-    });
-    fin(deck, function () {
-      if (pane) { deck.innerHTML = ""; deck.appendChild(pane); }
-      else deck.innerHTML = paywallFallback(s);
-    });
-    /* FBR.paywall reports its own view. Only the fallback has to. */
-    if (!pane) FB.track("paywall_view", { stack: s.id });
+  /* --------------------------------------------------------------------
+     A LOCKED STORY OPENS. IT JUST DOES NOT FINISH.
+
+     This used to replace the deck with a wall: two manufactured screens
+     standing in front of a story the reader had already chosen. What they
+     met was a reproduction of the story and then a price.
+
+     Now the story runs for real. FREE_RUN cards are drawn exactly as any
+     other story's are — their own plates, their own credit lines, the same
+     progress rail, the same save button — and the run stops at a boundary
+     the reader can see. The sheet is what one more scroll past that boundary
+     opens, and it opens OVER the story rather than instead of it, so the
+     sentence they stopped on is still on the screen while they decide.
+
+     WHY TWO CARDS. One card is a headline; the reader has not started. Three
+     is most of a five-minute story given away on every locked URL, and the
+     season is fifty-one of them. Two is a hook and its turn — enough that
+     stopping costs something, which is the whole mechanism.
+
+     Nothing here decides who may read. FBX.canRead does, above, and this is
+     only ever called with its answer.
+     -------------------------------------------------------------------- */
+  var FREE_RUN = 2;
+
+  function showWall(s) {
+    var gate = buildPaywall(s, "paywall", null, "", s);
+
+    if (!gate || typeof gate.open !== "function") {
+      /* No recommend.js, or it fell all the way through to its own fallback
+         pane. Either way the reader gets a complete screen with a way in and
+         a way out, never a story that stops at nothing. */
+      fin(deck, function () {
+        if (gate) { deck.innerHTML = ""; deck.appendChild(gate); }
+        else deck.innerHTML = paywallFallback(s);
+      });
+      FB.track("paywall_view", { stack: s.id });
+    } else {
+      render(s, { run: FREE_RUN, gate: gate });
+    }
 
     /* Belt and braces. If premium lands after the wait gave up — a slow
        snapshot, a cold Firestore, a phone that just woke up — the reader is
@@ -366,16 +422,51 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     try { if (window.FBX && FBX.correct) FBX.correct(false); } catch (e) {}
   }
 
-  function render(s) {
+  function render(s, lock) {
     var io = null;
+
+    /* The run this reader gets. All of it, or — for a locked story — the
+       first few cards and a boundary. One card is always held back, whatever
+       FREE_RUN says, because a "locked" story that hands over every card is
+       not a boundary, it is a bug that reports nothing. */
+    var cards = lock
+      ? s.cards.slice(0, Math.max(1, Math.min(lock.run, s.cards.length - 1)))
+      : s.cards;
+    var nextCard = lock ? s.cards[cards.length] : null;
 
     /* One plate per card. The stack hero is only the fallback for a card the
        manifest did not cover, so a missing row degrades to the old behaviour
        rather than to an empty frame. */
-    var html = s.cards.map(function (c, n) {
-      return c.img ? beat(c, c.img, c.cap, c.cr, n, s)
-                   : beat(c, s.img, s.cap, s.cr, n, s);
+    var html = cards.map(function (c, n) {
+      var peek = (lock && nextCard && n === cards.length - 1)
+        ? String(nextCard.head || nextCard.body || "") : "";
+      return c.img ? beat(c, c.img, c.cap, c.cr, n, s, peek)
+                   : beat(c, s.img, s.cap, s.cr, n, s, peek);
     }).join("");
+
+    /* The tail. It is the room the gesture needs — a scroller whose last card
+       is also its last pixel has nowhere to scroll TO — and it is the one way
+       through for a reader whose sheet never opened: no listeners, a webview
+       that swallows the events, JavaScript switched off entirely. The link is
+       an <a> with a real href for exactly that last case. */
+    /* SNAPPING GOES FROM MANDATORY TO PROXIMITY FOR A LOCKED RUN, and this
+       is not cosmetic. css/app.css gives the deck `scroll-snap-type: y
+       mandatory`, which is right for a story: every card is a full screen and
+       the reader lands on one, never between two. It is wrong for a run that
+       ENDS in a boundary, because the last card is then the last snap point —
+       the browser refuses to rest anywhere below it, the tail can never be
+       seen, and a scroll past the boundary is undone before it finishes.
+       Proximity keeps card-to-card snapping and lets the scroller rest at the
+       foot of the tail, which is where the way through lives. The class is
+       only ever on a locked run; every other story keeps mandatory. */
+    if (lock) {
+      try { deck.className = "deck is-wall"; } catch (e) {}
+      html += '<div class="fbw-gap">' +
+        "<p>One more scroll to carry on with this story.</p>" +
+        '<a class="ghost fbw-more" href="/join?from=paywall&amp;s=' +
+          encodeURIComponent(s.id) + '">Keep reading</a>' +
+        "</div>";
+    }
 
     var h1 = document.createElement("h1");
     h1.className = "sr-title";
@@ -401,7 +492,9 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
 
     /* Offer to pick up where they stopped rather than jumping there. A silent
        jump into the middle of a story is disorienting; an offer is not. */
-    var chip = P && P.resumeChip && P.resumeChip(s.id, s.cards.length, function (card) {
+    /* Not on a locked run: an offer to jump to card seven, on a page that
+       stops at card two, is an offer to go somewhere that is not there. */
+    var chip = !lock && P && P.resumeChip && P.resumeChip(s.id, s.cards.length, function (card) {
       goTo(card * deck.clientHeight);
       FB.track("resume_used", { stack: s.id, card: String(card + 1) });
     });
@@ -517,7 +610,13 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
       requestAnimationFrame(function () { beats[0].classList.add("live"); });
     }
 
-    var total = s.cards.length + 1, deepest = 0, reported = false;
+    /* The rail counts the WHOLE story, even on a locked run. It is the one
+       thing on the screen that says how long this is, and a reader on card
+       two of eight should see eight — that is the argument, not a hidden
+       fact. It is also what the mockup draws. `railFor` below still hides
+       both rails past the last card ON THE PAGE, which is a different
+       question: there is nothing under the boundary for them to point at. */
+    var total = lock ? s.cards.length : cards.length + 1, deepest = 0, reported = false;
     /* The completion screen, once js/recommend.js has built it, and the
        paywall pane if the reader taps Keep learning with nothing left they
        may open. Declared here because onScroll below is what knows the
@@ -538,7 +637,17 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
        land on its words, the progress rail because there is no card left for
        it to be pointing at. */
     function railFor(n) {
-      var past = n >= s.cards.length;
+      /* Past the last card ON THE PAGE. On a locked run that includes the
+         tail, which rounds to the same card index as the boundary — so the
+         scroll position is asked as well as the index, or the save and sound
+         buttons sit on top of the way through. */
+      var past = n >= cards.length;
+      if (!past && lock) {
+        try {
+          var floorAt = (cards.length - 1) * (deck.clientHeight || 1);
+          past = deck.scrollTop > floorAt + 8;
+        } catch (e) {}
+      }
       try { if (rail) rail.classList.toggle("is-off", past); } catch (e) {}
       /* toggle, not assign: writing className outright strips "vrail" off the
          element, which loses every rule that positions it — including the one
@@ -574,7 +683,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
          navigated somewhere else three seconds later by a screen they are no
          longer on — see "THE CLOCK" in js/recommend.js, which also cancels on
          a hidden tab, on pagehide and on the back button. */
-      if (endPane && n >= s.cards.length) {
+      if (endPane && n >= cards.length) {
         if (endPane.reveal) { try { endPane.reveal(); } catch (e) {} }
       } else if (endPane && endPane.leave) {
         try { endPane.leave(); } catch (e) {}
@@ -583,12 +692,230 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     deck.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
 
+    /* --------------------------------------------------------------------
+       THE GESTURE THAT OPENS THE WALL.
+
+       There is no unlock button to hunt for at the foot of a locked story.
+       Trying to keep reading IS the intent signal: one more scroll past the
+       boundary, and the sheet comes up. It is the same gesture the reader has
+       used between every other card, which is the point.
+
+       IT MUST NOT BE A HAIR TRIGGER, and the failure mode has a name. The
+       deck is `scroll-snap-type: y mandatory`, so a hard flick lands with a
+       snap-back: the box overshoots the last card, the engine returns it, and
+       the reader never asked for anything. Firing on that would put a price
+       in front of somebody who was still reading. So the gate is ARMED first:
+       the reader has to actually come to rest on the last card — within NEAR
+       of it, for SETTLE_MS — and only then does a further gesture open it.
+
+       AND IT MUST NOT BE SWALLOWED. The other half of mandatory snapping is
+       that a wheel or trackpad delta at the last snap point can move
+       scrollTop by nothing at all: the engine takes the gesture and puts the
+       box back. So POSITION IS NOT THE ONLY SIGNAL. Four are watched, and any
+       one of them past its own threshold opens the sheet:
+
+         scroll   past the boundary by PAST px — the common case, and the one
+                  that survives a snap-back because it fires DURING the
+                  gesture rather than after it
+         wheel    WHEEL px of accumulated downward delta; a single upward
+                  notch resets the count, so a reader browsing back up a story
+                  never accumulates one
+         touch    DRAG px of the finger moving UP the screen inside one drag —
+                  a 12px twitch at a card edge is a bounce, 56px is a swipe
+         keyboard ArrowDown, PageDown, Space or End, which is the whole
+                  gesture for a reader who has no thumb on the glass
+
+       Dismissing the sheet DISARMS it again. "Maybe later" means the reader
+       is back in the story, and asking for the sheet a second time is the
+       same journey as asking for it the first: come back to the boundary,
+       settle, and go again. Without that, the scroll position they are left
+       at is already past the line and the sheet would spring straight back.
+       -------------------------------------------------------------------- */
+    if (lock && lock.gate) {
+      (function (gate) {
+        var PAST = 88;        /* px past the boundary that count as "more"   */
+        var WHEEL = 90;       /* px of accumulated wheel delta               */
+        var DRAG = 56;        /* px of one upward finger drag                */
+        var NEAR = 14;        /* px that still count as ON the last card     */
+        var SETTLE_MS = 160;  /* how long "come to rest" takes               */
+
+        /* TWO WAYS IN, AND THEY GUARD AGAINST DIFFERENT THINGS.
+
+           POSITION — `passed`. The reader is more than PAST px below the top
+           of the boundary card, which is inside the tail. This needs no
+           arming and deliberately catches a hard flick that goes straight
+           through, because going straight through is what "keep reading"
+           looks like at speed. It cannot be tripped by a bounce: a bounce at
+           a card edge oscillates around that edge by a few pixels, and 88 is
+           most of a paragraph past it. `passed` latches so the same position
+           is not read as a second gesture, and it un-latches only when the
+           reader comes back up above the line — which is also what stops a
+           dismissed sheet springing straight back at somebody who is still
+           standing below it.
+
+           GESTURE — `rested`. For the case where the deck CANNOT move: a
+           snapping engine that takes the delta and puts the box back, a tail
+           shorter than the threshold, a reader with no thumb on the glass.
+           Here the position never changes, so intent has to be read from the
+           gesture itself, and that DOES need arming — otherwise the momentum
+           of arriving would count as asking. `rested` is set by a timer that
+           fires only after the deck has been quiet for SETTLE_MS with the
+           boundary card in place.
+
+           A GESTURE TAKES A COPY OF `rested` AT ITS FIRST FRAME, because a
+           drag or a wheel MOVES the deck, which clears it before the gesture
+           has finished being one. Without the copy the touch path would arm
+           itself out of existence on its own first pixel. */
+        var rested = false, settle = 0, passed = false;
+        var roll = 0, rollAt = 0, wheelArm = false;
+        var ROLL_GAP = 400;   /* ms after which a wheel is a NEW gesture */
+        var y0 = 0, dragging = false, dragArm = false;
+
+        function edge() {
+          try { return Math.max(0, (cards.length - 1) * (deck.clientHeight || 1)); }
+          catch (e) { return 0; }
+        }
+        function atEdge() {
+          try { return Math.abs(deck.scrollTop - edge()) <= NEAR; }
+          catch (e) { return false; }
+        }
+        function isOpen() {
+          try { return String(gate.className || "").indexOf("is-") > -1; }
+          catch (e) { return false; }
+        }
+        function open() {
+          if (isOpen()) return;
+          roll = 0;
+          try { gate.open(); } catch (e) {}
+        }
+        function rearm() {
+          try {
+            clearTimeout(settle);
+            settle = setTimeout(function () { rested = atEdge(); }, SETTLE_MS);
+          } catch (e) {}
+        }
+
+        /* Dismissing is not consent. The gate disarms, and the reader has to
+           come back to rest on the boundary before another gesture can open
+           it — otherwise the position they were left at is already past the
+           line and the sheet springs straight back at them. */
+        /* Dismissing is not consent. Both ways in are disarmed: the gesture
+           arming goes, and `passed` is held down until the reader has come
+           back up above the line, so the position they were left standing at
+           cannot spring the sheet straight back at them. */
+        gate.onShut = function () { rested = false; roll = 0; passed = true; rearm(); };
+
+        deck.addEventListener("scroll", function () {
+          try {
+            if (isOpen()) return;
+            if (deck.scrollTop > edge() + PAST) {
+              if (!passed) { passed = true; open(); return; }
+            } else {
+              passed = false;
+            }
+            rested = false;
+            rearm();
+          } catch (e) {}
+        }, { passive: true });
+
+        /* A mouse wheel or a trackpad at the foot of a snapping scroller can
+           move nothing at all: the engine takes the delta and puts the box
+           back. So the DELTA is watched as well as the position.
+
+           ONE PUSH, not a running total. A trackpad delivers a push as a
+           burst of events milliseconds apart, so the burst adds up; two
+           deliberate notches half a second apart do not, because ROLL_GAP
+           starts the count again. An upward notch resets it outright, so a
+           reader going back up a story never accumulates one. */
+        deck.addEventListener("wheel", function (ev) {
+          try {
+            if (isOpen()) return;
+            var dy = (ev && ev.deltaY) ? Number(ev.deltaY) : 0;
+            var now = Date.now();
+            if (!(dy > 0)) { roll = 0; wheelArm = false; rollAt = now; return; }
+            if (now - rollAt > ROLL_GAP) roll = 0;
+            rollAt = now;
+            if (roll === 0) wheelArm = rested;
+            if (!wheelArm) return;
+            roll += dy;
+            if (roll >= WHEEL) open();
+          } catch (e) {}
+        }, { passive: true });
+
+        /* A thumb. The finger moving UP the screen is the reader asking for
+           what is below it, and the distance is the intent: a 10px twitch at
+           a card edge is a bounce, 56px is a swipe. */
+        deck.addEventListener("touchstart", function (ev) {
+          try {
+            y0 = (ev.touches && ev.touches[0]) ? ev.touches[0].clientY : 0;
+            dragging = true;
+            dragArm = rested;
+          } catch (e) {}
+        }, { passive: true });
+        deck.addEventListener("touchmove", function (ev) {
+          try {
+            if (isOpen() || !dragging || !dragArm) return;
+            var y = (ev.touches && ev.touches[0]) ? ev.touches[0].clientY : y0;
+            if (y0 - y >= DRAG) open();
+          } catch (e) {}
+        }, { passive: true });
+        deck.addEventListener("touchend", function () { dragging = false; }, { passive: true });
+        deck.addEventListener("touchcancel", function () { dragging = false; }, { passive: true });
+
+        /* No thumb on the glass. The keydown runs before the scroll it causes,
+           so `rested` is still the answer for where the reader was standing. */
+        addEventListener("keydown", function (ev) {
+          try {
+            if (isOpen() || !rested) return;
+            var k = ev && ev.key;
+            if (k === "ArrowDown" || k === "PageDown" || k === " " ||
+                k === "Spacebar" || k === "End") open();
+          } catch (e) {}
+        }, false);
+
+        /* The tail's own link. With script running it opens the sheet in
+           place; without it, it is an ordinary link to the plan screen, which
+           is why it is an <a> with an href rather than a button. */
+        try {
+          var more = deck.querySelector(".fbw-more");
+          if (more) {
+            more.addEventListener("click", function (ev) {
+              try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+              rested = true;
+              open();
+            }, false);
+          }
+        } catch (e) {}
+
+        /* The sheet lives on the document body, not in the deck: the deck
+           scrolls, and a fixed sheet inside a scrolling box scrolls away with
+           its content. */
+        try { (document.body || document.documentElement).appendChild(gate); } catch (e) {}
+
+        /* Signing in with Google inside an in-app webview is a REDIRECT: the
+           reader leaves this page and comes back to it. If they were already
+           at the sheet for this story and now have an account, put them back
+           where they were rather than making them find the boundary again. */
+        try { if (gate.restore) gate.restore(); } catch (e) {}
+
+        /* Prime the arming. A reader can be resting on the boundary without
+           the deck ever firing a scroll event — a short run, a restored
+           position, a webview that starts them where they left off — and an
+           arming that only ever happens inside the scroll handler would never
+           happen for any of them. */
+        rearm();
+      })(lock.gate);
+    }
+
     function report() {
       if (reported) return;
       reported = true;
-      FB.track(deepest >= s.cards.length ? "stack_complete" : "stack_dropoff",
+      /* A locked run can never be a completion, whatever the reader scrolled
+         past: the story did not finish, it stopped. */
+      var done = !lock && deepest >= s.cards.length;
+      FB.track(done ? "stack_complete" : "stack_dropoff",
                { stack: s.id, card: String(deepest + 1) });
-      if (P && deepest >= s.cards.length) P.complete(s.id, s.cards.length);
+      if (P && done) P.complete(s.id, s.cards.length);
     }
     addEventListener("pagehide", report);
     document.addEventListener("visibilitychange", function () {
@@ -619,7 +946,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
        size of the corpus it replaced, and nothing above this line waits for
        it. If it never arrives the story still reads to the end; only the
        recommendations are missing. */
-    if (window.FBR && FBR.endPanel && FB.loadIndex) {
+    if (!lock && window.FBR && FBR.endPanel && FB.loadIndex) {
       FB.loadIndex().then(function (stacks) {
         var panel = null, builtFor = null;
 
@@ -644,19 +971,37 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
           payPane = null;
         }
 
-        function wall(st) {
-          var target = (st && st.id != null) ? st : s;
-          if (payPane) { goTo(deck.scrollHeight); return; }
-          var pane = buildPaywall(target, "endcard", function () {
-            goTo(Math.max(0, deck.scrollTop - deck.clientHeight));
-          });
-          /* No recommend.js, no appended pane — the fallback replaces the
-             deck, which is worse and is still a way in. */
-          if (!pane) { showPaywall(target); return; }
+        /* The wall reached from the completion screen rather than from a
+           locked story. It is the same sheet, opened over the end card
+           instead of over a card: the reader arrived here having just
+           finished a story, and swiping back up to that has to keep working,
+           which it does because nothing is swapped in over the deck. Closing
+           it — "Maybe later", the veil, Escape — leaves them exactly where
+           they were. */
+        function wall(st, opts2) {
+          opts2 = opts2 || {};
+          /* `st` null is not "fall back to this story" when the caller meant
+             it: /firststory's ask passes null on purpose. Only onLocked's
+             call — which always hands over a story — falls back. */
+          var sell = (st && st.id != null) ? st : (opts2.blank ? null : s);
+          var keep = opts2.keep !== undefined ? opts2.keep : (sell || s);
+          if (payPane && payPane.open) { payPane.open(); return; }
+          var pane = buildPaywall(sell, opts2.from || "endcard", null,
+                                  opts2.head, keep);
+          /* recommend.js fell through to its own fallback pane, which is a
+             screen rather than a sheet. It is still a complete way in, so it
+             is appended to the deck the way the old wall was. */
+          if (!pane || typeof pane.open !== "function") {
+            if (!pane) return;
+            payPane = pane;
+            deck.appendChild(pane);
+            onScroll();
+            goTo(deck.scrollHeight);
+            return;
+          }
           payPane = pane;
-          deck.appendChild(pane);
-          onScroll();
-          goTo(deck.scrollHeight);
+          try { (document.body || document.documentElement).appendChild(pane); } catch (e) {}
+          pane.open();
         }
 
         function build(allowed) {
@@ -687,6 +1032,53 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
           /* A reader can already be sitting on the last card when this lands. */
           onScroll();
         }
+
+        /* --------------------------------------------------------------
+           /firststory's ASK, and why it is a hook rather than a link.
+
+           Three pages are cut from this file by tools/compose.py, and one of
+           them — /firststory, the URL handed to somebody arriving cold — ends
+           on an ask instead of on the next story: its end card's control says
+           "Sign up to read more". That control is built by compose.py, in a
+           block appended after this one, and until now it was an ordinary
+           link to /join.
+
+           /join used to be five screens of questions and is now the plan
+           screen. Sending a stranger there is sending them to a price with no
+           account behind it, which is the exact shape of the bug this whole
+           rebuild removes: they tap to pay, checkout refuses because there is
+           no Firebase uid to attribute it to, and they discover they needed
+           an account on a screen that never mentioned one.
+
+           So the ask opens the SAME sheet the locked-story boundary opens —
+           an account first, then the offer — over the end card they are
+           already looking at. Nothing is swapped in, so "Not now" leaves them
+           exactly where they were, with Back to Explore still under it.
+
+           It is published rather than wired because compose.py's block is a
+           separate script with no way into this closure, and it is published
+           HERE, inside the end-card branch, because that is the only place
+           the sheet has a story to be about. The link's href survives as the
+           no-JS path and as the fallback if this never runs. */
+        try {
+          window.FB_ENDGATE = function () {
+            /* Nothing was interrupted: this reader finished a free story. So
+               the sheet is not selling one particular story, and it says so.
+               `null` for the stack, deliberately: the next story on the card
+               may be free too, and putting its title on a purchase sheet
+               would be selling something that is already open. */
+            wall(null, {
+              blank: true,
+              from: "story",
+              head: "Read the rest.",
+              /* The story the card was about to open, so the buyer comes back
+                 to something they have not read. Null when there is nothing
+                 left to offer, and then nothing is written down and Stripe's
+                 own return to the shelf stands. */
+              keep: (panel && panel.nextStory) || null
+            });
+          };
+        } catch (e) {}
 
         build(FB.unlocked());
         try {
@@ -753,7 +1145,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
       if (window.FBX && FBX.canRead) return FBX.canRead(s.id);
       return FB.unlocked();
     }).then(function (ok) {
-      if (!ok) { showPaywall(s); return; }
+      if (!ok) { showWall(s); return; }
       render(s);
     });
   }).catch(function () {
@@ -782,9 +1174,23 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
 (function () {
   "use strict";
 
-  /* The funnel's own route, the one the retired deck's button went to:
-     FB.checkout(el, "story") -> /join?from=story. All three of these pages
-     carry it; only the one that sets window.FB_ENDCTA puts it on screen. */
+  /* WHERE THE ASK GOES, IN THE ORDER IT IS TRIED.
+
+     1. window.FB_ENDGATE, published by read.html's end-card block. It opens
+        the account-then-offer sheet OVER this card, which is the same surface
+        a locked story's boundary opens. A stranger who has just finished
+        their first story is asked for an account BEFORE a price, which is the
+        whole point: a checkout with no Firebase uid behind it cannot be
+        attributed and must not start (STRIPE.md 1), and discovering that on
+        the plan screen is discovering it too late.
+
+     2. FB.checkout(el, "story") -> /join?from=story, if the hook is not
+        there — an older cached read.html, or a story that never loaded.
+
+     3. The href, if no script runs at all.
+
+     All three of these pages carry the URL; only the one that sets
+     window.FB_ENDCTA puts the control on screen. */
   var JOIN = "/join?from=story";
   /* The same words and the same destination as join.html's own line. */
   var SIGNIN = "/login?next=%2Fexplore";
@@ -808,6 +1214,13 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     a.setAttribute("data-fbt", "-");
     a.textContent = CTA;
     a.addEventListener("click", function (ev) {
+      try {
+        if (typeof window.FB_ENDGATE === "function") {
+          if (ev && ev.preventDefault) ev.preventDefault();
+          window.FB_ENDGATE();
+          return;
+        }
+      } catch (e0) {}
       try {
         if (window.FB && typeof FB.checkout === "function") {
           if (ev && ev.preventDefault) ev.preventDefault();
