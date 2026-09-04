@@ -53,6 +53,23 @@
   .docnav{display:flex;flex-wrap:wrap;gap:2px 20px;margin:38px 0 0;padding-top:12px;border-top:1px solid var(--hair)}
   .docnav a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 2px;font-size:.9rem;font-weight:700;color:var(--dim);text-decoration:none}
   .stamp{margin:6px 0 0;font-size:.72rem;color:var(--dimmer);line-height:1.5}
+  /* The way back.
+
+     `.doc a` is (0,1,1) and sets an underline and --parchment; a bare
+     .doc-back is (0,1,0) and would lose both. Written as `.doc a.doc-back`
+     (0,2,1) for the same reason the note above gives for `.mark a` — this
+     file has already been bitten by that rule once.
+
+     Values from .ac-back in css/account.css, copied rather than borrowed:
+     these two pages load app.css and nothing else, and pulling in a second
+     stylesheet for one row is a worse trade than eight duplicated lines. */
+  .doc a.doc-back{
+    display:inline-flex; align-items:center;
+    min-height:var(--tap); padding:10px 2px; margin-bottom:2px;
+    font-size:var(--fs-sub); font-weight:var(--w-strong);
+    color:var(--dim); text-decoration:none;
+  }
+  .doc a.doc-back:hover{color:var(--parchment)}
 </style>
 </head>
 <body>
@@ -63,6 +80,7 @@
        the row. aria-label because a screen reader reading FACTBOX as all
        capitals may spell it; the accessible name is the product name. -->
   <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
+  <a class="doc-back" href="/explore">← Explore</a>
   <h1>Terms of Use</h1>
   <p class="dateline">
     <span>Effective 2 September 2026</span>
@@ -236,5 +254,31 @@
 </main>
 <script src="/js/analytics.js"></script>
 <script src="/js/access.js"></script>
+
+<!-- The back link is a real <a href="/explore"> in the markup, so it works
+     with no JavaScript and for a reader who arrived from a search result.
+     This upgrades it to a genuine history step ONLY when the previous page
+     was ours — otherwise "Back" would walk someone out of the site, or do
+     nothing at all on a tab opened straight onto this URL.
+
+     The label changes with the behaviour. Saying "Back" while navigating to
+     Explore, or "Explore" while stepping back, would be a small lie either
+     way. -->
+<script>
+(function () {
+  try {
+    var a = document.querySelector(".doc-back");
+    if (!a || !document.referrer) return;
+    var origin = location.protocol + "//" + location.host + "/";
+    if (document.referrer.indexOf(origin) !== 0) return;   /* another site */
+    if (document.referrer === location.href) return;       /* reloaded onto itself */
+    a.firstChild.nodeValue = "\u2190 Back";
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      history.back();
+    });
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>
