@@ -451,3 +451,156 @@ this section just removed from `privacy.html`.
 Neither file is in this session's scope. Both are user-facing statements about
 data handling that are now untrue, and `support.html:270-274` is the one a
 reader is most likely to go looking for.
+
+## 10. 4 September 2026 — `/credits` and `/support` rebuilt to the design
+
+Scope: `credits.html`, `support.html` and this file. `css/app.css`,
+`settings.html`, `privacy.html`, `terms.html` and `functions/` were off limits
+and none of them was touched. The brief was a visual redesign — the settings
+house style, a back link, small-capital section labels — but three of the
+things it touches are obligations rather than decoration, so they are recorded
+here.
+
+### 10.1 What the design's row layout would have dropped, and did not
+
+The mockup draws a credit row as three lines: the story id and the credit, the
+artwork, and **one link — the licence**. The generated rows carry **two**
+links: the licence and the Wikimedia **source**.
+
+The source stayed. Wikimedia's attribution is title, author, source and
+licence; the source link is the file page that carries the author's own terms
+and is how a reader checks the claim at all. Dropping it would have made the
+page prettier and the attribution thinner, on the 33 plates where attribution
+is the condition of use. Both links now sit on one line — the generated `<br>`
+between them is hidden by CSS, not removed — so the row is the three lines the
+design asks for and no field was lost. A real space was inserted in front of
+each of the 361 source links, in the markup, because generated content is not
+copied and the row would otherwise be extracted as "Public domainsource".
+
+**Nothing else about the 361 rows changed.** The redesign is CSS grid applied
+to the existing `<tr>`; `tools/build_credits.py` was NOT re-run, because it
+emits only stack heroes and `supp` and would have deleted every per-card row
+the file has gained since. The hand-corrected stack 44 plate — *Portrait of
+Genghis Khan, Ming dynasty (1368-1644), artist unknown, National Museum of
+China, Beijing* — is intact and verified by name in the checks.
+
+Counts after the rebuild, asserted in a real browser: 361 body rows plus three
+header rows, 364 `table tr` in total, 22,713 characters.
+
+### 10.2 The one row whose licence cannot be linked
+
+Stack 36, *0657 - Museo archeologico di Milano - Calco iscrizione di Pilato da
+Cesarea* by **G.dallorto**, tier `attribution`. Its licence is the Wikimedia
+"Attribution" template: the author requires attribution but names no versioned
+Creative Commons licence, so `cr.licenseUrl` is empty and there is no canonical
+URL to point at. The row therefore **names** the licence ("Attribution") and
+links the **source**, which is the page carrying the author's own terms. That
+is the most the data supports, and it is the only one of the 33 CC-terms plates
+in that position.
+
+All 26 share-alike rows name AND link a versioned CC licence, so SPEC.md §8's
+requirement holds without exception on the tier that has it hardest.
+
+### 10.3 The shared send throttle — deliberately still shared
+
+`/support`'s two boxes shared one localStorage gate, so sending a problem
+report blocked a story idea for twenty seconds with "Give that a few seconds".
+Separating them in the page would have been three lines and would have been a
+lie:
+
+`functions/support.js` keys its own gate on the **IP alone** — `seen` is a Map
+of `ip -> { last, hits }` (`:69`) and `throttled(ip)` compares
+`now - rec.last < MIN_GAP_MS` with `MIN_GAP_MS` at 20 seconds (`:64`, `:147`,
+`:153`). Nothing in it knows which box a message came from. Two client
+gates would not have let the second message through; they would have let it be
+**refused twenty seconds of round trip later**, with the generic 429 sentence
+and no explanation.
+
+So the gate stays shared, and the copy stopped pretending otherwise:
+
+- blocked by the **same** box — "Give that a few seconds — the last one is
+  still on its way."
+- blocked by the **other** box — it now names which box is holding the line,
+  says the two share one line out, and hands over the `mailto:` with the
+  reader's words already in it, so nobody is made to wait for something they
+  did not do.
+
+**TODO(owner) — the one-line change that would make them independent.** In
+`functions/support.js`, key the throttle on the box as well as the caller:
+`throttled(ip)` becomes `throttled(ip + "|" + kind)` at the call site (`:236`),
+and `seen` then holds one record per box per IP. `PER_IP_PER_HOUR` (`:65`)
+should probably drop from 8 to 5 if that lands, so the total per caller stays
+near where it is.
+That file was not in this session's scope.
+
+### 10.4 What `privacy.html` must be told (not this session's file)
+
+**`privacy.html:148`** documents `fb_support_last_v1` as *"The time you last
+sent a message from the support page, as a number of milliseconds."* The value
+now carries which of the two boxes spent the gate, as `"<ms>|<kind>"` — a bare
+number written by the previous version still parses, so nothing breaks on
+upgrade. The row should read something like:
+
+> The time you last sent a message from the Help page, and which of the two
+> boxes sent it, as a number of milliseconds and a word. It is there so a
+> double tap does not send the same message twice.
+
+Nothing else about what is collected changed, with one narrowing:
+
+- **The Story idea box no longer has an email field.** The design does not draw
+  one, and an idea is either used or it is not — there is nothing to reply to.
+  The function still receives `email` for that box; it is now always the empty
+  string, so the `from` field on an idea document is always empty. §08's list
+  of the six fields the function writes (`at`, `from`, `kind`, `message`,
+  `page`, `uid`) is unchanged and still exact. A signed-in reader's idea is
+  still attached to their `uid` by the token, exactly as before.
+- The problem-report box still sends the address, still prefills it for a
+  signed-in reader, and still accepts an empty one.
+
+### 10.5 §9.4's `support.html` findings are stale, and are now closed
+
+§9.4 listed four false claims in `support.html` (`:220`, `:223`, `:224`,
+`:270-274`). All four were corrected by a later pass and **none of the strings
+it quotes exists in the file** as of this rebuild: the reading-progress answer
+now splits signed-in from signed-out, and "What do you know about me?" names
+the account, the two synced onboarding answers, the reading record, Stripe and
+PostHog. §9.4's `terms.html` findings are untouched and still stand.
+
+The page's own dateline was still "Last updated 2 September 2026" — flagged in
+§8.8 as that page's line to change. It now reads 4 September 2026.
+
+### 10.6 Two things in the corpus that this page displays and cannot fix
+
+Both come from `data/stacks.json` and would be undone by the next regeneration,
+so they are recorded rather than patched in the HTML:
+
+- **One non-Latin string.** The stack 05 *Arch of Titus* plate is public domain
+  and its caption ends `derivative work: Steerpike (talk) Arc_de_Triumph_copy.jpg:
+  user: בית השלום` — a Wikimedia uploader's own handle. It is left alone: it is
+  a person's name in an attribution, the plate is public domain so nothing
+  turns on it, and deleting somebody's name to satisfy a character-set rule is
+  the wrong trade. It is the only non-Latin text on the page.
+- **Two doubled captions.** Stack 44 carries "AnonymousUnknown author" and
+  "Unknown authorUnknown author", and stack 45 carries "Unknown authorUnknown
+  author". A scrape concatenated two author fields. Cosmetic, and a data
+  repair, not an HTML one.
+
+### 10.7 What the design draws that is not there, and what is there that it does not draw
+
+- **Kept, though the design draws neither**: the legal footer row on `/credits`
+  (Account · Privacy · Terms · Help) and the "← All stories" link, because a
+  reader who arrives from a search engine has no Settings behind them; and the
+  eleven answers on `/support`, which include how to cancel and the link to the
+  Stripe billing portal.
+- **Kept, though the design draws only the sentence**: the "Send another"
+  button inside each sent box. Without it a reader who has sent one message
+  cannot send a second without reloading.
+- **Not implemented**: the design indents nothing — its artwork and licence
+  lines run full width under the id. Here they sit in the second grid column,
+  hanging off the story id, which costs about 29px of measure at 375px and
+  makes each row read as one block with a marker. It is the only deliberate
+  departure from the drawn layout.
+- **`settings.html` needs nothing.** Its Help section rows still point at
+  `/support` and `/credits` (`:149-150`, `:195-196`) and both land. Its row is
+  labelled "Contact us" while the page it opens is now headed "Help" — the
+  design does the same thing on panels 2g and 2i, so it is left as drawn.

@@ -6,6 +6,16 @@ Four files and three new MP3s. Nothing that any other agent owns was touched.
 |---|---|
 | Audio | `js/audio-reader.js`, `css/audio-reader.css`, `data/audio.json`, `AUDIO-READER.md`, `audio/{vault,wind,reactor}.mp3`, `audio/build-reader-beds.py` |
 
+**The control's colour is not this file's any more.** `css/audio-reader.css`
+carried six literal colours — a near-black pill, a warm ring on the on-state,
+two cream alphas and their fallbacks. Every one is now a token, and the two
+that were the OLD accent are the new one: the on-state icon takes
+`--accent-ink`, which the reader's palette resolves to `--accent-lift`
+(`#8FC4FA`, 10.1:1 on the reader's ground), and the ring takes
+`--accent-edge`. `--coral` is a fill and is never a 1px line. The focus ring
+rule went entirely: `app.css`'s own `:focus-visible` already draws it in
+`--ring`, and this file was overriding it with the fill colour at 2.2:1.
+
 The flagship story (`story.html` / `scenes/audio.js`) is untouched and keeps its
 own engine. This is a second, quieter engine for the new reader. They share the
 `audio/` folder and the `fb-sound` localStorage key, so a reader who turns sound
@@ -688,9 +698,15 @@ feed app puts them. `js/audio-reader.js` mounts into `.fb-rail` when the page
 has one.
 
 On the **composed story pages** (`story.html`, `cleopatra.html`,
-`firststory.html`) there is no rail, so it stays `position:fixed` at the top
-right, and the note under it stays there too. That is what the mount falls back
-to when `.fb-rail` is absent.
+`firststory.html`) it is the rail too. Those three are cut from `read.html` by
+`tools/compose.py`, so they carry the same `.fb-rail` and load the same
+`css/reader-rail.css`; this paragraph used to say they had no rail and stayed
+top-right, and that stopped being true the day compose started cutting from
+`read.html` instead of from `scenes/`.
+
+The top-right fixed position in `css/audio-reader.css` is therefore a fallback
+rather than a second home: it is what the mount lands on for any page that
+loads this stylesheet without a `.fb-rail`, and no page ships that way today.
 
 What has not changed: it never goes below `--bottom-safe`. The Instagram and
 TikTok in-app browsers draw their own toolbar over the bottom of the viewport,

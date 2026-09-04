@@ -1,67 +1,95 @@
 /* ==========================================================================
-   Factbox — the end of a story, and the offer that follows it.
+   Factbox — the end of a story, and the wall.
 
-   Additive only. It reuses .pane, .go, .ghost, .fine and .nextrow from
-   app.css and paints on top; it redefines none of them. Every colour, radius
-   and tap size is a token from app.css — this sheet had its own copies of the
-   palette once, so a change to --dimmer moved every other surface and not
-   this one.
+   Additive only. It reuses .pane, .go, .ghost and .fine from app.css and
+   paints on top; it redefines none of them. Every colour, radius and tap size
+   is a token — this sheet had its own copies of the palette once, so a change
+   to --dimmer moved every other surface and not this one. NOTHING IN THIS FILE
+   NAMES A COLOUR. The reader's palette is the one `:root` block in
+   css/reader-rail.css, which read.html loads after this file.
 
-   read.html is the only page that loads this file, and read.html is night —
-   the palette reaches here from the `:root` block in css/reader-rail.css. The
-   tokens below are what makes that free: nothing in this file names a colour.
+   TWO SCREENS, AND EACH IS REALLY TWO
+   -----------------------------------
+   .pane.rec       the end of a story, played in beats:
+                     .ec-p1  what the reader just did, over the plate they
+                             finished on. About a second.
+                     .ec-p2  the next episode, and the countdown that opens
+                             it. js/recommend.js drives which is on screen by
+                             putting .is-p1 / .is-p2 on the pane; when neither
+                             is set the reader has not arrived yet and the
+                             pane is the plate alone.
+   .pane.paywall   the wall, in the same shape:
+                     .pw-cut    the interruption — the story's own opening,
+                                fading out. No price on this screen.
+                     .pw-offer  what it costs to carry on.
+                   .is-cut / .is-offer on the pane say which. BOTH ARE ALWAYS
+                   IN THE DOM: the hidden one is visibility:hidden, which
+                   takes it out of the tab order and out of the accessibility
+                   tree while leaving its words where a checker can read them.
+                   display:none would do the first two and is animatable by
+                   nothing, so a crossfade would have to be a second mechanism.
 
-   TWO SCREENS
-   -----------
-   .pane.rec       the completion screen. A tick, the time the story took, how
-                   many stories this reader has finished, the week they are
-                   building, the next story, one button, and one quiet line of
-                   offer under it.
-   .pane.paywall   the wall. One sentence, the story being unlocked, and two
-                   dated rows — nothing today, the real price in three days.
-                   Its "other plans" sheet is .pw-sheet, at the end.
-
-   THE ONE LAYOUT RULE BOTH OBEY
-   -----------------------------
+   THE ONE LAYOUT RULE ALL FOUR OBEY
+   ---------------------------------
    THE BUTTON IS NEVER BELOW --bottom-safe, AND NEVER BELOW THE FOLD.
 
    --bottom-safe in app.css is max(13vh, inset + 60px toolbar + 4px): the line
    the Instagram and TikTok in-app browsers draw their own toolbar over, and
    that is essentially all of this traffic. A control under it cannot be
-   tapped.
-
-   The previous end card solved this by pinning one button at top:73% of a
-   pane exactly one viewport tall. That worked for four elements. These two
-   screens carry eight and eleven, so the copy above the button is now taller
-   than the space a fixed percentage leaves, and on a phone turned sideways it
-   is taller than the viewport.
-
-   So the action group is absolutely positioned against the BOTTOM instead of
-   a percentage of the height:
+   tapped. So every action group is absolutely positioned against the BOTTOM
+   rather than at a percentage of the height —
 
        bottom: calc(var(--bottom-safe) + 8px)
 
    which clears the toolbar at every viewport height rather than at the one
-   the last person tested on, and keeps the primary control on screen without
-   a scroll. The column above it reserves that much padding, so the two can
-   never meet; when the copy is taller than what is left — landscape — the
-   pane scrolls behind a fade rather than pushing the button down.
+   the last person tested on. The copy above reserves that much room, and when
+   it is taller than what is left — a phone turned sideways — it scrolls
+   behind a docked footer rather than pushing the button through the floor.
    ========================================================================== */
 
 /* ==========================================================================
-   Shared: the pane, and the action group pinned to its floor.
+   Shared: the pane, its plate, and the action group pinned to its floor.
    ========================================================================== */
 
 .pane.rec,
 .pane.paywall{
   position:relative;
-  /* safe center: when the copy is taller than the pane, centring would cut
-     the top off and there would be no way to scroll back up to it. */
+  /* The plate is full-bleed; the words inside it are not. app.css pads the
+     pane itself, so the padding moves inward one level. */
+  padding-left:0; padding-right:0;
   justify-content:center;
   justify-content:safe center;
-  overflow-y:auto;
-  text-align:center;
+  overflow:hidden;
+  text-align:left;
 }
+
+/* A full-bleed plate with the reader's own scrim over it. Same element in
+   four places, so it is one rule: .ec-plate behind the completion moment,
+   .ec-heroart behind the next story, .pw-cutart behind the interruption,
+   .pw-band across the top of the offer. */
+.ec-plate,
+.ec-heroart,
+.pw-cutart,
+.pw-band{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  overflow:hidden;
+  background:var(--night);
+}
+.ec-plate img,
+.ec-heroart img,
+.pw-cutart img,
+.pw-band img{
+  width:100%; height:100%;
+  object-fit:cover; object-position:center 32%;
+  display:block;
+}
+.sc-scrim{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  display:block;
+  background:var(--pane-scrim);
+}
+.ec-heroart .sc-scrim,
+.pw-band .sc-scrim{background:var(--band-scrim)}
 
 /* The action group. Absolute, so the copy above cannot push it down; bottom
    anchored, so it cannot fall under the in-app toolbar.
@@ -70,130 +98,244 @@
    `margin:0 auto` alone would not, and `inset` is Safari 14.1+ and a share of
    this traffic is older than that. */
 .pane.rec .ec-act,
-.pane.paywall .pw-act{
+.pane.paywall .pw-act,
+.pane.paywall .pw-cutact{
   position:absolute;
   left:22px; right:22px;
   bottom:calc(var(--bottom-safe) + 8px);
   width:auto; max-width:520px;
   margin-left:auto; margin-right:auto;
+  z-index:3;
   display:flex; flex-direction:column; align-items:stretch;
-  /* The copy scrolls behind this, so it needs a ground of its own — and the
-     ground has to fade, or a line of text is cut in half by a hard edge.
-     --ground-0 is the transparent end of --ground; `transparent` is
-     rgba(0,0,0,0) and fades through grey on iOS. */
+  text-align:center;
+}
+
+/* The two groups whose screen SCROLLS get a ground of their own.
+
+   .ec-p2 and .pw-offer scroll when the copy is taller than the viewport, and
+   it scrolls BEHIND the group — so without this a line of text passes through
+   the gap between the button and the link on its way past. The ground has to
+   fade, or the same line is cut in half by a hard edge; --ground-0 is the
+   transparent end of --ground, because `transparent` is rgba(0,0,0,0) and
+   fades through grey on iOS. Both screens paint --ground, so at rest it is
+   invisible.
+
+   .pw-cutact is deliberately NOT in this list. Its screen cannot scroll — the
+   paragraph is cut off by design — and the plate swells up behind exactly
+   where the button sits, which is the composition. A ground under it would
+   paint that out. */
+.pane.rec .ec-act,
+.pane.paywall .pw-act{
   padding-top:22px;
-  background:linear-gradient(to top, var(--ground) 0%, var(--ground) 64%, var(--ground-0) 100%);
+  background:linear-gradient(to top,
+    var(--ground) 0%, var(--ground) 64%, var(--ground-0) 100%);
+}
+
+/* One class for the crossfade, because all four screens do the same thing:
+   fade and lift into place, and go away without leaving a tab stop behind. */
+.ec-p1,
+.ec-p2,
+.pw-cut,
+.pw-offer{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transform:translateY(14px);
+  transition:opacity .45s ease, transform .45s cubic-bezier(.2,.75,.25,1),
+             visibility 0s linear .45s;
+}
+.pane.rec.is-p1 .ec-p1,
+.pane.rec.is-p2 .ec-p2,
+.pane.paywall.is-cut .pw-cut,
+.pane.paywall.is-offer .pw-offer{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transform:none;
+  transition:opacity .45s ease, transform .45s cubic-bezier(.2,.75,.25,1),
+             visibility 0s linear 0s;
+}
+
+/* An action group belongs to the SCREEN it acts on, and lives on the PANE.
+
+   On the pane, because both .ec-p2 and .pw-offer scroll when the copy is
+   taller than the viewport, and an absolutely positioned child of a scrolling
+   box scrolls away with its content — which is the bottom anchor above
+   defeated on exactly the short phones it exists for. And .ec-act has a
+   second reason: tools/compose.py's sign-up block appends its own line beside
+   it, on the card.
+
+   To the screen, because the completion moment is a moment, and a button on
+   it is something to do instead of noticing; and because a price under a
+   cliffhanger that has not landed is an advertisement. */
+.pane.rec .ec-act,
+.pane.rec .ec-signin,
+.pane.paywall .pw-act{
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .45s ease, visibility 0s linear .45s;
+}
+.pane.rec.is-p2 .ec-act,
+.pane.rec.is-p2 .ec-signin,
+.pane.paywall.is-offer .pw-act{
+  opacity:1; visibility:visible; pointer-events:auto;
+  transition:opacity .45s ease, visibility 0s linear 0s;
+}
+
+/* The screen-reader announcement that goes with the countdown. Off screen,
+   never display:none — a display:none live region is announced by nothing. */
+.pane.rec .ec-act .ec-say{
+  position:absolute; width:1px; height:1px;
+  margin:-1px; padding:0; border:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%);
+  white-space:nowrap;
+  /* Out-specifies the rule above that hides the action group in beat one.
+     A live region inside a visibility:hidden box is not in the accessibility
+     tree, so the one announcement the countdown makes would be made to
+     nobody — and it is written in the same frame the group becomes visible,
+     which is exactly the frame a screen reader may not have caught up with. */
+  visibility:visible;
 }
 
 /* ==========================================================================
-   1. THE COMPLETION SCREEN
+   1. THE END OF A STORY
+
+   Beat one: a tick, the subject, and how much of it is finished. Centred over
+   the plate the reader stopped on, which they were looking at a swipe ago and
+   which is therefore already decoded — this screen starts no download.
    ========================================================================== */
 
-.pane.rec{
-  gap:12px;
-  /* What the action group above occupies, plus air: button 52 + line 28 +
-     the fade's 22 + 22 of slack. Viewport units are not needed here the way
-     they were for the old 27vh, because this padding is a length, not a
-     percentage — a percentage padding resolves against WIDTH, which is the
-     bug that put the old button on the toolbar at 116px where 252 was meant. */
-  padding:var(--top-safe) 22px calc(var(--bottom-safe) + 132px);
-}
-
-/* ---- the moment ---------------------------------------------------------
-   A tick and two words. This is the first thing on the screen because it is
-   the thing the reader just earned; the offer is eight elements below it. */
-.ec-done{
-  display:flex; align-items:center; justify-content:center; gap:9px;
-  width:100%; margin:0;
+.ec-p1{
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center;
+  padding:var(--top-safe) 30px var(--bottom-safe);
+  z-index:2;
 }
 .ec-badge{
   flex:0 0 auto;
-  width:30px; height:30px; border-radius:999px;
+  width:44px; height:44px; border-radius:var(--pill);
   display:flex; align-items:center; justify-content:center;
   background:var(--coral); color:var(--on-accent);
   box-shadow:var(--shadow-go);
 }
-.ec-badge svg{width:16px; height:16px; display:block}
-.ec-eyebrow{
-  font-size:var(--fs-micro); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase;
-  color:var(--accent-ink);
-}
+.ec-badge svg{width:20px; height:20px; display:block}
 
-.pane.rec h2{margin:0}
-
-/* CLEOPATRA · 1 OF 8, or "· the only one", or "· 8 of 8, the last". The one
-   fact that makes "there is more" a statement rather than a promise, which
-   means it also has to stop being printed when there is not.
-
-   The quietest line on the card on purpose: it is context for what was just
-   read, under a headline about having read it. */
-.pane.rec .ec-place{
-  margin:0; color:var(--dimmer);
+.pane.rec .ec-eyebrow{
+  margin:16px 0 0; color:var(--dimmer);
   font-size:var(--fs-micro); font-weight:var(--w-label);
   letter-spacing:var(--ls-caps); text-transform:uppercase;
 }
-
-/* How many, and it is the reader's own number or it is not shown at all —
-   js/recommend.js decides that, not this file. */
-.pane.rec .ec-count{
-  margin:0; color:var(--dim);
-  font-size:var(--fs-note); font-weight:var(--w-label);
+/* The subject. Display serif, because it is the story's name and not a label. */
+.pane.rec .ec-line1{
+  margin:10px 0 0; max-width:20ch; color:var(--parchment);
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:1.5625rem; line-height:1.2; letter-spacing:var(--ls-title);
+  text-wrap:balance;
+}
+/* "3 of 8 complete" — the reader's own record when it is theirs to show, and
+   the one completion we watched when it is not. js/recommend.js decides that;
+   this file only sets the type. */
+.pane.rec .ec-line2{
+  margin:6px 0 0; color:var(--accent-ink);
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
   font-variant-numeric:tabular-nums;
 }
 
-/* ---- the week -----------------------------------------------------------
-   Seven days ending today. The label carries the meaning and the strip is
-   decoration, so the strip is aria-hidden in the markup. */
-.ec-week{
-  display:flex; flex-direction:column; align-items:center; gap:8px;
-  width:100%; margin:2px 0 0;
+/* ---- beat two: the next episode -----------------------------------------
+   The cover is the argument, so it is the screen rather than a 60px row: a
+   plate down to the fold, its name and length written into the foot of it,
+   and the subject's dots underneath. */
+.ec-p2{
+  display:flex; flex-direction:column; justify-content:flex-start;
+  background:var(--ground);
+  /* When the copy is taller than what the action group leaves — a phone
+     turned sideways — the screen scrolls behind it rather than pushing the
+     button through the floor. */
+  overflow-y:auto; overscroll-behavior:contain;
+  padding-bottom:calc(var(--bottom-safe) + 186px);
 }
-.ec-weeklabel{
-  font-size:var(--fs-micro); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase;
-  color:var(--dimmer); font-variant-numeric:tabular-nums;
-}
-.ec-dots{display:flex; gap:9px; align-items:center}
-.ec-dots i{
-  display:block; width:9px; height:9px; border-radius:999px;
-  background:var(--tint-3);
-}
-.ec-dots i.is-on{background:var(--coral-deep)}
-.ec-dots i.is-today{background:var(--coral); box-shadow:var(--glow-accent)}
-
-/* ---- the next story ------------------------------------------------------
-   Shown before it is sold. Same three facts here and on the paywall — cover,
-   headline, runtime — so the thing being unlocked is the thing just promised. */
-.pane.rec .ec-nextlabel{
-  margin:6px 0 0; color:var(--dimmer);
-  font-size:var(--fs-micro); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase;
-}
-.pane.rec .nextrow{
-  width:100%; max-width:340px; margin:0 auto;
-  padding:9px; border-radius:14px;
-  background:var(--raise); box-shadow:inset 0 0 0 1px var(--hair);
-}
-/* 3:4 by padding-top, not aspect-ratio: aspect-ratio is iOS 15+ and app.css's
-   .plate uses it, so a cover sized that way collapses to nothing on an older
-   webview — a hole in the row with a title beside it. */
-.ec-thumb{
-  position:relative; flex:0 0 60px; width:60px; padding-top:80px;
-  border-radius:10px; overflow:hidden;
-  background:var(--tint); box-shadow:inset 0 0 0 1px var(--hair);
-}
-.ec-thumb img{
-  position:absolute; top:0; left:0;
-  width:100%; height:100%; object-fit:cover; object-position:center 32%;
-}
-.nextrow .t b{
-  /* Two lines, then ellipsis. Some titles are a whole sentence. */
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+.ec-hero{
+  position:relative;
+  flex:0 0 auto;
+  height:min(512px, 58vh);
   overflow:hidden;
 }
+.ec-herotext{
+  position:absolute; left:20px; right:20px; bottom:14px;
+  z-index:2; text-align:left;
+}
+/* The words get their OWN scrim, and this is not decoration.
 
-/* ---- the button, and the one line under it ------------------------------- */
+   The block is four lines tall — an eyebrow, a position, a three-line
+   headline and a runtime — so its top edge lands around 39% up the plate,
+   where the band gradient has already lifted to about .9. Measured over the
+   palest cover in the season that put "Up next" at 1.99:1 in --accent-ink,
+   which is a label nobody can read.
+
+   A second scrim, local to the block, composites with the band to about .978
+   and takes the same label to 7.7:1 — while leaving the top two thirds of the
+   painting exactly as bright as it was. Deepening the band instead would have
+   cost the plate. z-index:-1 puts it behind the words and, because this
+   element is its own stacking context, still in front of the plate. */
+.ec-herotext::before{
+  content:"";
+  position:absolute; left:-20px; right:-20px; top:-26px; bottom:-14px;
+  z-index:-1;
+  background:var(--pane-scrim);
+  pointer-events:none;
+}
+.ec-nonext{
+  position:static; margin-top:auto; margin-bottom:auto;
+  padding:0 22px;
+}
+.pane.rec .ec-up{
+  margin:0 0 8px; color:var(--accent-ink);
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+}
+.pane.rec .ec-of{
+  margin:0 0 10px; color:var(--dimmer);
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  font-variant-numeric:tabular-nums;
+}
+.pane.rec .ec-head{
+  margin:0; color:var(--parchment);
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:2rem; line-height:1.1; letter-spacing:-.012em;
+  text-wrap:balance;
+  /* Three lines, then ellipsis. A handful of hooks are a whole paragraph. */
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.pane.rec .ec-mins{
+  margin:12px 0 0; color:var(--dimmer);
+  font-size:var(--fs-meta); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
+
+/* One dot per story in the subject: filled for finished, ringed for the one
+   about to open, faint for the rest. aria-hidden in the markup — the two
+   lines above say the same thing in words. */
+.ec-dots{
+  display:flex; align-items:center; gap:7px;
+  padding:16px 22px 0;
+}
+.ec-dots i{
+  display:block; width:7px; height:7px; border-radius:var(--pill);
+  background:var(--tint-3);
+}
+.ec-dots i.is-on{background:var(--coral)}
+.ec-dots i.is-next{box-shadow:inset 0 0 0 1.5px var(--coral)}
+
+/* ---- the control, and the clock ------------------------------------------
+   The remaining seconds are TEXT. There is no shrinking bar and no sweeping
+   ring: a reader who has asked for reduced motion still gets the advance, and
+   a cue they cannot see is not a cue. */
+.pane.rec .ec-timer{
+  margin:0 0 10px; text-align:center; color:var(--dimmer);
+  font-size:var(--fs-meta); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+  min-height:1.4em;                    /* no reflow between "3…" and "Opening…" */
+}
 .ec-go{
   width:100%; max-width:520px; margin:0 auto;
   text-align:center; text-decoration:none; line-height:1.2;
@@ -202,75 +344,51 @@ a.ec-go{
   /* .go is written for <button>; an <a> needs the box spelled out. */
   display:flex; align-items:center; justify-content:center;
 }
-
-/* The offer. One line, under the button, and never drawn for a reader who
-   already pays — js/recommend.js does not build it for them, so there is no
-   rule here that could be beaten by a cascade. */
-.pane.rec .ec-offer{margin:9px auto 0}
+/* "Back to Explore" — the cancel. An ordinary link, so it opens in a new tab,
+   focuses with the keyboard and reads as what it is. */
+.pane.rec .ec-out{
+  display:flex; align-items:center; justify-content:center;
+  width:auto; margin:2px auto 0;
+  color:var(--dimmer); text-decoration:none;
+  font-size:var(--fs-sub); font-weight:var(--w-strong);
+  padding:10px 12px; min-height:var(--tap);
+}
+/* The offer. One line, and never drawn for a reader who already pays —
+   js/recommend.js does not build it for them, so there is no rule here that
+   could be beaten by a cascade. */
+.pane.rec .ec-offer{margin:6px auto 0}
 
 /* Short viewports: 667px minus a webview toolbar is not much, and a phone
-   turned sideways is under 400. The cover is the only element that can give
+   turned sideways is under 400. The cover is the only thing that can give
    ground without losing a word. */
 @media (max-height:760px){
-  .pane.rec{gap:10px}
-  .ec-thumb{flex:0 0 52px; width:52px; padding-top:69px}
+  .ec-hero{height:min(420px, 52vh)}
+  .pane.rec .ec-head{font-size:1.75rem; -webkit-line-clamp:2}
 }
+@media (max-height:640px){
+  .ec-hero{height:min(320px, 46vh)}
+  .ec-badge{width:36px; height:36px}
+  .ec-badge svg{width:17px; height:17px}
+  .pane.rec .ec-line1{font-size:1.375rem}
+  .pane.rec .ec-mins{margin-top:8px}
+  .ec-dots{padding-top:10px}
+}
+/* A phone turned sideways is not a short screen, it is a WIDE one: 375px of
+   height, of which the in-app toolbar and the action group take about 190.
+   The words stay written into the foot of the plate — moving them out of it
+   would mean two copies of the same block in the markup — and everything
+   above gives ground until the pair fits. Measured at 667x375 with the
+   toolbar: the dots clear the action group by 14px. */
 @media (max-height:560px){
-  .pane.rec{gap:7px; padding-bottom:calc(var(--bottom-safe) + 122px)}
-  /* --fs-h1 is clamp(1.6rem,6.4vw,2.1rem) and a phone turned sideways is
-     WIDE, so the headline resolves to its 2.1rem maximum on the shortest
-     viewport there is — 75px of a 375px screen, for one sentence. */
-  .pane.rec h2{font-size:var(--fs-h3); line-height:var(--lh-tight)}
-  .ec-badge{width:26px; height:26px}
-  .ec-badge svg{width:14px; height:14px}
-  .ec-thumb{flex:0 0 44px; width:44px; padding-top:59px}
-  .ec-dots i{width:8px; height:8px}
-  /* Context is the first thing to go when there is no room for it. What the
-     reader did, how many they have done and what is next all stay. */
-  .pane.rec .ec-place{display:none}
-  /* Below this the copy is taller than what is left of the viewport, so it
-     scrolls under the action group. A fade over moving text reads as a
-     rendering fault; a hard edge with a hairline reads as a docked footer,
-     which is what it now is. */
-  .pane.rec .ec-act{
-    padding-top:10px;
-    background:var(--ground);
-    box-shadow:0 -1px 0 var(--hair);
-  }
-}
-
-/* A phone turned sideways is not a short screen, it is a WIDE one, and one
-   centred column is what makes it hopeless: 375px of height, of which the
-   in-app toolbar and the action group take 194, against seven stacked
-   elements. Measured before this rule: the next-story teaser sat 56px behind
-   the action group.
-
-   Two columns spend the width that is going spare. What the reader did stays
-   across the top; the week they are building and the story that comes next
-   sit beside each other under it. Every placement is explicit — auto-placing
-   into a two-column grid puts the teaser's label and its cover in different
-   columns.
-
-   `min-width` as well as `max-height`, so a genuinely small phone held
-   upright never gets this: there the single column is right. */
-@media (max-height:520px) and (min-width:600px){
-  .pane.rec{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    align-content:start;
-    column-gap:20px; row-gap:4px;
-    max-width:660px;
-  }
-  /* The last 13px, measured: without these the bottom of the teaser sat
-     behind the docked footer. */
-  .pane.rec .nextrow{padding:6px}
-  .pane.rec .ec-done,
-  .pane.rec h2,
-  .pane.rec .ec-count{grid-column:1 / -1}
-  .ec-week{grid-column:1; grid-row:span 2; align-self:center; margin:0}
-  .pane.rec .ec-nextlabel{grid-column:2; align-self:end; margin:0}
-  .pane.rec .nextrow{grid-column:2; margin:0}
-  .ec-thumb{flex:0 0 40px; width:40px; padding-top:53px}
+  .ec-hero{height:min(214px, 50vh)}
+  .ec-p2{padding-bottom:calc(var(--bottom-safe) + 140px)}
+  .pane.rec .ec-head{font-size:1.375rem; -webkit-line-clamp:2}
+  .pane.rec .ec-of{margin-bottom:6px}
+  .pane.rec .ec-mins{margin-top:6px}
+  .pane.rec .ec-line1{font-size:1.25rem}
+  .pane.rec .ec-eyebrow{margin-top:10px}
+  .pane.rec .ec-timer{margin-bottom:4px}
+  .ec-dots{padding-top:10px}
 }
 
 /* ==========================================================================
@@ -283,19 +401,23 @@ a.ec-go{
    sign-in line takes the floor and the action group sits one tap above it.
 
    The offer line is hidden there on purpose. /firststory's whole button IS
-   the offer; two of them, one above the other, is the same ask twice.
+   the offer; two of them, one above the other, is the same ask twice. There
+   is no countdown on that page either — js/recommend.js will not start one
+   when the caller passes its own label, because walking a reader into the
+   next story while asking them to sign up is two screens arguing.
    ========================================================================== */
 .pane.rec.has-ask .ec-offer{display:none}
+.pane.rec.has-ask .ec-out{display:none}
 .pane.rec.has-ask .ec-act{
   bottom:calc(var(--bottom-safe) + 8px + var(--tap) + 6px);
 }
-.pane.rec.has-ask{padding-bottom:calc(var(--bottom-safe) + 132px + var(--tap))}
 .pane.rec .ec-signin{
   position:absolute;
   left:22px; right:22px;
   bottom:calc(var(--bottom-safe) + 8px);
   width:auto; max-width:520px;
   margin-left:auto; margin-right:auto;
+  z-index:3;
   /* flex, not a plain line box: an inline-block with a 44px tap height inside
      a <p> sits on the text baseline and drags the block taller than 44px,
      which is what would push it through the floor. */
@@ -309,102 +431,132 @@ a.ec-go{
 }
 
 /* ==========================================================================
-   2. THE PAYWALL
+   2. THE WALL
 
-   Not a pricing table. Not three cards. One sentence, the story, two dated
-   rows, one button. Everything else is one tap away in the sheet below.
+   2a. THE INTERRUPTION.
+
+   The story is already running and it stops mid-thought. Its own opening,
+   its own first paragraph, fading into the ground under the reader's thumb.
+   Nothing is sold on this screen and no number is on it.
+
+   The fade is an element rather than a mask on the text: -webkit-mask-image
+   is not on every webview this ships to, and a mask that does not apply is a
+   hard-cut paragraph, which reads as a bug rather than as an ending.
    ========================================================================== */
 
-.pane.paywall{
-  gap:10px;
-  /* button 52 + fine 28 + two 44px ghosts + the fade's 22 + slack. */
-  padding:var(--top-safe) 22px calc(var(--bottom-safe) + 214px);
-}
-.pane.paywall h2{margin:0}
-/* The one sentence under the headline. It is fixed copy, not the story's own
-   hook: the hook opens with the title on a third of the corpus, so title over
-   hook printed the same line twice and read as a rendering bug. */
-.pane.paywall .pw-sub{margin:0 auto; max-width:30ch}
-
-/* ---- the cover, at size --------------------------------------------------
-   The picture is the argument. It is what makes somebody want in, so it is
-   the largest thing on the pane, and the title sits under it rather than a
-   second sentence that says what the first one said.
-
-   3:4 by padding-top, not aspect-ratio: aspect-ratio is iOS 15+, app.css's
-   own .plate uses it, and on an older webview that collapses the box to
-   nothing — a hole where the argument was. */
-.pw-cover{
-  display:flex; flex-direction:column; align-items:center; gap:8px;
-  width:100%; margin:2px 0 0;
-}
-.pw-plate{
-  position:relative;
-  flex:0 0 auto;
-  width:min(184px, 46%); padding-top:min(245px, 61.3%);
-  border-radius:16px; overflow:hidden;
-  background:var(--raise);
-  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
-}
-.pw-plate img{
-  position:absolute; top:0; left:0;
-  width:100%; height:100%; object-fit:cover; object-position:center 32%;
-}
-.pane.paywall .pw-title{
-  margin:0; max-width:26ch;
-  font-size:var(--fs-h3); font-weight:var(--w-head);
-  line-height:var(--lh-tight); letter-spacing:var(--ls-title);
-  color:var(--parchment);
-  /* Two lines, then ellipsis. Some titles are a whole sentence. */
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+.pw-cut{
+  display:flex; flex-direction:column; justify-content:flex-start;
+  background:var(--ground);
+  /* Deliberately NOT a scroller: the paragraph under the headline is cut off
+     by design, and a box that can be scrolled to read the rest of it is the
+     opposite of an interruption. */
   overflow:hidden;
 }
-.pane.paywall .pw-min{
-  margin:0; color:var(--dimmer);
-  font-size:var(--fs-meta); font-weight:var(--w-label);
-  font-variant-numeric:tabular-nums;
+/* The plate swells BELOW the cut paragraph, not behind it — see --cut-scrim
+   in css/reader-rail.css for the rectangle that made this necessary. It is
+   also the better composition: the words at the top, the painting rising into
+   the space the button sits on. */
+.pw-cutart .sc-scrim{background:var(--cut-scrim)}
+.pw-cuttext{
+  position:relative; z-index:2;
+  padding:calc(var(--top-safe) + 78px) 22px 0;
 }
+.pane.paywall .pw-cuthead{
+  margin:0; color:var(--parchment);
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:1.5625rem; line-height:1.18; letter-spacing:-.008em;
+  text-wrap:pretty;
+}
+.pw-cutbody{
+  position:relative;
+  margin-top:16px; height:124px; overflow:hidden;
+}
+.pane.paywall .pw-cutbody p{
+  margin:0; color:var(--dim);
+  font-size:var(--fs-lead); font-weight:var(--w-body); line-height:1.62;
+  text-wrap:pretty;
+}
+.pw-cutfade{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  display:block;
+  background:linear-gradient(to bottom,
+               var(--ground-0) 0%, var(--ground-0) 30%, var(--ground) 96%);
+}
+/* The whole screen advances — the same gesture the reader has used between
+   every other card — and the button is the part of it that has a name, a
+   focus ring and a tab stop. */
+.pw-cut{cursor:pointer}
+.pw-on{width:100%; max-width:520px; margin:0 auto; line-height:1.2}
 
-/* ---- what happens, and when ---------------------------------------------
-   Two rows and two dates. There is no countdown here and there will not be
-   one: the offer is the same tomorrow, and a clock on it would be a lie told
-   to make somebody hurry. */
-.pw-trial{
-  width:100%; max-width:340px; margin:2px auto 0;
-  padding:12px 14px 6px; border-radius:14px;
-  background:var(--raise); box-shadow:inset 0 0 0 1px var(--hair);
-  text-align:left;
+/* ==========================================================================
+   2b. THE OFFER.
+
+   The cover across the top, the sentence, the amount, one button. Not a
+   pricing table and not three cards; everything else is one tap away in the
+   sheet at the end of this file.
+
+   EVERY FIGURE ON THIS SCREEN IS READ OUT OF js/account.js. There is nothing
+   in this file that could carry one — no ::before content, no counter, no
+   attr() — and that is deliberate: tools/check-regressions.js greps this
+   stylesheet for a typed price along with the two files that build the screen.
+   ========================================================================== */
+
+.pw-offer{
+  display:flex; flex-direction:column; justify-content:flex-start;
+  background:var(--ground);
+  overflow-y:auto; overscroll-behavior:contain;
 }
-.pane.paywall .pw-trialhead{
-  margin:0 0 8px; color:var(--accent-ink);
+.pw-say{padding-bottom:calc(var(--bottom-safe) + 236px)}
+.pw-band{
+  position:relative;
+  flex:0 0 auto;
+  height:min(330px, 39vh);
+}
+.pw-say{
+  position:relative; z-index:2;
+  margin-top:-62px;                     /* the words start inside the plate's foot */
+  padding:0 22px;
+}
+.pane.paywall .pw-eyebrow{
+  margin:0 0 12px; color:var(--accent-ink);
   font-size:var(--fs-micro); font-weight:var(--w-label);
   letter-spacing:var(--ls-caps); text-transform:uppercase;
 }
-.pw-row{
-  display:flex; align-items:baseline; gap:10px;
-  padding:7px 0; border-top:1px solid var(--hair);
+.pane.paywall h2{
+  margin:0; text-align:left; color:var(--parchment);
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:2.5rem; line-height:1.04; letter-spacing:-.016em;
+  text-wrap:balance;
 }
-.pw-when{
-  flex:0 0 78px;
-  font-size:var(--fs-fine); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase;
-  color:var(--dimmer);
+.pane.paywall .pw-sub{
+  margin:14px 0 0; max-width:32ch; color:var(--dim);
+  font-size:var(--fs-lead); font-weight:var(--w-body); line-height:1.5;
 }
-.pw-amt{
-  flex:0 0 auto;
-  font-size:var(--fs-lead); font-weight:var(--w-head);
-  letter-spacing:var(--ls-title);
-  color:var(--parchment); font-variant-numeric:tabular-nums;
+/* The amount, and the period it is charged over. Both come out of FBA:
+   billedText is what Stripe takes to the cent, perLong() is the interval it
+   takes it on. */
+.pane.paywall .pw-price{
+  margin:26px 0 0; color:var(--parchment);
+  font-size:1.5rem; font-weight:var(--w-head);
+  letter-spacing:var(--ls-title); line-height:1.1;
+  font-variant-numeric:tabular-nums;
 }
-.pw-note{
-  flex:1 1 auto; text-align:right;
-  font-size:var(--fs-fine); font-weight:var(--w-body); color:var(--dim);
+.pane.paywall .pw-price b{font-weight:var(--w-head)}
+.pane.paywall .pw-price span{
+  font-size:var(--fs-body); font-weight:var(--w-strong); color:var(--dimmer);
 }
-/* Today is the free one, and it is the row a reader should read first. */
-.pw-row.is-now .pw-amt{color:var(--accent-ink)}
+/* The same amount divided down and rounded UP, so the softer line can never
+   name a figure below the one the reader authorises. */
+.pane.paywall .pw-per{
+  margin:5px 0 0; color:var(--dimmer);
+  font-size:var(--fs-note); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
 
 /* ---- the actions --------------------------------------------------------- */
 .pw-go{width:100%; max-width:520px; margin:0 auto; line-height:1.2}
+/* The terms, in the order they happen: the trial, what today costs, and that
+   it stops when the reader says so. */
 .pane.paywall .pw-fine{margin:9px auto 2px}
 .pw-ghosts{display:flex; flex-direction:column; align-items:center}
 .pane.paywall .pw-plans,
@@ -415,92 +567,56 @@ a.ec-go{
   padding:10px 12px; min-height:var(--tap);
 }
 .pane.paywall .pw-plans{color:var(--accent-ink)}
-.pane.paywall .pw-later{color:var(--dim)}
+.pane.paywall .pw-later{color:var(--dimmer)}
 
-/* Short phones, and then a phone turned sideways. The cover gives ground
-   first, because it is the only element that can without losing a word; the
-   two ghosts share a line last, because 88px of stacked ghosts is a quarter
-   of a 375px viewport. */
+/* Short phones, then a phone turned sideways. The plate gives ground first,
+   because it is the only element that can without losing a word; the two
+   ghosts share a line last, because 88px of stacked ghosts is a quarter of a
+   375px viewport. */
 @media (max-height:760px){
-  /* Two ghosts stacked is 88px, and on a 667px phone that 88px is the
-     difference between the price table being on the screen and being under
-     the button. Side by side they are 44 and both still clear the floor. */
   .pw-ghosts{flex-direction:row; justify-content:center; gap:2px}
-  .pane.paywall{gap:8px; padding-bottom:calc(var(--bottom-safe) + 162px)}
-  .pw-plate{width:min(124px, 33%); padding-top:min(165px, 44%)}
-  .pw-trial{padding:9px 12px 4px}
-  .pw-row{padding:6px 0}
-  /* The copy can now be taller than what is left, so the action group stops
-     being a fade over moving text and becomes a docked footer. */
-  .pane.paywall .pw-act{
-    padding-top:10px;
-    background:var(--ground);
-    box-shadow:0 -1px 0 var(--hair);
-  }
+  .pw-band{height:min(250px, 32vh)}
+  .pane.paywall h2{font-size:2.125rem}
+  .pane.paywall .pw-price{margin-top:18px}
+  .pw-cutbody{height:104px}
 }
 @media (max-height:640px){
-  .pane.paywall{gap:7px; padding-bottom:calc(var(--bottom-safe) + 158px)}
-  .pw-plate{width:min(104px, 28%); padding-top:min(139px, 37.3%)}
+  .pw-band{height:min(196px, 27vh)}
+  .pw-say{margin-top:-44px}
+  .pane.paywall h2{font-size:1.75rem}
+  .pane.paywall .pw-sub{margin-top:10px; font-size:var(--fs-body)}
+  .pane.paywall .pw-price{margin-top:12px}
+  .pw-cuttext{padding-top:calc(var(--top-safe) + 58px)}
+  .pw-cutbody{height:84px}
 }
-/* A phone turned sideways: 375px of height, of which the in-app toolbar and
-   the button take 190. A cover with a title under it does not fit there and
-   nothing makes it fit, so the cover lies down beside its title instead —
-   the same three facts, one third of the height. */
-@media (max-height:560px){
-  .pane.paywall{padding-bottom:calc(var(--bottom-safe) + 150px)}
-  .pw-cover{
-    flex-direction:row; align-items:center; justify-content:center;
-    gap:10px; max-width:340px; margin-left:auto; margin-right:auto;
-  }
-  .pw-plate{flex:0 0 auto; width:56px; padding-top:75px}
-  .pane.paywall .pw-title{
-    font-size:var(--fs-sub); text-align:left; max-width:20ch;
-  }
-  .pane.paywall .pw-min{display:none}
-  .pane.paywall h2{font-size:var(--fs-h3); line-height:var(--lh-tight)}
-  .pw-trial{padding:8px 12px 3px}
-  .pane.paywall .pw-trialhead{margin-bottom:5px}
-  .pw-row{padding:4px 0}
-}
+/* Sideways: two columns spend the width that is going spare, and everything
+   is on the screen at once instead of the price table sitting 121px behind
+   the action group, which is what was measured before this rule.
 
-/* A phone turned sideways is not a short screen, it is a WIDE one, and the
-   column layout every other size uses is what makes it hopeless: 375px of
-   height, of which the in-app toolbar and the action group take 214, against
-   a cover, a title and a two-row table stacked in a 340px-wide ribbon down
-   the middle of a 667px screen.
-
-   Measured before this rule: the price table sat 121px behind the action
-   group and had to be scrolled to. Two columns spend the width that is going
-   spare instead, and everything is on the screen at once.
-
-   `min-width` as well as `max-height`, so this never catches a genuinely
-   small phone held upright — there the single column is right and scrolling
-   is the honest answer. */
+   `min-width` as well as `max-height`, so a genuinely small phone held
+   upright never gets this — there the single column is right. */
 @media (max-height:520px) and (min-width:600px){
-  .pane.paywall{
+  .pw-offer{
     display:grid;
-    grid-template-columns:1fr 1fr;
-    align-content:start;
-    column-gap:18px; row-gap:6px;
-    max-width:660px;
+    grid-template-columns:minmax(0,40%) minmax(0,1fr);
+    align-items:center;
+    padding:var(--top-safe) 22px calc(var(--bottom-safe) + 104px) 0;
+    column-gap:20px;
   }
-  .pane.paywall h2,
-  .pane.paywall .pw-sub{grid-column:1 / -1}
-  .pw-cover{grid-column:1; margin:0; align-self:center}
-  .pw-trial{grid-column:2; margin:0; max-width:none; align-self:start}
-  /* .go is padding:16px 20px in app.css; 8px of it is the difference
-     between the table clearing the action group and not. min-height is
-     --tap, so the button never shrinks below 44px whatever this says. */
+  .pw-band{height:auto; align-self:stretch}
+  .pw-say{margin:0; padding:0}
+  .pane.paywall h2{font-size:1.625rem}
+  .pane.paywall .pw-sub{margin-top:8px; font-size:var(--fs-note)}
+  .pane.paywall .pw-price{margin-top:10px}
+  /* .go is padding:16px 20px in app.css; 8px of it is the difference between
+     the terms clearing the action group and not. min-height is --tap, so the
+     button never shrinks below 44px whatever this says. */
   .pane.paywall .pw-go{padding-top:12px; padding-bottom:12px}
-  /* The last 12px. Measured: without these three the bottom of the
-     "In 3 days" row sat 4px behind the docked footer. */
   .pane.paywall .pw-fine{margin:3px auto 0}
-  .pw-trial{padding:8px 12px 0}
-  .pw-row{padding:3px 0}
 }
 
 /* ==========================================================================
-   2b. "View other plans" — the sheet.
+   2c. "View other plans" — the sheet.
 
    Exactly the rungs js/account.js still offers, which is two: annual, marked
    best value and selected on open, and monthly. Quarterly is retired with
@@ -559,7 +675,7 @@ a.ec-go{
 .pw-best{
   font-size:var(--fs-micro); font-weight:var(--w-head);
   letter-spacing:var(--ls-badge); text-transform:uppercase;
-  padding:3px 7px; border-radius:999px;
+  padding:3px 7px; border-radius:var(--pill);
   background:var(--coral); color:var(--on-accent);
 }
 .pw-optprice{
@@ -575,7 +691,7 @@ a.ec-go{
 .pw-tick{
   position:absolute; top:50%; right:13px;
   margin-top:-11px;
-  width:22px; height:22px; border-radius:999px;
+  width:22px; height:22px; border-radius:var(--pill);
   display:flex; align-items:center; justify-content:center;
   background:var(--tint-3); color:var(--menu);
 }
@@ -590,7 +706,15 @@ a.ec-go{
   color:var(--dim); padding:10px; min-height:var(--tap);
 }
 
+/* Reduced motion. app.css already kills every transition on the page with an
+   !important, so the four screens cut rather than fade — which is the right
+   answer and is why nothing here has to repeat it. The advance itself is NOT
+   disabled: what that setting asks for is less movement, not fewer features,
+   and the countdown's only cue is text. */
 @media (prefers-reduced-motion:reduce){
   .pane.rec,
   .pane.paywall{scroll-behavior:auto}
+  /* With transitions off, `visibility 0s linear .45s` would still hold the
+     outgoing screen for most of half a second. */
+  .ec-p1, .ec-p2, .pw-cut, .pw-offer{transition:none}
 }

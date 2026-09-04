@@ -44,8 +44,20 @@
          inside the <p> so the header keeps the box, the margin and the baseline
          it already had, and so the target is the word rather than the width of
          the row. aria-label because a screen reader reading FACTBOX as all
-         capitals may spell it; the accessible name is the product name. -->
-    <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
+         capitals may spell it; the accessible name is the product name.
+
+         The tile is alt="" and inside the anchor: the word is right beside it,
+         so a screen reader saying "Factbox logo Factbox" is worse than silent,
+         and one lockup should be one target. width/height are on the tag so
+         the masthead does not reflow when it lands.
+
+         This page was the only one of the five with a masthead that had no
+         tile — /, /explore, /account and /settings all carry it. Explore and
+         Library are two tabs of one screen, so the wordmark jumped sideways by
+         31px every time a reader moved between them. app.css already styles
+         .mark img; nothing here is new but the tag. -->
+    <p class="mark"><a href="/explore" aria-label="Factbox"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
     <nav class="tabs" aria-label="Sections">
       <a href="/explore">Explore</a>
       <a href="/library" aria-current="page">Library</a>

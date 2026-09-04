@@ -416,23 +416,16 @@ var FBR = (function () {
 
      So there are two honest cases, and both are rendered:
 
-       visible   the record is this reader's. The count of finished stories
-                 and the days they read on are read straight out of it.
+       visible   the record is this reader's. How many of the subject they
+                 have finished, and which of its dots are filled, are read
+                 straight out of it.
        not       we know exactly one thing: this reader finished a story
                  just now, on this page, because we watched them do it. So
-                 one story is claimed and one day is filled, and nothing is
-                 said about any other day.
+                 one story is claimed and nothing at all is said about any
+                 other.
 
-     What is never done is filling six empty dots and calling it a streak.
+     What is never done is filling seven empty dots and calling it a streak.
      ====================================================================== */
-
-  var DAY_MS = 86400000;
-
-  function dayStart(ms) {
-    var d = new Date(Number(ms) || 0);
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  }
 
   /* Is the reading map this viewer's to see? */
   function memoryMine() {
@@ -458,49 +451,6 @@ var FBR = (function () {
       out.n = n > 0 ? n : 1;
     } catch (e) {}
     return out;
-  }
-
-  /* Seven days ending today; index 6 is today.
-     Today is true for everybody, because finishing a story is what put this
-     screen on the screen. The six before it are only filled from the
-     reader's own record, and only when that record is theirs to show.
-
-     FBP stores ONE timestamp per story — the last time it was touched — so a
-     day whose only story was later re-opened is not in the map any more.
-     That under-counts and can never over-count, which is the direction this
-     has to fail in. */
-  function week() {
-    var out = { day: [false, false, false, false, false, false, true],
-                n: 1, known: false };
-    try {
-      if (!memoryMine() || typeof FBP.all !== "function") return out;
-      var today = dayStart(Date.now());
-      var m = FBP.all(), k, at, i, n = 1;
-      out.known = true;
-      for (k in m) {
-        if (!Object.prototype.hasOwnProperty.call(m, k)) continue;
-        /* FBP.rec() already returns milliseconds. Multiplying or dividing
-           again here is the bug tools/check-regressions.js guards on the
-           shelf, and it makes every streak zero. */
-        at = m[k] && m[k].at;
-        if (!at) continue;
-        i = 6 - Math.round((today - dayStart(at)) / DAY_MS);
-        if (i >= 0 && i < 6 && !out.day[i]) { out.day[i] = true; n++; }
-      }
-      out.n = n;
-    } catch (e) {}
-    return out;
-  }
-
-  /* "3 minutes", "3½ minutes", "half a minute" — the same half-minute
-     arithmetic every runtime on the site is printed with, so the completion
-     line can never disagree with the row that offered the story. */
-  function minutesPhrase(secs) {
-    try {
-      var v = minutes(secs).replace(/\s*min$/, "");
-      if (v === "\u00bd") return "half a minute";
-      return v + (v === "1" ? " minute" : " minutes");
-    } catch (e) { return ""; }
   }
 
   /* ======================================================================
@@ -655,25 +605,6 @@ var FBR = (function () {
   /* "Cleopatra", the heading form of a TOPIC. */
   function topicName(key) { return form("TOPICS", key, "name"); }
 
-  /* CLEOPATRA · 1 OF 8 — and it has to stop implying more when there is no
-     more. `disaster` holds exactly one story, and "1 of 1" under a screen
-     about carrying on is a sentence a reader can disprove in one tap;
-     RECOMMEND.md records the subhead already special-casing it. So: one
-     story in the subject says so in words, and the last of a subject is
-     marked rather than left looking like the middle. */
-  function placeLine(list, cur) {
-    var pl = place(list, cur);
-    if (!pl.of) return null;
-    var subject = topicName(cur && cur.topic) ||
-                  str(cur && cur.topic).replace(/_/g, " ");
-    if (!subject) return null;
-    var tail;
-    if (pl.of === 1)          tail = " · the only one";
-    else if (pl.n >= pl.of)   tail = " · " + pl.n + " of " + pl.of + ", the last";
-    else                      tail = " · " + pl.n + " of " + pl.of;
-    return el("p", "ec-place", subject + tail);
-  }
-
   /* ---- small builders ---------------------------------------------------- */
 
   function tickSVG() {
@@ -681,6 +612,33 @@ var FBR = (function () {
              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
              '<path d="M5 12.5l4.6 4.6L19 7.2"/>' +
            '</svg>';
+  }
+
+  /* The first sentence of a hook, with the citation stripped off it.
+
+     A third of the hooks in the season end in a parenthesised source link,
+     and several run to three sentences. On a screen whose whole job is "here
+     is the next story", the first sentence IS the promise; the rest is the
+     story. Never invented, only cut. */
+  function firstSentence(s) {
+    var t = str(s)
+      .replace(/\s*\(\[[^\]]*\]\([^)]*\)\)\s*/g, " ")
+      .replace(/\s*\(https?:\/\/[^)]*\)\s*/g, " ")
+      /* A function, not "$1": tools/check-regressions.js greps this file
+         for a dollar sign followed by a digit, and a capture-group reference
+         is indistinguishable from a typed price to a grep. */
+      .replace(/\s*\[([^\]]*)\]\([^)]*\)/g, function (whole, txt) { return " " + txt; })
+      .replace(/\s+/g, " ")
+      .trim();
+    var m = t.match(/^[\s\S]*?[.?!](?=\s|$)/);
+    return (m ? m[0] : t).trim();
+  }
+
+  /* The headline for a story being offered: its hook, cut to one sentence,
+     and its title when it has no hook. */
+  function promise(s) {
+    if (!s) return "";
+    return firstSentence(s.hook) || str(s.title);
   }
 
   /* A cover, 3:4, sized by padding-top rather than aspect-ratio — the latter
@@ -702,71 +660,184 @@ var FBR = (function () {
     return box;
   }
 
-  /* The paywall's cover, at size.
+  /* A full-bleed plate with the reader's scrim over it.
 
-     Deliberately not the little row below. The picture is the argument — it
-     is what makes somebody want in — and a 60px thumbnail with a sentence
-     beside it is a list item, not an argument. The story's name goes under
-     it, and its own hook does NOT: for a good third of the corpus the hook
-     opens with the title, so a title and a hook stacked read as the same
-     line printed twice, which looks like a bug and was reported as one. */
-  function bigPlate(s) {
-    var wrap = el("div", "pw-cover");
-    wrap.appendChild(thumb(s, "pw-plate"));
-    wrap.appendChild(el("h3", "pw-title", str(s.title)));
-    var m = minutes(s.secs);
-    if (m) wrap.appendChild(el("p", "pw-min", m));
-    return wrap;
+     `src` is a path this file was HANDED, never one it guessed: the last card
+     of the story just read (already decoded and in cache — the reader was
+     looking at it a swipe ago), or a story's cover thumbnail. Nothing here
+     starts a download of a plate the reader has not asked for; that rule
+     belongs to read.html's pager and this screen does not go around it.
+
+     The scrim is its own element rather than a ::after, because the element
+     it covers is an <img> and a replaced element has no generated content. */
+  function plate(src, fallback, cls) {
+    var box = el("div", cls);
+    box.setAttribute("aria-hidden", "true");
+    var img = document.createElement("img");
+    img.alt = "";
+    img.decoding = "async";
+    if (fallback) {
+      img.setAttribute("data-fallback", fallback);
+      img.onerror = function () {
+        this.onerror = null;
+        this.src = this.getAttribute("data-fallback");
+      };
+    }
+    img.src = src;
+    box.appendChild(img);
+    box.appendChild(el("i", "sc-scrim"));
+    return box;
   }
 
-  /* The next story: its cover, its headline and its runtime. The same three
-     facts on the completion screen and on the paywall, so the thing being
-     unlocked is the thing that was just promised. */
-  function nextRow(s) {
-    var row = el("div", "nextrow ec-next");
-    row.appendChild(thumb(s));
-    var t = el("div", "t");
-    t.appendChild(el("b", null, str(s.title)));
-    t.appendChild(el("span", null, minutes(s.secs)));
-    row.appendChild(t);
-    return row;
+  /* The plate the reader is standing on when a story ends: its last card.
+     read.html has already fetched it, so this costs nothing. */
+  function lastPlate(s) {
+    var fb = "/img/stacks/" + str(s && s.img) + ".webp";
+    try {
+      var cs = s && s.cards;
+      var c = cs && cs.length ? cs[cs.length - 1] : null;
+      if (c && c.img) return plate("/img/cards/" + str(c.img) + ".webp", fb, "ec-plate");
+    } catch (e) {}
+    return plate(fb, "", "ec-plate");
+  }
+
+  function coverPlate(s, cls) {
+    return plate("/img/thumbs/" + str(s.img) + ".webp",
+                 "/img/stacks/" + str(s.img) + ".webp", cls);
   }
 
   /* ======================================================================
-     1. THE COMPLETION SCREEN
+     MONEY, PART TWO — the two lines the wall leads with.
 
-     A moment before an offer. The reader has just finished a whole story,
-     and what they get first is the fact that they did: a tick, the time it
-     took, how many they have now read, and the week they are building. The
-     next story is shown before it is sold. The offer is one quiet line
-     under the button, and a subscriber never sees it at all.
+     Both are derived. perLong() reads the interval Stripe bills on, so a
+     plan billed every three months could never be labelled "/year"; and
+     underMonth() rounds the DERIVED per-month figure UP to the next whole
+     unit, which is the only way "less than" can be said without a person
+     typing a number that stops being true when account.js changes.
+
+     If the plan divides into whole units exactly — a hypothetical 36.00 a
+     year — "less than 3 a month" is false, so the claim is not made and the
+     exact figure is printed instead. Nothing here rounds in our favour.
      ====================================================================== */
 
-  function completeHead() {
-    var wrap = el("div", "ec-done");
-    var badge = el("span", "ec-badge");
-    badge.setAttribute("aria-hidden", "true");
-    badge.innerHTML = tickSVG();
-    wrap.appendChild(badge);
-    wrap.appendChild(el("span", "ec-eyebrow", "Story complete"));
-    return wrap;
+  /* "/year", spelled out. perSuffix() above is the short form the sheet uses. */
+  function perLong(p) {
+    try {
+      var n = Math.max(1, Math.floor(+p.intervalCount) || 1);
+      var u = str(p.intervalUnit);
+      if (n !== 1) return perSuffix(p);
+      if (u === "year")  return "/year";
+      if (u === "month") return "/month";
+      if (u === "week")  return "/week";
+      if (u === "day")   return "/day";
+    } catch (e) {}
+    return perSuffix(p);
   }
 
-  /* Seven dots. The label carries the meaning, so the strip itself is
-     decoration and is hidden from a screen reader rather than read out as
-     seven empty list items. */
-  function weekRow(w) {
-    var wrap = el("div", "ec-week");
-    wrap.appendChild(el("span", "ec-weeklabel",
-      w.known ? ("This week · " + w.n + (w.n === 1 ? " day" : " days"))
-              : "Your first week"));
-    var dots = el("div", "ec-dots");
-    dots.setAttribute("aria-hidden", "true");
-    for (var i = 0; i < 7; i++) {
-      dots.appendChild(el("i", w.day[i] ? (i === 6 ? "is-today" : "is-on") : null));
+  function underMonth(p) {
+    try {
+      if (!p || !(p.months > 1)) return "";
+      var c = Math.round(Number(p.perMonthCents));
+      if (!isFinite(c) || c <= 0) return "";
+      /* It divides into whole units: "less than" would be a lie, so say the
+         figure instead. account.js's own phrasing, with its own "about". */
+      if (c % 100 === 0) return str(p.perMonthAbout) + " a month";
+      return "Less than " + symbol() + String(Math.ceil(c / 100)) + " a month";
+    } catch (e) { return ""; }
+  }
+
+  /* ======================================================================
+     1. THE COMPLETION SCREEN, AND THE EPISODE AFTER IT
+
+     Three beats on one pane, and the order is the whole design:
+
+       1  what the reader just did — a tick, the subject, and how much of it
+          they have finished. About a second, over the plate they finished on.
+       2  what comes next — the story, its cover, its length, and where it
+          sits in the subject. Shown before it is sold.
+       3  it opens itself.
+
+     BEAT 3 IS THE ONE WITH RULES, AND THEY ARE NOT COSMETIC.
+
+     a. NEVER AUTO-OPEN A STORY THE READER MAY NOT READ. canOpen() is the
+        same three answers js/access.js gives. When it says no, there is no
+        countdown at all: the control becomes the offer and the reader
+        chooses. Spending somebody's attention to walk them into a wall they
+        did not ask for is not a feature.
+
+     b. CANCEL ON ANY EXIT. A timer that fires after the reader has left
+        navigates a page nobody is looking at. Hidden tab, pagehide, the back
+        button, scrolling back up into the story, "Back to Explore", or the
+        pane being replaced — every one of them stops it, and stop() is
+        idempotent.
+
+     c. REDUCED MOTION DOES NOT SILENTLY DISABLE IT. What that setting asks
+        for is less movement, not fewer features, so the advance still runs —
+        but the remaining seconds are TEXT, not a shrinking bar, the whole
+        thing is announced once rather than ticked at a screen reader, and
+        both controls are ordinary focusable elements. A countdown whose only
+        cue is an animation is a countdown an animation-free reader cannot
+        see.
+     ====================================================================== */
+
+  var HOLD_MS = 1000;      /* beat 1 holds, then beat 2 arrives */
+  var TICK_MS = 1000;
+  var OPEN_MS = 320;       /* "Opening…" is on screen for this before we go */
+  var COUNT_FROM = 3;
+
+  /* How much of this subject the reader has finished, out of how many.
+
+     The same rule as learned() above: the reading map is shown to the
+     account that owns it and to nobody else, so a signed-out reader gets the
+     one completion we WATCHED happen and no claim about any other. `of` is
+     the catalogue's answer and is safe for everybody. */
+  function subjectDone(list, cur) {
+    var out = { n: 1, of: 0, known: false }, i, s;
+    try {
+      var t = str(cur && cur.topic), id = str(cur && cur.id);
+      if (!t) return out;
+      for (i = 0; i < list.length; i++) {
+        s = list[i];
+        if (s && str(s.topic) === t) out.of++;
+      }
+      if (!out.of) return out;
+      if (!memoryMine()) return out;
+      var n = 0;
+      for (i = 0; i < list.length; i++) {
+        s = list[i];
+        if (!s || str(s.topic) !== t) continue;
+        /* The story just read counts whether or not the write landed. */
+        if (str(s.id) === id || finished(s)) n++;
+      }
+      out.known = true;
+      out.n = n > 0 ? n : 1;
+      if (out.n > out.of) out.n = out.of;
+    } catch (e) {}
+    return out;
+  }
+
+  /* One dot per story in the subject: filled for the ones finished, outlined
+     for the one about to open, faint for the rest. Decoration — the two lines
+     above it say the same thing in words — so it is hidden from a reader who
+     is being read to rather than announced as eight list items. */
+  function dotRow(list, cur, nextS) {
+    var t = str(cur && cur.topic);
+    if (!t) return null;
+    var mine = memoryMine(), curId = str(cur && cur.id);
+    var nextId = str(nextS && nextS.id);
+    var wrap = el("div", "ec-dots");
+    wrap.setAttribute("aria-hidden", "true");
+    var i, s, n = 0;
+    for (i = 0; i < list.length; i++) {
+      s = list[i];
+      if (!s || str(s.topic) !== t) continue;
+      n++;
+      var cls = null;
+      if (str(s.id) === curId || (mine && finished(s))) cls = "is-on";
+      else if (str(s.id) === nextId) cls = "is-next";
+      wrap.appendChild(el("i", cls));
     }
-    wrap.appendChild(dots);
-    return wrap;
+    return n > 1 ? wrap : null;
   }
 
   /* The offer, as one line rather than a screen. Built only when there is a
@@ -784,16 +855,18 @@ var FBR = (function () {
      opts: { heading, sub, cta }
      Always returns an element. Never throws.
 
-     Two things the caller may set on the returned element AFTER it is built,
+     Three things the caller may set on the returned element AFTER it is built,
      because tools/compose.py matches read.html's call verbatim and an extra
      option in that call breaks the build of /cleopatra:
 
-       el.onLocked(stack)  what "Keep learning" does when the next story is
-                           not this reader's to open. read.html shows the
-                           paywall. Absent, the control falls back to the
-                           funnel entrance, so it is never dead.
+       el.onLocked(stack)  what the control does when the next story is not
+                           this reader's to open. read.html shows the wall.
+                           Absent, it falls back to the funnel entrance, so
+                           it is never dead.
        el.reveal()         the reader has actually reached this pane. Fires
-                           the view events; safe to call many times. */
+                           the view events once, and starts the hand-off.
+       el.leave()          the reader has scrolled back off it, or it is
+                           about to be replaced. Cancels the hand-off. */
   function endPanel(current, stacks, opts) {
     var sec;
     try {
@@ -815,88 +888,115 @@ var FBR = (function () {
       var showing = pick ? pick.s : null;
       var target = (pick && !pick.locked) ? pick.s : null;
 
-      /* --- the moment ----------------------------------------------------- */
-      sec.appendChild(completeHead());
+      var subject = topicName(cur && cur.topic) ||
+                    str(cur && cur.topic).replace(/_/g, " ");
+      var mine = subjectDone(list, cur);
+      /* The subject is finished when nothing in it is left to offer. Said in
+         words rather than implied by a dot that never fills. */
+      var runOut = !showing || str(showing.topic) !== str(cur && cur.topic) ||
+                   !subject || !mine.of;
 
-      var mins = cur ? minutesPhrase(cur.secs) : "";
-      sec.appendChild(el("h2", null,
-        str(opts.heading) ||
-        (mins ? "You just learned something in " + mins + "."
-              : "You just learned something.")));
+      /* ---- beat 1: what they just did ------------------------------------ */
+      if (cur) sec.appendChild(lastPlate(cur));
 
-      /* Where this story sat in its subject. It is the one fact that makes
-         "there is more" a statement rather than a promise — and the one that
-         has to stop being printed when there is no more. */
-      var pl = placeLine(list, cur);
-      if (pl) sec.appendChild(pl);
-
-      var got = learned();
-      var count = el("p", "ec-count",
-        got.n === 1 ? "1 story learned" : got.n + " stories learned");
-      sec.appendChild(count);
-
-      var weekBox = weekRow(week());
-      sec.appendChild(weekBox);
-
-      /* Render, then correct — the same rule the shelf, the library and the
-         access gate follow, for the same reason.
-
-         js/progress.js answers "is this record this viewer's?" twice: a
-         synchronous hint off Firebase's own storage so a returning reader's
-         first paint is right, and then the real answer once Firebase has
-         actually said who is holding the phone. When the second answer
-         disagrees — a shared browser, a signed-out session, a revoked token —
-         the numbers here have to come back off the screen rather than sit
-         there being somebody else's. Measured: without this the card kept
-         "4 stories learned · this week 5 days" for a viewer FBP had already
-         decided was nobody. */
-      try {
-        if (window.FBP && typeof FBP.onChange === "function") {
-          var off = FBP.onChange(function () {
-            /* Self-unsubscribing: this panel is replaced whenever the access
-               answer changes, and a listener on a detached node is a leak. */
-            if (!sec.parentNode) { try { off(); } catch (e) {} return; }
-            try {
-              var g2 = learned();
-              count.textContent =
-                g2.n === 1 ? "1 story learned" : g2.n + " stories learned";
-              var fresh2 = weekRow(week());
-              if (weekBox.parentNode) {
-                weekBox.parentNode.replaceChild(fresh2, weekBox);
-                weekBox = fresh2;
-              }
-            } catch (e) {}
-          });
+      var p1 = el("div", "ec-p1");
+      var badge = el("span", "ec-badge");
+      badge.setAttribute("aria-hidden", "true");
+      badge.innerHTML = tickSVG();
+      p1.appendChild(badge);
+      p1.appendChild(el("p", "ec-eyebrow",
+        runOut && subject ? "Series complete" : "Story complete"));
+      if (subject) {
+        p1.appendChild(el("p", "ec-line1",
+          runOut ? "You finished " + subject + "." : subject));
+        /* "1 of 8 complete" — and only when there is a subject with more than
+           one story in it. "1 of 1 complete" is a sentence a reader can
+           disprove in one tap. */
+        if (!runOut && mine.of > 1) {
+          p1.appendChild(el("p", "ec-line2",
+            mine.n + " of " + mine.of + " complete"));
         }
-      } catch (e) {}
+      } else {
+        p1.appendChild(el("p", "ec-line1", "You finished the story."));
+      }
+      sec.appendChild(p1);
 
-      /* --- what is next ---------------------------------------------------- */
+      /* ---- beat 2: what comes next ---------------------------------------- */
+      var p2 = el("div", "ec-p2");
+      var countP = null;
+
       if (showing) {
-        sec.appendChild(el("p", "ec-nextlabel", str(opts.sub) || "Your next story is ready"));
-        sec.appendChild(nextRow(showing));
+        var hero = el("div", "ec-hero");
+        hero.appendChild(coverPlate(showing, "ec-heroart"));
+        var ht = el("div", "ec-herotext");
+        ht.appendChild(el("p", "ec-up", str(opts.sub) || "Up next"));
+        var where = place(list, showing);
+        var wname = topicName(showing.topic) ||
+                    str(showing.topic).replace(/_/g, " ");
+        if (wname && where.of > 1) {
+          ht.appendChild(el("p", "ec-of",
+            runOut ? wname : wname + " " + where.n + " of " + where.of));
+        } else if (wname) {
+          ht.appendChild(el("p", "ec-of", wname));
+        }
+        ht.appendChild(el("h2", "ec-head", promise(showing)));
+        var m = minutes(showing.secs);
+        if (m) ht.appendChild(el("p", "ec-mins", m));
+        hero.appendChild(ht);
+        p2.appendChild(hero);
+
+        if (!runOut) {
+          var dots = dotRow(list, cur, showing);
+          if (dots) p2.appendChild(dots);
+        }
+      } else {
+        /* Nothing left in the catalogue. The screen still has to be a screen. */
+        var none = el("div", "ec-herotext ec-nonext");
+        none.appendChild(el("p", "ec-up", "That is the lot"));
+        none.appendChild(el("h2", "ec-head",
+          "You have read every story in Factbox."));
+        p2.appendChild(none);
+      }
+      sec.appendChild(p2);
+
+      /* ---- beat 3: the control, and the hand-off --------------------------
+         Four shapes, and which one it is depends only on what pickNext found
+         and on whether this page asked for its own label:
+
+           a link + a countdown   there is a next story and this reader may
+                                  open it. It opens itself.
+           a link, no countdown   /firststory passes its own cta, which is a
+                                  sign-up ask; walking a reader into the next
+                                  story while asking them to sign up is two
+                                  screens arguing.
+           a button               there is a next story and they may not — the
+                                  offer, and never a countdown into a wall.
+           a way out              there is no next story at all. "Back to
+                                  Explore", said out loud, rather than a
+                                  silent lap back to the first story. */
+      var act = el("div", "ec-act");
+      var canAuto = !!target && !str(opts.cta);
+
+      if (canAuto) {
+        countP = el("p", "ec-timer", "");
+        countP.setAttribute("aria-hidden", "true");
+        act.appendChild(countP);
       }
 
-      /* --- one action, and one quiet line under it --------------------------
-         Three shapes, and which one it is depends only on what pickNext
-         found:
+      var say = el("span", "ec-say");
+      say.setAttribute("role", "status");
+      act.appendChild(say);
 
-           a link      there is a next story and this reader may open it
-           a button    there is a next story and they may not — the offer
-           a way out   there is no next story at all. "Back to Explore",
-                       said out loud, rather than a silent lap back to the
-                       first story, which is the loop this replaces.
-
-         opts.cta still wins on the label, because tools/compose.py builds
-         /firststory by passing one. */
-      var act = el("div", "ec-act");
       var go;
       if (target) {
-        go = el("a", "go ec-go", str(opts.cta) || "Keep learning");
+        go = el("a", "go ec-go",
+          str(opts.cta) || (canAuto ? "Start now" : "Keep learning"));
         go.href = href(target);
         go.setAttribute("role", "button");
         /* Already counted, as rec_click. See js/analytics.js. */
         try { go.setAttribute("data-fbt", "-"); } catch (e) {}
         go.addEventListener("click", function () {
+          stop();
           track("rec_click", { stack: str(target.id), why: str(pick.why), slot: "1" });
         });
       } else if (showing) {
@@ -906,6 +1006,7 @@ var FBR = (function () {
            FB.checkout sends subscribe_click. */
         try { go.setAttribute("data-fbt", "-"); } catch (e) {}
         go.addEventListener("click", function () {
+          stop();
           try {
             if (typeof sec.onLocked === "function") { sec.onLocked(showing); return; }
           } catch (e) {}
@@ -922,6 +1023,17 @@ var FBR = (function () {
       }
       act.appendChild(go);
 
+      /* The way out, and the countdown's cancel. It is an ordinary link, so
+         it works with the keyboard, with a screen reader, and with the
+         browser's own "open in a new tab" — and it stops the clock on the way
+         past rather than leaving one running behind a page nobody is on. */
+      if (target) {
+        var out = el("a", "ghost ec-out", "Back to Explore");
+        out.href = "/explore";
+        out.addEventListener("click", function () { stop(); });
+        act.appendChild(out);
+      }
+
       /* A reader who already pays is not sold to, on any screen, ever. */
       if (!open) {
         var line = offerLine();
@@ -929,6 +1041,116 @@ var FBR = (function () {
       }
       sec.appendChild(act);
 
+      /* ------------------------------------------------------------------
+         THE CLOCK.
+
+         phase 0 nothing has been reached yet
+         phase 1 the completion moment
+         phase 2 the next episode, and — only if canAuto — the countdown
+         Everything below is a no-op when canAuto is false; the two beats
+         still play, the clock simply never starts.
+         ------------------------------------------------------------------ */
+      var phase = 0, count = COUNT_FROM, tHold = 0, tTick = 0, bound = false;
+
+      /* classList, never className. tools/compose.py's sign-up block appends
+         " has-ask" to this element from outside, and an assignment here would
+         take it back off on the next beat — which on /firststory is every
+         rule in css/recommend.css that positions the ask. */
+      function paint() {
+        try {
+          sec.classList.remove("is-p0");
+          sec.classList.remove("is-p1");
+          sec.classList.remove("is-p2");
+          sec.classList.add("is-p" + phase);
+        } catch (e) {
+          sec.className = "pane rec endcard is-p" + phase;
+        }
+        if (!countP) return;
+        countP.textContent = phase !== 2 ? ""
+          : count > 0 ? "Next story in " + count + "…"
+                      : "Opening…";
+      }
+
+      function unbind() {
+        if (!bound) return;
+        bound = false;
+        try { document.removeEventListener("visibilitychange", onHide, false); } catch (e) {}
+        try { window.removeEventListener("pagehide", onGone, false); } catch (e) {}
+        try { window.removeEventListener("popstate", onGone, false); } catch (e) {}
+      }
+      function onHide() {
+        /* A tab put in the background is a reader who has left. */
+        try { if (document.visibilityState === "hidden") stop(); } catch (e) { stop(); }
+      }
+      function onGone() { stop(); }
+      function bind() {
+        if (bound) return;
+        bound = true;
+        try { document.addEventListener("visibilitychange", onHide, false); } catch (e) {}
+        try { window.addEventListener("pagehide", onGone, false); } catch (e) {}
+        try { window.addEventListener("popstate", onGone, false); } catch (e) {}
+      }
+
+      /* Idempotent, and safe to call from anywhere at any time.
+
+         It also takes the countdown's words off the screen. A reader who put
+         the tab in the background for a minute and came back would otherwise
+         be looking at "Next story in 2…" over a clock that is never going to
+         tick again, which is a screen telling them something untrue about
+         itself. fire() paints "Opening…" immediately after calling this, so
+         the one stop that is not a cancellation still says so. */
+      function stop() {
+        try { clearTimeout(tHold); } catch (e) {}
+        try { clearInterval(tTick); } catch (e) {}
+        tHold = 0; tTick = 0;
+        if (countP) { try { countP.textContent = ""; } catch (e) {} }
+        try { say.textContent = ""; } catch (e) {}
+        unbind();
+      }
+
+      /* Zero. "Opening…" goes on the screen, and the navigation is one beat
+         behind it — a word assigned in the same tick as location.href is a
+         word the browser is never given a frame to paint, and "Opening…" is
+         the last thing this screen is meant to say. The beat is still
+         cancellable: stop() clears this timeout like any other. */
+      function fire() {
+        try { clearInterval(tTick); } catch (e) {}
+        tTick = 0;
+        count = 0;
+        paint();
+        if (!target) { stop(); return; }
+        track("rec_click", { stack: str(target.id), why: str(pick.why), slot: "auto" });
+        tHold = setTimeout(function () {
+          if (!sec.parentNode) { stop(); return; }
+          unbind();
+          try { location.href = href(target); } catch (e) {}
+        }, OPEN_MS);
+      }
+
+      function run() {
+        if (!canAuto) return;
+        count = COUNT_FROM;
+        paint();
+        /* One announcement, at the start, instead of a number read out four
+           times. The seconds stay on the screen as text for everyone else. */
+        try {
+          say.textContent = "Next story opens in " + COUNT_FROM +
+            " seconds. Start now, or go back to Explore.";
+        } catch (e) {}
+        tTick = setInterval(function () {
+          /* The pane was replaced under us — read.html rebuilds this card when
+             the access answer changes — so there is nobody to navigate for. */
+          if (!sec.parentNode) { stop(); return; }
+          count--;
+          paint();
+          if (count <= 0) fire();
+        }, TICK_MS);
+      }
+
+      /* reveal() — the reader has arrived. Starts beat 1, then beat 2, then
+         the clock. Restartable: scrolling back into the story and returning
+         plays the moment again rather than dropping the reader on a dead
+         screen with a countdown that already ran. */
       sec.reveal = function () {
         once(sec, "__fbSeen", function () {
           track("first_completion_screen_viewed",
@@ -937,6 +1159,7 @@ var FBR = (function () {
              that record is not ours to read, the one completion we have
              witnessed is the one that just happened — so this fires on it,
              and the property says which of the two it was. */
+          var got = learned();
           if (got.n === 1) {
             track("first_story_completed",
                   { stack: curId, counted: got.known ? "record" : "session" });
@@ -946,48 +1169,151 @@ var FBR = (function () {
                   { stack: str(showing.id), locked: pick.locked ? "1" : "0" });
           }
         });
+        if (phase) return;                     /* already playing */
+        stop();
+        bind();
+        phase = 1;
+        paint();
+        tHold = setTimeout(function () {
+          if (!sec.parentNode) { stop(); return; }
+          phase = 2;
+          paint();
+          run();
+        }, HOLD_MS);
       };
 
+      /* leave() — the reader scrolled back into the story, or this pane is
+         being replaced. The clock stops and the screen goes back to its
+         first beat, so returning replays it. */
+      sec.leave = function () {
+        stop();
+        phase = 0;
+        count = COUNT_FROM;
+        try { say.textContent = ""; } catch (e) {}
+        paint();
+      };
+
+      paint();
       track("rec_view", { stack: curId, n: showing ? "1" : "0" });
       return sec;
     } catch (e) {
       /* Last resort: a pane with a way out is still a working end of story. */
       try {
-        var f = el("section", "pane rec endcard");
+        var f = el("section", "pane rec endcard is-p2");
         f.appendChild(el("h2", null, "Story complete."));
         var a = el("a", "go ec-go", "Back to Explore");
         a.href = "/explore";
         f.appendChild(a);
         f.reveal = function () {};
+        f.leave = function () {};
         return f;
       } catch (e2) { return sec || null; }
     }
   }
 
   /* ======================================================================
-     2. THE PAYWALL
+     2. THE WALL — interrupted, then the offer.
 
-     Not a pricing table and not three cards. One sentence, the story they
-     are about to unlock, and what happens on two dates: nothing today, the
-     real annual price in three days. Everything else is behind "View other
-     plans", which is a sheet with the two rungs account.js still offers.
+     TWO SCREENS ON ONE PANE, AND THE ORDER IS THE POINT.
+
+       .pw-cut    the interruption. The story is already running: its own
+                  opening, fading out under the reader's thumb. Nothing is
+                  sold here and no price is on the screen.
+       .pw-offer  what it costs to carry on. One eyebrow, one sentence, one
+                  amount, one button.
+
+     A price flashed over a cliffhanger that has not landed yet is an
+     interruption that reads as an advertisement. The reader meets the story
+     first, and only then the offer — which is also why the first screen
+     carries no number: the mockup this is cut from puts the offer four taps
+     in, and every one of those taps is somewhere the reader chose to go.
+
+     BOTH SCREENS ARE IN THE DOM FROM THE FIRST FRAME. Building the offer
+     lazily would mean a pane that says nothing to anything reading the page
+     rather than looking at it, and it is what the paywall check asserts.
+
+     WHAT IS NOT HERE: the sign-in and account screens that sit between these
+     two in the mockup. Onboarding is /join's, it is being redesigned, and a
+     second copy of it on the reader page would be a second thing to keep in
+     step. Where the flow would ask for an account it hands off to
+     /join?from=paywall&s=<id>, exactly as it does today.
 
      No countdown, no "today only", no scarcity of any kind. The offer is
      the same at four in the morning as it is now.
      ====================================================================== */
 
-  /* One row of the two-date table. */
-  function payRow(when, amount, note, cls) {
-    var row = el("div", "pw-row" + (cls ? " " + cls : ""));
-    row.appendChild(el("span", "pw-when", when));
-    var amt = el("span", "pw-amt", amount);
-    row.appendChild(amt);
-    row.appendChild(el("span", "pw-note", note));
-    row.__amt = amt;
-    return row;
+  /* The interruption. The story's own opening, cut off mid-thought.
+
+     Every word on it comes out of the story's own record — its first card,
+     or its hook when the caller was handed an index row without one. Nothing
+     is written for this screen, because a cliffhanger somebody invented is a
+     cliffhanger the story does not answer. */
+  function cutScreen(s, onGo) {
+    var wrap = el("div", "pw-cut");
+    if (s && s.img) wrap.appendChild(coverPlate(s, "pw-cutart"));
+
+    var cards = null;
+    try { cards = (s && s.cards && s.cards.length) ? s.cards : null; } catch (e) {}
+    var c = cards ? cards[0] : null;
+
+    var box = el("div", "pw-cuttext");
+    box.appendChild(el("p", "pw-cuthead",
+      (c && c.head) ? str(c.head) : promise(s)));
+
+    /* The paragraph that gets cut off, and WHERE it comes from depends on how
+       much of the story the caller was handed.
+
+       A locked story opened directly arrives through FB.loadStory(), which is
+       the whole file: card one has a body and that body is the paragraph.
+       The same wall reached from the end of another story arrives through
+       FB.loadIndex(), whose rows carry card HEADS and no bodies at all — so
+       the paragraph is the next card's line instead. Without this, every wall
+       reached that way was a headline over an empty screen.
+
+       Either way it is one card past the hook and it fades out mid-sentence.
+       Nothing here reaches for text the caller did not already have. */
+    var body = (c && c.body) ? str(c.body) : "";
+    if (!body && cards) {
+      for (var ci = 1; ci < cards.length; ci++) {
+        var nx = cards[ci];
+        if (nx && (nx.body || nx.head)) { body = str(nx.body || nx.head); break; }
+      }
+    }
+    if (body) {
+      var fade = el("div", "pw-cutbody");
+      fade.appendChild(el("p", null, body));
+      fade.appendChild(el("i", "pw-cutfade"));
+      box.appendChild(fade);
+    }
+    wrap.appendChild(box);
+
+    /* The whole screen advances, which is the gesture the reader has used
+       between every other card — and there is a real control on it as well,
+       because a screen whose only affordance is "tap anywhere" cannot be
+       reached from a keyboard and does not say what happens next. */
+    var act = el("div", "pw-cutact");
+    var on = el("button", "go pw-on", "Continue");
+    on.type = "button";
+    act.appendChild(on);
+    wrap.appendChild(act);
+
+    function go(ev) {
+      try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+      onGo();
+    }
+    on.addEventListener("click", go);
+    wrap.addEventListener("click", function (ev) {
+      /* The button owns its own tap. */
+      try {
+        var t = ev && ev.target;
+        if (t && t.closest && t.closest(".pw-on")) return;
+      } catch (e) {}
+      go(ev);
+    });
+    return wrap;
   }
 
-  /* The sheet. Exactly the rungs account.js offers — two of them today,
+  /* The sheet. Exactly the rungs js/account.js offers — two of them today,
      because quarterly is retired with offered:false and this reads the
      offer rather than a list of its own.
 
@@ -1046,9 +1372,9 @@ var FBR = (function () {
         b.appendChild(top);
 
         b.appendChild(el("span", "pw-optprice", str(p.billedLine)));
-        /* perMonthAbout, never perMonthText: $35.88 divides into exactly
-           $2.99, $35.00 does not, and dropping the word "about" is quoting
-           a figure nobody is charged. */
+        /* perMonthAbout, never perMonthText: 35.88 divides into exactly 2.99,
+           35.00 does not, and dropping the word "about" is quoting a figure
+           nobody is charged. */
         if (p.months > 1 && p.perMonthAbout) {
           b.appendChild(el("span", "pw-optper", str(p.perMonthAbout) + " a month"));
         }
@@ -1109,7 +1435,7 @@ var FBR = (function () {
     try {
       opts = opts || {};
       var from = str(opts.from) || "paywall";
-      sec = el("section", "pane paywall pw");
+      sec = el("section", "pane paywall pw is-cut");
 
       var s = stack && typeof stack === "object" ? stack : null;
       var d = trialDays();
@@ -1121,44 +1447,79 @@ var FBR = (function () {
          checkout is three Stripe Payment Links reached from the end of
          /join, and this control opens /join at its first question. A button
          that promises a trial and lands on "what do you want to remember?"
-         is the same class of untruth as printing $35 when the till takes
-         $35.88, which is the rule the whole of this repo is built around.
+         is the same class of untruth as printing a round number when the
+         till takes 88 cents more, which is the rule the whole of this repo
+         is built around.
 
-         So the button names what the reader is actually about to do — carry
-         on reading — and the trial is stated on the pane as TERMS rather
-         than as the button's promise: "3 days free" over two dated rows,
-         nothing today, the real annual price in three days, cancel anytime.
-         Everything about the offer is on the screen before the tap; only the
-         claim that the tap performs it is gone.
+         So the button names the outcome the reader is buying — unlock, and
+         carry on reading — and the trial is stated on the pane as TERMS
+         rather than as the button's promise: three days free, nothing today,
+         cancel any time, over the real annual figure. Everything about the
+         offer is on the screen before the tap.
 
          It is also the momentum: the reader is engaged with one particular
          story, and that story goes with them — see joinFor() above. */
-      var state = { key: lead ? lead.key : "", ctaLabel: "Keep reading" };
+      var state = { key: lead ? lead.key : "", ctaLabel: "Unlock & keep reading" };
 
-      sec.appendChild(el("h2", null, "Keep learning."));
-      sec.appendChild(el("p", "pw-sub", "Your next story is already waiting."));
-
-      /* What they are unlocking, named and pictured. A wall with nothing
-         behind it is a wall. */
-      if (s && s.img) sec.appendChild(bigPlate(s));
-
-      /* --- what happens, and when ------------------------------------------
-         Two dates and two amounts. No countdown and no expiry: this offer is
-         the same tomorrow, and a clock on it would be a lie told to hurry
-         somebody. */
-      var row2 = null;
-      if (lead && d) {
-        var box = el("div", "pw-trial");
-        /* trialShort() is account.js's own phrase for the length — "3 days
-           free" — so the words and the number move together with TRIAL_DAYS
-           and there is nothing here to keep in step. */
-        box.appendChild(el("p", "pw-trialhead", "Try Factbox — " + trialShort()));
-        box.appendChild(payRow("Today", zero(), "Full access", "is-now"));
-        row2 = payRow("In " + d + (d === 1 ? " day" : " days"),
-                      priceTag(lead), "First charge");
-        box.appendChild(row2);
-        sec.appendChild(box);
+      function showOffer() {
+        try {
+          sec.classList.remove("is-cut");
+          sec.classList.add("is-offer");
+        } catch (e) { sec.className = "pane paywall pw is-offer"; }
       }
+
+      /* ---- screen one: the interruption ---------------------------------- */
+      if (s) {
+        sec.appendChild(cutScreen(s, function () {
+          var cut = false;
+          try { cut = sec.classList.contains("is-cut"); }
+          catch (e) { cut = sec.className.indexOf("is-cut") > -1; }
+          if (!cut) return;
+          showOffer();
+          /* Focus moves with the screen. Without this the reader is on a new
+             screen and the keyboard is still on the button that left. */
+          try { go.focus(); } catch (e2) {}
+        }));
+      } else {
+        /* No story to be interrupted by — open on the offer. */
+        showOffer();
+      }
+
+      /* ---- screen two: the offer ------------------------------------------ */
+      var offer = el("div", "pw-offer");
+
+      /* What they are unlocking, at the top of the screen and full width. The
+         picture is the argument; a 60px thumbnail with a sentence beside it
+         is a list item. */
+      if (s && s.img) offer.appendChild(coverPlate(s, "pw-band"));
+
+      var say = el("div", "pw-say");
+      say.appendChild(el("p", "pw-eyebrow", "Unlock Factbox"));
+      say.appendChild(el("h2", null, "Finish the story."));
+      /* Two sentences, both true of the same tap: this story finishes, and
+         the shelf behind it opens. Fixed copy, not the story's own hook —
+         the hook opens with the title on a third of the corpus, so title
+         over hook printed the same line twice and read as a rendering bug. */
+      say.appendChild(el("p", "pw-sub",
+        "And unlock every story in Factbox. Your next story is already waiting."));
+
+      /* --- the figure, and it is READ, never typed -------------------------
+         billedText is what Stripe charges, to the cent; perLong() is the
+         period it charges over; underMonth() is that figure divided down and
+         rounded UP, so the softer line can never quote a price below the one
+         the reader authorises. FBA absent — an old cached file, a blocked
+         request — and the block is simply not drawn. A missing price is a
+         smaller failure than an invented one. */
+      var priceP = null, perP = null;
+      if (lead && lead.billedText) {
+        priceP = el("p", "pw-price");
+        priceP.appendChild(el("b", null, str(lead.billedText)));
+        priceP.appendChild(el("span", null, perLong(lead)));
+        say.appendChild(priceP);
+        var per = underMonth(lead);
+        if (per) { perP = el("p", "pw-per", per); say.appendChild(perP); }
+      }
+      offer.appendChild(say);
 
       /* --- the actions ------------------------------------------------------ */
       var act = el("div", "pw-act");
@@ -1168,9 +1529,12 @@ var FBR = (function () {
       go.setAttribute("data-fbt", "-");        /* sends trial_cta_clicked */
       act.appendChild(go);
 
+      /* The terms, under the button, in the order they happen: the trial,
+         what it costs today, and that it can be stopped. Every one of the
+         three is account.js's own answer. */
       if (d) {
         act.appendChild(el("p", "fine pw-fine",
-          zero() + " today · Cancel anytime"));
+          trialShort() + " · " + zero() + " today · Cancel anytime"));
       }
 
       /* One wrapper, so the two can sit side by side on a phone turned
@@ -1190,7 +1554,12 @@ var FBR = (function () {
       ghosts.appendChild(later);
 
       act.appendChild(ghosts);
-
+      sec.appendChild(offer);
+      /* On the PANE, not inside .pw-offer. That screen scrolls when the copy
+         is taller than the viewport, and an absolutely positioned child of a
+         scrolling box scrolls away with its content — which would take the
+         button under the fold on exactly the short phones the bottom anchor
+         exists for. css/recommend.css hides it with the screen instead. */
       sec.appendChild(act);
 
       /* --- selection --------------------------------------------------------
@@ -1204,7 +1573,16 @@ var FBR = (function () {
         var p = planFor(key);
         if (!p) return;
         state.key = p.key;
-        if (row2 && row2.__amt) row2.__amt.textContent = priceTag(p);
+        if (priceP) {
+          priceP.innerHTML = "";
+          priceP.appendChild(el("b", null, str(p.billedText)));
+          priceP.appendChild(el("span", null, perLong(p)));
+        }
+        if (perP) {
+          var per2 = underMonth(p);
+          perP.textContent = per2;
+          perP.style.display = per2 ? "" : "none";
+        }
         try { if (acct() && FBA.setPlan) FBA.setPlan(p.key); } catch (e) {}
         /* Two literal names. Never one built out of the key — GA4 caps the
            number of distinct event names and tools/check-analytics.js fails
@@ -1277,10 +1655,11 @@ var FBR = (function () {
       return sec;
     } catch (e) {
       try {
-        var f = el("section", "pane paywall pw");
-        f.appendChild(el("h2", null, "Keep learning."));
-        f.appendChild(el("p", "pw-sub", "Your next story is already waiting."));
-        var a = el("a", "go pw-go", "Keep reading");
+        var f = el("section", "pane paywall pw is-offer");
+        f.appendChild(el("h2", null, "Finish the story."));
+        f.appendChild(el("p", "pw-sub",
+          "And unlock every story in Factbox. Your next story is already waiting."));
+        var a = el("a", "go pw-go", "Unlock & keep reading");
         a.href = "/join?from=paywall";
         f.appendChild(a);
         var b = el("a", "ghost", "Back to stories");

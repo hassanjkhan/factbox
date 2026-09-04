@@ -42,26 +42,29 @@
   min-height:38px;width:38px;
   display:inline-flex;align-items:center;justify-content:center;
   padding:0;
-  border-radius:var(--pill, 999px);
+  border-radius:var(--pill);
   border:0;
   /* Dark glass in both grounds: on read.html this sits on a painting, and on
      the composed story pages the whole document is night. */
-  box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13));
-  background:rgba(24,19,32,.72);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  background:var(--glass-deep);
   -webkit-backdrop-filter:blur(16px) saturate(1.2);
   backdrop-filter:blur(16px) saturate(1.2);
   color:var(--on-glass);
-  font-family:var(--ui, inherit);
-  font-size:var(--fs-meta,.8125rem);font-weight:var(--w-strong,600);letter-spacing:.01em;line-height:1;
+  font-family:var(--ui);
+  font-size:var(--fs-meta);font-weight:var(--w-strong);letter-spacing:.01em;line-height:1;
   transition:background .2s ease, box-shadow .2s ease,
              transform .12s ease, opacity .3s ease;
 }
 .fb-sound:active{transform:scale(.96)}
-.fb-sound:focus-visible{outline:2px solid var(--coral,#FF7A5C);outline-offset:3px}
+/* app.css's :focus-visible already draws the site's ring in the site's ring
+   colour, and --ring is a var() indirection that resolves to the writeable
+   accent wherever it is used. This rule used to name --coral, which is the
+   FILL and is 2.2:1 as a line. */
 
 .fb-sound .ico{
   width:17px;height:17px;flex:none;display:block;
-  color:var(--dim, rgba(255,247,237,.62));
+  color:var(--dimmer);
   transition:color .25s ease;
 }
 .fb-sound .ico svg{width:100%;height:100%;display:block;overflow:visible}
@@ -70,12 +73,16 @@
 .fb-sound .ico .wav{opacity:0}
 .fb-sound .ico .cut{opacity:1}
 
-/* ---- on ---------------------------------------------------------------- */
+/* ---- on ----------------------------------------------------------------
+   The state is the ICON, not the pill: waves instead of a cross, in the
+   accent you may write in. --accent-ink is #8FC4FA on the reader's night
+   ground (10.1:1) and the ring is the accent's own hairline. --coral is a
+   fill and is never a 1px line. */
 .fb-sound.is-on{
-  box-shadow:inset 0 0 0 1px rgba(255,122,92,.55);
-  background:rgba(28,20,26,.78);
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
+  background:var(--glass-deep);
 }
-.fb-sound.is-on .ico{color:var(--coral,#FF7A5C)}
+.fb-sound.is-on .ico{color:var(--accent-ink)}
 .fb-sound.is-on .ico .wav{opacity:1}
 .fb-sound.is-on .ico .cut{opacity:0}
 
@@ -95,10 +102,10 @@
    a button that does nothing. */
 .fb-sound.is-dead{
   pointer-events:none;
-  color:var(--dim, rgba(255,247,237,.62));
-  box-shadow:inset 0 0 0 1px rgba(255,247,237,.10);
+  color:var(--dimmer);
+  box-shadow:inset 0 0 0 1px var(--hair);
 }
-.fb-sound.is-dead .ico{color:var(--dimmer, rgba(255,247,237,.52))}
+.fb-sound.is-dead .ico{color:var(--dimmer)}
 .fb-sound.is-gone{opacity:0;transform:translateY(-4px)}
 
 /* --------------------------------------------------------------------------
@@ -117,13 +124,13 @@
   max-width:min(17em, calc(100vw - 24px));
   padding:.6em .85em;
   border-radius:14px;
-  box-shadow:inset 0 0 0 1px var(--hair, rgba(255,247,237,.13));
-  background:rgba(20,16,26,.86);
+  box-shadow:inset 0 0 0 1px var(--hair);
+  background:var(--glass-deep);
   -webkit-backdrop-filter:blur(18px) saturate(1.2);
   backdrop-filter:blur(18px) saturate(1.2);
   color:var(--on-glass);
-  font-family:var(--ui, inherit);
-  font-size:var(--fs-fine,.75rem);font-weight:var(--w-label,500);line-height:1.4;letter-spacing:.005em;
+  font-family:var(--ui);
+  font-size:var(--fs-fine);font-weight:var(--w-label);line-height:1.4;letter-spacing:.005em;
   text-align:right;
   pointer-events:none;
   opacity:0;transform:translateY(-6px);

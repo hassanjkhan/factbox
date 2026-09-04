@@ -7,10 +7,16 @@
    exists because the Library has something Home does not — a stats line, a
    real empty state, a remove control, and a storage-is-dead notice.
 
-   Colours are app.css tokens, declared with fallbacks so this file still
-   paints if app.css ever fails to load. The fallbacks are the PAPER values,
-   because that is what a browse page is now; the reader's night values reach
-   these tokens through css/reader-rail.css and never through a fallback.
+   THERE ARE NO COLOUR LITERALS IN THIS FILE, and there must not be. Every
+   colour is an app.css token with no fallback. The fifteen
+   `var(--token,#old-hex)` fallbacks this file used to carry were written when
+   the site was night, and the repaint to paper left every one of them holding
+   a near-white or a near-black — so the "safety net" was the only thing that
+   could paint this page wrong, and it would have done it silently the first
+   time app.css was slow. A missing token is an unstyled line, which is
+   visible; a stale fallback is a legible line in the wrong colour, which is
+   not. The reader's night values reach these same tokens through
+   css/reader-rail.css, and never through a fallback either.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -34,6 +40,34 @@
 }
 
 /* --------------------------------------------------------------------------
+   The membership line, directly under the stats: "MEMBER · ALL 51 STORIES
+   UNLOCKED".
+
+   Small capitals, so it reads as a status stamp rather than as another
+   sentence competing with the standfirst two lines above it. --ls-caps is the
+   site's tracking for anything set this way and --fs-micro is the size it was
+   measured at; a label this tight at body size closes up and stops being
+   readable.
+
+   --accent-ink, NOT --coral. This is type. --coral is 2.2:1 on cream and the
+   note at the top of app.css calls it a fill, never a colour you write in;
+   --accent-ink is that same blue taken down until it clears, and it measures
+   5.24:1 on --ground. It is also what .mark and .resume .t span already use,
+   so the three accented runs on this page are one colour rather than three.
+
+   tabular-nums for the same reason .statline has it: the count above it and
+   the count in this line are the same number set two ways, and lining figures
+   keep them from disagreeing optically.
+   -------------------------------------------------------------------------- */
+.libmember{
+  margin:8px 2px 0;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--accent-ink);
+  font-variant-numeric:tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
    Empty state. A first-time reader has no library, and a blank page reads as
    a broken one — so this says what the shelf is for and hands them the two
    doors out: everything, or the free stories.
@@ -48,10 +82,11 @@
   margin:0 0 9px; font-size:var(--fs-h3); font-weight:var(--w-head);
   letter-spacing:var(--ls-head); color:var(--parchment);
 }
-.empty p{
-  margin:0; font-size:var(--fs-sub); line-height:var(--lh-body); max-width:44ch;
-  color:var(--dim);
-}
+/* There is no `.empty p` rule any more, and that is deliberate. The empty
+   state's subtitle was removed — the heading has already said the only thing
+   there is to say, and the sentence that sat here explained where reading is
+   stored to somebody who had not read anything yet. js/library.js writes no
+   paragraph into .empty, so a rule for one is a rule for nothing. */
 .emptygo{
   display:flex; flex-direction:column; align-items:center; gap:2px;
   margin-top:18px;

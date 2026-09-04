@@ -75,6 +75,18 @@
   var OPEN = true;
   function unlocked() { return OPEN; }
 
+  /* Did this reader BUY the season? A different question from the one above,
+     and js/access.js is emphatic about the difference: an admin flag and a
+     laptop carrying the owner passphrase both open all fifty-one stories and
+     neither of them paid for one. can() decides padlocks. owns() decides
+     whether the page is allowed to say "Member".
+
+     It starts FALSE, the opposite of OPEN, and for the opposite reason.
+     Guessing "open" wrong shows a paying reader one frame of a padlock;
+     guessing "member" wrong tells somebody they have a subscription they do
+     not have. So this claims nothing until FBX has actually answered. */
+  var OWNS = false;
+
   /* Always an object, whatever FBP is doing. */
   function stateOf(id, total) {
     try {
@@ -184,6 +196,66 @@
       '</p>';
   }
 
+  /* --- the membership line -------------------------------------------------
+     "Member · all 51 stories unlocked", under the stats, and only for somebody
+     who actually subscribed. Two rules hold it up:
+
+     1. owns(), never can(). js/access.js: "Padlocks are a can() question. Any
+        sentence about entitlement is an owns() question." This is a sentence
+        about entitlement, and telling the site's own owner they had bought the
+        season is the bug that made those two functions separate in the first
+        place.
+     2. The count is the season that was actually fetched, not a number typed
+        into this file. If a story is added or withdrawn the line follows it,
+        and there is nothing here to go stale.
+
+     No price, no plan name, no renewal date. A subscriber on this page is told
+     what they have, never what it costs — /settings is where billing lives. */
+  function memberNote(stacks) {
+    if (!OWNS) return "";
+    var n = stacks.length;
+    if (!n) return "";
+    return '<p class="libmember">Member · all ' + n +
+           ' ' + (n === 1 ? "story" : "stories") + ' unlocked</p>';
+  }
+
+  /* --- continue reading ----------------------------------------------------
+     Deliberately NOT FBP.continueReading(). That call is not a pure read: it
+     asks FBP.unlocked(), which heals the unlock flag out of the cookie mirror
+     and back into localStorage. On this page, of all pages, that would re-mint
+     the exact flag signing out has to clear — /account carries the same note
+     and works around it the same way.
+
+     So the access question goes to FBX instead, through OPEN, which is what
+     every cover on screen was already drawn from. That is a second gain: the
+     resume block and the grid under it now answer to one variable, so this can
+     never offer a story the grid beneath it is padlocking.
+
+     MIN_RESUME is progress.js's, and it is 1: card 0 is the hook, and offering
+     to "continue" a story from its first card is not a continuation. Ties on
+     `at` fall back to catalogue order, which is arbitrary but stable — the
+     sequence counter progress.js breaks them with is private to that file. */
+  var MIN_RESUME = 1;
+
+  function continueOf(stacks) {
+    var best = null, bestAt = -1, i, s, st;
+    for (i = 0; i < stacks.length; i++) {
+      s = stacks[i];
+      if (!s || !s.id || !s.cards) continue;
+      if (!s.free && !unlocked()) continue;
+      st = stateOf(s.id, s.cards.length);
+      if (st.status !== "reading") continue;
+      if (st.card < MIN_RESUME) continue;
+      if (st.at > bestAt) { bestAt = st.at; best = { s: s, st: st }; }
+    }
+    if (!best) return null;
+    return {
+      stack: best.s, id: best.s.id, pct: best.st.pct,
+      label: "Continue from card " + (best.st.card + 1),
+      href: href(best.s)
+    };
+  }
+
   /* --- the whole page ------------------------------------------------------ */
 
   function render(stacks) {
@@ -209,19 +281,20 @@
     var ids = savedIds(), savedStacks = [];
     for (i = 0; i < ids.length; i++) { if (byId[ids[i]]) savedStacks.push(byId[ids[i]]); }
 
-    /* continueReading already filters locked stacks, so the most prominent
-       thing on the page can never be something the reader cannot open. */
+    /* Filters locked stacks itself, so the most prominent thing on the page
+       can never be something the reader cannot open. */
     var cont = null;
-    try { if (P && P.continueReading) cont = P.continueReading(stacks); } catch (e) { cont = null; }
+    try { cont = continueOf(stacks); } catch (e) { cont = null; }
 
     var html = "";
 
     html += statsLine(stacks);
+    html += memberNote(stacks);
 
     if (cont && cont.stack) {
       html += '<div class="sechead"><h2>Continue reading</h2>' +
               '<span>' + esc(cont.pct + "% in") + '</span></div>' +
-              '<a class="resume" href="' + (cont.id === "01" ? "/cleopatra" : cont.href) + '">' +
+              '<a class="resume" href="' + esc(cont.href) + '">' +
                 '<div class="plate"><img alt="" src="/img/thumbs/' + esc(cont.stack.img) + '.webp"' +
                      heroFallback(cont.stack.img) + '></div>' +
                 '<div class="t"><b>' + esc(cont.stack.title) + '</b>' +
@@ -322,12 +395,21 @@
            can run before the page has drawn is how /stories once reloaded
            itself forever. Redraw only when the answer disagrees with what is
            on screen — in either direction, since signing out has to put the
-           padlocks back as surely as subscribing takes them off. */
+           padlocks back as surely as subscribing takes them off.
+
+           paint() hands over both halves of the answer: `allowed` is can(),
+           and `reason` is why(), from which owns() is "subscriber or legacy"
+           and nothing else. Both are compared, because the two move
+           independently — an admin flag arriving turns the padlocks off
+           without making anybody a member, and the page must not redraw as
+           though it had. */
         try {
           if (window.FBX && FBX.paint) {
-            FBX.paint(function (allowed) {
-              if (OPEN === !!allowed) return;
+            FBX.paint(function (allowed, reason) {
+              var owns = (reason === "subscriber" || reason === "legacy");
+              if (OPEN === !!allowed && OWNS === owns) return;
               OPEN = !!allowed;
+              OWNS = owns;
               rerender();
             });
           }

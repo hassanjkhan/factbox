@@ -32,7 +32,7 @@ window.FB_ENDCTA = "Sign up to read more";</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>How did Cleopatra die? — Factbox</title>
-<meta name="theme-color" content="#0E0B12">
+<meta name="theme-color" content="#090C16">
 <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
@@ -105,7 +105,12 @@ window.FB_ENDCTA = "Sign up to read more";</script>
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<!-- Newsreader as well as DM Sans. --display is the display serif every card
+     headline, the end card and the wall are set in, and a token cannot fetch a
+     font: a page that uses --display without adding the family here renders in
+     Georgia, which is a real fallback and is not the design. Same string as
+     /explore and / so the three share one cached stylesheet. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
 <link rel="stylesheet" href="/css/app.css">
 <script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/recommend.css">
@@ -564,8 +569,15 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
       /* The end card is built a dozen cards before anyone reaches it, so it
          cannot report itself seen at build time. reveal() is once-only, so
          calling it on every scroll frame past the last card is free. */
-      if (endPane && endPane.reveal && n >= s.cards.length) {
-        try { endPane.reveal(); } catch (e) {}
+      /* Arriving at the end pane starts its hand-off; leaving it stops the
+         hand-off dead. A reader who swipes back up into the story must not be
+         navigated somewhere else three seconds later by a screen they are no
+         longer on — see "THE CLOCK" in js/recommend.js, which also cancels on
+         a hidden tab, on pagehide and on the back button. */
+      if (endPane && n >= s.cards.length) {
+        if (endPane.reveal) { try { endPane.reveal(); } catch (e) {} }
+      } else if (endPane && endPane.leave) {
+        try { endPane.leave(); } catch (e) {}
       }
     }
     deck.addEventListener("scroll", onScroll, { passive: true });
@@ -658,6 +670,10 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
              build of /cleopatra. */
           fresh.onLocked = wall;
           dropWall();
+          /* The card being replaced may have a countdown running on it. It is
+             about to leave the document, and a timer holding a reference to a
+             detached node still fires. */
+          try { if (panel && panel.leave) panel.leave(); } catch (e) {}
           if (panel && panel.parentNode) {
             if (io) { try { io.unobserve(panel); } catch (e) {} }
             panel.parentNode.replaceChild(fresh, panel);

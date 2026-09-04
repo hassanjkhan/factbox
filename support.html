@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Support · Factbox</title>
-<meta name="description" content="Answers for readers of factbox.app: cost, cancelling, getting access back on another phone, and reporting an error.">
+<title>Help · Factbox</title>
+<meta name="description" content="Help for readers of factbox.app: report a problem, suggest a story, and answers on cost, cancelling and getting access back on another phone.">
 <!-- The paper ground, matching what body actually paints. Verified against
      getComputedStyle(document.body).backgroundColor in real Chrome, not
      assumed: the site-wide repaint moved --ground #DCD5C8 -> #E7E0D3 and this
@@ -29,88 +29,117 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css">
 <style>
-  .doc{max-width:820px;margin:0 auto;padding:var(--top-safe) 18px calc(var(--bottom-safe) + 24px)}
-  .doc h1{font-size:clamp(1.7rem,6vw,2.2rem);font-weight:850;margin:16px 0 12px;letter-spacing:-.015em;text-wrap:balance}
-  .doc h2{font-size:1.02rem;font-weight:800;margin:32px 0 8px;padding-top:18px;border-top:1px solid var(--hair)}
-  .doc p,.doc li{color:var(--dim);line-height:1.6;font-size:.94rem;max-width:62ch}
-  .doc p{margin:0 0 10px}
-  .doc ul{margin:0 0 12px;padding-left:20px}
-  .doc li{margin:0 0 7px}
-  .doc strong{color:var(--parchment);font-weight:750}
-  .doc a{color:var(--parchment);text-decoration:underline;text-underline-offset:3px}
-  .dateline{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 18px;font-size:.74rem;color:var(--dimmer)}
-  .lead{font-size:1rem}
-  .note{margin:16px 0 6px;padding:14px 16px;border-radius:14px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--hair)}
-  .note p{margin:0;font-size:.88rem}
-  .note p + p{margin-top:8px}
-  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em;color:var(--parchment);word-break:break-word}
-  .docnav{display:flex;flex-wrap:wrap;gap:2px 20px;margin:38px 0 0;padding-top:12px;border-top:1px solid var(--hair)}
-  .docnav a{display:inline-flex;align-items:center;min-height:var(--tap);padding:0 2px;font-size:.9rem;font-weight:700;color:var(--dim);text-decoration:none}
-  .stamp{margin:6px 0 0;font-size:.72rem;color:var(--dimmer);line-height:1.5}
-
   /* ------------------------------------------------------------------------
-     Support. Two boxes and a stack of answers: the boxes come first because
-     someone who arrived annoyed should not scroll past eleven questions to
-     say so, and the answers are closed by default so the page is a short list
-     of questions rather than a wall of prose to hunt through.
+     Help — a subpage of /settings. Two boxes and a stack of answers: the
+     boxes come first because someone who arrived annoyed should not scroll
+     past eleven questions to say so, and the answers are closed by default so
+     the page is a short list of questions rather than a wall of prose.
+
+     WHAT CHANGED IN THE REPAINT. The forms used to sit in a raised card with
+     their fields painted --ground. That is inverted here, the way the design
+     draws it: the page is --ground, each section is announced by a
+     small-capital label over a hairline, and the fields are the raised
+     surface. Every pair still measures — app.css puts --dim at 6.8:1 and
+     --dimmer at 5.4:1 on --raise, --parchment at 11.2:1, and --ring at 6.58:1
+     for the focus outline.
 
      These live here rather than in css/app.css because they are used by
      exactly one page. Colours are tokens only, so the page follows the site's
-     theme instead of arguing with it.
+     theme instead of arguing with it. The .doc / .dateline / .docnav / code
+     rules that used to be in this block were dead — <main> is .lib .sp and
+     has never carried .doc — and are gone.
      ------------------------------------------------------------------------ */
-  .sp .sp-sub{margin:6px 0 0;font-size:1.02rem;line-height:1.6;font-weight:400;color:var(--dim)}
-  .sp-box{display:flex;flex-direction:column;gap:14px;margin:26px 0 0;padding:20px;border-radius:20px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--hair)}
-  .sp-h2{margin:0;font-size:1.16rem;font-weight:700;letter-spacing:-.012em}
-  .sp-note{margin:-6px 0 0;font-size:.95rem;line-height:1.55;font-weight:400;color:var(--dim)}
+
+  /* Used by one FAQ answer, and by the line under the footer. */
+  .note{margin:16px 0 6px;padding:14px 16px;border-radius:14px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--hair)}
+  .note p{margin:0;font-size:.88rem}
+  .note p + p{margin-top:8px}
+  .stamp{margin:6px 0 0;font-size:var(--fs-fine);color:var(--dimmer);line-height:var(--lh-body)}
+
+  /* The way back. /support is reached from the Help section of Settings, so
+     Settings is the exit; the wordmark above it is still the way to /explore.
+     Values copied from .ac-back in css/account.css rather than borrowing that
+     file, because this page does not load it. */
+  .sp-back{display:inline-flex;align-items:center;min-height:var(--tap);padding:10px 2px;font-size:var(--fs-sub);font-weight:var(--w-strong);color:var(--dim);text-decoration:none}
+  .sp-back:hover{color:var(--parchment)}
+
+  /* The label over each section, matching .ac-eyebrow on /settings: 11px small
+     capitals in --dimmer over a hairline. It sits OUTSIDE the <form> so the
+     rule is the section's, not a flex item's, and so the form's own gap does
+     not have to argue with its margin. */
+  .sp-eyebrow{margin:30px 2px 14px;padding-top:18px;border-top:1px solid var(--hair);font-size:var(--fs-micro);font-weight:var(--w-label);letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--dimmer)}
+  /* The first label follows the header, not another section — the same 22px
+     .ac-body > .ac-eyebrow:first-child uses on /settings and /account. */
+  .mast + .sp-eyebrow{margin-top:22px}
+
+  /* 560px, not the 900 .lib allows. A textarea 862px wide on a desktop window
+     is a text field nobody can read a sentence back across, and it is out of
+     character with every other paper page — .doc is 820 with its paragraphs at
+     62ch. The section rule above it still spans the column, the way a section
+     divider should. At 390 the form is 354px and the cap does nothing. */
+  .sp-box{display:flex;flex-direction:column;gap:14px;margin:0;max-width:560px}
+  .sp-note{margin:-2px 0 0;font-size:var(--fs-meta);font-weight:var(--w-label);line-height:1.5;color:var(--dimmer)}
   .sp-field{display:flex;flex-direction:column;gap:7px}
-  .sp-field span{font-size:.86rem;font-weight:600;color:var(--dim)}
+  .sp-field span{margin-left:2px;font-size:var(--fs-sub);font-weight:var(--w-strong);color:var(--parchment)}
   .sp-field textarea,
-  .sp-field input{width:100%;padding:13px 15px;border:0;border-radius:14px;background:var(--ground);color:var(--parchment);box-shadow:inset 0 0 0 1px var(--hair);font-family:var(--ui);font-size:1rem;font-weight:400;line-height:1.55;-webkit-appearance:none;appearance:none;resize:vertical}
+  .sp-field input{width:100%;padding:13px 15px;border:0;border-radius:14px;background:var(--raise);color:var(--parchment);box-shadow:inset 0 0 0 1px var(--hair);font-family:var(--ui);font-size:var(--fs-body);font-weight:var(--w-body);line-height:var(--lh-body);-webkit-appearance:none;appearance:none;resize:vertical}
+  .sp-field input{min-height:var(--tap)}
   .sp-field textarea::placeholder,
   .sp-field input::placeholder{color:var(--dimmer)}
   /* --ring, not --coral. app.css calls --coral a FILL, never type, and a 2px
-     ring is thinner than type: on the --raise this box is painted on it
-     measured 2.40:1 against the 3:1 a focus indicator needs. --ring is 6.58:1
-     on the same surface and is the one the rest of the site draws. */
+     ring is thinner than type: on --raise it measured 2.40:1 against the 3:1
+     a focus indicator needs. --ring is 6.58:1 on the same surface and is the
+     one the rest of the site draws. */
   .sp-field textarea:focus-visible,
   .sp-field input:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
-  .sp-err{margin:0;font-size:.9rem;font-weight:500;color:var(--crimson)}
-  .sp-box .go{margin-top:2px}
+  /* The label says "Your email" and nothing else, so the condition attached to
+     leaving it empty has to be said somewhere. */
+  .sp-hint{margin:-7px 0 0 2px;font-size:var(--fs-meta);font-weight:var(--w-body);line-height:1.45;color:var(--dimmer)}
+  .sp-err{margin:0;font-size:.9rem;font-weight:var(--w-label);line-height:1.5;color:var(--crimson)}
+  .sp-count{margin:-6px 0 0;font-size:var(--fs-fine);font-weight:var(--w-label);color:var(--dim)}
+  .sp-count[data-over="1"]{color:var(--crimson)}
+  /* app.css sets a{color:inherit}; the failure sentence carries a mailto and
+     it has to look like the thing you tap. */
+  .sp-err a{color:var(--crimson);text-decoration:underline;text-underline-offset:3px}
+  /* .go is app.css's primary button and already matches: --coral fill,
+     --on-accent type at 6.3:1, pill, --shadow-go. It only needs to stop being
+     centred at 520px on a wide window, so it stays the width of the form. */
+  .sp-box .go{max-width:none;margin:2px 0 0}
 
-  .sp-faqs{margin-top:38px}
-  .sp-faqs .sp-h2{margin-bottom:6px}
+  /* The sent state. The section keeps its place and swaps its contents, so the
+     page does not jump under the reader's thumb at the moment they are
+     looking for confirmation. */
+  .sp-sent{display:none;flex-direction:column;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:var(--raise);box-shadow:inset 0 0 0 1px var(--hair)}
+  .sp-sent p{margin:0;font-size:var(--fs-sub);font-weight:var(--w-label);line-height:var(--lh-body);color:var(--parchment)}
+  .sp-sent .sp-sent-x{font-weight:var(--w-body);color:var(--dim)}
+  .sp-box.is-sent .sp-sent{display:flex}
+  .sp-box.is-sent .sp-field,
+  .sp-box.is-sent .sp-hint,
+  .sp-box.is-sent .sp-note,
+  .sp-box.is-sent .sp-err,
+  .sp-box.is-sent .sp-count,
+  .sp-box.is-sent .go{display:none}
+  /* Not in the design, and kept anyway: without it a reader who has sent one
+     message cannot send a second without reloading the page. */
+  .sp-again{min-height:var(--tap);padding:0;border:0;background:none;color:var(--parchment);font-family:var(--ui);font-size:var(--fs-meta);font-weight:var(--w-head);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+  /* ---- The answers ------------------------------------------------------- */
+  .sp-faqs{margin-top:8px}
   .sp-faq{border-top:1px solid var(--hair)}
   .sp-faq:last-of-type{border-bottom:1px solid var(--hair)}
-  .sp-faq summary{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:var(--tap);padding:14px 2px;cursor:pointer;font-size:1.02rem;font-weight:600;letter-spacing:-.008em;list-style:none}
+  .sp-faq summary{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:var(--tap);padding:14px 2px;cursor:pointer;font-size:var(--fs-sub);font-weight:var(--w-strong);letter-spacing:var(--ls-title);list-style:none}
   .sp-faq summary::-webkit-details-marker{display:none}
   .sp-faq summary::after{content:"";flex:none;width:10px;height:10px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim);transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s ease}
   .sp-faq[open] summary::after{transform:rotate(-135deg) translate(-3px,-3px)}
   .sp-a{padding:0 2px 18px}
-  .sp-a p{margin:0 0 11px;font-size:.98rem;line-height:1.65;font-weight:400;color:var(--dim)}
+  .sp-a p{margin:0 0 11px;font-size:.94rem;line-height:1.65;font-weight:var(--w-body);color:var(--dim)}
   .sp-a ul{margin:0 0 12px;padding-left:20px}
-  .sp-a li{font-size:.98rem;line-height:1.65;font-weight:400;color:var(--dim);margin:0 0 8px}
-  .sp-a strong{color:var(--parchment);font-weight:600}
+  .sp-a li{font-size:.94rem;line-height:1.65;font-weight:var(--w-body);color:var(--dim);margin:0 0 8px}
+  .sp-a strong{color:var(--parchment);font-weight:var(--w-strong)}
   /* app.css sets a{color:inherit}, so a link inside an answer needs saying. */
   .sp-a a,
   .sp-foot a{color:var(--parchment);text-decoration:underline;text-underline-offset:3px}
-
-  /* The sent state. The box keeps its shape and swaps its contents, so the
-     page does not jump under the reader's thumb at the moment they are
-     looking for confirmation. */
-  .sp-sent{display:none;flex-direction:column;gap:12px;align-items:flex-start;padding:15px 16px;border-radius:14px;background:var(--ground);box-shadow:inset 0 0 0 1px var(--hair)}
-  .sp-sent p{margin:0;font-size:.95rem;line-height:1.6;color:var(--parchment)}
-  .sp-sent .sp-sent-x{color:var(--dim)}
-  .sp-box.is-sent .sp-sent{display:flex}
-  .sp-box.is-sent .sp-field,
-  .sp-box.is-sent .sp-err,
-  .sp-box.is-sent .sp-count,
-  .sp-box.is-sent .go{display:none}
-  .sp-again{min-height:var(--tap);padding:0;border:0;background:none;color:var(--parchment);font-family:var(--ui);font-size:.92rem;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-  /* app.css sets a{color:inherit}; the failure sentence carries a mailto and
-     it has to look like the thing you tap. */
-  .sp-err a{color:var(--crimson);text-decoration:underline;text-underline-offset:3px}
-  .sp-count{margin:-4px 0 0;font-size:.8rem;font-weight:500;color:var(--dim)}
-  .sp-count[data-over="1"]{color:var(--crimson)}
+  .sp-foot{margin:34px 0 0;font-size:.94rem;line-height:var(--lh-body);color:var(--dim);max-width:62ch}
 
   @media (prefers-reduced-motion:reduce){
     .sp-faq summary::after{transition:none}
@@ -126,14 +155,14 @@
          it already had, and so the target is the word rather than the width of
          the row. aria-label because a screen reader reading FACTBOX as all
          capitals may spell it; the accessible name is the product name. -->
-    <p class="mark"><a href="/explore" aria-label="Factbox">FACTBOX</a></p>
-    <nav class="tabs" aria-label="Sections">
-      <a href="/explore">Explore</a>
-      <a href="/library">Library</a>
-      <span class="acct" id="fb-acct"></span>
-    </nav>
-    <h1>Support</h1>
-    <p class="sp-sub">A person reads every message.</p>
+    <p class="mark"><a href="/explore" aria-label="Factbox"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
+    <!-- One way back, and it is the page this one is reached from: Settings
+         carries "Contact us" and "Artwork credits" in its Help section. The
+         tabs row and the account chip that used to sit here belong to the
+         top-level shelves. -->
+    <a class="sp-back" href="/settings">&larr; Settings</a>
+    <h1>Help</h1>
   </header>
 
   <!-- Both boxes post to the support function, which writes the message into
@@ -145,18 +174,20 @@
        The email address is optional. The people who most need this page are
        the ones whose sign-in is broken, and refusing their message because
        they did not want to be written back to is refusing the report. -->
-  <form class="sp-box" id="sp-help" novalidate>
+  <h2 class="sp-eyebrow" id="sp-help-h">Report a problem</h2>
+  <form class="sp-box" id="sp-help" aria-labelledby="sp-help-h" novalidate>
     <label class="sp-field" for="sp-msg">
-      <span>What is annoying you?</span>
-      <textarea id="sp-msg" rows="5" maxlength="4000"
-                placeholder="Tell us what happened. The more specific the better."></textarea>
+      <span>What&rsquo;s going on?</span>
+      <textarea id="sp-msg" rows="4" maxlength="4000"
+                placeholder="Tell us what happened&hellip;"></textarea>
     </label>
     <p class="sp-count" id="sp-help-count" hidden></p>
     <label class="sp-field" for="sp-from">
-      <span>Your email &mdash; optional, but there is nowhere to reply without it</span>
+      <span>Your email</span>
       <input id="sp-from" type="email" inputmode="email" autocomplete="email" maxlength="200"
              autocorrect="off" spellcheck="false" placeholder="you@example.com">
     </label>
+    <p class="sp-hint">Optional &mdash; but there is nowhere to reply without it.</p>
     <p class="sp-err" id="sp-help-err" hidden role="alert"></p>
     <button class="go" id="sp-help-go" type="submit">Send</button>
     <div class="sp-sent" id="sp-help-ok" role="status" hidden>
@@ -165,31 +196,30 @@
     </div>
   </form>
 
-  <form class="sp-box" id="sp-idea" novalidate>
-    <h2 class="sp-h2">Suggest a story</h2>
-    <p class="sp-note">A person, a scandal, a mystery &mdash; anything you would want
-      to read in five minutes.</p>
+  <!-- The idea box carries no email field. It is the one place on the site
+       where there is nothing to reply to: an idea is either used or it is
+       not, and the reader is told so rather than asked for an address we
+       would never write to. A signed-in reader is still identified by the
+       uid the function reads off their token, exactly as before. -->
+  <h2 class="sp-eyebrow" id="sp-idea-h">Story idea</h2>
+  <form class="sp-box" id="sp-idea" aria-labelledby="sp-idea-h" novalidate>
+    <p class="sp-note">What should Factbox cover next?</p>
     <label class="sp-field" for="sp-idea-msg">
-      <span>What should we cover?</span>
+      <span>Tell us the story</span>
       <textarea id="sp-idea-msg" rows="4" maxlength="4000"
-                placeholder="Who or what, and why it is worth five minutes."></textarea>
+                placeholder="Who or what should we cover?"></textarea>
     </label>
     <p class="sp-count" id="sp-idea-count" hidden></p>
-    <label class="sp-field" for="sp-idea-from">
-      <span>Your email &mdash; optional</span>
-      <input id="sp-idea-from" type="email" inputmode="email" autocomplete="email" maxlength="200"
-             autocorrect="off" spellcheck="false" placeholder="you@example.com">
-    </label>
     <p class="sp-err" id="sp-idea-err" hidden role="alert"></p>
-    <button class="go" id="sp-idea-go" type="submit">Send the idea</button>
+    <button class="go" id="sp-idea-go" type="submit">Send idea</button>
     <div class="sp-sent" id="sp-idea-ok" role="status" hidden>
       <p class="sp-sent-t"></p>
       <button class="sp-again" type="button">Send another</button>
     </div>
   </form>
 
-  <section class="sp-faqs">
-    <h2 class="sp-h2">Questions</h2>
+  <h2 class="sp-eyebrow">Questions</h2>
+  <section class="sp-faqs" aria-label="Questions">
       <details class="sp-faq">
         <summary>What is Factbox?</summary>
         <div class="sp-a"><p>A history reader made for a phone. It is fifty-one stories, told across 450
@@ -323,7 +353,7 @@
     <a href="/credits">Artwork credits</a> &middot; <a href="/privacy">Privacy</a> &middot;
     <a href="/terms">Terms</a>
   </p>
-  <p class="stamp">Factbox · Support · Last updated 2 September 2026.</p>
+  <p class="stamp">Factbox · Help · Last updated 4 September 2026.</p>
 </main>
 
 <script src="/js/gate.js"></script>
@@ -366,6 +396,41 @@
                                    is answered here instead of over the wire */
   var WAIT_MS  = 15000;
   var LKEY     = "fb_support_last_v1";
+
+  /* ---- ONE gate, and why it is still one -------------------------------
+     The obvious reading of "sending a problem report blocks the story idea"
+     is that the two boxes want a throttle each. They cannot have one that
+     means anything, because the throttle that actually decides is not here.
+
+     functions/support.js keys its per-IP gate on the IP ALONE — `seen` is a
+     Map of ip -> { last, hits } (:69) and `throttled(ip)` compares `now -
+     rec.last < MIN_GAP_MS` with MIN_GAP_MS at 20 seconds (:64, :147, :153),
+     and the call site passes it the IP alone (:236). Nothing in it knows
+     which box a message came from. Splitting the gate in
+     this file therefore would not let the second message through: it would
+     let it be REFUSED, twenty seconds of round trip later, with the generic
+     429 sentence instead of a local one — a worse answer, more slowly, and
+     the reader would have no idea why.
+
+     So the gate stays shared, because the server's is, and the copy stops
+     pretending otherwise: it now names which box is holding the line, and
+     when the block comes from the OTHER box it hands over the mailto so the
+     reader is never made to wait for something they did not do.
+
+     Making the two genuinely independent is a one-line change in
+     functions/support.js — `throttled(ip + "|" + kind)` at :236 — and that
+     file is not this page's to edit. It is written up in LEGAL.md §10.3.
+
+     The stored value gained a suffix: "<ms>|<kind>". A value written by the
+     previous version is a bare number and still parses, which is the whole
+     reason for the split rather than JSON. */
+  function lastSend() {
+    var raw = String(lsGet(LKEY) || ""), bits = raw.split("|");
+    return { at: Number(bits[0]) || 0, kind: bits[1] || "" };
+  }
+  function markSent(kind) {
+    lsSet(LKEY, String((new Date()).getTime()) + "|" + kind);
+  }
 
   function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
   function trim(v) { return String(v == null ? "" : v).replace(/^\s+|\s+$/g, ""); }
@@ -463,7 +528,8 @@
   function wire(opts) {
     var form  = el(opts.form),
         msg   = el(opts.msg),
-        from  = el(opts.from),
+        /* The idea box names no email field, so there is nothing to look up. */
+        from  = opts.from ? el(opts.from) : null,
         err   = el(opts.err),
         count = el(opts.count),
         okBox = el(opts.ok),
@@ -500,7 +566,10 @@
         if (okText) {
           while (okText.firstChild) okText.removeChild(okText.firstChild);
           okText.appendChild(document.createTextNode(opts.okMsg));
-          if (!who) {
+          /* The idea box has no email field and nothing to reply to, so its
+             noReplyMsg is empty — and an empty one must not leave a stray
+             space hanging off the end of the confirmation. */
+          if (!who && opts.noReplyMsg) {
             var x = document.createElement("span");
             x.className = "sp-sent-x";
             x.appendChild(document.createTextNode(" " + opts.noReplyMsg));
@@ -551,10 +620,17 @@
       }
 
       /* The reader's own double-tap, answered here rather than by a refusal
-         from three thousand miles away. */
-      var last = Number(lsGet(LKEY) || 0);
-      if (last && (new Date()).getTime() - last < GAP_MS) {
-        refuse(err, "Give that a few seconds — the last one is still on its way.", "", "");
+         from three thousand miles away. See the note on lastSend(): the gate
+         is shared because the function's own gate is. */
+      var last = lastSend();
+      if (last.at && (new Date()).getTime() - last.at < GAP_MS) {
+        if (last.kind && last.kind !== opts.kind) {
+          refuse(err, "Your " + opts.otherName + " is still on its way, and both boxes " +
+                      "share one line out. Give it a few seconds and send this, or put it " +
+                      "in an email to ", mailHref(opts.subject, body, who), " now.");
+        } else {
+          refuse(err, "Give that a few seconds — the last one is still on its way.", "", "");
+        }
         return;
       }
 
@@ -569,7 +645,7 @@
           waiting(false);
 
           if (status === 200 && res && res.ok === true) {
-            lsSet(LKEY, String((new Date()).getTime()));
+            markSent(opts.kind);
             try { if (window.FB && window.FB.track) window.FB.track(opts.event); } catch (e) {}
             sent(who);
             return;
@@ -606,16 +682,18 @@
       form: "sp-help", msg: "sp-msg", from: "sp-from", err: "sp-help-err",
       count: "sp-help-count", ok: "sp-help-ok", go: "sp-help-go",
       kind: "help", subject: "Factbox support", event: "support_send",
+      otherName: "story idea",
       emptyMsg: "Tell us what happened first — even one line helps.",
-      okMsg: "Sent. A person reads every message, usually within a couple of days.",
-      noReplyMsg: "You did not leave an email, so there is nothing to reply to — send another with one if you want an answer."
+      okMsg: "Sent. We\u2019ll take a look.",
+      noReplyMsg: "You did not leave an email, so there is nowhere to reply — send another with one if you want an answer."
     });
     var b = wire({
-      form: "sp-idea", msg: "sp-idea-msg", from: "sp-idea-from", err: "sp-idea-err",
+      form: "sp-idea", msg: "sp-idea-msg", err: "sp-idea-err",
       count: "sp-idea-count", ok: "sp-idea-ok", go: "sp-idea-go",
       kind: "idea", subject: "Factbox — story idea", event: "support_idea",
+      otherName: "problem report",
       emptyMsg: "Tell us what to cover first.",
-      okMsg: "Got it, and thank you — a fair few stories started exactly like this.",
+      okMsg: "Got it. Thanks for the idea.",
       noReplyMsg: ""
     });
 
@@ -626,6 +704,7 @@
         var e = (window.FBU && window.FBU.email) ? window.FBU.email() : "";
         if (!e) return;
         if (a && a.from && !a.from.value) a.from.value = e;
+        /* b has no email field; the guard is kept so a future one is filled. */
         if (b && b.from && !b.from.value) b.from.value = e;
       } catch (err) {}
     }

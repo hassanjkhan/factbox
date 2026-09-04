@@ -112,19 +112,27 @@ is detected at load by a probe write and counts as dead.
 In order, and each section is omitted entirely when it is empty:
 
 1. **Stats line** — see below.
-2. **Continue reading** — `FBP.continueReading(stacks)`, as the wide `.resume`
-   block. Already filters locked stacks, so it can never offer something the
-   reader cannot open.
-3. **In progress** — every stack whose `FBP.state()` is `"reading"`, most
+2. **Membership line** — `Member · all 51 stories unlocked`, small capitals in
+   `--accent-ink`, and only for a reader `FBX.owns()` says actually bought the
+   season. See §7.
+3. **Continue reading** — `continueOf(stacks)`, local to `js/library.js`, as
+   the wide `.resume` block. It filters locked stacks against the same `OPEN`
+   the covers were drawn from, so it can never offer something the reader
+   cannot open — and it is **not** `FBP.continueReading()`, for the reason in
+   §7.
+4. **In progress** — every stack whose `FBP.state()` is `"reading"`, most
    recently touched first, showing `Card 6 of 8` and the `.readbar`.
-4. **Finished** — status `"done"`, most recently finished first, with the
+5. **Finished** — status `"done"`, most recently finished first, with the
    existing `.is-done` check.
-5. **Saved for later** — `FBS.ids()`, newest first, each with a quiet
+6. **Saved for later** — `FBS.ids()`, newest first, each with a quiet
    **Remove** control. A saved id no longer in the season is skipped rather
    than drawn as a broken cover.
-6. **Empty state** — for a reader with nothing at all: what the shelf is for,
-   a link to Explore, a link to the season, and the free stories underneath.
-7. **Storage notice** — only when `FBP.ok === false` or `FBS.ok === false`.
+7. **Empty state** — for a reader with nothing at all. The owner's spec, and
+   it is short: the heading `Your library is empty`, **no subtitle
+   paragraph**, and one button reading **`Explore all stories`**. The free
+   covers follow it under "Start with these", so the page is never one box on
+   an empty screen.
+8. **Storage notice** — only when `FBP.ok === false` or `FBS.ok === false`.
 
 Stack `01` links to `story.html`; everything else to `read.html?s=ID`. Locked
 stacks keep the existing `.locked` / `.lock` treatment.
@@ -137,8 +145,9 @@ Three numbers, each derived from storage that already exists:
 - **cards read** — every card of a finished stack, plus `furthest + 1` of one
   in progress.
 - **about N min** — each stack's own listed `secs`, pro-rated by the share of
-  its cards read, summed. It is labelled *about*, and one line of small print
-  says it is estimated from the listed length rather than measured.
+  its cards read, summed. It keeps the word **about** because it is an
+  estimate from each story's listed length, not a measurement of time spent —
+  nothing here records a clock.
 
 **There are no streaks and no "time spent".** Neither can be computed from
 what is stored — there is no visit history and no clock — and a number a
@@ -203,3 +212,159 @@ stack.
 
 `read.html`, `stories.html`, `credits.html`, `css/app.css`, `js/gate.js`,
 `js/progress.js`, `explore.*` and `recommend.*` were not modified.
+
+---
+
+## 7. The mockup pass, September 2026
+
+`/library` was rebuilt against panel **1b** of the design mockup. Most of it
+did not need rebuilding: `.mast`, `.tabs`, `.acct-btn`, `.sechead`, `.grid`,
+`.card`, `.plate`, `.freetag`, `.lock`, `.readbar` and `.resume` in
+`css/app.css` already **are** the mockup, token for token — the panel's
+`repeat(auto-fill,minmax(148px,1fr))` with `gap:16px 13px`, its 34px avatar on
+`rgba(59,158,244,.14)` with a `rgba(27,95,168,.32)` ring, its 2px underline
+under the current tab, its 22px done-check bottom-right, all of it. The
+mockup's own arithmetic for the stats line (`Math.max(1, Math.round(secs/60))`,
+`doneWord`, `pct + "% in"`, `n + " stor(y|ies)"`) is character-for-character
+what `js/library.js` was already computing.
+
+Four things changed.
+
+### 7.1 The membership line — new
+
+`Member · all 51 stories unlocked`, `.libmember`, directly under the stats.
+The count is `stacks.length` — the season that was actually fetched, never a
+number typed into a file.
+
+It is gated on **`owns()`, not `can()`**, and that distinction is the whole
+rule. From `js/access.js`: *"Padlocks are a can() question. Any sentence about
+entitlement is an owns() question."* An admin flag and a laptop in owner mode
+both open all fifty-one stories and neither of them paid for one; telling the
+site's own owner they had bought the season is the bug those two functions
+were split apart to prevent. `OWNS` therefore starts **`false`** — the
+opposite of `OPEN`, and for the opposite reason. Guessing "open" wrong shows a
+paying reader one frame of a padlock. Guessing "member" wrong tells somebody
+they have a subscription they do not have.
+
+`FBX.paint(fn)` hands over `(can(), why())`, and both are compared before a
+redraw: they move independently, and an admin flag landing must take the
+padlocks off without congratulating anybody on a purchase.
+
+### 7.2 `FBP.continueReading()` is gone
+
+Replaced by `continueOf()`, local to `js/library.js`. **`FBP.unlocked()` is
+not a pure read** — it heals the unlock flag out of the cookie mirror back
+into localStorage, and `FBP.continueReading()` calls it. On this page that
+would re-mint the exact flag signing out has to clear. `/account` carries the
+same note and works around it the same way.
+
+The access question goes to `FBX` instead, through the same `OPEN` the covers
+were drawn from, which is a second gain: the resume block and the grid under
+it now answer to one variable, so the page cannot offer a story the grid
+beneath it is padlocking.
+
+### 7.3 The FREE ribbon is the permanent flag
+
+`s.free` from `data/index.json`, and nothing else. Never "readable right now":
+today's pick is open today and locked on Thursday, and a ribbon promising
+otherwise is a lie with a date on it. Padlocks are `FBX.can()`; the ribbon is
+the catalogue.
+
+### 7.4 The masthead tile
+
+`library.html` was the only page of the five with a masthead and no logo tile
+— `/`, `/explore`, `/account` and `/settings` all carry it, and Explore and
+Library are two tabs of one screen, so the wordmark jumped sideways by 31px
+every time a reader moved between them. `app.css` already styles `.mark img`;
+nothing is new but the tag. This is a deliberate departure from panel 1b,
+which draws the wordmark alone.
+
+---
+
+## 8. No pricing anywhere in this row
+
+The owner's rule, verbatim: *"Journey 2 · Signed in and subscribed. Explore
+and Library are 1a and 1b. **No pricing anywhere in this row.**"*
+
+So a signed-in subscriber must see no price, on `/`, `/explore` or `/library`.
+Audited in real Chrome, subscribed, by walking the rendered DOM and testing
+every visible text run against a regex for money, periods, trials, plans,
+upgrades, checkout and billing.
+
+- **`/library` — zero hits**, visible or in the DOM. 595 characters of text and
+  fifteen links, none of which leaves the reading surface: `/explore`,
+  `/library`, `/read`, `/cleopatra`, and the standing footer row.
+- **`/` and `/explore` — zero real hits.** The two matches on both pages are
+  the story title *"Joan of Arc's **trial** reversed"*, which is a story, not
+  an offer. There is no price string, no plan, no upgrade nudge and no route
+  to one in a single tap: the only outbound links are `/read`, `/cleopatra`,
+  `/library`, `/explore`, `/account`, `/credits`, `/privacy`, `/terms`,
+  `/support`. `js/today.js` already tells a subscriber *"You have all
+  fifty-one. New stories are added through the season."* — and it picks that
+  sentence with `FBX.owns()`, for the same reason §7.1 does.
+
+Nothing to fix in the row. The rule holds today; what would break it is a
+paywall redesign dropping a "see the plans" row onto a shelf, so this section
+is where to check.
+
+### What `/library` measured
+
+Real Chrome, `tools/serve-like-pages.py` on 8899, `/explore` confirmed 200
+first. Three states, seeded with 2 reading, 2 finished, 2 saved.
+
+```
+signed out          empty state, "Your library is empty", "Explore all
+                    stories", no subtitle. NO history: 0 stats, 0 member line,
+                    0 progress covers. Verified against the LIVE Firebase SDK,
+                    not a stub — js/auth.js hands the answer to
+                    js/progress-sync.js, whose settle() calls forget() and
+                    DELETES fb_read_v1 and fb_cache_owner_v1 outright. Traced
+                    to the stack frame. The privacy fix is load-bearing and
+                    was not weakened.
+signed in, no sub   stats "2 stories finished · 32 cards read · about 12 min",
+                    NO member line, NO Continue reading (its only candidate is
+                    locked), 5 padlocks, 1 FREE ribbon, order newest-first
+                    03,05 / 02,04 / 18,09.
+subscribed          + "Member · all 51 stories unlocked", + Continue reading
+                    "75% in / Continue from card 6", 0 padlocks, 1 FREE ribbon
+                    (unchanged — it is the permanent flag).
+pageerror           0 in all three.
+no JavaScript       179 characters of real words: wordmark, both tabs, "Your
+                    library", the standfirst, "Finding where you left off…",
+                    the footer row.
+```
+
+Contrast, every text run against its real composited ground, subscribed:
+
+```
+10.14  h1, current tab, section heads, .statline b, .card h3
+ 6.34  standfirst, .statline
+ 6.27  FREE ribbon on --coral
+ 5.79  .resume .t span
+ 5.24  .mark, .libmember (11px/500), .card.is-reading .meta
+ 5.10  unselected tab, .meta, .unsave, .fine
+```
+
+Lowest run 5.10:1. Nothing under 4.5.
+
+Responsive, 375 / 390 / 430 / 768 / 1024 / 1440 / 1920 and landscape 932×430:
+
+```
+375-768   full width, 18px gutters, 2 columns to 430, 4 at 768
+1024+     the .lib container caps at its 900px max-width and centres:
+          62px margins at 1024, 270px at 1440, 510px at 1920, 5 columns
+          of 162px. The covers do not stretch; a section holding two
+          stories fills two cells and leaves the rest, which is what
+          auto-fill is for.
+932x430   900px container, 16px margins, 5 columns.
+every size   no horizontal scroll, and nothing tappable below
+             --bottom-safe (measured 64-140px depending on viewport).
+```
+
+**Known, not fixed, not mine:** the footer `.fine` links (Account · Artwork
+credits · Privacy · Terms · Support) measure 16px tall against a 44px target.
+`.fine` is `css/app.css`'s and the row is byte-identical on `/`, `/explore`
+and `/library`, so fixing it on one page would break the three apart. The
+wordmark (24px) and the account disc (34px) both look short to a bounding-box
+measurement and are not: `app.css` gives each an invisible 44px band in a
+`::after`, deliberately, so the header's baseline does not move.

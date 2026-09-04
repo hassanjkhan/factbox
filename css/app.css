@@ -190,7 +190,11 @@
 
   --w-head:700; --w-strong:600; --w-label:500; --w-body:400;
 
-  --fs-hero:clamp(1.9rem,7vw,2.5rem);    /* the mast, the hook */
+  --fs-hero:clamp(1.75rem,7vw,2.5rem);   /* the mast. 28px at 390, which is
+                                            the mockup's figure; 7vw takes over
+                                            above 400px. NOT Explore's headline —
+                                            css/today.css gives that its own serif
+                                            clamp and does not read this. */
   --fs-h1:clamp(1.6rem,6.4vw,2.1rem);    /* a pane's headline */
   --fs-h2:clamp(1.35rem,5.2vw,1.7rem);   /* a card headline */
   --fs-h3:1.3rem;                        /* a section divider */
@@ -654,11 +658,11 @@ img{max-width:100%;display:block}
 .resume{
   display:flex; gap:14px; align-items:center;
   padding:12px; margin:18px 0 4px;
-  border-radius:16px; background:var(--raise);
+  border-radius:20px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
   text-decoration:none; color:inherit;
 }
-.resume .plate{width:64px; flex:0 0 64px; border-radius:10px; aspect-ratio:3/4}
+.resume .plate{width:64px; flex:0 0 64px; border-radius:8px; aspect-ratio:3/4}
 .resume .t{min-width:0}
 .resume .t b{
   display:block; font-size:var(--fs-sub); font-weight:var(--w-head);

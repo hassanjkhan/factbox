@@ -65,38 +65,177 @@
 :root{
   color-scheme:dark;
 
-  --parchment:#FFF7ED;
-  --ink:#3E2F4A; --ink-soft:#8B7B93;
-  --coral:#FF7A5C; --coral-deep:#E85F41;
-  /* On cream the bright accent is a fill and --accent-ink is a darker twin.
-     On night that inverts: #FF7A5C measures 6.5:1 on #0E0B12, so the bright
-     one IS the one you may write in, and the pair collapses to one colour. */
-  --accent-ink:#FF7A5C;
-  --teal:#4FC3B8; --teal-ink:#4FC3B8;
-  --butter:#FFD36E;
+  /* ---- THE READER'S PALETTE, AND IT IS DERIVED ---------------------------
+     Every value below is either a token out of css/app.css or one of the six
+     literals in the two blocks marked LITERAL. That is the whole budget for
+     this file, and it is spent where a token cannot reach: an opaque ground
+     that is darker than --night, the two cream alphas the night ground needs
+     for quiet type, and the four-stop scrim the plates are read through.
+     Nothing else in the reader, in css/recommend.css or in css/audio-reader.css
+     names a colour.
 
-  --ground:#0E0B12;
-  --raise:#181320;
-  --ground-0:rgba(14,11,18,0);
-  --raise-0:rgba(24,19,32,0);
-  --hair:rgba(255,247,237,.13);
-  --dim:rgba(255,247,237,.62);
-  --dimmer:rgba(255,247,237,.52);
+     WHAT CHANGED, AND WHY IT HAD TO
+     This block used to repaint --coral to the old warm accent and --accent-ink
+     with it. app.css is now painted in blue: --coral #3B9EF4 is the fill and
+     --on-accent is what you may write on it, and both are correct on night
+     without help. So the accent is NOT overridden any more — the reader gets
+     the site's one accent, and the only thing night needs is a WRITEABLE blue,
+     because --accent-ink (#1A5BA1, tuned for cream) is 1.6:1 on the ground.
+     --accent-lift (#8FC4FA) is that colour: 10.1:1 on --night. --ring is
+     var(--accent-ink) in app.css and resolves where it is used, so the focus
+     ring follows this line with nothing to keep in step.
 
-  --tint:rgba(255,247,237,.07);
-  --tint-2:rgba(255,247,237,.12);
-  --tint-3:rgba(255,247,237,.16);
-  --accent-wash:rgba(255,122,92,.16);
-  --accent-edge:rgba(255,122,92,.5);
-  --on-accent:#2A1109;
-  --menu:rgba(20,16,26,.97);
+     MEASURED, on --ground below (#090C16):
+       --parchment / --ink   #F4EFE6            17.8:1
+       --dim      .88 cream                     15.3:1  (card prose)
+       --dimmer   .62 cream                     10.0:1  (metadata, eyebrows)
+       --accent-ink = --accent-lift #8FC4FA     10.1:1
+       --on-accent #06182E on --coral #3B9EF4    6.3:1  (app.css's own pair)
+     ---------------------------------------------------------------------- */
+
+  /* Cream on night. The reading colour and the glass colour are the same
+     colour, which is the point of --on-glass: the reader IS glass over
+     artwork, from the first card to the last pane. */
+  --parchment:var(--on-glass);
+  --ink:var(--on-glass); --ink-soft:var(--on-glass-soft);
+
+  /* The accent is app.css's. Only the writeable form is night's own. */
+  --accent-ink:var(--accent-lift);
+
+  /* LITERAL 1 — the ground.
+     --night (#0F1420) is app.css's backstop BEHIND a plate: what shows for
+     the milliseconds before a painting decodes. The pane the plate sits IN
+     is a step darker so the plate reads as lit. Both are the same hue.
+
+     --raise is the one lifted surface the reader has left (the plan sheet's
+     options); it is --tint over the ground rather than a seventh literal. */
+  --ground:#090C16;
+  --raise:var(--tint);
+  --ground-0:rgba(9,12,22,0);
+  --raise-0:var(--glass-0);
+
+  /* LITERAL 2 — the two cream alphas night needs and paper does not.
+     app.css's --dim / --dimmer are navy at .82 / .74, which are invisible
+     here; --on-glass-soft (.76) is the only cream token and it is one step,
+     not two. These are the same #F4EFE6 at the two the reader needs: the
+     alpha a card's prose is set in, and the one its metadata is. */
+  --dim:rgba(244,239,230,.88);
+  --dimmer:rgba(244,239,230,.62);
+  --hair:rgba(244,239,230,.13);
+
+  --tint:rgba(244,239,230,.07);
+  --tint-2:rgba(244,239,230,.12);
+  --tint-3:rgba(244,239,230,.16);
+  --menu:#121724;
 
   --shadow-1:0 6px 20px rgba(0,0,0,.45);
   --shadow-2:0 14px 40px rgba(0,0,0,.55);
-  --shadow-go:0 8px 26px rgba(232,95,65,.34);
-  --glow-accent:0 0 10px rgba(232,95,65,.55);
-  --accent-lift:#FFC08A;
+
+  /* LITERAL 3 — the scrim every plate in the reader is read through.
+
+     Four stops, and they are the reason white type never sits on a bright
+     sky: a deep foot the text block stands on, a clear middle where the
+     painting is the whole point, and a light wash at the top so the back pill
+     and the rail keep their contrast over a lit horizon. The colour is
+     --glass's own (9,12,22) at four alphas; a custom property holds a whole
+     gradient, so this is one declaration and every surface that needs it
+     says var(--plate-scrim).
+
+     Measured over the palest plate in the season (s12, mean luminance .71):
+     --on-glass at the foot 12.9:1, at the 62% stop 5.4:1 — and no card sets
+     type above the 62% stop. */
+  --plate-scrim:linear-gradient(to top,
+                  rgba(9,12,22,.94)   0%,
+                  rgba(9,12,22,.78)  38%,
+                  rgba(9,12,22,.34)  62%,
+                  rgba(9,12,22,.38) 100%);
+  /* The same colour, as a floor under a full-screen pane: the plate is
+     atmosphere there rather than the subject, so it goes almost all the way
+     down. */
+  --pane-scrim:linear-gradient(to top,
+                  rgba(9,12,22,.96)   0%,
+                  rgba(9,12,22,.9)   44%,
+                  rgba(9,12,22,.78) 100%);
+  /* And as a BAND with words written across its foot — the next story's
+     cover, and the wall's. Opaque at the bottom edge, so type that starts
+     inside the plate starts on the ground rather than on the painting: at
+     the eyebrow's line the scrim is .95 and a 62px overlap of the palest
+     plate in the season measures 6.0:1 for --accent-ink and 8.4:1 for
+     --parchment. A gradient that only reaches .94 measures 3.2:1 there,
+     which is where this token came from. */
+  --band-scrim:linear-gradient(to top,
+                  rgba(9,12,22,1)     0%,
+                  rgba(9,12,22,.9)   36%,
+                  rgba(9,12,22,.4)  100%);
+  /* And the other way up, for the one screen whose words are at the TOP.
+
+     The interruption's paragraph fades out into the ground, and the element
+     that does the fading is opaque --ground. Over a plate that is still
+     showing at 6-7% that fade paints a visible rectangle — the edge of the
+     box, drawn across the picture, which reads as a rendering fault rather
+     than as an ending. So the plate is held at full ground for the top 44%,
+     which is where the words are, and only swells below them. */
+  --cut-scrim:linear-gradient(to bottom,
+                  rgba(9,12,22,1)     0%,
+                  rgba(9,12,22,1)    44%,
+                  rgba(9,12,22,.62) 100%);
 }
+
+/* ==========================================================================
+   THE CARD STACK.
+
+   app.css owns the deck's geometry — full-height snap panes, the plate, the
+   two rails, the credit line. What it cannot own is the reader's TYPE, which
+   is the one thing that is different here: every other page on the site is
+   DM Sans on cream, and a card is a headline laid over a museum painting.
+
+   So the type is Newsreader, --display, at --w-display. read.html asks Google
+   for it; a token cannot fetch a font, and a page that uses --display without
+   adding the family to its own link gets Georgia, which is a real fallback
+   and not the design.
+
+   THE SIZE LADDER, AND WHY IT IS NOT A CLAMP
+   app.css sets the headline with clamp(1.35rem,5.2vw,1.7rem) and the hook one
+   step above it. A clamp on vw makes a 430px phone shout and a 375px one
+   whisper at the same reading distance, and the deck is the same 100dvh pane
+   at both. These are rem, so they track the reader's own text size and
+   nothing else: the hook at 2.125rem, every other head at 1.5625rem, and a
+   head that is really a long sentence one step down again — same face, never
+   a different font.
+   ========================================================================== */
+
+.copy h2{
+  font-family:var(--display);
+  font-weight:var(--w-display);
+  font-size:1.5625rem; line-height:1.18; letter-spacing:-.008em;
+}
+.beat.is-hook .copy h2{
+  font-size:2.125rem; line-height:1.08; letter-spacing:-.012em;
+}
+.copy p{
+  font-size:1rem; color:var(--dim);
+}
+.beat.is-hook .copy p{font-size:1.0625rem}
+
+/* A few cards in the season are a single 150-200 character sentence with no
+   body. The words are the author's, so the type gives rather than the copy:
+   the same serif, one size down, set as prose. */
+.beat.is-long .copy h2{
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:1.25rem; line-height:1.34; letter-spacing:-.004em;
+  color:var(--parchment);
+}
+.beat.is-hook.is-long .copy h2{font-size:1.5625rem; line-height:1.24}
+
+/* The scrim, from the token above rather than the near-black app.css carries
+   for the paper build. Same four stops on every plate in the reader. */
+.beat .art::after{background:var(--plate-scrim)}
+
+/* The source line under a plate. app.css writes it at a fixed cream alpha;
+   --on-glass-soft is the token for exactly this — a credit on glass over
+   artwork — and it is two steps more legible at the same size. */
+.plate-credit{color:var(--on-glass-soft)}
+.plate-credit a{color:var(--on-glass)}
 
 .fb-rail{
   position:fixed;
