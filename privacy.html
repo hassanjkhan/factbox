@@ -103,7 +103,7 @@
   <a class="doc-back" href="/explore">← Explore</a>
   <h1>Privacy Policy</h1>
   <p class="dateline">
-    <span>Effective 3 September 2026</span>
+    <span>Effective 4 September 2026</span>
     <span>Applies to: factbox.app</span>
   </p>
   <p class="lead">Factbox is a subscription you read on the web, and it now has
@@ -412,8 +412,18 @@
      one of them itself rather than accepting them from the page: the time, the
      reply address you typed if you typed one, which of the two boxes it came
      from, your message, the page you sent it from, and your Firebase user id if
-     you were signed in. <strong>Your IP address is not stored, and neither is a
-     hash of it.</strong> Messages are capped at 4,000 characters.</p>
+     you were signed in. <strong>Your IP address is not stored on the message.</strong>
+     Messages are capped at 4,000 characters.</p>
+  <p>It is counted, though, and that changed on 4 September 2026. To stop one
+     person flooding the box, the function keeps a running count per address.
+     What it stores is not the address: it is a <strong>keyed hash</strong> of
+     it, cut to 96 bits, under a salt that rotates daily &#8212; so yesterday&#8217;s
+     counter cannot be matched to today&#8217;s, and neither can be turned back
+     into an address. An IPv6 address is cut to its first half before that.
+     The counter document holds numbers and nothing else &#8212; no message, no
+     address, no account &#8212; and a Firestore expiry policy deletes it
+     automatically. It is never joined to your message: the two live in
+     separate collections and share no key.</p>
   <p>If that post does not go through, the page offers you a link that opens the
      message in your own mail app instead, addressed to
      <a href="mailto:hello@factbox.app">hello@factbox.app</a>, with what you

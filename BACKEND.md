@@ -31,6 +31,10 @@ this document by two orders of magnitude. GitHub Pages serves them for nothing.
 `data/stacks.json` stays the source of truth (SPEC.md §5). Firestore is a serving copy and
 `tools/seed-firebase.js` is what keeps the copy honest.
 
+Four functions, four files, and they share nothing but `admin.initializeApp()`:
+`index.js` is the Stripe webhook, `story.js` the gated read path (§4), `today.js` which
+story is free (§4b) and `support.js` the support inbox (§4c).
+
 ---
 
 ## 2. Firestore layout
@@ -42,6 +46,13 @@ meta/content       1 doc    corpus version and counts — public
 customers/{uid}             unchanged; written by the Stripe webhook, read by the gate
 daily/{YYYY-MM-DD}          editorial override: which story is free that day — public read,
                             no client write. Absent = the deterministic pick. §4b
+support/{stamp-xxxx}        what a reader typed on /support. Six fields, built by the
+                            function, deny-all to every browser in both directions. §4c
+support_meta/quota          today's date, today's stored count, today's mailed count. §4c
+support_meta/salt           today's date and 32 random bytes, rotated daily, used to
+                            HMAC a caller's IP into a rate-limit bucket id. §4c
+support_ip/{hmac}           one counter per hashed IP per day. No address, no message.
+                            TTL on `expiresAt` deletes it after ~26 hours. §4c
 ```
 
 ### One document per story, not nine
@@ -532,6 +543,179 @@ moment the server answers.
 
 ---
 
+## 4c. The support inbox
+
+`/support` has two boxes. Both post `{kind, message, email, page}` to
+`functions/support.js`. Two things happen to a message, in this order and never the
+other way round: **it is stored, and then it is emailed.**
+
+### Where a message is stored
+
+One document in `support/`, and the function builds every field itself — there is no
+path by which a key in the request body becomes a key in Firestore.
+
+```
+support/2026-09-04T19-12-44Z-5b7k
+  at       timestamp   the server's clock, never the caller's
+  from     string      the reply address if they typed one, "" if not
+  kind     string      "Something is wrong" | "Story idea"
+  message  string      what they typed, capped at 4,000 characters
+  page     string      the path they were on, e.g. "/read/07"
+  uid      string      their account, from a verified ID token, "" if signed out
+```
+
+**Six fields, and the list does not grow.** `privacy.html` §08 publishes the number and
+`tools/check-support.js` asserts it. Whether the email went is a log line, not a seventh
+field. The id sorts by time on purpose: the console lists documents by id, so a random
+auto-id would be an inbox in no order at all.
+
+### And then it is emailed
+
+To **hello@factbox.app**, plain text, via the Resend API — one `fetch`, no new
+dependency, bounded at 5 seconds. **It is switched off right now** and the form works
+anyway. SUPPORT-EMAIL.md is the whole story: why Resend and not the extension or SMTP,
+what the owner has to create, and the five decisions that keep an email whose body is
+written by anonymous strangers from becoming a header-injection or open-relay problem.
+
+The rule that matters here: **the reader's answer is settled by the Firestore write.**
+If the key is absent, wrong, expired or the provider is down, the reader still sees
+"Sent", because it is — in the archive the founders actually read. A mail failure is an
+ERROR log line and nothing else.
+
+### The rate limiting, and why it was rewritten
+
+The previous version kept `const seen = new Map()` at module scope and counted per IP in
+it. That is per **instance**. Cloud Functions runs up to `maxInstances` containers, each
+with its own empty Map, and every cold start hands an attacker a fresh one. The real
+limit was about `PER_IP_PER_HOUR × instances`, and anyone spreading requests over a few
+seconds effectively had none. The file said so itself and called it "weaker than a
+Firestore-backed counter"; it was weaker than that in a way that made the number
+meaningless rather than merely approximate.
+
+Five limits now, and the first is the only one that is not authoritative:
+
+| limit | value | where it is held | what it stops |
+|---|---|---|---|
+| in-memory gap + hourly | 20s / 8 | per instance, `seen` | the honest double tap, for **zero** database reads |
+| minimum gap | 20s | `support_ip/{hash}` | the same thing, for real, across instances |
+| per IP per hour | 8 | `support_ip/{hash}` | one browser flooding |
+| per IP per day | 20 | `support_ip/{hash}` | one browser flooding slowly |
+| **stored per day, everyone** | **300** | `support_meta/quota` | a distributed flood costing money |
+| **mailed per day, everyone** | **80** | `support_meta/quota` | a distributed flood spending a mail quota |
+| mailed per IP per day | 5 | `support_ip/{hash}` | one browser spending everyone's mail budget |
+
+The Map is still the first thing consulted, because it is free and needs no read.
+It is no longer what decides.
+
+**Two budgets, not one, and the mail one is smaller.** Storing a message is ours and
+costs a fraction of a cent; mailing one spends a finite daily allowance at a third
+party. When the mail budget is gone the archive keeps accepting and the founders read
+the console for the rest of the day. Only `PER_DAY` — the *storage* ceiling — can refuse
+a reader, and when it does, `/support` tells them to email hello@factbox.app, which is
+why that fallback is not decoration.
+
+**The counters and the message are written in one transaction.** Two reads, three
+writes. That is the whole reason this holds across instances: there is no window in
+which two containers both read "seven this hour" and both write the eighth. A refusal
+throws before any write, so a client hammering the endpoint costs two reads and nothing
+else — and if it is hammering one warm instance, not even that.
+
+### What that costs in privacy, said plainly
+
+A cross-instance per-IP counter has to key on something derived from the IP. This one
+stores `HMAC-SHA-256(daily salt, day|IP)`, truncated to 96 bits, as a document id under
+`support_ip/`. The document holds counts and two timestamps. No address, no message, no
+account:
+
+```
+support_ip/12813e75b695f169dc85dac1
+  day 2026-09-04   dayCount 4   hour 2026-09-04T19   hourCount 4
+  mailCount 0      last 1788548604142
+  expiresAt 2026-09-05T21:03:24Z      ← a Firestore TTL policy deletes it
+```
+
+The salt is a random 32 bytes in `support_meta/salt`, regenerated every UTC day, in a
+deny-all document. It rotates inside a transaction and the losing instance adopts the
+winner's salt rather than keeping its own — two instances holding two salts for the same
+day would split every counter in half and quietly reinstate the exact bug this replaces.
+
+Be honest about the limit of it: **IPv4 is four billion addresses**, so anyone holding
+the salt could brute-force the mapping back. The salt is readable only with project
+credentials and is gone within the day. This is still strictly more than the previous
+version stored, which was nothing, and **`privacy.html` §08 currently says "Your IP
+address is not stored, and neither is a hash of it." That sentence is now wrong.** It is
+flagged rather than edited because that file belongs to another hand.
+
+IPv6 is truncated to its /64 before hashing. A single subscriber is routinely handed a
+whole /64, so counting /128s would be counting nothing.
+
+### App Check — investigated, and the answer is no
+
+Not enabled, and not recommended, for four reasons found rather than assumed:
+
+1. **There is no App Check anywhere in this repo.** No `firebase/app-check` import, no
+   provider, no site key — enabling enforcement would reject every real reader until
+   `js/` and `support.html` were changed, and those belong to other hands.
+2. **The web providers are reCAPTCHA v3 and reCAPTCHA Enterprise**, both of which load
+   Google script and lean on iframes and third-party storage. This site's audience is
+   specifically people in the Instagram and TikTok in-app webviews, which partition or
+   block exactly that. reCAPTCHA v3 does not challenge, it scores — and a webview scores
+   badly. The failure mode is not a puzzle, it is a silent rejection of genuine readers
+   whose only recourse is the `mailto:`.
+3. **It would make two shipped pages untrue.** `privacy.html:229` says there is no
+   reCAPTCHA on the site, and LEGAL.md §8.2 lists that as a claim it went and fixed.
+4. **It is the wrong tool for the actual threat.** App Check attests that a request came
+   from our page; it does nothing about a real browser on our real page sending a
+   hundred messages. The Firestore counters do, and they cost one read.
+
+Revisit if the form is ever actually abused by a script rather than a person — and
+revisit it as "reCAPTCHA Enterprise with a score threshold", after measuring what real
+in-app-webview readers score.
+
+### Cost, on a normal day and a bad one
+
+Per accepted message: **2 reads, 3 writes**, plus one salt transaction per instance per
+day. Per message refused by Firestore: **2 reads, 0 writes**. Per message refused by the
+in-memory gate: **nothing at all**.
+
+| a day of | stored | emailed | Firestore | cost |
+|---|---|---|---|---|
+| 10 messages — reality | 10 | 10 | 20 reads, 30 writes | **$0.00** |
+| 1,000 attempts | 300 (capped) | 80 (capped) | ~2,000 reads, 900 writes | **$0.00** |
+| 10,000 attempts | 300 (capped) | 80 (capped) | ~19,400 reads, 900 writes | **$0.00** |
+| 100,000 attempts from 100k distinct IPs | 300 (capped) | 80 (capped) | ~200k reads, 900 writes | **~$0.12** |
+
+The free tier is 50,000 reads and 20,000 writes a day, so everything down to the last
+row is genuinely free rather than nearly free. **The bill cannot run away, because the
+writes are capped at 300 and the reads are capped by `maxInstances: 5 × concurrency: 40`
+— at 200 requests in flight the endpoint sheds load long before it spends money.** The
+mail quota cannot run away either: 80 a day against a Resend free tier of 100 a day and
+3,000 a month.
+
+Where the caps sit, all in `functions/support.js`: `PER_DAY` (300),
+`MAIL_PER_DAY` (80), `MAIL_PER_IP_PER_DAY` (5), `PER_IP_PER_DAY` (20),
+`PER_IP_PER_HOUR` (8), `MIN_GAP_MS` (20s), `MAX_MESSAGE` (4,000),
+`MAX_BODY_BYTES` (16 KB).
+
+`MIN_GAP_MS` is repeated in `support.html` as `GAP_MS` so a double tap is answered
+locally instead of over the wire. Changing it here wants changing there.
+
+### What the reader sees on each refusal
+
+No status code ever reaches the reader, their words never leave the textarea, and every
+refusal hands back a `mailto:` already carrying what they typed.
+
+| the function says | the reader reads |
+|---|---|
+| `429 too_fast` / `too_many` / `quota` | "We cannot take that one just now. Send it to hello@factbox.app and it reaches exactly the same person." |
+| `400 too_long` | "That is longer than this box can send. Trim it, or send the whole thing to hello@factbox.app." |
+| `400 empty` | "Tell us what happened first — even one line helps." (idea box: "Tell us what to cover first.") |
+| `500`, or anything unrecognised | "That did not send. Your words are still in the box above — this will put them in an email to hello@factbox.app instead." |
+| never reached at all | "That did not send — the connection did not reach us. Nothing is lost: your words are still in the box above…" |
+
+
+---
+
 ## 5. Audio, and the trade
 
 31 ambience beds, 4.0 MB, now in `factbox-7cb97.firebasestorage.app` under `audio/`.
@@ -666,9 +850,25 @@ fix, not an instant lockout. That is inherited behaviour, unchanged here, and co
 this document changes that or depends on it; the gate was tested by writing the flag
 directly, the way the webhook will.
 
-**Node 20 is deprecated** and decommissions **2026-10-30**. All three functions will need
+**Support email is built and switched off.** `functions/support.js` will email every
+message to hello@factbox.app the moment `RESEND_API_KEY` holds a real key; it holds the
+placeholder `disabled-see-SUPPORT-EMAIL.md` today, and a placeholder means the function
+archives, answers 200, and logs `"mail":"off"`. Four steps to switch it on — Resend
+account, `send.factbox.app` verified, three DNS records at Cloudflare, key into Secret
+Manager and redeploy — all of them in **SUPPORT-EMAIL.md §3**. Nothing about the form is
+broken while it is off.
+
+**`privacy.html` §08 has one sentence that is now wrong.** "Your IP address is not
+stored, and neither is a hash of it." The Firestore rate limiter stores a daily-salted
+HMAC of it — §4c says exactly what and why. Two more places in the same file will want a
+look before the mail key goes in: the processor list in §09 does not name a mail
+provider, and §08 describes a support message as going to Firestore and stopping there.
+Flagged rather than edited: that file belongs to another hand.
+
+**Node 20 is deprecated** and decommissions **2026-10-30**. All four functions will need
 Node 22 before then; the deploy already warns on every run. `firebase-functions` is a major
-version behind. Noted, not fixed here.
+version behind. Noted, not fixed here — `functions/package.json` still says `"node": "20"`
+and this change did not touch the runtime.
 
 **An editorial override is up to two minutes late**, in both directions, for the same reason
 a re-seed is ten. §4b. Redeploy `today` to clear the memo immediately, or wait.
@@ -682,10 +882,34 @@ override. One line in `js/today.js`, quoted in §4b.
 ## 8. Verification
 
 ```
-node --check functions/index.js functions/story.js functions/today.js              tools/seed-firebase.js tools/check-backend.js
+node --check functions/index.js functions/story.js functions/today.js functions/support.js              tools/seed-firebase.js tools/check-backend.js tools/check-support.js
 node tools/seed-firebase.js --dry-run
 node tools/check-backend.js
+node tools/check-support.js
 ```
+
+`check-support.js` is the support inbox end to end and **writes to production**, deleting
+what it wrote. 27 assertions, all passing after the rewrite in §4c: the shape checks, a
+signed-out stranger's message arriving with exactly six fields and nothing smuggled into
+them, the throttle refusing a second message inside the gap, a signed-in reader's uid
+coming from a verified token and a broken token costing the message nothing, and
+`firestore.rules` refusing a browser a direct read or write of the collection and of the
+quota.
+
+Three things it does not cover, checked by hand at the time of the rewrite and worth
+repeating if the limits are ever touched:
+
+- **The throttle across a cold start** — the case the old in-memory Map failed. Fill the
+  per-IP hour bucket, redeploy `support` so Cloud Run replaces every container, and send
+  again: it must still be `429 too_many`, because the count is in Firestore and not in a
+  Map that a new container starts empty.
+- **The mail payload against a hostile message.** `functions/support.js` exports
+  `_replyTo` and `_mailPayload` for exactly this and for nothing else — `index.js` takes
+  `.support` and only `.support`, so nothing extra is deployed or reachable. Assert that
+  `to` is the constant, that there is no `html` field, that a CRLF address produces no
+  `reply_to`, and that a message containing the fence cannot forge it.
+- **The global ceiling.** Set `support_meta/quota.count` to `PER_DAY`, send, expect
+  `429 quota`, and restore the count immediately — it is a live collection.
 
 For the free-story rule specifically:
 

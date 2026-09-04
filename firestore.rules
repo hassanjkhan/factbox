@@ -264,9 +264,26 @@ service cloud.firestore {
     match /support/{id} {
       allow read, write: if false;
     }
-    // Today's date and today's count, so the quota above survives a cold
-    // start. Written only by that function.
+    // The counters the throttle actually decides on, and the salt they are
+    // keyed with. `support_meta/quota` holds today's date, today's stored
+    // count and today's mailed count — two budgets, because storing a message
+    // is cheap and mailing one spends a third party's daily allowance.
+    // `support_meta/salt` holds a random 32 bytes, regenerated every UTC day,
+    // used to HMAC a caller's IP into the bucket id under `support_ip`.
+    //
+    // Deny-all matters more here than it looks. The salt is the only thing
+    // making those bucket ids irreversible: IPv4 is four billion addresses,
+    // so anyone who could read this document could brute-force the mapping
+    // back to addresses. Nobody can, and it is gone within the day anyway.
     match /support_meta/{doc} {
+      allow read, write: if false;
+    }
+    // One document per hashed IP per UTC day: counts, two timestamps and an
+    // `expiresAt` for the TTL policy that deletes it about a day later. No
+    // address, no message, no account. Written only by that function, and
+    // read by nobody — a client that could read these could count how much
+    // support traffic there is and, with the salt, whose.
+    match /support_ip/{bucket} {
       allow read, write: if false;
     }
 
