@@ -341,6 +341,47 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- The launch alarm (functions/alerts.js, ALERTS.md) ------------------
+    //
+    // `alerts/{stamp-xxxx}` is one document per alert RAISED — somebody
+    // opened /firststory, somebody reached the login page, somebody created
+    // an account — holding the exact subject and body that was, or would have
+    // been, emailed to the owner. It is written whether or not the mail could
+    // go, which is the whole point of it: RESEND_API_KEY still holds a
+    // placeholder, so every alert raised today is archived and not sent, and
+    // this collection is where they are recovered from when the key lands.
+    //
+    // Deny-all, both ways, and this one holds more than a counter. A signup
+    // alert carries the new account's email address beside the moment it was
+    // made — that is the one field that tells a stranger joining from one of
+    // us making another test account, and it is exactly the field no browser
+    // may read. Nothing on the site reads this collection; it exists to be
+    // found in the console and mailed by the function that wrote it.
+    //
+    // No `expiresAt` and no TTL policy, unlike `support_ip` and
+    // `insights_rate`. Those are counters that stop mattering after a day;
+    // this is the archive, and an archive that deletes itself answers "what
+    // did I miss while the mail was off" with nothing.
+    match /alerts/{id} {
+      allow read, write: if false;
+    }
+    // `alerts_meta/state` is one singleton: today's date, the two PostHog
+    // watermarks, which of the three alerts have already been mailed today,
+    // today's counts, and the day's spend against the PostHog and Resend
+    // caps. It is the thing that stops the same arrival being reported twice
+    // across a cold start or a redeploy, and the thing that stops forty
+    // emails on the morning it finally works — so a client that could write
+    // here could silence the alarm or make it fire on demand, and a client
+    // that could read it could tell exactly when the owner last looked.
+    //
+    // `{document=**}` below would already deny both; this is written out for
+    // the same reason `insights_rate` is — so a future rule for a
+    // neighbouring path cannot widen it by accident, and so the collections
+    // have somewhere to be explained.
+    match /alerts_meta/{doc} {
+      allow read, write: if false;
+    }
+
     // --- Everything else --------------------------------------------------
     match /{document=**} {
       allow read, write: if false;

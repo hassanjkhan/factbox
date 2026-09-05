@@ -452,3 +452,23 @@ exports.today = require("./today").today;
    the dashboard is built against is ANALYTICS-API.md.
    -------------------------------------------------------------------------- */
 exports.insights = require("./insights").insights;
+
+/* --------------------------------------------------------------------------
+   The launch alarm, and the first two functions here that are not HTTP. One
+   is scheduled, one is a Firebase Auth trigger, and both live in `alerts.js`
+   for the same reason as the four above: the webhook at the top of this file
+   is deployed, working and load-bearing for revenue, and the cheapest way to
+   keep it that way is to not edit it.
+
+   `alertsWatch` runs every fifteen minutes and asks PostHog whether anybody
+   who is not an admin has opened /firststory or reached the login page.
+   `alertsNewAccount` fires when an account is created — the exact one, with
+   no analytics in it. It is a BACKGROUND trigger, not `beforeUserCreated`: a
+   blocking function that throws would stop somebody joining the site.
+
+   Both mail hassanjkhan6@gmail.com, at most once per alert per day, and both
+   archive to `alerts/` whether or not the mail can go. ALERTS.md is the
+   contract, and carries the one line still needed in `insights.js`.
+   -------------------------------------------------------------------------- */
+exports.alertsWatch = require("./alerts").alertsWatch;
+exports.alertsNewAccount = require("./alerts").alertsNewAccount;

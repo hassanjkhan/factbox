@@ -2193,5 +2193,12 @@ exports._KNOWN_EVENTS = KNOWN_EVENTS;
 exports._shape = shape;
 exports._shapeFirstStory = shapeFirstStory;
 exports._shapeReaders = shapeReaders;
+/* alerts.js needs the SAME admin list this file uses, not a second copy of
+   the logic. A divergence here does not fail loudly — it fails by the
+   launch alarm quietly starting to fire on the founders' own browsing,
+   which is the one outcome that makes the alarm worthless. So it is
+   exported rather than duplicated, and alerts.js throws rather than
+   building an unfiltered query if this is ever missing. */
+exports._adminUids = adminUids;
 exports._notAdmins = notAdmins;
 exports._boolParam = boolParam;
