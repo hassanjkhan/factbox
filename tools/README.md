@@ -19,6 +19,7 @@ node check-page.js  "firststory.html" ".beat"  "Cleopatra"
 node check-plates.js "index.html"     ".card"        # every cover has a fallback
 node check-regressions.js                            # bugs that must not come back
 node check-analytics.js                              # the instrumentation is still there
+node check-stripe.js                                 # the money path, end to end
 # NOT stories.html — it is a forwarder now (location.replace to /explore),
 # and jsdom cannot navigate, so this reports a script error for a page that
 # is working exactly as intended. /explore below is the real coverage.
@@ -31,6 +32,16 @@ node check-page.js  "index.html"     ".card"    "Be disgustingly"
 node check-page.js  "start.html"     "button"   "actually remember"
 node check-page.js  "credits.html"   "table tr" "Share-alike"
 ```
+
+`check-stripe.js` is the one that needs the server running (it drives /join
+and a story page over it) and the one to run before touching `functions/`,
+`js/account.js` or anything that says `premium`. It runs the real webhook
+handler against an in-memory Firestore with real Stripe signatures — every
+subscription state, a stale event landing after a newer one, a retry, a
+deleted customer — then reads `client_reference_id` off the URL /join would
+send a buyer to, signed out, signed in and with Firebase unavailable, and
+then watches a subscriber lose access on a story page rather than only in
+Firestore. No Stripe key, no test mode and no money.
 
 Each exits non-zero on a script error, on finding none of the expected
 elements, or on missing expected text.

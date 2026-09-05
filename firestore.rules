@@ -318,6 +318,29 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- Payments that could not be given to anybody ----------------------
+    // `stripe_unattributed/{session or customer id}` is where the webhook
+    // files a checkout whose `client_reference_id` was not a Firebase uid, or
+    // was missing, or whose Stripe customer maps to no account. One of these
+    // has already happened in production: a checkout went out carrying the
+    // LOCAL browser id from js/account.js and the webhook wrote
+    // `customers/fba0c2kqadg5iwjme09b8d4n`, a document no account can read,
+    // with `premium: true` on it. The webhook refuses to create that row now
+    // and writes here instead, with every key a human would need to join the
+    // payment up by hand — the id the browser sent, the Stripe customer, the
+    // email and the amount.
+    //
+    // Deny-all, both ways. It holds a buyer's email beside a payment and
+    // nothing on the site reads it; it exists to be findable in the console
+    // when somebody says "I paid and it did not unlock". `{document=**}`
+    // below would already deny both; this is written out for the same reason
+    // `insights_rate` is — so a future rule for a neighbouring path cannot
+    // widen it by accident, and so the collection has somewhere to be
+    // explained.
+    match /stripe_unattributed/{id} {
+      allow read, write: if false;
+    }
+
     // --- Everything else --------------------------------------------------
     match /{document=**} {
       allow read, write: if false;

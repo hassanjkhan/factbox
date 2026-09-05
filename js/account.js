@@ -396,20 +396,38 @@ var FBA = (function () {
      must keep working, and a reader who somehow arrives with plan=quarterly
      should reach a real checkout rather than a dead button. What retirement
      changes is what we OFFER, not what we honour. */
-  function checkoutURL(key) {
-    /* Named `dest`, not `link`. A `var link` here shadows the link()
-       function above for the whole body — it was calling a `linkFor` that
-       does not exist, so every checkout button threw a ReferenceError and
-       went nowhere. One identifier, the entire funnel. */
-    var dest = link(key);
+  /* attribute(dest) — put the buyer on a Stripe URL.
+
+     THE ONE PLACE client_reference_id IS BUILT, and now it is reachable by
+     name. checkoutURL() below is the plan ladder's caller; /subscription's
+     save offer is the other one, and until this existed that button navigated
+     to a bare buy.stripe.com URL with no buyer on it at all. A second
+     subscription bought through it would have arrived at the webhook with
+     nothing to join it to an account — the same failure as the local id, from
+     a different door. Any future route to Stripe goes through here too.
+
+     `dest` may already carry a query string; Stripe's own links do not, but a
+     link pasted from the dashboard with a locale on it would, so the joiner
+     is chosen rather than assumed. */
+  function attribute(dest) {
+    dest = String(dest || "");
     if (!dest) return "";
     var parts = [];
 
     /* The Firebase uid, not our local one. This is the entire link between a
        payment and an account: the webhook reads client_reference_id to know
        which customers/{uid} to write, and without it `premium` can never
-       become true for anybody. Falls back to the local id only so a signed-out
-       checkout still records something traceable. */
+       become true for anybody.
+
+       It falls back to the local id, and that fallback is the reason
+       `customers/fba0c2kqadg5iwjme09b8d4n` exists in production. It is kept,
+       deliberately and narrowly: the callers refuse to start a checkout
+       without a Firebase uid unless auth is genuinely UNAVAILABLE, and in
+       that one case a traceable local id is better than an anonymous payment,
+       because profile-sync writes the same id into the reader's own document
+       the moment they do sign in. What has changed is the other end — the
+       webhook no longer believes it. A ref that is not an account id is filed
+       in `stripe_unattributed` and no junk `customers/` row is created. */
     var ref = "";
     try { if (window.FBU && FBU.uid && FBU.uid()) ref = FBU.uid(); } catch (e) {}
     if (!ref) ref = accountId();
@@ -420,7 +438,18 @@ var FBA = (function () {
 
     if (mail) parts.push(P_EMAIL + "=" + encodeURIComponent(mail));
     if (ref) parts.push(P_REF + "=" + encodeURIComponent(ref));
-    return parts.length ? dest + "?" + parts.join("&") : dest;
+    if (!parts.length) return dest;
+    return dest + (dest.indexOf("?") === -1 ? "?" : "&") + parts.join("&");
+  }
+
+  function checkoutURL(key) {
+    /* Named `dest`, not `link`. A `var link` here shadows the link()
+       function above for the whole body — it was calling a `linkFor` that
+       does not exist, so every checkout button threw a ReferenceError and
+       went nowhere. One identifier, the entire funnel. */
+    var dest = link(key);
+    if (!dest) return "";
+    return attribute(dest);
   }
 
   /* pricing() — a copy of the source record, for anything that wants to read
@@ -1031,6 +1060,9 @@ var FBA = (function () {
        subscriber is on. Never render the offer from these two. */
     allPlans: allPlans, planByKeyAny: planByKeyAny,
     plan: plan, setPlan: setPlan, checkoutURL: checkoutURL,
+    /* the one builder of client_reference_id, for any other route
+       to Stripe — /subscription's save offer is the second one. */
+    attribute: attribute,
     anyLinkReady: anyLinkReady, money: money, moneyCents: moneyCents,
     /* the source record itself, copied */
     pricing: pricing, PRICING: pricing(),

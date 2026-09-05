@@ -823,6 +823,27 @@
       var dest = "";
       try { dest = SAVE_OFFER.link || ""; } catch (e) { dest = ""; }
       if (!dest) return;
+      /* THE BUYER GOES WITH THEM. STRIPE.md §1: client_reference_id is the
+         entire link between a payment and an account. The discounted-price
+         shape of this offer creates a SECOND subscription, and a second
+         subscription bought on a bare buy.stripe.com URL arrives at the
+         webhook with nothing to join it to an account — the same failure that
+         put `customers/fba0c2kqadg5iwjme09b8d4n` in production, reached
+         through a different door. FBA.attribute() is the one place that
+         builds the parameter; this page already loads js/account.js.
+
+         The reader here is signed in by definition — a cancel flow is only
+         drawn for somebody with a live Stripe subscription — so this is the
+         Firebase uid every time, and it is checked rather than assumed. */
+      try {
+        if (window.FBA && FBA.attribute) dest = FBA.attribute(dest) || dest;
+      } catch (e0) {}
+      if (dest.indexOf("client_reference_id=") === -1) {
+        /* No buyer, no checkout. There is no version of this button worth
+           tapping that ends in a payment nobody can be given. */
+        try { if (window.FB && FB.track) FB.track("checkout_blocked", { plan: "save_offer", why: "no_uid" }); } catch (e1) {}
+        return;
+      }
       /* The same note CXL_KEY carries, for the other ending: which
          subscription the reader went to Stripe about. It grants nothing and
          proves nothing — step 5 is still drawn off Stripe's own amount. */

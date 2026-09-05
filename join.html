@@ -1038,11 +1038,36 @@
     } catch (e) { return encodeURIComponent("/join"); }
   }
 
+  /* IDENTITY HAS THREE STATES AND THE THIRD ONE WAS A BOUNCE. FBU.uid() is ""
+     while the Firebase SDK is still importing — a few hundred milliseconds
+     cold — and authDead() is false during that window, because the SDK has
+     not failed, it has not arrived. So a reader who WAS signed in and tapped
+     quickly was told to sign in, sent to /login, and handed straight back.
+     Nothing was lost, but it is a bounce on the one tap that carries revenue,
+     and in the report it is a checkout_blocked{no_uid} that never happened.
+
+     FBU.ready() is bounded by auth.js's own READY_MS, which settles known()
+     even when the SDK never loads at all, so this waits and cannot hang. */
+  function whenIdentityKnown(fn) {
+    try {
+      var U = window.FBU;
+      if (!U || !U.known || U.known() || !U.ready) { fn(); return; }
+      U.ready().then(function () { fn(); }, function () { fn(); });
+      return;
+    } catch (e) {}
+    fn();
+  }
+
   function buy() {
     try {
       var btn = el("jn-buy");
       if (A) { A.setPlan(picked); A.finishOnboarding(); }
+      whenIdentityKnown(function () { buyNow(btn); });
+    } catch (e) {}
+  }
 
+  function buyNow(btn) {
+    try {
       var uid = uidNow();
       if (!uid && !authDead()) {
         /* checkout_start has NOT fired: this checkout did not start. */

@@ -627,3 +627,122 @@ does, in two places, and both now describe a box that does not exist:
 from `/subscription` any more; the disclosure is now over-disclosure, which is
 harmless to a reader and wrong in a document whose whole claim is that it was
 written against what the code actually does.
+
+
+## 11. What the webhook does with every event, and the second defence
+
+Audited and rewritten 4 September 2026, after the log below turned up in
+production. Everything in this section is exercised by `node
+tools/check-stripe.js`, which runs the real handler against an in-memory
+Firestore with real Stripe signatures and needs no key, no test mode and no
+money.
+
+### The defect this section exists because of
+
+```
+2026-09-03T17:22:15Z  stripewebhook
+{"uid":"fba0c2kqadg5iwjme09b8d4n","sub":"sub_1UBeL3Ahj1M3E8TlO2tm20Zt",
+ "status":"trialing","premium":true,"message":"subscription written"}
+```
+
+That `uid` is a **local browser id** — `js/account.js`'s `accountId()`, which
+is `"fba"` plus a random tail sliced to 24 characters — not a Firebase uid.
+The webhook believed it and wrote `customers/fba0c2kqadg5iwjme09b8d4n` with
+`premium: true` on it, a document no account will ever read.
+
+**And it is not inert.** `uidForCustomer()` finds an account by querying
+`customers` for the Stripe customer id, and that row carries one. So every
+later event for that customer — the renewal, the cancellation — resolved to
+the orphan and was written there too. Measured: against the old code, one junk
+row makes twenty of the thirty checks in `tools/check-stripe.js` fail, because
+the real account never receives another write.
+
+The client already refused to start an unattributed checkout. That refusal is
+one side of a money path, and one side is a single point of failure.
+
+`uidForCustomer()` now reads several matches and returns the first that is
+actually an account id, rather than `.limit(1)` and whatever came back — so
+the row still sitting in production cannot take over again, and is reported
+instead of believed. **It should still be deleted**, in the Firestore console:
+`customers/fba0c2kqadg5iwjme09b8d4n`. It is the owner's own test and nothing
+needs rescuing; it is just a row saying `premium: true` about nobody.
+
+### The rule, at the webhook
+
+A Firebase Auth uid on this project is 28 characters. A local id cannot reach
+28 — `accountId()` slices to 24 — so the length separates them with no prefix
+special-case a future id format could slip past, and the character class is
+also what keeps the value safe to put in a document path.
+
+Anything that fails it is **not** written under `customers/`. It is filed in
+`stripe_unattributed/{session or customer id}` with every join key a human
+would need — the id the browser sent, the Stripe customer, the email, the
+amount — and logged as an error. `firestore.rules` denies the browser both
+ends of it. Nothing reads it; it exists so that a payment nobody can be given
+is a row somebody can find rather than a silence.
+
+**The local-id fallback in `FBA.attribute()` is kept, deliberately.** The one
+case that reaches it is `FBU.unavailable()` — a blocked CDN, a dead network, a
+webview too old for the SDK — where blocking loses the sale *and* leaves the
+reader no way to make an account. A traceable local id beats an anonymous
+payment, because `js/profile-sync.js` writes the same id into the reader's own
+document the moment they do sign in, and that is what a reconciliation would
+join on. What changed is that the webhook no longer believes it.
+
+`FBA.attribute(url)` is now the single builder, exported by name, because
+`/subscription`'s save-offer button was navigating to a bare `buy.stripe.com`
+URL with no buyer on it at all — the same failure through a different door,
+dormant only because §10's offer is switched off.
+
+### Every event, and what it does
+
+| Event | What happens |
+|---|---|
+| `checkout.session.completed` | Joins uid ↔ Stripe customer. Non-uid ref → `stripe_unattributed`, no `customers/` row. |
+| `customer.subscription.created` / `.updated` / `.deleted` / `.paused` / `.resumed` | Writes the subscription row and recomputes `premium` from **all** of that reader's subscriptions. |
+| `customer.deleted` | Revokes: `premium: false` and every subscription marked inactive. A deleted customer cannot send another event, so this is the last chance. |
+| `invoice.paid`, `invoice.payment_failed` | **Deliberately ignored.** Stripe moves the subscription to `active` / `past_due` / `unpaid` at the same moment and sends `customer.subscription.updated` with it. Acting on the invoice would be a second writer racing the first. |
+| `customer.subscription.trial_will_end` | Ignored: notice, not a state change. |
+| everything else | Acknowledged with 200. A non-200 makes Stripe retry an event we were never going to act on. |
+
+`ACTIVE = ["active","trialing","past_due"]`, so `unpaid`, `incomplete`,
+`incomplete_expired`, `paused` and `canceled` all revoke — which is how a
+three-day trial that never gets a card closes itself.
+
+### Ordering, and why it is not just idempotency
+
+Stripe retries, and retries can arrive **out of order**. A delayed `trialing`
+landing after the `canceled` that followed it would have restored access to a
+subscription that had ended. Each write now stamps the `created` of the event
+that caused it, and a write refuses to run when its event is *strictly* older
+than the one already recorded — equal timestamps still apply, because two
+events in the same second are not out of order.
+
+The read-then-write is also one transaction now. It was a read followed by a
+batch, so two concurrent retries could both read the old state and both write.
+
+### The renewal date, and an API version that can move it
+
+Stripe moved `current_period_end` off the subscription and onto the
+subscription **item** in a later API version, and which shape arrives is
+decided by the version on the webhook endpoint in the dashboard, not by the
+pin in `functions/index.js`. Both are read. This is not cosmetic: §9's table
+says `/subscription` refuses to invent a renewal date, so the line simply
+disappears if the field is null.
+
+### And the half that was missing on the reader's side
+
+Revocation reached the database and stopped there. `read.html`, `story.html`,
+`cleopatra.html` and `firststory.html` registered `FBX.correct(false)` inside
+`showWall()` — "I drew the wall, reload if that turns out wrong" — and nothing
+registered the reverse, so a reader whose subscription ended **while a story
+was open kept the whole story on screen**. Measured: Stripe said cancelled,
+the webhook wrote `premium: false`, `js/auth.js`'s snapshot delivered it and
+`js/access.js` flipped to `none` — and the page went on rendering the text,
+because nothing had asked to be told.
+
+`FBX.correct(true)` is now registered on the unlocked render path, guarded on
+`FBX.can()` rather than on the fact that we rendered: `canRead(id)` is also
+true for the two permanently free stories and for today's, and a signed-out
+reader on one of those has drawn an unlocked page while `can()` is false.
+Registering there would reload a page that is perfectly correct.

@@ -1274,6 +1274,31 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
          to find and rebuild a wall out of. */
       try { if (window.FBR && FBR.forgetPending) FBR.forgetPending(); } catch (e) {}
       render(s);
+
+      /* THE OTHER DIRECTION, AND IT IS THE ONE THAT COSTS US MONEY.
+
+         showWall() below registers FBX.correct(false) — "I drew the wall,
+         reload if that turns out wrong" — and nothing registered the reverse,
+         so a reader whose subscription ENDED while a story was open kept the
+         whole story on screen. Stripe said cancelled, the webhook wrote
+         `premium: false`, js/auth.js's snapshot delivered it and
+         js/access.js flipped to `none` — measured, all four — and the page
+         went on rendering the text, because nothing had asked to be told.
+         Revocation reached the database and not the reader.
+
+         `drew` is `true` here: this render IS the unlocked view. FBX.correct
+         owns the rest, including the one-reload-per-tab guard, so this cannot
+         become the reload loop the shelf once had.
+
+         GUARDED ON can(), not on the fact that we rendered. canRead(id) is
+         also true for the two permanently free stories and for today's, and a
+         signed-out reader on one of those has drawn an unlocked page while
+         can() is false. Registering there would compare `true` against a
+         `false` that is not a change at all and reload a page that is
+         perfectly correct. Only an ACCOUNT-level yes is worth correcting. */
+      try {
+        if (window.FBX && FBX.correct && FBX.can && FBX.can()) FBX.correct(true);
+      } catch (e) {}
     });
   }).catch(function () {
     deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +

@@ -1290,6 +1290,25 @@ var FBR = (function () {
     return false;
   }
 
+  /* THE THIRD STATE. Signed in, signed out, and NOT YET ANSWERED — and the
+     third one was a bounce. uidNow() is "" while the Firebase SDK is still
+     importing, and authDead() is false during that window because the SDK has
+     not failed, it has not arrived. A reader who WAS signed in and tapped
+     quickly was asked to sign in again. Nothing is lost, but it is a bounce on
+     the one tap that carries revenue, and in the report it is a
+     checkout_blocked{no_uid} that never happened. ready() is bounded by
+     auth.js's own READY_MS, which settles known() even when the SDK never
+     loads, so this waits and cannot hang. */
+  function whenIdentityKnown(fn) {
+    try {
+      var U = fbu();
+      if (!U || !U.known || U.known() || !U.ready) { fn(); return; }
+      U.ready().then(function () { fn(); }, function () { fn(); });
+      return;
+    } catch (e) {}
+    fn();
+  }
+
   /* This page, as a return address, so /login hands the reader back to the
      exact story they were reading — query string and all. login.html
      whitelists the value; a path with ?s=<id> on it passes. */
@@ -2095,6 +2114,10 @@ var FBR = (function () {
         try { if (typeof opts.onStart === "function") opts.onStart(state.key); } catch (e1) {}
         try { if (sheet && sheet.close) sheet.close(); } catch (e2) {}
 
+        whenIdentityKnown(function () { startNow(btn, A); });
+      }
+
+      function startNow(btn, A) {
         var uid = uidNow();
         if (!uid && !authDead()) {
           /* checkout_start has NOT fired: this checkout did not start. */
