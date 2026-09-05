@@ -489,3 +489,34 @@
 @media (prefers-reduced-motion:reduce){
   .dsh-btn,.dsh-tbl tbody tr{transition:none}
 }
+
+/* The caveat disclosure.
+
+   The funnel's caveats were 454 words of prose sitting under the chart. Every
+   sentence was true; together they buried the numbers the page exists to show,
+   and a caveat nobody finishes reading is not a caveat. One line stays visible
+   and the rest lives here, closed by default. */
+.dsh-more{ margin-top:10px }
+.dsh-more > summary{
+  cursor:pointer; list-style:none;
+  display:inline-flex; align-items:center; gap:6px;
+  min-height:var(--tap); padding:2px 0;
+  font-size:var(--fs-meta); font-weight:var(--w-head);
+  color:var(--accent-ink);
+}
+.dsh-more > summary::-webkit-details-marker{ display:none }
+.dsh-more > summary::after{
+  content:""; width:7px; height:7px;
+  border-right:2px solid currentColor; border-bottom:2px solid currentColor;
+  transform:rotate(45deg) translate(-1px,-1px);
+  transition:transform .16s ease;
+}
+.dsh-more[open] > summary::after{ transform:rotate(-135deg) translate(-2px,-2px) }
+.dsh-cav{
+  margin:10px 0 0; max-width:76ch;
+  font-size:var(--fs-meta); line-height:1.6; color:var(--dim);
+}
+.dsh-cav b{ color:var(--parchment); font-weight:var(--w-head) }
+@media (prefers-reduced-motion: reduce){
+  .dsh-more > summary::after{ transition:none }
+}

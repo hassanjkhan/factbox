@@ -1029,7 +1029,19 @@
     return false;
   }
 
-  function noteOn(id, text) { setText(id, text); show(id); }
+  /* `extra` is trusted HTML built in this file — never a value from the
+     server, which is why setText handles the sentence and innerHTML only ever
+     receives strings this module composed itself. */
+  function noteOn(id, text, extra) {
+    setText(id, text);
+    if (extra) {
+      try {
+        var n = $(id);
+        if (n) { var d = document.createElement("div"); d.innerHTML = extra; n.appendChild(d); }
+      } catch (e) {}
+    }
+    show(id);
+  }
 
   /* ANALYTICS-API.md §7. Every PostHog-backed query answers `upstream` with
      reason `not_configured` until the owner puts a key in Secret Manager, so
@@ -1873,47 +1885,56 @@
 
   /* Said under the funnel, every time, because three separate things about
      these numbers are not what a funnel chart implies. */
-  /* Said under the funnel every time, because five separate things about
-     these bars are not what a funnel chart implies. */
-  var FS_NOTE =
-    "This is step REACH, not a strict ordered path. Each number is the " +
-    "distinct people who did that thing in the window, and it does not verify " +
-    "that the same person did step three after step two — someone can reach " +
-    "Stripe from a bookmark and be counted there without the steps above it. " +
-    "What this funnel does add is a COHORT: everyone counted here opened " +
-    "/firststory or read a card there in this window, so nobody who never saw " +
-    "that page is in any bar. One consequence to expect on screen: a lower " +
-    "bar can be TALLER than the one above it, because the sign-up page can be " +
-    "reached from the paywall part-way through the story rather than only " +
-    "from the end card. " +
-    "“Reached the end card” cannot be narrowed to the SIGN-UP ASK. " +
-    "/firststory builds its end card with cta “Sign up to read more”, which " +
-    "replaces the countdown with a sign-up control — but nothing records " +
-    "that: rec_view carries only the story and whether there is a next one, " +
-    "and first_completion_screen_viewed carries only the story and the " +
-    "minutes. So this step is “reached the end card of this story, having " +
-    "been on /firststory”, which is an attribution by person and is as close " +
-    "as the instrumentation allows. One property on those two events would " +
-    "close it; DASHBOARD.md asks for it. " +
-    "“Reached Stripe” is checkout_start: we SENT them. Whether Stripe's page " +
-    "rendered, or what they did on it, happens on somebody else's origin and " +
-    "no event of ours can see it. " +
-    "“Paid and came back with access” is a browser event and therefore " +
-    "undercounts — somebody who pays on a phone and comes back on a laptop is " +
-    "missed here. The subscriber tiles further down are a Firestore count and " +
-    "are the number that is true; when the two disagree, that one wins. " +
-    "“Came back on a later day” means active on more than one calendar day " +
-    "(UTC) inside this window — any page, not only the story. It is a " +
-    "definition rather than an event, which is why it is written here. " +
-    "“Signed in or created an account” is one step rather than two because " +
-    "the two cannot be split honestly: login.html fires signin_google for a " +
-    "new account and a returning one alike, so counting sign-ups on their own " +
-    "undercounts by every account made with Google. The email-only split is " +
-    "in the context rows, labelled as the undercount it is; ANALYTICS.md §4 " +
-    "item 2 has the one-line fix. " +
-    "The context rows below the funnel are not steps: “End card built” is the " +
-    "card being constructed, which happens a dozen cards early and is never a " +
-    "view.";
+  /* One line on screen, the rest behind a disclosure.
+
+     This was 454 words of prose sitting under the chart. Every sentence in it
+     was true and worth knowing once — and together they buried the numbers the
+     page exists to show. A caveat nobody finishes reading is not a caveat.
+
+     So: the one thing that changes how you read the bars stays visible, and
+     the detail moves into a <details> that remembers nothing and costs
+     nothing. The full account lives in DASHBOARD.md, which is where someone
+     who wants all of it should be sent. */
+  var FS_NOTE = "These bars count people who reached each step in this " +
+    "window, not people who walked them in order.";
+
+  var FS_MORE = [
+    ["Reaching a step does not imply the ones above it",
+     "Someone can arrive at Stripe from a bookmark and be counted there " +
+     "without appearing in the steps before it. A lower bar can also be " +
+     "taller than the one above it, because the sign-up page is reachable " +
+     "from the paywall part-way through a story, not only from the end card."],
+    ["“Reached the end card” is not “saw the sign-up ask”",
+     "/firststory shows a sign-up ask instead of the auto-advance countdown, " +
+     "but nothing we record distinguishes the two. This step is an " +
+     "attribution by person and is as close as the instrumentation allows. " +
+     "One property on two events would close it — DASHBOARD.md asks for it."],
+    ["“Reached Stripe” means we sent them",
+     "Whether Stripe's page rendered, and what happened on it, is on another " +
+     "origin and no event of ours can see it."],
+    ["“Paid” undercounts, and the tile below is the true number",
+     "Somebody who pays on a phone and comes back on a laptop is missed here. " +
+     "The subscriber tiles are a Firestore count of accounts; where the two " +
+     "disagree, that one is right."],
+    ["“Signed in or created an account” is one step, not two",
+     "login.html fires the same event for a new account and a returning " +
+     "reader, so counting sign-ups alone would undercount by every account " +
+     "made with Google. The email-only figure sits in the context rows."],
+    ["“Came back on a later day” is a definition, not an event",
+     "It means active on more than one calendar day (UTC) inside this window, " +
+     "on any page — not only the story."]
+  ];
+
+  /* Built once, not per render: it never changes. */
+  function fsMoreHTML() {
+    var out = "", i;
+    for (i = 0; i < FS_MORE.length; i++) {
+      out += "<p class=\"dsh-cav\"><b>" + esc(FS_MORE[i][0]) + "</b> " +
+             esc(FS_MORE[i][1]) + "</p>";
+    }
+    return "<details class=\"dsh-more\"><summary>What these numbers do and " +
+           "do not say</summary>" + out + "</details>";
+  }
 
   var FS_BODY = ["dsh-fs-kpis", "dsh-fs-chartbox", "dsh-fs-key", "dsh-fs-box"];
   var FC_BODY = ["dsh-fc-chartbox", "dsh-fc-box"];
@@ -1936,7 +1957,7 @@
           "Nobody opened /firststory in this window. If the launch has not " +
           "gone out yet that is the right answer; if it has, widen the range.",
           false);
-        noteOn("dsh-fs-note", FS_NOTE + unattributedSay(m));
+        noteOn("dsh-fs-note", FS_NOTE + unattributedSay(m), fsMoreHTML());
         return;
       }
 
@@ -2000,7 +2021,7 @@
         (m.truncated ? " The per-person scan hit its cap, so this is a sample " +
                        "of the window rather than all of it — narrow the dates."
                      : ""), false);
-      noteOn("dsh-fs-note", FS_NOTE + unattributedSay(m));
+      noteOn("dsh-fs-note", FS_NOTE + unattributedSay(m), fsMoreHTML());
     });
 
     runFirstCards(win);
