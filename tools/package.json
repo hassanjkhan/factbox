@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "firebase-admin": "^13.10.0",
     "jsdom": "^29.1.1",
     "puppeteer-core": "^24.43.1"
   }

@@ -758,7 +758,19 @@ const QUERIES = {
      name has to be in KNOWN_EVENTS — not because an unknown one is dangerous,
      it is charset-checked either way, but because zero rows for a typo is a
      worse answer than "that is not an event". */
+  /* Windowed harder than the rest, on purpose.
+
+     This is the only query that groups by day across EVERY event of a name,
+     with a distinct-person count per day — the widest scan on the page. At a
+     36-day window it timed out upstream (502) while 14 days answered in
+     903ms. So the range is clamped here rather than left to fail: a chart
+     that refuses is worse than one that shows a shorter period and says so.
+
+     The clamp is on this query alone. story_performance and reader_activity
+     scan the same table over the same span and return in well under a second,
+     because they group by story or by person rather than by day-and-person. */
   event_volume: {
+    maxDays: 31,
     params: ["exclude_admins", "event", "days", "limit"],
     build: (p) => ({
       columns: ["day", "events", "people"],
@@ -1039,7 +1051,7 @@ const DAY_MS = 86400000;
  * attack, and DAYS_MAX is a cost bound however the range was expressed. What
  * was actually used comes back in meta, so nothing has to guess.
  */
-function readWindow(raw, p, echo) {
+function readWindow(raw, p, echo, cap) {
   const from = dateParam(raw.from, "from");
   const to = dateParam(raw.to, "to");
 
@@ -1062,9 +1074,21 @@ function readWindow(raw, p, echo) {
     a = new Date(Date.parse(b + "T00:00:00Z") - (DAYS_MAX - 1) * DAY_MS).toISOString().slice(0, 10);
   }
 
+  /* A per-query ceiling, applied by moving the START forward rather than by
+     refusing. The caller asked for a range; giving them the most recent part
+     of it with `meta.clamped_to_days` set is more useful than a 502, and the
+     dashboard prints the shortened range it actually got. */
+  let kept = span;                       /* not `span`: it is a const above */
+  if (cap && kept > cap) {
+    a = new Date(Date.parse(b + "T00:00:00Z") - (cap - 1) * DAY_MS)
+          .toISOString().slice(0, 10);
+    echo.clamped_to_days = cap;
+    kept = cap;
+  }
+
   p.from = a;
   p.to = b;
-  p.days = Math.min(DAYS_MAX, Math.max(DAYS_MIN, span));
+  p.days = Math.min(DAYS_MAX, Math.max(DAYS_MIN, kept));
   echo.from = a;
   echo.to = b;
   echo.days = p.days;
@@ -1072,13 +1096,14 @@ function readWindow(raw, p, echo) {
 
 function readParams(name, raw) {
   const want = QUERIES[name].params || [];
+  const cap = QUERIES[name].maxDays || 0;   /* per-query ceiling, 0 = none */
   const p = {};
   const echo = {};
 
   for (const key of want) {
     switch (key) {
       case "days":
-        readWindow(raw, p, echo);
+        readWindow(raw, p, echo, cap);
         break;
       case "limit": {
         /* reader_activity counts (person, id, story) triples rather than
