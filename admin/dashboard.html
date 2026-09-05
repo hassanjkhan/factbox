@@ -144,12 +144,35 @@
         <label for="dsh-to">To</label>
         <input class="dsh-input" id="dsh-to" type="date">
       </div>
+      <!-- The admin switch, in the same bar as the dates because it applies
+           to the same thing they do: EVERY panel below. It is a select rather
+           than a checkbox so that both states are written out in words — the
+           question "is my own testing in this number?" has to be answerable
+           from the control itself, not from whether a box looks ticked.
+
+           Server-side. This sends a flag; the function reads the admin uids
+           out of Firestore and leaves them out of the query. Nothing here
+           filters anything, and no uid is ever sent to this page. -->
+      <div class="dsh-field">
+        <label for="dsh-admins">Admin accounts</label>
+        <select class="dsh-select" id="dsh-admins">
+          <option value="1" selected>Excluded — other people only</option>
+          <option value="0">Included — everyone</option>
+        </select>
+      </div>
       <div class="dsh-field">
         <label for="dsh-go">&nbsp;</label>
         <button class="dsh-btn dsh-btn-go" id="dsh-go" type="submit">Refresh</button>
       </div>
     </form>
     <p class="dsh-range" id="dsh-range">&nbsp;</p>
+    <!-- Which mode is on, in words, every time the page is looked at. A
+         number that quietly changes meaning is worse than no switch, so this
+         line is never empty and never hidden: it carries the default before
+         the first answer arrives and the server's own account of what it did
+         afterwards. js/dashboard.js rewrites it from meta.admin_filter. -->
+    <p class="dsh-mode" id="dsh-mode">Admin accounts are excluded from every
+    panel below — these are numbers about other people.</p>
     <!-- One page-level note, written by js/dashboard.js the first time any
          query comes back "not configured". It used to be the per-section
          message, which meant the same six-line paragraph appeared eight
@@ -157,7 +180,47 @@
          sections now say it in one line and point here. -->
     <p class="dsh-note" id="dsh-top-note" hidden></p>
 
-    <!-- ---- 1 · Stories ------------------------------------------------- -->
+    <!-- ---- 1 · The launch page ------------------------------------------
+         /firststory is the cold-arrival URL the launch videos point at. It
+         serves story 01 — and so do /read?s=01 and /cleopatra, which is why
+         this panel filters on card_view.page and not on the story id. That
+         property is new: card views recorded before it shipped name no
+         address and are counted separately below rather than folded in. -->
+    <section class="dsh-sec" id="dsh-sec-first">
+      <div class="sechead"><h2>The journey</h2><span>/firststory to paid, and back again</span></div>
+      <p class="dsh-q">One funnel, end to end: arriving at
+      <code>/firststory</code>, reading into the story, reaching the end card
+      where the sign-up ask is, reaching the sign-up page, signing in, being
+      sent to Stripe, paying, and coming back on a later day. Every number here
+      is about the people who were on that page in this window — not the site
+      as a whole — and each step shows what share of the step above it
+      reached.</p>
+      <div class="dsh-state" id="dsh-fs-state" role="status">Waiting…</div>
+      <div class="dsh-kpis" id="dsh-fs-kpis" hidden></div>
+      <div class="dsh-scroll" id="dsh-fs-chartbox" hidden>
+        <div class="dsh-chart" id="dsh-fs-chart"></div>
+      </div>
+      <p class="dsh-key" id="dsh-fs-key" hidden></p>
+      <div class="dsh-scroll" id="dsh-fs-box" hidden>
+        <table class="dsh-tbl" id="dsh-fs-tbl"></table>
+      </div>
+      <p class="dsh-note" id="dsh-fs-note" hidden></p>
+
+      <div class="sechead"><h2>How far they scrolled</h2><span>people who reached each card</span></div>
+      <p class="dsh-q">The graph of the drop: how many people reached card 1,
+      card 2, and so on down the story, with the share lost between each pair
+      of cards.</p>
+      <div class="dsh-state" id="dsh-fc-state" role="status">Waiting…</div>
+      <div class="dsh-scroll" id="dsh-fc-chartbox" hidden>
+        <div class="dsh-chart" id="dsh-fc-chart"></div>
+      </div>
+      <div class="dsh-scroll" id="dsh-fc-box" hidden>
+        <table class="dsh-tbl" id="dsh-fc-tbl"></table>
+      </div>
+      <p class="dsh-note" id="dsh-fc-note" hidden></p>
+    </section>
+
+    <!-- ---- 2 · Stories ------------------------------------------------- -->
     <section class="dsh-sec" id="dsh-sec-stories">
       <div class="sechead"><h2>Stories</h2><span>which are doing well, which are not</span></div>
       <p class="dsh-q">Every story that was opened in the window, with how many
@@ -176,7 +239,7 @@
       <p class="dsh-note" id="dsh-stories-note" hidden></p>
     </section>
 
-    <!-- ---- 2 · Inside a story ------------------------------------------ -->
+    <!-- ---- 3 · Inside a story ------------------------------------------ -->
     <section class="dsh-sec" id="dsh-sec-cards">
       <div class="sechead"><h2>Inside a story</h2><span>card by card</span></div>
       <p class="dsh-q">Pick a story: the story name, every card number in it,
@@ -217,25 +280,52 @@
       </div>
     </section>
 
-    <!-- ---- 3 · The funnel ----------------------------------------------- -->
+    <!-- ---- 4 · Readers ---------------------------------------------------
+         THE ONE PANEL ON THIS PAGE THAT SHOWS PEOPLE. Every other query was
+         built so that it could not return an identity; this one is the
+         deliberate exception, because with a handful of readers a percentage
+         says nothing and a list of people says everything.
+
+         The email is joined server-side from FIREBASE AUTH, never from
+         PostHog — PostHog has never been sent one. What reaches this page is
+         an email, an ordinal that is assigned per response, and behaviour.
+         No uid, ever. See ANALYTICS-API.md §6. -->
+    <section class="dsh-sec" id="dsh-sec-readers">
+      <div class="sechead"><h2>Readers</h2><span>who read what, and how far</span></div>
+      <p class="dsh-q">One block per reader, most recently active first: the
+      account's email address where there is one, every story they opened, the
+      furthest card they reached in it, and whether they finished. A reader
+      with no account has no email and is shown as anonymous.</p>
+      <div class="dsh-state" id="dsh-rd-state" role="status">Waiting…</div>
+      <div class="dsh-kpis" id="dsh-rd-kpis" hidden></div>
+      <div class="dsh-readers" id="dsh-rd-list" hidden></div>
+      <p class="dsh-note" id="dsh-rd-note" hidden></p>
+    </section>
+
+    <!-- ---- 5 · Subscribers ------------------------------------------------
+         THERE USED TO BE A SECOND FUNNEL HERE. `subscribe_funnel` drew the
+         site-wide path — locked story, gate, sign-in, account, Stripe, back,
+         subscribed — beside the journey funnel at the top of this page. Two
+         funnels on one page, over two different populations, disagreeing by
+         more than a rounding error, is worse than one: the reader has to work
+         out which denominator each bar is against before they can read
+         either, and in practice they read whichever is nearer.
+
+         So the journey funnel is THE funnel and this section is what is
+         genuinely not a funnel: the authoritative subscriber count, and the
+         checkouts that never started. `subscribe_funnel` is still an
+         allow-listed query and ANALYTICS-API.md still documents it — it is
+         one curl away, and putting the panel back is deleting this comment
+         and restoring the six elements it replaced. It is off the PAGE, not
+         out of the API. -->
     <section class="dsh-sec" id="dsh-sec-funnel">
-      <div class="sechead"><h2>The funnel</h2><span>where readers fall out</span></div>
-      <p class="dsh-q">A locked story in front of them, through opening the
-      gate, signing in, making an account, reaching Stripe and coming back, to
-      a live subscription. Each step shows how many got there, what share of
-      the first step that is, and how many were lost on the step before.</p>
+      <div class="sechead"><h2>Subscribers</h2><span>the number that is true</span></div>
+      <p class="dsh-q">Read straight from Firestore rather than from a browser
+      event, which is why this is the count that wins when it disagrees with
+      the journey funnel above. Someone can pay on a phone and come back on a
+      laptop: the funnel's last step misses them and this does not.</p>
       <div class="dsh-kpis" id="dsh-subs-kpis" hidden></div>
       <p class="dsh-note" id="dsh-subs-note" hidden></p>
-      <div class="dsh-state" id="dsh-funnel-state" role="status">Waiting…</div>
-      <div class="dsh-scroll" id="dsh-funnel-chartbox" hidden>
-        <div class="dsh-chart" id="dsh-funnel-chart"></div>
-      </div>
-      <!-- Unhidden with the funnel. Two caveats the API documents and asks
-           to be printed beside the chart rather than hidden. -->
-      <p class="dsh-note" id="dsh-funnel-note" hidden></p>
-      <div class="dsh-scroll" id="dsh-funnel-box" hidden>
-        <table class="dsh-tbl" id="dsh-funnel-tbl"></table>
-      </div>
 
       <div class="sechead"><h2>Blocked before Stripe</h2><span>a leak, not a step</span></div>
       <p class="dsh-q">People who reached for a paid plan and never got a
@@ -248,7 +338,7 @@
       </div>
     </section>
 
-    <!-- ---- 4 · Onboarding ------------------------------------------------ -->
+    <!-- ---- 6 · Onboarding ------------------------------------------------ -->
     <section class="dsh-sec" id="dsh-sec-onboarding">
       <div class="sechead"><h2>Onboarding</h2><span>how far people get</span></div>
       <p class="dsh-q">Everyone who started the join flow and the step they got
@@ -264,7 +354,7 @@
       </div>
     </section>
 
-    <!-- ---- 5 · Events ---------------------------------------------------- -->
+    <!-- ---- 7 · Events ---------------------------------------------------- -->
     <section class="dsh-sec" id="dsh-sec-events">
       <div class="sechead"><h2>Buttons</h2><span>every control, by name</span></div>
       <p class="dsh-q">Every <code>data-fbt</code> button name the site records,
@@ -306,7 +396,7 @@
       </div>
     </section>
 
-    <!-- ---- 6 · Audio ------------------------------------------------------ -->
+    <!-- ---- 8 · Audio ------------------------------------------------------ -->
     <section class="dsh-sec" id="dsh-sec-audio">
       <div class="sechead"><h2>Audio</h2><span>who touches the sound</span></div>
       <p class="dsh-q">How often the ambient-sound control is used, by how many
@@ -325,7 +415,7 @@
       <p class="dsh-note" id="dsh-audio-note" hidden></p>
     </section>
 
-    <!-- ---- 7 · Errors ------------------------------------------------------ -->
+    <!-- ---- 9 · Errors ------------------------------------------------------ -->
     <section class="dsh-sec" id="dsh-sec-errors">
       <div class="sechead"><h2>Errors</h2><span>what broke, and where</span></div>
       <p class="dsh-q">Client-side errors readers hit, grouped by message and by

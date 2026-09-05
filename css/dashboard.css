@@ -182,6 +182,19 @@
   font-size:var(--fs-meta); color:var(--dimmer); font-weight:var(--w-label);
   font-variant-numeric:tabular-nums;
 }
+.dsh-range[hidden]{display:none}
+
+/* Which mode the admin switch is in, said in words under the bar it belongs
+   to. A shade darker than .dsh-range because it changes what every number on
+   the page MEANS, and the window only changes which ones. --dim is 6.8:1 on
+   the page ground; nothing here is colour-coded, because neither mode is a
+   fault and one of them is the default. */
+.dsh-mode{
+  display:block; margin:4px 2px 0; max-width:70ch;
+  font-size:var(--fs-meta); color:var(--dim); font-weight:var(--w-label);
+  line-height:var(--lh-body);
+}
+.dsh-mode[hidden]{display:none}
 
 /* ==========================================================================
    A section
@@ -334,6 +347,55 @@
   display:block; background:var(--accent-wash); border-radius:3px;
 }
 .dsh-cell-bar span{position:relative; z-index:1}
+
+/* ==========================================================================
+   Readers
+
+   One block per person rather than one long table, because the question is
+   "what did THIS reader do", and a flat table repeats an email address down
+   fourteen rows and answers it worse. The story rows inside each block are an
+   ordinary .dsh-tbl in an ordinary .dsh-scroll, so a phone scrolls them the
+   same way it scrolls every other table on this page.
+   ========================================================================== */
+
+.dsh-readers{display:grid; gap:12px; margin:0 0 4px}
+.dsh-readers[hidden]{display:none}
+
+.dsh-reader{
+  display:block; padding:0; overflow:hidden;
+  border-radius:14px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.dsh-reader[hidden]{display:none}
+
+.dsh-reader-head{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px;
+  padding:12px 15px 11px;
+  border-bottom:1px solid var(--hair);
+}
+.dsh-reader-head[hidden]{display:none}
+
+/* The email, and it is the heading of the block. Full weight and full
+   contrast: it is the thing the owner opened this panel to read. */
+.dsh-reader-who{
+  font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--ink);
+  word-break:break-all;
+}
+/* No account. Said as a state rather than dressed up as an identifier —
+   there is no id to show and none is invented. */
+.dsh-reader-who.dsh-anon{font-weight:var(--w-label); color:var(--dim)}
+
+.dsh-reader-meta{
+  font-size:var(--fs-meta); color:var(--dimmer); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
+
+/* Inside a block the table has no rounding of its own — the block carries it
+   — and no min-width fight with the block's padding. */
+.dsh-reader .dsh-scroll{border-radius:0; box-shadow:none; background:none}
+.dsh-reader .dsh-tbl{min-width:420px}
+.dsh-reader .dsh-tbl thead th{background:var(--raise)}
+.dsh-reader .dsh-tbl tbody tr:last-child td{border-bottom:0}
 
 /* ==========================================================================
    Charts

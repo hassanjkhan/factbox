@@ -19,9 +19,24 @@
    refusal — see deny() — so the two checks fail closed in the same
    direction and the server's is the one that counts.
 
-   The contract is ANALYTICS-API.md. Eleven named queries, a typed `params`
+   The contract is ANALYTICS-API.md. Fourteen named queries, a typed `params`
    object, and four error codes that do not grow. Nothing here sends a query
    language, a column name or a sort order; `params` contributes values only.
+
+   THE ADMIN SWITCH IS SERVER-SIDE. The control in the bar sends one boolean;
+   the function reads the admin uids out of Firestore and leaves them out of
+   the queries. This file never learns a uid, and it could not do the job if
+   it did — most of these figures are aggregates, and a person cannot be
+   subtracted from a median after the fact. Default ON: three accounts exist
+   on this project and all three are founders', so unfiltered every number
+   here is mostly their own testing.
+
+   ONE PANEL SHOWS PEOPLE, on purpose. `reader_activity` returns an email per
+   reader, joined server-side from FIREBASE AUTH — never from PostHog, which
+   has never been sent one — plus an ordinal assigned per response. No uid
+   reaches this file. Every other query was deliberately built so that it
+   could not return an identity, and ANALYTICS-API.md §6 records why this one
+   is the exception.
 
    ES5 ONLY. This site is read inside the Instagram and TikTok webviews and
    the rule is uniform: var, function, no arrow, no template literal, no
@@ -229,8 +244,32 @@
 
   var QUEUE = [], INFLIGHT = 0, MAXP = 2, GEN = 0;
 
+  /* The admin switch, read off the control rather than kept in a second
+     variable that can disagree with it. Default ON when the control is
+     missing entirely: the honest default is "numbers about strangers", and a
+     page that lost its own select must not quietly start reporting the
+     founders' testing as readership. */
+  function excludeAdmins() {
+    var sel = $("dsh-admins");
+    if (!sel) return true;
+    return String(sel.value || "1") !== "0";
+  }
+
+  /* EVERY panel sends it, and no panel has to remember to. Putting it here
+     rather than at fourteen call sites is what makes "it applies to every
+     number on the page" true rather than nearly true — including for a panel
+     added after this line was written.
+
+     Note what is sent: a flag. Not a uid, not a list. The function reads the
+     admin uids out of Firestore itself and builds the filter server-side —
+     this page never learns who they are, and could not filter correctly if
+     it did, because most of these numbers are aggregates and you cannot
+     subtract a person from a median. */
   function ask(name, params, done) {
-    QUEUE.push({ name: name, params: params || {}, done: done, gen: GEN });
+    var p = {}, k;
+    if (params) { for (k in params) { if (has(params, k)) p[k] = params[k]; } }
+    p.exclude_admins = excludeAdmins() ? 1 : 0;
+    QUEUE.push({ name: name, params: p, done: done, gen: GEN });
     pump();
   }
 
@@ -436,7 +475,10 @@
     control: "Button", presses: "Presses", page: "Page",
     day: "Day", metric: "Metric", value: "Value",
     message: "Message", source: "File", line: "Line", release: "Release",
-    errors: "Errors", last_seen: "Last seen"
+    errors: "Errors", last_seen: "Last active",
+    email: "Email", reader: "Reader", stories: "Stories",
+    furthest_card: "Furthest card", cards_seen: "Cards read",
+    story_last_seen: "Last read", arrivals: "Arrivals"
   };
 
   function labelOf(key, over) {
@@ -1016,6 +1058,9 @@
      it back after clamping, which is the only figure worth printing. */
   var rangeSaid = false, ASKED = null;
   function sayRange(res) {
+    /* Before the early returns below: the mode line is owed an update even
+       from an answer that carries no window. */
+    sayMode(res);
     if (rangeSaid || !res || !res.meta) return;
     var m = res.meta;
     if (!m.from || !m.to) return;                 /* subscription_totals has none */
@@ -1030,6 +1075,52 @@
              "so the start moved forward.";
     }
     setText("dsh-range", say);
+  }
+
+  /* WHICH MODE IS ON, in words, under the bar the switch is in.
+
+     This is not decoration. Every figure on this page means something
+     different depending on that switch, and a number whose meaning changed
+     without saying so is worse than no switch at all. So the line is written
+     before the first request goes out — from the control, so it is right even
+     if nothing ever answers — and rewritten from `meta.admin_filter` when the
+     server says what it actually did. The two can disagree exactly once: if
+     the switch is on and the function found no admin uid to exclude, the
+     server says `included` and this line says so. */
+  var modeSaid = false;
+
+  function modeGuess() {
+    return excludeAdmins()
+      ? "Admin accounts are excluded from every panel below — these are " +
+        "numbers about other people."
+      : "Admin accounts are included in every panel below — your own testing " +
+        "is in these numbers.";
+  }
+
+  function sayMode(res) {
+    var m = (res && res.meta) || {};
+    /* subscription_totals answers `not_applicable`; it must not be the thing
+       that decides what the line says about the other thirteen panels. */
+    if (!m.admin_filter || m.admin_filter === "not_applicable") return;
+    if (modeSaid) return;
+    modeSaid = true;
+
+    var n = typeof m.admin_accounts === "number" ? m.admin_accounts : null;
+    var who = n === null ? "" :
+      (fmtInt(n) + " admin account" + (n === 1 ? "" : "s"));
+
+    if (m.admin_filter === "excluded") {
+      setText("dsh-mode",
+        "Admin accounts are EXCLUDED" + (who ? " — " + who + " left out" : "") +
+        ". Every panel below is about other people. The subscriber tiles are " +
+        "Firestore counts of accounts rather than analytics, so the switch " +
+        "does not apply to them and they say so.");
+    } else {
+      setText("dsh-mode",
+        "Admin accounts are INCLUDED" + (who ? " — all " + who : "") +
+        ". Your own testing is in every number below. Switch back to " +
+        "“Excluded” for numbers about other people.");
+    }
   }
 
   function metaSay(res, noun) {
@@ -1062,7 +1153,7 @@
   }
 
   /* ==========================================================================
-     1 · Stories — story_performance
+     2 · Stories — story_performance
      ========================================================================== */
 
   var STORY_IDS = [];
@@ -1191,7 +1282,7 @@
   }
 
   /* ==========================================================================
-     2 · Inside a story — card_dropoff, and story_stop_points
+     3 · Inside a story — card_dropoff, and story_stop_points
      ========================================================================== */
 
   function fillStoryPicker() {
@@ -1369,70 +1460,32 @@
   }
 
   /* ==========================================================================
-     3 · The funnel — subscribe_funnel, subscription_totals, checkout_blocks
+     5 · Subscribers — subscription_totals, checkout_blocks
      ========================================================================== */
 
-  var FUNNEL_NOTE =
-    "Two things to know before reading these. First, this is step REACH, not " +
-    "a strict ordered funnel: each number is the distinct people who did that " +
-    "thing in the window, and it does not verify that the same person did step " +
-    "three after step two. For a path this linear the two agree closely, but " +
-    "they are not the same measurement. Second, the order is the product's, " +
-    "not the pitch's — on the live site the account has to exist before " +
-    "checkout, because the Stripe URL carries the Firebase uid, so “Created an " +
-    "account” comes before “Reached Stripe”. “Blocked before Stripe” is not a " +
-    "step at all; it is a leak, and the table under it says which one.";
-
   var SUBS_NOTE =
-    "The last funnel step is a browser event, and browser events lose 10–25% " +
-    "to ad blockers, closed tabs and dead connections. The subscriber count " +
-    "above is read straight from Firestore with a count() aggregation and is " +
-    "the number that is true. When the two disagree, this one wins.";
+    "This is a Firestore count() over the customers collection, not a browser " +
+    "event, and it is the number that is true: browser events lose 10–25% to " +
+    "ad blockers, closed tabs and dead connections, and somebody who pays on a " +
+    "phone and comes back on a laptop is missed by “Paid and came back with " +
+    "access” in the journey funnel above and is NOT missed here. When the two " +
+    "disagree, this one wins. THE ADMIN SWITCH DOES NOT APPLY TO THESE TILES, " +
+    "and that is not an oversight: they count ACCOUNTS rather than analytics " +
+    "events, so there is no event to leave out — and taking the founders out " +
+    "would stop this being the authoritative subscriber number, which is the " +
+    "only thing it is for. The admin accounts are counted in their own tile " +
+    "beside the others, so the subtraction is yours to do and is visibly not " +
+    "done for you.";
 
-  var FUNNEL_BODY = ["dsh-funnel-chartbox", "dsh-funnel-box"];
   var BLOCKS_BODY = ["dsh-blocks-box"];
 
+  /* THE SITE-WIDE FUNNEL IS NO LONGER DRAWN. `subscribe_funnel` used to be
+     charted here; the journey funnel at the top of the page now runs the same
+     path over the people who actually arrived, and two funnels on one page
+     with two different denominators is the failure this avoids. The query is
+     still allow-listed and still documented — nothing was removed from the
+     API, only from the page. */
   function runFunnel(win) {
-    stateOf("dsh-funnel-state", "Loading…", false);
-    bodyOf(FUNNEL_BODY, false);
-    hide("dsh-funnel-note");
-    dropChart("dsh-funnel-chart");
-
-    ask("subscribe_funnel", { from: win.from, to: win.to }, function (err, res, extra) {
-      if (err) { failed("dsh-funnel-state", FUNNEL_BODY, err, extra); return; }
-      sayRange(res);
-
-      var rows = (res && res.rows) || [], i;
-      if (!rows.length) {
-        stateOf("dsh-funnel-state", "Nobody entered the funnel in this window.", false);
-        return;
-      }
-
-      /* The blocked row rides along on the same query and is explicitly NOT
-         a step — drawing it as one would put a bar below "Subscribed" that
-         nothing flows into. */
-      var steps = [];
-      for (i = 0; i < rows.length; i++) {
-        if (String(rows[i].step) === "blocked") continue;
-        steps.push({
-          label: String(rows[i].label || rows[i].step || ("Step " + (i + 1))),
-          value: typeof rows[i].people === "number" ? rows[i].people : 0
-        });
-      }
-      chart("dsh-funnel-chart", function (w) {
-        return funnelSVG(w, steps, "The subscription funnel");
-      });
-      show("dsh-funnel-chartbox");
-      noteOn("dsh-funnel-note", FUNNEL_NOTE);
-
-      drawTable("dsh-funnel-tbl", rows, {
-        prefer: ["label", "people", "pct_of_first", "pct_of_previous", "step"],
-        nameCol: "label"
-      });
-      show("dsh-funnel-box");
-      stateOf("dsh-funnel-state", metaSay(res, "funnel rows"), false);
-    });
-
     stateOf("dsh-blocks-state", "Loading…", false);
     bodyOf(BLOCKS_BODY, false);
 
@@ -1475,7 +1528,7 @@
   }
 
   /* ==========================================================================
-     4 · Onboarding — onboarding_funnel
+     6 · Onboarding — onboarding_funnel
      ========================================================================== */
 
   var OB_BODY = ["dsh-ob-kpis", "dsh-ob-chartbox", "dsh-ob-box"];
@@ -1535,7 +1588,7 @@
   }
 
   /* ==========================================================================
-     5 · Buttons — button_presses; and one event by day — event_volume
+     7 · Buttons — button_presses; and one event by day — event_volume
      ========================================================================== */
 
   var EV_ROWS = [];
@@ -1683,7 +1736,7 @@
   }
 
   /* ==========================================================================
-     6 · Audio — audio_usage
+     8 · Audio — audio_usage
 
      The owner asked two questions here and the data answers one and a half.
      "Are people using the audio button" — yes, this counts that. "Then
@@ -1768,7 +1821,7 @@
   }
 
   /* ==========================================================================
-     7 · Errors — client_errors
+     9 · Errors — client_errors
      ========================================================================== */
 
   var ERR_NOTE =
@@ -1805,6 +1858,350 @@
       stateOf("dsh-err-state", metaSay(res, "distinct errors"), false);
       noteOn("dsh-err-note", ERR_NOTE);
     });
+  }
+
+  /* ==========================================================================
+     1 · The journey — firststory_funnel, firststory_cards
+
+     /firststory is the cold-arrival URL the launch videos point at. It serves
+     story 01, and so do /read?s=01 and /cleopatra, so nothing here filters on
+     the story id: the server filters on card_view.page, which is a NEW
+     property. Two consequences are printed rather than hidden — card views
+     recorded before it shipped cannot be attributed and are counted apart,
+     and zero rows before the client is pushed is the correct answer.
+     ========================================================================== */
+
+  /* Said under the funnel, every time, because three separate things about
+     these numbers are not what a funnel chart implies. */
+  /* Said under the funnel every time, because five separate things about
+     these bars are not what a funnel chart implies. */
+  var FS_NOTE =
+    "This is step REACH, not a strict ordered path. Each number is the " +
+    "distinct people who did that thing in the window, and it does not verify " +
+    "that the same person did step three after step two — someone can reach " +
+    "Stripe from a bookmark and be counted there without the steps above it. " +
+    "What this funnel does add is a COHORT: everyone counted here opened " +
+    "/firststory or read a card there in this window, so nobody who never saw " +
+    "that page is in any bar. One consequence to expect on screen: a lower " +
+    "bar can be TALLER than the one above it, because the sign-up page can be " +
+    "reached from the paywall part-way through the story rather than only " +
+    "from the end card. " +
+    "“Reached the end card” cannot be narrowed to the SIGN-UP ASK. " +
+    "/firststory builds its end card with cta “Sign up to read more”, which " +
+    "replaces the countdown with a sign-up control — but nothing records " +
+    "that: rec_view carries only the story and whether there is a next one, " +
+    "and first_completion_screen_viewed carries only the story and the " +
+    "minutes. So this step is “reached the end card of this story, having " +
+    "been on /firststory”, which is an attribution by person and is as close " +
+    "as the instrumentation allows. One property on those two events would " +
+    "close it; DASHBOARD.md asks for it. " +
+    "“Reached Stripe” is checkout_start: we SENT them. Whether Stripe's page " +
+    "rendered, or what they did on it, happens on somebody else's origin and " +
+    "no event of ours can see it. " +
+    "“Paid and came back with access” is a browser event and therefore " +
+    "undercounts — somebody who pays on a phone and comes back on a laptop is " +
+    "missed here. The subscriber tiles further down are a Firestore count and " +
+    "are the number that is true; when the two disagree, that one wins. " +
+    "“Came back on a later day” means active on more than one calendar day " +
+    "(UTC) inside this window — any page, not only the story. It is a " +
+    "definition rather than an event, which is why it is written here. " +
+    "“Signed in or created an account” is one step rather than two because " +
+    "the two cannot be split honestly: login.html fires signin_google for a " +
+    "new account and a returning one alike, so counting sign-ups on their own " +
+    "undercounts by every account made with Google. The email-only split is " +
+    "in the context rows, labelled as the undercount it is; ANALYTICS.md §4 " +
+    "item 2 has the one-line fix. " +
+    "The context rows below the funnel are not steps: “End card built” is the " +
+    "card being constructed, which happens a dozen cards early and is never a " +
+    "view.";
+
+  var FS_BODY = ["dsh-fs-kpis", "dsh-fs-chartbox", "dsh-fs-key", "dsh-fs-box"];
+  var FC_BODY = ["dsh-fc-chartbox", "dsh-fc-box"];
+
+  function runFirstStory(win) {
+    stateOf("dsh-fs-state", "Loading…", false);
+    bodyOf(FS_BODY, false);
+    hide("dsh-fs-note");
+    dropChart("dsh-fs-chart");
+
+    ask("firststory_funnel", { from: win.from, to: win.to }, function (err, res, extra) {
+      if (err) { failed("dsh-fs-state", FS_BODY, err, extra); return; }
+      sayRange(res);
+
+      var rows = (res && res.rows) || [], m = (res && res.meta) || {}, i;
+      var cohort = typeof m.cohort === "number" ? m.cohort : 0;
+
+      if (!cohort) {
+        stateOf("dsh-fs-state",
+          "Nobody opened /firststory in this window. If the launch has not " +
+          "gone out yet that is the right answer; if it has, widen the range.",
+          false);
+        noteOn("dsh-fs-note", FS_NOTE + unattributedSay(m));
+        return;
+      }
+
+      var kh = "";
+      kh += kpi(fmtInt(cohort), "People on /firststory");
+      if (typeof m.arrivals === "number") kh += kpi(fmtInt(m.arrivals), "Page opens there");
+      if (typeof m.deepest_card === "number" && m.deepest_card) {
+        kh += kpi(fmtInt(m.deepest_card), "Deepest card anyone reached");
+      }
+      for (i = 0; i < rows.length; i++) {
+        if (String(rows[i].step) === "reached_the_end") {
+          kh += kpi(fmtInt(rows[i].people) + " · " + fmtPct(rows[i].pct_of_first, "pct"),
+                    "Reached the end card");
+        }
+        if (String(rows[i].step) === "signed_in") {
+          kh += kpi(fmtInt(rows[i].people) + " · " + fmtPct(rows[i].pct_of_first, "pct"),
+                    "Signed in or signed up");
+        }
+        if (String(rows[i].step) === "paid") {
+          kh += kpi(fmtInt(rows[i].people) + " · " + fmtPct(rows[i].pct_of_first, "pct"),
+                    "Paid and kept reading");
+        }
+        if (String(rows[i].step) === "came_back_later") {
+          kh += kpi(fmtInt(rows[i].people) + " · " + fmtPct(rows[i].pct_of_first, "pct"),
+                    "Came back on a later day");
+        }
+      }
+      setKpis("dsh-fs-kpis", kh);
+
+      /* pct_of_previous === null is the row saying "I am not a step". The
+         same signal the subscribe funnel's `blocked` row carries, read
+         generically so a future context row needs no change here. */
+      var steps = [];
+      for (i = 0; i < rows.length; i++) {
+        if (rows[i].pct_of_previous === null) continue;
+        steps.push({
+          label: String(rows[i].label || rows[i].step || ("Step " + (i + 1))),
+          value: typeof rows[i].people === "number" ? rows[i].people : 0
+        });
+      }
+      if (steps.length) {
+        chart("dsh-fs-chart", function (w) {
+          return funnelSVG(w, steps, "From /firststory to paid, and back again");
+        });
+        show("dsh-fs-chartbox");
+        var key = $("dsh-fs-key");
+        if (key) {
+          key.innerHTML = "<span><i class=\"dsh-key-fill\"></i>People from the " +
+            esc(fmtInt(cohort)) + " who were on /firststory in this window. " +
+            "Rows below the funnel are context, not steps.</span>";
+          key.hidden = false;
+        }
+      }
+
+      drawTable("dsh-fs-tbl", rows, {
+        prefer: ["label", "people", "pct_of_first", "pct_of_previous", "step"],
+        nameCol: "label"
+      });
+      show("dsh-fs-box");
+      stateOf("dsh-fs-state", metaSay(res, "funnel and context rows") +
+        (m.truncated ? " The per-person scan hit its cap, so this is a sample " +
+                       "of the window rather than all of it — narrow the dates."
+                     : ""), false);
+      noteOn("dsh-fs-note", FS_NOTE + unattributedSay(m));
+    });
+
+    runFirstCards(win);
+  }
+
+  /* The card views that name no address: recorded before card_view carried a
+     page. Not dropped and not counted as /firststory — said out loud. */
+  function unattributedSay(m) {
+    var un = typeof m.card_views_unattributed === "number" ? m.card_views_unattributed : 0;
+    if (!un) return "";
+    return " Separately: " + fmtInt(un) + " card view" + (un === 1 ? "" : "s") +
+           " of this story in this window name no address at all. Those were " +
+           "recorded before card_view started carrying the page, cannot be " +
+           "backfilled, and are in none of the numbers above — not counted as " +
+           "/firststory and not thrown away.";
+  }
+
+  function runFirstCards(win) {
+    stateOf("dsh-fc-state", "Loading…", false);
+    bodyOf(FC_BODY, false);
+    hide("dsh-fc-note");
+    dropChart("dsh-fc-chart");
+
+    ask("firststory_cards", { from: win.from, to: win.to, limit: 200 }, function (err, res, extra) {
+      if (err) { failed("dsh-fc-state", FC_BODY, err, extra); return; }
+      sayRange(res);
+
+      var rows = (res && res.rows) || [], i;
+      if (!rows.length) {
+        stateOf("dsh-fc-state",
+          "No card view on /firststory in this window. Card views only started " +
+          "naming which page they came from recently, so a window that ends " +
+          "before that shipped has none of them by definition — it is not a " +
+          "broken query.", false);
+        return;
+      }
+      rows.sort(function (a, b) { return cmpVals(a.card, b.card); });
+
+      var items = [];
+      for (i = 0; i < rows.length; i++) {
+        items.push({
+          label: "Card " + String(rows[i].card),
+          value: typeof rows[i].people === "number" ? rows[i].people : 0,
+          /* Two figures, not three. barsSVG caps its value column at 210px
+             and a third clause ran past the edge of the box — the fall-off
+             is in the table under the chart and in the funnel above it. */
+          right: fmtInt(rows[i].people) + " · " +
+                 (typeof rows[i].reach_pct === "number"
+                  ? fmtPct(rows[i].reach_pct, "pct") + " still here"
+                  : "people")
+        });
+      }
+      chart("dsh-fc-chart", function (w) {
+        return barsSVG(w, items, "People who reached each card of /firststory");
+      });
+      show("dsh-fc-chartbox");
+
+      drawTable("dsh-fc-tbl", rows, {
+        prefer: ["card", "people", "views", "median_dwell_s", "reach_pct", "dropoff_pct"],
+        sort: "card", dir: 1
+      });
+      show("dsh-fc-box");
+      stateOf("dsh-fc-state", metaSay(res, "cards"), false);
+      noteOn("dsh-fc-note",
+        "People, not views: a reader who scrolled back up and past a card " +
+        "again is one person on it. A card is only counted once it has been " +
+        "on screen for 900ms, so this is attention rather than scroll " +
+        "position. “Still here” is against card 1 of this page, so the first " +
+        "bar is always 100%.");
+    });
+  }
+
+  /* ==========================================================================
+     4 · Readers — reader_activity
+
+     THE ONE PANEL THAT SHOWS PEOPLE. What arrives here is an email, an
+     ordinal the function assigned for this response only, and behaviour. No
+     uid and no person id: the join from uid to email happens server-side out
+     of Firebase Auth, and PostHog has never held an email.
+
+     One block per reader rather than one flat table, because "what did this
+     person read" is the question, and a table repeating an address down
+     fourteen rows answers it worse.
+     ========================================================================== */
+
+  var RD_NOTE =
+    "This is the only panel on this page that shows a person. The email comes " +
+    "from Firebase Auth, joined to the analytics by the Firebase user id the " +
+    "site attaches once someone signs in — it is not in PostHog and is never " +
+    "sent there. A reader with no account has no email and is shown as " +
+    "anonymous with their reading intact; nothing is invented to fill the " +
+    "column. “Furthest card” is the deepest card reached in that story, and " +
+    "“Cards read” counts only cards that were on screen for 900ms or more.";
+
+  var RD_BODY = ["dsh-rd-kpis", "dsh-rd-list"];
+
+  /* "2026-09-05 09:30:00" and "2026-09-05T09:30:00Z" both become
+     "2026-09-05 09:30". Seconds are noise in a list read by a human. */
+  function shortWhen(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    var t = String(v).replace("T", " ");
+    return t.length >= 16 ? t.slice(0, 16) : t;
+  }
+
+  function runReaders(win) {
+    stateOf("dsh-rd-state", "Loading…", false);
+    bodyOf(RD_BODY, false);
+    hide("dsh-rd-note");
+
+    ask("reader_activity", { from: win.from, to: win.to, limit: 200 }, function (err, res, extra) {
+      if (err) { failed("dsh-rd-state", RD_BODY, err, extra); return; }
+      sayRange(res);
+
+      var rows = (res && res.rows) || [], m = (res && res.meta) || {};
+      if (!rows.length) {
+        stateOf("dsh-rd-state", excludeAdmins()
+          ? "Nobody outside the admin accounts opened a story in this window. " +
+            "Switch “Admin accounts” to Included above to see your own reading."
+          : "Nobody opened a story in this window.", false);
+        noteOn("dsh-rd-note", RD_NOTE);
+        return;
+      }
+
+      var kh = "";
+      if (typeof m.readers === "number") kh += kpi(fmtInt(m.readers), "Readers");
+      if (typeof m.with_email === "number") kh += kpi(fmtInt(m.with_email), "With an account");
+      if (typeof m.anonymous === "number") kh += kpi(fmtInt(m.anonymous), "Anonymous");
+      kh += kpi(fmtInt(rows.length), "Reader–story pairs");
+      setKpis("dsh-rd-kpis", kh);
+
+      paintReaders(rows);
+      show("dsh-rd-list");
+
+      stateOf("dsh-rd-state", metaSay(res, "reader–story rows") +
+        (m.truncated
+          ? " That is the cap: there were more, and these are the most recently " +
+            "active. Narrow the date range to see a complete window."
+          : ""), false);
+      noteOn("dsh-rd-note", RD_NOTE);
+    });
+  }
+
+  function paintReaders(rows) {
+    var list = $("dsh-rd-list");
+    if (!list) return;
+
+    var order = [], by = {}, i, k, g;
+    for (i = 0; i < rows.length; i++) {
+      k = String(rows[i].reader === null || rows[i].reader === undefined ? "?" : rows[i].reader);
+      if (!has(by, k)) {
+        by[k] = { key: k, email: rows[i].email || null, last: rows[i].last_seen || null, rows: [] };
+        order.push(by[k]);
+      }
+      /* The story name comes from the public catalogue, exactly as it does in
+         section 2 — the function has no catalogue and should not grow one. */
+      var nm = storyName(rows[i].story);
+      if (nm) rows[i].title = nm;
+      by[k].rows.push(rows[i]);
+    }
+
+    var h = "";
+    for (i = 0; i < order.length; i++) {
+      g = order[i];
+      var n = g.rows.length;
+      h += "<div class=\"dsh-reader\">" +
+           "<div class=\"dsh-reader-head\">" +
+           "<span class=\"dsh-reader-who" + (g.email ? "" : " dsh-anon") + "\">" +
+             esc(g.email ? g.email : "Anonymous — no account") + "</span>" +
+           "<span class=\"dsh-reader-meta\">" +
+             esc(fmtInt(n) + " " + (n === 1 ? "story" : "stories") +
+                 " · last active " + shortWhen(g.last)) + "</span>" +
+           "</div>" +
+           "<div class=\"dsh-scroll\"><table class=\"dsh-tbl\" id=\"dsh-rd-t" + i + "\"></table></div>" +
+           "</div>";
+    }
+    list.innerHTML = h;
+
+    /* The tables are drawn after the markup is in the document, because
+       drawTable looks its element up by id. */
+    for (i = 0; i < order.length; i++) {
+      var hasTitle = false;
+      for (k = 0; k < order[i].rows.length; k++) {
+        if (order[i].rows[k].title) { hasTitle = true; break; }
+      }
+      drawTable("dsh-rd-t" + i, order[i].rows, {
+        prefer: ["title", "story", "furthest_card", "cards_seen", "opens",
+                 "finished", "story_last_seen"],
+        /* Everything that belongs to the reader rather than to the story is
+           already in the heading above the table. */
+        omit: ["reader", "email", "last_seen", "stories"].concat(hasTitle ? ["story"] : []),
+        sort: "story_last_seen", dir: -1,
+        nameCol: hasTitle ? "title" : "story",
+        subKey: hasTitle ? "story" : null,
+        /* LABELS.finished is "Finished the flow", which is the onboarding
+           funnel's meaning of the word and the wrong one here. */
+        labels: { title: "Story", story: "Story", finished: "Finished it" },
+        cellFmt: function (col, val) {
+          return col === "story_last_seen" ? shortWhen(val) : null;
+        }
+      });
+    }
   }
 
   /* ==========================================================================
@@ -1878,6 +2275,12 @@
     QUEUE.length = 0;
     rangeSaid = false;
     notConfSaid = false;
+    modeSaid = false;
+    /* From the control, before anything is asked. If every request fails the
+       line still says which mode was requested rather than going blank or,
+       worse, keeping the previous mode's sentence over the new mode's
+       (absent) numbers. */
+    setText("dsh-mode", modeGuess());
     hide("dsh-top-note");
     var win = currentWindow();
     ASKED = win;
@@ -1895,7 +2298,11 @@
 
     /* Ordered by what the owner reads first. The queue runs two at a time, so
        this order is the order the page fills in. */
+    /* The launch panel first: it is the thing being watched hour by hour, and
+       the queue fills the page in this order. */
+    runFirstStory(win);
     runStories(win);
+    runReaders(win);
     runFunnel(win);
     runSubs();
     runOnboarding(win);
@@ -1939,6 +2346,12 @@
     }
     var preset = $("dsh-preset");
     if (preset) { preset.onchange = function () { syncPickers(); runAll(); }; }
+
+    /* The switch re-runs everything, because it changes what every panel
+       counts. There is no client-side filtering to redo and nothing cached
+       to re-slice: the whole page is asked again, server-side. */
+    var admins = $("dsh-admins");
+    if (admins) { admins.onchange = function () { runAll(); }; }
 
     /* Typing a date IS choosing a custom range; saying so beats leaving the
        select claiming "Last 14 days" over two dates that are not that. */

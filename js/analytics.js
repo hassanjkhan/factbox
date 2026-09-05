@@ -625,6 +625,21 @@
     /* Under a second is a swipe passing through, not reading. */
     if (ms >= 900 && ms < 1000 * 60 * 30) {
       capture("card_view", {
+        /* WHICH URL, not just which story.
+
+           The Cleopatra story is served at /read?s=01, /cleopatra AND
+           /firststory — three addresses, one story id. Without this, a card
+           view from the cold-arrival page that the videos point at is
+           indistinguishable from one by a reader browsing the season, and
+           "how far did people get on /firststory" cannot be answered at all.
+
+           PAGE is already computed for page_open, ui_click, access_gained and
+           client_error, so this is one existing property on an existing event:
+           no new event name, and GA4's name budget is untouched.
+
+           It cannot be backfilled. Card views recorded before this shipped
+           carry no page and must be read as "the story, at whichever URL". */
+        page: PAGE,
         story: current.getAttribute("data-stack") || current.getAttribute("data-story") || "01",
         card: Number(current.getAttribute("data-card") || current.dataset && current.dataset.i || 0),
         beat: current.getAttribute("data-beat") || "",

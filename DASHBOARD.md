@@ -58,25 +58,101 @@ routes.
 
 ## 2 · What each section answers, and what it calls
 
-Eleven queries. A full render issues at most eleven requests, **two at a time**
-through a queue in `js/dashboard.js` — `ANALYTICS-API.md` §5 caps an admin at
-thirty a minute and explicitly asks for small batches rather than eleven at
-once. Pressing Refresh mid-render bumps a generation counter and abandons the
-rest of the old batch, so two renders cannot paint over each other.
+Fourteen queries exist; this page draws **thirteen** of them. A full render
+issues thirteen requests — fifteen with a story picked — **two at a time**
+through a queue in `js/dashboard.js`. `ANALYTICS-API.md` §5 caps an admin at
+sixty a minute (raised from thirty when the panel count grew) and explicitly
+asks for small batches. Pressing Refresh mid-render bumps a generation counter
+and abandons the rest of the old batch, so two renders cannot paint over each
+other.
 
 | § | Section | Question | Query |
 |---|---|---|---|
-| 1 | **Stories** | which stories are doing well, which are not | `story_performance` |
-| 2 | **Inside a story** | story name, card number, dwell, how far they get | `card_dropoff` |
-| 2b | **Where they stop** | of those who stopped, which card was the last | `story_stop_points` |
-| 3 | **The funnel** | locked story → gate → sign-in → account → Stripe → back → subscribed | `subscribe_funnel` |
-| 3 | *(the true number)* | how many subscribers there actually are | `subscription_totals` |
-| 3b | **Blocked before Stripe** | why a checkout never started | `checkout_blocks` |
-| 4 | **Onboarding** | how far through `/join` people get, how many finish | `onboarding_funnel` |
-| 5 | **Buttons** | every `data-fbt` control, searchable, with counts | `button_presses` |
-| 5b | **One event, day by day** | is a given event going up or down | `event_volume` |
-| 6 | **Audio** | who touches the sound, and how often | `audio_usage` |
-| 7 | **Errors** | what broke, where, on which release | `client_errors` |
+| 1 | **The journey** | /firststory → read → end card → sign-up → Stripe → paid → back a day later | `firststory_funnel` |
+| 1b | **How far they scrolled** | how many people reached each card of /firststory | `firststory_cards` |
+| 2 | **Stories** | which stories are doing well, which are not | `story_performance` |
+| 3 | **Inside a story** | story name, card number, dwell, how far they get | `card_dropoff` |
+| 3b | **Where they stop** | of those who stopped, which card was the last | `story_stop_points` |
+| 4 | **Readers** | who read what, how far, and their email | `reader_activity` |
+| 5 | **Subscribers** | how many subscribers there actually are | `subscription_totals` |
+| 5b | **Blocked before Stripe** | why a checkout never started | `checkout_blocks` |
+| 6 | **Onboarding** | how far through `/join` people get, how many finish | `onboarding_funnel` |
+| 7 | **Buttons** | every `data-fbt` control, searchable, with counts | `button_presses` |
+| 7b | **One event, day by day** | is a given event going up or down | `event_volume` |
+| 8 | **Audio** | who touches the sound, and how often | `audio_usage` |
+| 9 | **Errors** | what broke, where, on which release | `client_errors` |
+| — | *(not drawn)* | the site-wide subscribe path | `subscribe_funnel` |
+
+### The one panel that was taken away
+
+`subscribe_funnel` used to be **§3 The funnel**, charting the site-wide path:
+locked story → gate → sign-in → account → Stripe → back → subscribed. It is no
+longer on the page.
+
+§1 now runs the same path over the people who actually arrived, and two funnels
+on one page over two different populations is a specific failure, not a
+richness: the reader has to work out which denominator each bar is against
+before they can read either, and in practice they read whichever is nearer. One
+funnel that says what it counts beats two that disagree.
+
+**It is off the page, not out of the API.** `subscribe_funnel` is still
+allow-listed, still documented in `ANALYTICS-API.md` §3, and still one `curl`
+away. Putting the panel back is restoring six elements in
+`admin/dashboard.html` and the `ask("subscribe_funnel", …)` block in
+`js/dashboard.js`; both are named in a comment where they used to be.
+
+### The admin switch
+
+One control, beside the dates, applying to **every** panel — a select rather
+than a checkbox so that both states are written out in words. It sends one
+boolean, `exclude_admins`, injected into every request by `ask()` rather than
+by fourteen call sites, so a panel added tomorrow inherits it.
+
+**It defaults to on.** Three accounts exist on this project and all three are
+the founders'. Unfiltered, every figure on this page is mostly their own
+testing, which is worse than no figure at the moment they are trying to read a
+launch. The honest default is "numbers about strangers".
+
+**The filtering is server-side and there is no browser half of it.** The
+function reads the admin uids out of `customers` and leaves those `distinct_id`s
+out of the queries. This page never learns a uid — and could not do the job if
+it did, because most of these figures are aggregates and a person cannot be
+subtracted from a median after the fact.
+
+**The mode is written on screen, always.** `#dsh-mode` under the control bar
+carries the requested mode before the first answer arrives and the server's own
+`meta.admin_filter` afterwards. A number whose meaning changed without saying so
+is worse than no switch. The line also says the count of admin accounts, which
+is a number; the uids are not in any response.
+
+**`subscription_totals` is the exception, and it says so.** It is a Firestore
+`count()` over accounts rather than a count of events, so there is nothing to
+leave out, and taking the founders out would stop it being the authoritative
+subscriber number — the only thing it is for. `meta.admin_filter` comes back
+`not_applicable`, the tiles carry a fourth tile counting the admin accounts, and
+the note under them says all of this rather than letting the switch appear to
+have been honoured.
+
+### The one panel that shows people
+
+**§4 Readers is the only panel on this page that returns an identity**, and
+every other query was deliberately built so that it could not. It is the
+deliberate exception recorded in `ANALYTICS-API.md` §6: with a handful of
+readers, aggregate percentages tell the owner nothing and a list of actual
+people tells them everything.
+
+- The email is joined **server-side, from Firebase Auth**, to the Firebase uid
+  PostHog holds because `identify(uid)` put it there. **PostHog has never been
+  sent an email and must not be.**
+- No uid reaches this page. Rows carry an ordinal the function assigns per
+  response, which is what lets the page group a reader's stories without being
+  told who they are.
+- A reader with no account is drawn as *"Anonymous — no account"* with their
+  reading intact. Nothing is invented to fill the column.
+- It respects the admin switch like everything else: with the switch on, the
+  founders are not in their own reader list.
+- One block per reader rather than one flat table, because a table repeating an
+  address down fourteen rows answers "what did this person read" worse.
 
 ### The date range
 
@@ -175,7 +251,7 @@ way to turn one failure into a lockout; the Refresh button is the retry.
 
 Until someone sets `POSTHOG_API_KEY` and `POSTHOG_PROJECT_ID` in Secret Manager
 and redeploys, every PostHog-backed query answers `502 upstream
-not_configured`. That is nine of the eleven panels.
+not_configured`. That is twelve of the thirteen panels this page draws.
 
 The page treats that as a state of the world rather than a fault:
 
@@ -209,28 +285,63 @@ paint function: `data-fbt="sound_on"` / `data-fbt="sound_off"` mirroring
 turned on", and the caveat is printed under the section. `js/audio-reader.js` is
 not one of my files; this is a request, not a change.
 
-**2. The funnel is step *reach*, not a strict ordered funnel.** Each number is
-the distinct people who did that thing in the window. It does not verify that
-the same person did step three after step two — someone arriving at Stripe from
-a bookmark counts at that step without the ones before it. A true sequential
-funnel needs a person-level join. For a path this linear the two agree closely,
-but they are not the same measurement, and **the page says so beside the
+**2. The journey funnel is step *reach* inside a cohort, not a strict ordered
+path.** The cohort — everyone who opened `/firststory` or read a card there —
+does stop a stranger appearing at "Reached Stripe" with nothing above them. It
+does **not** verify that the same person did step three after step two, and one
+consequence is visible on the chart: a lower bar can be **taller** than the one
+above it, because the sign-up page is reachable from the paywall part-way
+through the story and not only from the end card. **The page says so beside the
 chart** rather than in a document nobody opens.
 
-**3. The funnel's step order is the product's, not the intuitive one.** The
-owner described *"signed in → reached Stripe → came back → account created"*. On
-the live site the account has to exist **before** checkout, because
-`client_reference_id` on the Stripe URL is the Firebase uid and a checkout that
-cannot be attributed does not start — that is what `checkout_blocked` with
-`why: "no_uid"` is. So "Created an account" precedes "Reached Stripe" and the
-chart is **not** reordered to look more natural. This is also said on screen.
+**3. "Saw the sign-up ask" cannot be separated from "saw the end card".** This
+is the one step in the owner's list that the logging cannot answer, and it is
+worth being exact about why. `/firststory` builds its end card with
+`cta: "Sign up to read more"` (`firststory.html` line 14), and `js/recommend.js`
+uses that string to suppress the auto-advance countdown and put a sign-up
+control where "Start now" would be. **Nothing sends it.** `rec_view` carries
+`stack` and `n` — and fires when the card is *built*, a dozen cards before
+anyone reaches it. `first_completion_screen_viewed` fires on `reveal()`, which
+is the card actually being seen, and carries `stack` and `mins`. Neither carries
+the cta, and neither carries the page.
 
-**4. "The number of subscribers" has two answers and one of them is better.**
-The last funnel step is a browser event, and browser events lose 10–25% to ad
-blockers, closed tabs and dead connections. `subscription_totals` is a Firestore
-`count()` over `customers` and is the number that is true. Both are on the page,
-the true one is labelled as such, and the note says which wins when they
-disagree.
+So the step is drawn as *"Reached the end card"* and labelled as an attribution
+**by person**: reached the end card of story 01, having been on `/firststory` in
+this window. That is as close as the instrumentation allows and the page says
+which of the two it is. **The fix is one property** — see §9.
+
+**4. Stripe's own page is invisible.** "Reached Stripe" is `checkout_start`: we
+sent them. Whether the page rendered, and what they did on it, is on another
+origin. `ANALYTICS.md` §4 item 1 has the server-side answer, which is joining
+the Stripe webhook record to `checkout_start` by the uid `attributed` already
+carries.
+
+**5. A Google sign-up cannot be told from a Google sign-in.** `login.html` fires
+`signin_google` for both (`ANALYTICS.md` §4 item 2), so the journey funnel has
+**one** step, "Signed in or created an account", rather than two that would both
+be wrong. The email-only sign-up count is a context row labelled as the
+undercount it is.
+
+**6. Card views before `page` shipped cannot be attributed.** `card_view` now
+carries the page, which is what makes "how far did people get on `/firststory`"
+answerable at all — story `01` is served at three addresses. It cannot be
+backfilled. Those views are counted as `card_views_unattributed` and printed
+under the funnel as their own sentence: not folded into `/firststory`, not
+thrown away.
+
+**7. "The number of subscribers" has two answers and one of them is better.**
+"Paid and came back with access" is a browser event, and browser events lose
+10–25% to ad blockers, closed tabs and dead connections — and somebody who pays
+on a phone and comes back on a laptop is missed by it outright.
+`subscription_totals` is a Firestore `count()` over `customers` and is the
+number that is true. Both are on the page, the true one is labelled as such, and
+the note says which wins when they disagree.
+
+**8. "Came back later" is a definition, not an event.** There is no return
+event, so retention is computed: active on **more than one calendar day (UTC)**
+inside the window, on any page. That rule is printed under the chart, because a
+retention number whose rule is not on screen is a number nobody can argue
+with.
 
 Two smaller ones worth knowing:
 
@@ -322,6 +433,31 @@ column-flex field stretching the story picker to 220px tall, two different
 columns both headed "Finished", a duplicated story-id column, and SVG `<text>`
 collapsing the whitespace between two figures so they ran together.
 
+**The admin switch, the readers panel and the journey funnel were driven the
+same way**, with one addition that matters: the stub reads
+`params.exclude_admins` out of each request body and answers with a **different
+fixture set**, so "the numbers change when the switch moves" is asserted rather
+than claimed. With the switch on the fixture reports 420 people on
+`/firststory` and three reader blocks; flipped off, 672 and five, with
+`hassan@getdonny.com` and `shrey@factbox.app` at the top of the list. Also
+asserted every run:
+
+- **every request carries `exclude_admins`** — the harness reads each POST body,
+  so a panel that forgot to send it fails the run rather than quietly reporting
+  unfiltered numbers;
+- **an email address appears nowhere on the page outside `#dsh-sec-readers`** —
+  every leaf element is scanned for something email-shaped and the section it
+  sits in is recorded;
+- the anonymous reader renders with their reading intact, the row cap prints
+  *"That is the cap: there were more…"*, and the unattributed card views print
+  their own sentence under the funnel.
+
+Two things only the screenshots caught, both fixed: the step label *"Reached
+Stripe — we sent them, not that it rendered"* ran past the end of its bar
+(`barsSVG` caps the value column at 210px), and the readers table headed its
+boolean column *"Finished the flow"*, which is the onboarding funnel's meaning
+of the word and the wrong one there.
+
 Also green: `check-structure.py`, `check-regressions.js`, `check-analytics.js`,
 `check-account-cache.js`, and `check-page.js` against both
 `admin/dashboard` and `admin/dashboard.html`. Note that jsdom does not execute
@@ -332,12 +468,24 @@ lands on the no-FBU panel; the state verification is the Chrome harness above.
 
 ## 9 · Asks
 
+- **`page` and `cta` on the two end-card events** in `js/recommend.js` — §5.3.
+  `track("rec_view", { stack, n })` and
+  `track("first_completion_screen_viewed", { stack, mins })` both need the page
+  they fired on, and the completion one needs whether `opts.cta` was set. Two
+  properties on two existing events, no new event name, and "how many saw the
+  sign-up ask" stops being an attribution by person and becomes a count. That
+  file is not one of mine; this is a request rather than a change.
+- **`isNewUser` on the Google sign-in** — §5.5. `js/auth.js`'s `signInGoogle()`
+  result carries it, so `FB.track(isNew ? "signup_google" : "signin_google")` is
+  one line and splits a step this page currently has to keep merged.
+  `ANALYTICS.md` §4 item 2 has already asked for it.
 - **A link from `/settings`.** There is no route to `/admin/dashboard` from
   anywhere in the site — it is reachable only by typing it. A line in
   `settings.html`, shown behind `FBU.admin()`, would fix that. `settings.html`
   is not one of my files, so this is a request rather than a change.
 - **`data-fbt="sound_on"` / `"sound_off"` on the ambient-sound button** in
-  `js/audio-reader.js` — §5.1. One attribute, and the audio section answers the
+  `js/audio-reader.js` — resolved; kept here because the historical presses
+  cannot be split. One attribute, and the audio section answers the
   whole question the owner asked instead of half of it.
 - **`POSTHOG_API_KEY` and `POSTHOG_PROJECT_ID`** in Secret Manager, then
   redeploy `insights`. Until then the page is honest and mostly empty.

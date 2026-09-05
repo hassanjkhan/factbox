@@ -4,7 +4,9 @@
 under `admin/` is built against this file and nothing else.
 
 One endpoint, one POST, a **named** query and a typed `params` object. The browser never
-sends a query language, never sees a PostHog key, and never learns a reader's identity.
+sends a query language and never sees a PostHog key. Thirteen of the fourteen queries
+cannot return an identity; the fourteenth returns an email on purpose, and §6 says why
+and how narrowly.
 
 ---
 
@@ -14,9 +16,18 @@ The data already exists. `js/analytics.js` has been sending every meaningful eve
 PostHog (through the Cloudflare proxy at `/ink`) and to GA4 for weeks. Building a second
 pipeline into Firestore would duplicate it badly, cost a write on every card view, and
 split the truth across two stores. So this is not a pipeline. It is a **door**: a Cloud
-Function that proves the caller is an admin, picks one of eleven queries the function
+Function that proves the caller is an admin, picks one of fourteen queries the function
 itself wrote, runs it against PostHog with the key held in Secret Manager, and hands back
 plain rows.
+
+Two things run across all of them and are not per-query features:
+
+- **`exclude_admins`, and it defaults to `true`.** Three accounts exist on this project
+  and all three are the founders'. Unfiltered, every figure is mostly their own testing.
+  The function reads the admin uids from `customers` itself and leaves those
+  `distinct_id`s out of the query; the uids never reach the browser. `meta.admin_filter`
+  reports what it actually did.
+- **One query returns personal data.** `reader_activity`, deliberately. §6.
 
 ---
 
@@ -70,8 +81,10 @@ Request bodies over 8 KB are refused before parsing.
     "days": 14,
     "rows": 2,
     "limit": 50,
-    "params": { "story": "26", "days": 14 },
+    "params": { "story": "26", "days": 14, "exclude_admins": true },
     "source": "posthog",
+    "admin_filter": "excluded",
+    "admin_accounts": 3,
     "took_ms": 412
   }
 }
@@ -83,6 +96,25 @@ Values are strings, finite numbers, or `null`. Never `undefined`, never an objec
 without guessing what the server did with what it sent.
 
 `meta.source` is `"posthog"`, or `"firestore"` for `subscription_totals`.
+
+**`meta.admin_filter`** is what the switch actually did, in three values, and it is
+what the UI must print rather than echoing the flag it sent:
+
+| value | means |
+|---|---|
+| `excluded` | admin `distinct_id`s were left out of this query |
+| `included` | they were not — either the switch was off, or no admin uid was found |
+| `not_applicable` | `subscription_totals`: a Firestore count of accounts, with no event to leave out |
+
+**`meta.admin_accounts`** is a **count**, never a list. The uids are not in any response
+and must never be: filtering in a browser would ship them and would get the arithmetic
+wrong on every aggregate, which is all of them.
+
+Three queries add keys of their own — `reader_activity` adds `readers`, `with_email`,
+`anonymous` and `truncated`; `firststory_funnel` adds `cohort`, `arrivals`,
+`card_views_here`, `card_views_story`, `card_views_unattributed`, `deepest_card` and
+`truncated`. They are documented with those queries below. A UI may read them; nothing
+should branch on their absence.
 
 **Failure — always this shape.**
 
@@ -112,7 +144,7 @@ works; there is simply nothing upstream to ask.
 
 ## 3. The queries
 
-Eleven names. The function builds every one of them; nothing you send becomes SQL.
+Fourteen names. The function builds every one of them; nothing you send becomes SQL.
 
 ### Accepted short names
 
@@ -310,10 +342,139 @@ The allowlist is every event name the site currently sends, held in `functions/i
 as `KNOWN_EVENTS`. A name outside it is `bad_query`, not a query for a made-up event. When
 `js/analytics.js` gains an event, add it there.
 
+### `reader_activity` — who read what, and how far
+
+**This is the one query that returns personal data, and it is deliberate. Read §6.**
+
+Params: `days`, `limit`, `exclude_admins`. `limit` here is clamped **1–400** and defaults
+to 200, because a row is a (reader, story) pair rather than a person; every other query
+keeps the published 1–200.
+
+One row per reader per story, most recently active reader first.
+
+| column | what it is |
+|---|---|
+| `reader` | an **ordinal** — `"1"`, `"2"`, `"3"` — assigned by the function per response, most recent first. It is not stable between two responses and is derived from nothing, so it cannot follow anyone. It exists so a UI can group a reader's story rows. |
+| `email` | the account's email address, **or `null`** for a reader with no account |
+| `last_seen` | when that reader was last active anywhere in the window |
+| `stories` | how many stories this reader has rows for |
+| `story` | the story id. **No title** — the function has no catalogue and should not grow one; the dashboard reads `/data/index.json`, which it already loads for the story picker. |
+| `opens` | `stack_open` count for that reader and story |
+| `cards_seen` | distinct cards with a `card_view` — the **maximum** across the reader's identities, never a sum, because a card seen under two ids is one card |
+| `furthest_card` | the deepest card number reached |
+| `finished` | boolean: a `stack_complete` was recorded |
+| `story_last_seen` | last activity on that story |
+
+**Where the email comes from.** Not PostHog. PostHog holds a `distinct_id`, which is the
+Firebase uid once `js/analytics.js` has called `identify(uid)`; Firebase Auth turns that
+into an email; the function holds credentials for both and does the join in memory, per
+request, writing nothing. **An email must never be sent to PostHog.**
+
+**The fold.** PostHog returns one row per (person, distinct id, story). A reader who read
+signed out and then signed in has two distinct ids and one `person_id`, so the function
+folds on the person — otherwise the same human appears twice, once anonymous and once by
+name. Neither identifier is in the response.
+
+**The bound.** The query asks for `limit + 1` rows and reports `meta.truncated: true` when
+that extra row came back, so "there are more of these" is a fact rather than a guess. It
+is for tens of people; at 400 rows it stops rather than tries.
+
+`meta` adds `readers`, `with_email`, `anonymous`, `truncated`.
+
+If **every** Firebase Auth batch fails, the query answers `upstream` with
+`reason: "auth_lookup"` rather than returning a screen of readers labelled anonymous.
+A partial failure is a gap in one column and is not an error.
+
+### `firststory_cards` — how far people scrolled on /firststory
+
+Params: `days`, `limit`, `exclude_admins`.
+Columns: `card`, `views`, `people`, `median_dwell_s`, `reach_pct`, `dropoff_pct`.
+
+The drop-off graph for the cold-arrival page the launch videos point at. **It filters on
+`card_view.page`, not on the story id**, and the difference matters: story `01` is served
+at `/read?s=01`, `/cleopatra` **and** `/firststory`, so filtering on the story answers
+"how far did people get in Cleopatra" — a different question, and answering the second
+with the first would be the kind of wrong that looks right.
+
+`page` on `card_view` is **new** and **cannot be backfilled**: card views recorded before
+it shipped carry no page and are in none of these rows. Zero rows before the client is
+pushed to readers is the correct answer, not a broken query.
+`reach_pct`/`dropoff_pct` are computed in the function, against **people**, not views.
+
+### `firststory_funnel` — arrived at /firststory, then what
+
+Params: `days`, `exclude_admins`. Returns funnel rows in step order.
+
+**A cohort, not site-wide step reach.** Everybody counted opened `/firststory` or read a
+card there inside the window; every step is counted only inside that group. That is what
+makes "of the people who reached the end, how many signed up" answerable at all — it is a
+question about the same person doing two things, which no table of totals can answer.
+
+Columns: `step`, `label`, `people`, `pct_of_first`, `pct_of_previous`.
+
+| step | from |
+|---|---|
+| `arrived` | `page_open` where `page = 'firststory'` |
+| `read_a_card` | `card_view` where `page = 'firststory'` |
+| `reached_the_end` | `first_completion_screen_viewed` where `stack = '01'` |
+| `opened_the_gate` | `join_view` |
+| `signed_in` | `signin_email`, `signin_google`, `signup_email`, `join_signup` |
+| `reached_stripe` | `checkout_start` |
+| `paid` | `access_gained` where `from = 'stripe'` |
+| `came_back_later` | active on **more than one calendar day (UTC)** inside the window, any page |
+
+Then four rows with **`pct_of_previous: null`**, which is how a row says "I am not a
+step" — the same signal `subscribe_funnel`'s `blocked` row carries: `end_card_built`,
+`finished_the_story`, `account_created_email`, `opened_the_home_page`.
+
+**Five things a caller must print rather than imply.**
+
+1. **Step reach, not a strict ordered path**, exactly as `subscribe_funnel` §3 says. The
+   cohort stops a stranger appearing at step 6 with nothing above it, but it does not
+   verify that the same person did step 3 after step 2. A later bar **can be taller than
+   the one above it** — the sign-up page is reachable from the paywall part-way through
+   the story, not only from the end card.
+2. **`reached_the_end` cannot be narrowed to the sign-up ask.** `/firststory` builds its
+   end card with `cta: "Sign up to read more"` (firststory.html line 14), which replaces
+   the countdown with a sign-up control — and **nothing records that**. `rec_view` carries
+   `stack` and `n`; `first_completion_screen_viewed` carries `stack` and `mins`; neither
+   carries the cta and neither carries the page. So the step is "reached the end card of
+   story 01, having been on /firststory", an attribution by person. One property on either
+   event would close it.
+3. **`reached_stripe` means we sent them.** Whether Stripe's page rendered, and what
+   happened on it, is on another origin and no event of ours can see it.
+4. **`paid` undercounts.** It is a browser event; somebody who pays on a phone and returns
+   on a laptop is missed. `subscription_totals` is not, and wins.
+5. **`signed_in` is one step, not two.** `login.html` fires `signin_google` for a new
+   account and a returning one alike (ANALYTICS.md §4 item 2), so a separate sign-up count
+   undercounts by every Google sign-up. The email-only split is the
+   `account_created_email` context row, labelled as the undercount it is.
+
+`meta` adds `cohort`, `arrivals` (page opens at /firststory, events not people),
+`card_views_here`, `card_views_story`, **`card_views_unattributed`**, `deepest_card`,
+`truncated`.
+
+`card_views_unattributed` is card views of story 01 that name **no** address at all —
+recorded before `page` shipped on `card_view`. It is a subtraction (`card_views_story`
+minus the views naming one of the three known addresses) rather than a test for absence,
+because a missing property is `NULL` in HogQL and `NULL = ''` is `NULL`, so testing for
+`''` would have reported zero of these forever. They are not counted as `/firststory` and
+they are not thrown away.
+
+The scan is per person and capped at 5,000 rows, ordered so the /firststory people come
+first; `meta.truncated` says when the cap was hit and the answer is a sample.
+
 ### `subscription_totals` — the authoritative subscriber count
 Params: none. `meta.source` is `"firestore"`.
 
-Rows: `accounts`, `premium_accounts`, `premium_pct`.
+Rows: `accounts`, `premium_accounts`, `premium_pct`, and `admin_accounts`.
+
+**The admin switch does not apply here, and `admin_accounts` is why it does not apply
+silently.** These are Firestore counts of ACCOUNTS, not of analytics events: there is no
+event to leave out, and subtracting the founders would stop this being the authoritative
+subscriber number, which is the only thing it is for. So the totals stay whole, the count
+of admin accounts is returned beside them, and `meta.admin_filter` is `not_applicable`. A
+UI must say so on the tile rather than let the switch appear to have been honoured.
 
 The one query that does not touch PostHog. The last step of `subscribe_funnel` is derived
 from a browser event and is therefore subject to ad blockers, tab closes and the 10–25%
@@ -355,6 +516,32 @@ used.
 | `contains` (or `q`) | string | `^[A-Za-z0-9 _.:/-]{1,40}$` | no filter |
 | `release` | string | `^[A-Za-z0-9._-]{1,40}$` | all releases |
 | `event` | string | must be in `KNOWN_EVENTS` | — (required) |
+| `exclude_admins` | boolean | `true`/`false`, and `1`/`0`/`"true"`/`"false"`/`"yes"`/`"no"`. Anything else is `bad_query`. | **`true`** |
+
+`limit` is clamped 1–200 everywhere except `reader_activity`, where it is 1–400 and
+defaults to 200 — its rows are (reader, story) pairs, not people.
+
+### `exclude_admins`, and what it actually does
+
+Every query takes it, including `subscription_totals`, which echoes it and does not apply
+it. For the PostHog-backed queries the function appends
+`AND distinct_id NOT IN ('…','…')` — built here, out of uids read here from `customers`
+where `admin === true` or `role === "admin"`, plus the calling admin's own uid, each one
+quoted through the same `lit()` that guards every other value. **A caller cannot send a
+uid, see one, or influence which are in the list.** The lookup is cached for 60 seconds,
+so a fourteen-panel render is one collection scan rather than fourteen.
+
+**It defaults to on.** The honest default is "numbers about strangers"; seeing your own
+traffic is the special case and has to be asked for.
+
+**The one honest limit.** It matches on `distinct_id`, which is a Firebase uid only after
+`identify(uid)` has run. Events an admin sent **before signing in on a device** carry an
+anonymous distinct_id and are not removed, even though PostHog has stitched them to the
+same person. The founders sign in and stay signed in, so this is a rounding error — but it
+is a rounding error, not a guarantee, and a UI that says "excluded" should not claim more
+than that. Matching on `person_id` would need a subquery over a table this function has
+never run against, and an untested HogQL construct takes a whole panel down rather than
+one row of it.
 
 Note what those character sets exclude: quote, double quote, backslash, semicolon,
 parenthesis, brace, percent, comma, newline. A parameter cannot contain a character that
@@ -371,8 +558,8 @@ refreshes now and then, not for a script.
 
 | limit | value |
 |---|---|
-| per admin, per minute | 30 |
-| per admin, per hour | 240 |
+| per admin, per minute | 60 |
+| per admin, per hour | 480 |
 | per admin, per day | 1000 |
 | all admins, upstream queries per day | 3000 |
 
@@ -382,8 +569,14 @@ caps do not — the answer is tomorrow.
 `subscription_totals` counts against the per-admin limits but not the global upstream one,
 because it never leaves Google.
 
-The dashboard should load its panels **sequentially or in small batches**, not eleven at
-once every render. Thirty a minute is generous for a human and stingy for a render loop,
+The per-minute and per-hour caps were 30 and 240 while the dashboard had eleven panels.
+A full render is now **thirteen requests** (fourteen queries, less `subscribe_funnel`,
+which the page no longer draws; fifteen when a story is picked), and at 30 a minute an
+admin pressing Refresh twice while reading a launch would lock themselves out of their own
+numbers — a cap protecting nothing from anybody.
+
+The dashboard should load its panels **sequentially or in small batches**, not thirteen at
+once every render. Sixty a minute is generous for a human and stingy for a render loop,
 which is the intent.
 
 ---
@@ -393,18 +586,50 @@ which is the intent.
 Worth stating plainly, because the obvious version of this feature is a hole.
 
 **There is no way to send a query.** Not HogQL, not SQL, not a fragment, not a column
-name, not a table name, not an ORDER BY. The eleven query texts are string constants in
+name, not a table name, not an ORDER BY. The fourteen query texts are string constants in
 `functions/insights.js`. `params` contributes values only, at positions the function
 chose, and every value has already been checked against a character set that contains no
 quote and no backslash. A read-only PostHog key still reads *everything* in the project —
 so the defence cannot be "the key is read-only", it has to be "the browser never gets to
 write a query". It does not.
 
-**There is no way to get an identity out.** No query selects `distinct_id`, `person_id`,
-`$ip`, an email, or any person property. People are counted with `count(DISTINCT …)` and
-the count is what is returned. There is no `SELECT *` anywhere in the file. The one query
-that touches Firestore uses `count()` aggregations, which return a number and never open a
-document.
+**Thirteen of the fourteen queries cannot get an identity out.** They select no
+`distinct_id`, no `person_id`, no `$ip`, no email and no person property. People are
+counted with `count(DISTINCT …)` and the count is what is returned. There is no
+`SELECT *` anywhere in the file. The one query that touches Firestore uses `count()`
+aggregations, which return a number and never open a document.
+
+**`reader_activity` is the exception, and it is deliberate.** This paragraph used to say
+"there is no way to get an identity out" without qualification, and it is being changed
+rather than quietly left to rot, because a reader of this file must not conclude from
+thirteen queries that the fourteenth is impossible.
+
+The owner asked to see "the emails / accounts and which stories they viewed, how far they
+got". With a handful of readers an aggregate percentage says nothing and a list of people
+says everything. So one query returns one email per reader. Five things keep it narrow,
+and every one of them is a property of the code rather than a promise:
+
+1. **The email never comes from PostHog.** It is not there and must not be put there.
+   PostHog holds the uid because `identify(uid)` put it there; Firebase Auth holds the
+   email; the function holds credentials for both and joins them in memory, per request.
+   Nothing is written anywhere.
+2. **The uid and the person id never reach the browser.** Rows carry an ordinal assigned
+   per response, so a row cannot be matched to a row in another response.
+3. **A reader with no account stays anonymous.** `email` is `null`, the behaviour is
+   intact, and nothing is invented to fill the column.
+4. **It is bounded**: a row cap, most-recent-first ordering, and `meta.truncated`.
+5. **It is logged.** A second log line — `insights personal` — names the admin uid, the
+   query, the reader count and the email count, and carries no email, no uid and no story.
+   A personal-data read that leaves no trace is one nobody can answer a question about
+   later.
+
+Two more queries return a `person_id` **from PostHog** and drop it inside the function:
+`firststory_funnel` folds per-person rows into funnel steps, and `reader_activity` folds
+them onto a person. Neither id is in any response. That is worth knowing before editing
+either fold.
+
+**No other query gained an identity.** Sweep for it after any change here: nothing but
+`reader_activity` may put an `email` on a row.
 
 **There is no way to reach another project.** The PostHog project id is a secret read
 server-side and interpolated into the URL by the function; it is not a parameter.
@@ -429,6 +654,12 @@ Three things, all the owner's, none of them in the repo:
 Until then every PostHog-backed query answers `{"ok":false,"error":"upstream",
 "reason":"not_configured"}` — a `502`, deliberately, because the dashboard is not broken
 and the caller is not at fault. `subscription_totals` works immediately; it needs no key.
+
+Two more `upstream` reasons exist and both mean the function could not do a job it holds
+credentials for, not that PostHog refused: `admin_list` (the `customers` scan for admin
+uids failed **while `exclude_admins` was on** — it fails closed rather than answering with
+unfiltered numbers under a label that says filtered) and `auth_lookup` (every Firebase
+Auth batch for `reader_activity` failed).
 
 Admin itself is granted by setting `admin: true` on `customers/<uid>` in the Firebase
 console. `firestore.rules` denies every client write to that document, so it is a
