@@ -1,0 +1,395 @@
+/* ==========================================================================
+   Factbox — scenes: camera, atmosphere, caption choreography
+   Loads AFTER css/app.css. Adds only; never restyles type, colour or layout.
+
+   The plates are real museum painting, so nothing here illustrates. The motion
+   is a camera (a slow documentary hold that drifts) and a room (dust, warmth,
+   haze). A reader should feel it and never catch it working.
+
+   Three hard rules this file keeps:
+     1. Animation runs only on `.beat.live`. Everything defaults to paused, so
+        nine snapped cards are nine still paintings, not nine hot loops.
+     2. Nothing that ADDS light may reach the lower half — the caption lives
+        there. Light layers are masked out by 58% down. Layers that only
+        darken are allowed full bleed, because darkening raises contrast.
+     3. Captions are visible with CSS alone. The reveal is armed by `html.js`,
+        which scenes.js only sets once it knows it can also un-set it.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Camera
+   The plate is always over-scaled so no move can ever expose an edge. Minimum
+   scale is 1.06; every translate is a fraction of the (S-1)/2 overhang, and is
+   written before the scale so the scale does not multiply it.
+   -------------------------------------------------------------------------- */
+
+.beat .art{
+  /* Own stacking context: the atmosphere layer sits above the plate and below
+     the scrim (.art::after), and cannot reach .copy, which is outside. */
+  isolation:isolate;
+}
+
+.beat .art img{
+  transform-origin:50% 38%;
+  transform:scale(1.06);              /* the still frame, when nothing animates */
+  animation-duration:30s;
+  animation-timing-function:cubic-bezier(.37,.06,.28,.98);   /* long ease-in-out */
+  animation-iteration-count:infinite;
+  animation-direction:alternate;
+  animation-fill-mode:both;
+  animation-play-state:paused;        /* the whole point — see rule 1 above */
+  backface-visibility:hidden;
+}
+.beat.live .art img{
+  animation-play-state:running;
+  will-change:transform;              /* promoted only for the one live card */
+}
+
+/* Six moves. Consecutive cards never share one, so a nine-card stack reads as
+   nine shots rather than one long identical drift. */
+@keyframes fb-cam0{ from{transform:scale(1.060)} to{transform:scale(1.150)} }
+@keyframes fb-cam1{ from{transform:translate3d( 1.4%,0,0) scale(1.12)}
+                      to{transform:translate3d(-1.4%,0,0) scale(1.12)} }
+@keyframes fb-cam2{ from{transform:scale(1.160)} to{transform:scale(1.070)} }
+@keyframes fb-cam3{ from{transform:translate3d(0, 1.3%,0) scale(1.12)}
+                      to{transform:translate3d(0,-1.3%,0) scale(1.12)} }
+@keyframes fb-cam4{ from{transform:translate3d(-0.9%, 0.7%,0) scale(1.070)}
+                      to{transform:translate3d( 0.9%,-0.7%,0) scale(1.140)} }
+@keyframes fb-cam5{ from{transform:translate3d(-1.2%,0,0) scale(1.150)}
+                      to{transform:translate3d( 1.2%,0,0) scale(1.080)} }
+
+.beat[data-cam="0"] .art img{animation-name:fb-cam0; animation-duration:32s; transform-origin:50% 40%}
+.beat[data-cam="1"] .art img{animation-name:fb-cam1; animation-duration:30s; transform-origin:28% 34%}
+.beat[data-cam="2"] .art img{animation-name:fb-cam2; animation-duration:34s; transform-origin:64% 28%}
+.beat[data-cam="3"] .art img{animation-name:fb-cam3; animation-duration:27s; transform-origin:46% 60%}
+.beat[data-cam="4"] .art img{animation-name:fb-cam4; animation-duration:36s; transform-origin:72% 44%}
+.beat[data-cam="5"] .art img{animation-name:fb-cam5; animation-duration:38s; transform-origin:34% 52%}
+
+/* The hook gets the one confident move in the stack: a slow push in that runs
+   once and holds. It does not breathe back out — the story has started. */
+@keyframes fb-hook{ from{transform:scale(1.060)} to{transform:scale(1.180)} }
+.beat.is-hook .art img{
+  animation-name:fb-hook;
+  animation-duration:30s;
+  animation-timing-function:cubic-bezier(.22,.61,.36,1);
+  animation-iteration-count:1;
+  animation-direction:normal;
+  transform-origin:50% 36%;
+}
+
+/* The landing settles. Twenty seconds of almost nothing, then it stops dead,
+   so the last thing the reader looks at is a still painting. */
+@keyframes fb-settle{ from{transform:scale(1.090)} to{transform:scale(1.060)} }
+.beat.is-landing .art img{
+  animation-name:fb-settle;
+  animation-duration:20s;
+  animation-timing-function:cubic-bezier(.16,.84,.44,1);
+  animation-iteration-count:1;
+  animation-direction:normal;
+  transform-origin:50% 40%;
+}
+
+/* --------------------------------------------------------------------------
+   2. Atmosphere
+   One <div class="atm atm-NAME"> injected by scenes.js into each .art, between
+   the plate and the scrim. Pure gradients — no images, no external assets, no
+   filters. The element itself carries the static wash; its two pseudos carry
+   the motion, and both are transform/opacity only so they composite.
+
+   `--fade` is the light-safety mask: it kills any layer before it reaches the
+   caption. A layer that only darkens overrides it with a solid mask.
+   -------------------------------------------------------------------------- */
+
+.atm{
+  position:absolute; inset:0;
+  overflow:hidden;
+  pointer-events:none;
+  --fade:linear-gradient(to bottom,
+          #000 0%, #000 24%, rgba(0,0,0,.45) 44%, rgba(0,0,0,0) 58%);
+  --solid:linear-gradient(#000,#000);
+}
+.atm::before,
+.atm::after{
+  content:"";
+  position:absolute;
+  pointer-events:none;
+  -webkit-mask-image:var(--fade);
+          mask-image:var(--fade);
+  animation-iteration-count:infinite;
+  animation-direction:alternate;
+  animation-timing-function:ease-in-out;
+  animation-fill-mode:both;
+  animation-play-state:paused;
+}
+.beat.live .atm::before,
+.beat.live .atm::after{
+  animation-play-state:running;
+  will-change:transform,opacity;
+}
+
+/* Shared motion vocabulary. Slow enough that no loop is ever legible. */
+@keyframes fb-drift   { from{transform:translate3d(-1.6%, 2.4%,0)} to{transform:translate3d( 2.0%,-3.2%,0)} }
+@keyframes fb-drift2  { from{transform:translate3d( 2.2%,-1.4%,0)} to{transform:translate3d(-1.8%, 2.0%,0)} }
+@keyframes fb-sweep   { from{transform:translate3d(-9%,0,0)}       to{transform:translate3d( 9%,0,0)} }
+@keyframes fb-sweepr  { from{transform:translate3d( 7%,0,0)}       to{transform:translate3d(-7%,0,0)} }
+@keyframes fb-breathe { from{opacity:.42; transform:scale(1)}      to{opacity:1; transform:scale(1.06)} }
+@keyframes fb-pulse   { from{opacity:.30}                          to{opacity:.92} }
+@keyframes fb-rise    { from{transform:translate3d(0, 9%,0)}       to{transform:translate3d(-2%,-13%,0)} }
+/* A lamp, not a strobe: uneven steps, but the whole cycle is seven seconds. */
+@keyframes fb-flicker{
+   0%{opacity:.44}  17%{opacity:.78}  28%{opacity:.55}  41%{opacity:.90}
+  55%{opacity:.62}  68%{opacity:.84}  81%{opacity:.50} 100%{opacity:.72}
+}
+
+/* -- cleopatra --------- gold on water: a sheen crossing the upper plate ---- */
+.atm-shimmer{
+  background:
+    linear-gradient(to bottom, rgba(255,211,110,.070) 0%, rgba(255,211,110,0) 46%),
+    radial-gradient(120% 52% at 62% 6%, rgba(255,247,237,.055), rgba(255,247,237,0) 62%);
+}
+.atm-shimmer::before{
+  left:-62%; top:-14%; width:224%; height:74%;
+  background:linear-gradient(102deg,
+      rgba(255,211,110,0) 34%, rgba(255,211,110,.15) 47%,
+      rgba(255,247,237,.10) 51%, rgba(255,211,110,0) 64%);
+  animation-name:fb-sweep; animation-duration:34s;
+}
+.atm-shimmer::after{
+  left:-8%; right:-8%; top:-6%; height:62%;
+  opacity:.5;
+  background:repeating-linear-gradient(to bottom,
+      rgba(255,247,237,.055) 0 .11vmin, rgba(255,247,237,0) .11vmin 1.05vmin);
+  animation-name:fb-drift2; animation-duration:29s;
+}
+
+/* -- old_testament ----- a shaft of light and the dust standing in it ------- */
+.atm-dust{
+  background:radial-gradient(78% 50% at 26% 4%, rgba(255,211,110,.085), rgba(255,211,110,0) 64%);
+}
+.atm-dust::before{
+  left:-18%; top:-44%; width:66%; height:154%;
+  transform-origin:50% 0;
+  background:linear-gradient(to right,
+      rgba(255,247,237,0) 0%, rgba(255,247,237,.11) 44%,
+      rgba(255,211,110,.09) 56%, rgba(255,247,237,0) 100%);
+  /* fb-pulse animates opacity only, so this static tilt survives it. Written
+     as a transform, not the `rotate` property, for older in-app webviews. */
+  transform:rotate(16deg);
+  animation-name:fb-pulse; animation-duration:26s;
+}
+.atm-dust::after{
+  inset:-20%;
+  opacity:.34;
+  background-image:
+    radial-gradient(circle at 21% 31%, rgba(255,247,237,.50) 0, rgba(255,247,237,0) .52vmin),
+    radial-gradient(circle at 69% 13%, rgba(255,247,237,.38) 0, rgba(255,247,237,0) .40vmin),
+    radial-gradient(circle at 45% 72%, rgba(255,211,110,.34) 0, rgba(255,211,110,0) .46vmin);
+  background-size:27vmin 31vmin, 19vmin 23vmin, 34vmin 28vmin;
+  animation-name:fb-drift; animation-duration:38s;
+}
+
+/* -- new_testament ----- a bloom over the top of the frame, breathing ------- */
+.atm-halo{
+  background:radial-gradient(116% 56% at 50% 2%, rgba(255,247,237,.095), rgba(255,247,237,0) 60%);
+}
+.atm-halo::before{
+  left:12%; right:12%; top:-26%; height:78%;
+  border-radius:50%;
+  background:radial-gradient(closest-side, rgba(255,247,237,.14), rgba(255,247,237,0) 100%);
+  animation-name:fb-breathe; animation-duration:24s;
+}
+.atm-halo::after{
+  inset:-16%;
+  opacity:.26;
+  background-image:
+    radial-gradient(circle at 32% 24%, rgba(255,247,237,.42) 0, rgba(255,247,237,0) .40vmin),
+    radial-gradient(circle at 74% 61%, rgba(255,247,237,.30) 0, rgba(255,247,237,0) .34vmin);
+  background-size:23vmin 26vmin, 31vmin 29vmin;
+  animation-name:fb-drift2; animation-duration:36s;
+}
+
+/* -- church_history ---- lamplight: a warm corner that will not sit still --- */
+.atm-candle{
+  background:radial-gradient(72% 46% at 20% 8%, rgba(255,211,110,.11), rgba(255,211,110,0) 62%);
+}
+.atm-candle::before{
+  left:-14%; top:-22%; width:72%; height:74%;
+  border-radius:50%;
+  background:radial-gradient(closest-side,
+      rgba(255,211,110,.17), rgba(232,95,65,.06) 58%, rgba(255,211,110,0) 100%);
+  animation-name:fb-flicker; animation-duration:7.2s; animation-direction:normal;
+}
+.atm-candle::after{
+  left:-10%; right:-10%; top:-10%; height:66%;
+  opacity:.5;
+  background:radial-gradient(58% 42% at 34% 46%,
+      rgba(255,247,237,.075), rgba(255,247,237,0) 70%);
+  animation-name:fb-rise; animation-duration:40s;
+}
+
+/* -- us_history -------- archive: paper tooth and a vignette that breathes -- */
+.atm-grain{
+  opacity:.9;
+  background:
+    repeating-linear-gradient(27deg,  rgba(255,247,237,.030) 0 .09vmin, rgba(0,0,0,0) .09vmin .26vmin),
+    repeating-linear-gradient(117deg, rgba(27,22,32,.040)   0 .09vmin, rgba(0,0,0,0) .09vmin .24vmin),
+    linear-gradient(to bottom, rgba(255,211,110,.045) 0%, rgba(255,211,110,0) 44%);
+}
+.atm-grain::before{
+  /* darkening only, so it is allowed the whole frame */
+  --fade:var(--solid);
+  inset:-6%;
+  background:radial-gradient(72% 62% at 50% 42%,
+      rgba(27,22,32,0) 42%, rgba(27,22,32,.30) 100%);
+  animation-name:fb-breathe; animation-duration:34s;
+}
+.atm-grain::after{
+  left:-6%; right:-6%; top:-8%; height:58%;
+  opacity:.6;
+  background:linear-gradient(to bottom, rgba(255,247,237,.065), rgba(255,247,237,0) 100%);
+  animation-name:fb-drift2; animation-duration:33s;
+}
+
+/* -- ancient_world ----- dry heat: two slow bands, opposed --------------- */
+.atm-haze{
+  background:linear-gradient(to bottom, rgba(255,211,110,.075) 0%, rgba(255,211,110,0) 52%);
+}
+.atm-haze::before{
+  left:-40%; top:-12%; width:180%; height:56%;
+  background:linear-gradient(94deg,
+      rgba(255,247,237,0) 22%, rgba(255,247,237,.085) 50%, rgba(255,247,237,0) 78%);
+  animation-name:fb-sweep; animation-duration:37s;
+}
+.atm-haze::after{
+  left:-34%; top:2%; width:168%; height:52%;
+  opacity:.7;
+  background:linear-gradient(86deg,
+      rgba(255,211,110,0) 26%, rgba(255,211,110,.09) 52%, rgba(255,211,110,0) 80%);
+  animation-name:fb-sweepr; animation-duration:39s;
+}
+
+/* -- medieval_modern --- cold haze off stone, and a closing vignette ------- */
+.atm-cold{
+  background:
+    linear-gradient(to bottom, rgba(183,156,237,.085) 0%, rgba(183,156,237,0) 50%),
+    radial-gradient(110% 46% at 44% 0%, rgba(255,247,237,.05), rgba(255,247,237,0) 66%);
+}
+.atm-cold::before{
+  left:-36%; top:-16%; width:174%; height:62%;
+  background:linear-gradient(98deg,
+      rgba(183,156,237,0) 24%, rgba(183,156,237,.11) 48%,
+      rgba(255,247,237,.055) 56%, rgba(183,156,237,0) 78%);
+  animation-name:fb-sweepr; animation-duration:36s;
+}
+.atm-cold::after{
+  --fade:var(--solid);
+  inset:-6%;
+  background:radial-gradient(74% 64% at 50% 40%,
+      rgba(27,22,32,0) 46%, rgba(27,22,32,.28) 100%);
+  animation-name:fb-breathe; animation-duration:31s;
+}
+
+/* -- disaster ---------- a glow above, and embers climbing into it --------- */
+.atm-ember{
+  background:radial-gradient(110% 46% at 52% 0%, rgba(232,95,65,.125), rgba(232,95,65,0) 62%);
+}
+.atm-ember::before{
+  --fade:linear-gradient(to bottom,
+          rgba(0,0,0,0) 0%, #000 16%, #000 34%, rgba(0,0,0,.4) 46%, rgba(0,0,0,0) 56%);
+  inset:-24% -12%;
+  opacity:.62;
+  background-image:
+    radial-gradient(circle at 18% 74%, rgba(255,211,110,.60) 0, rgba(255,211,110,0) .40vmin),
+    radial-gradient(circle at 63% 38%, rgba(255,122,92,.55)  0, rgba(255,122,92,0)  .34vmin),
+    radial-gradient(circle at 84% 82%, rgba(232,95,65,.48)   0, rgba(232,95,65,0)   .44vmin);
+  background-size:21vmin 25vmin, 29vmin 33vmin, 37vmin 30vmin;
+  animation-name:fb-rise; animation-duration:30s;
+}
+.atm-ember::after{
+  left:-20%; right:-20%; top:-8%; height:58%;
+  opacity:.7;
+  background:linear-gradient(92deg,
+      rgba(232,95,65,0) 26%, rgba(232,95,65,.085) 52%, rgba(232,95,65,0) 76%);
+  animation-name:fb-sweep; animation-duration:35s;
+}
+
+/* -- fallback ---------- unknown or missing topic: a quiet room ------------ */
+.atm-veil{
+  background:
+    repeating-linear-gradient(31deg, rgba(255,247,237,.024) 0 .09vmin, rgba(0,0,0,0) .09vmin .28vmin),
+    linear-gradient(to bottom, rgba(255,247,237,.04) 0%, rgba(255,247,237,0) 46%);
+}
+.atm-veil::before{
+  --fade:var(--solid);
+  inset:-6%;
+  background:radial-gradient(76% 64% at 50% 42%,
+      rgba(27,22,32,0) 46%, rgba(27,22,32,.26) 100%);
+  animation-name:fb-breathe; animation-duration:36s;
+}
+.atm-veil::after{
+  inset:-16%;
+  opacity:.22;
+  background-image:
+    radial-gradient(circle at 38% 27%, rgba(255,247,237,.36) 0, rgba(255,247,237,0) .42vmin),
+    radial-gradient(circle at 71% 66%, rgba(255,247,237,.28) 0, rgba(255,247,237,0) .36vmin);
+  background-size:25vmin 29vmin, 33vmin 31vmin;
+  animation-name:fb-drift; animation-duration:40s;
+}
+
+/* --------------------------------------------------------------------------
+   3. Caption choreography
+   Headline first, body a beat behind, citation last. Same pattern as the
+   flagship shell.
+
+   Read this before changing anything below: the DEFAULT is plain, visible,
+   untransformed text. The hidden state exists only inside `html.js`, which
+   scenes.js sets after it has proved it can also add `.live` — and removes
+   again on any script error or if no card has gone live within three seconds.
+   The site has shipped twice with invisible captions. It cannot do it here.
+   -------------------------------------------------------------------------- */
+
+.beat .rise{
+  opacity:1;
+  transform:none;
+}
+html.js .beat .rise{
+  opacity:0;
+  /* The flagship writes this as 20px. Kept relative here so the rise is the
+     same distance on a 390pt phone and a desktop window, and uniform across
+     the three lines rather than scaling with each one's type size. */
+  transform:translateY(2.1vh);
+  transition:opacity .2s ease, transform .2s ease;
+}
+html.js .beat.live .rise{
+  opacity:1;
+  transform:none;
+  transition:opacity .55s cubic-bezier(.2,.7,.3,1) var(--d,0s),
+             transform .70s cubic-bezier(.2,.7,.3,1) var(--d,0s);
+}
+
+/* --------------------------------------------------------------------------
+   4. Reduced motion
+   Every scene still composes as a still frame: the plate keeps its 1.06
+   over-scale, the atmosphere keeps its wash, and the caption is simply there.
+   app.css already zeroes `*`, but `*` does not match pseudo-elements.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion:reduce){
+  .beat .art img{
+    animation:none !important;
+    transform:scale(1.06) !important;
+    will-change:auto !important;
+  }
+  .atm::before,
+  .atm::after{
+    animation:none !important;
+    transition:none !important;
+    will-change:auto !important;
+  }
+  html.js .beat .rise,
+  html.js .beat.live .rise{
+    opacity:1 !important;
+    transform:none !important;
+    transition:none !important;
+  }
+}
