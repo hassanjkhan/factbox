@@ -117,8 +117,15 @@ async function partWebhook() {
 
   /* Not a secret, and not Stripe's. This string exists only so this file can
      sign the fixtures it made up two lines later and then verify them. The
-     real signing secret is in Secret Manager and is never in this repo. */
-  const SECRET = "whsec_localtestonlylocaltestonly";
+     real signing secret is in Secret Manager and is never in this repo.
+
+     IT DELIBERATELY DOES NOT START `whsec_`. It used to, and GitHub's secret
+     scanner flagged the repo — correctly by its own rules, since it cannot
+     know a made-up string from a real one, and this repo is public. The value
+     is an opaque HMAC key as far as Stripe's constructEvent is concerned, so
+     the prefix bought nothing and cost a false alarm. A scanner that cries
+     wolf gets ignored, and the one alert that matters is the one after that. */
+  const SECRET = "local-fixture-signing-key-not-a-stripe-secret";
   process.env.STRIPE_WEBHOOK_SECRET = SECRET;
   const fake = makeDb();
 
