@@ -31,6 +31,24 @@ const CHECKS = [
     },
   },
   {
+    name: "CNAME exists and still says factbox.app",
+    why: "GitHub Pages binds a custom domain ONLY while a CNAME file sits at " +
+         "the root of the published branch. Without it the domain is not " +
+         "attached to the site at all: every URL serves GitHub's \"There " +
+         "isn't a GitHub Pages site here\" page. That is the whole site down, " +
+         "not one broken route, and nothing else in the repo hints that the " +
+         "file matters. It was deleted once by a `git add -A` that swept up a " +
+         "deletion nobody had looked at, and the site was dark until someone " +
+         "opened it in a browser.",
+    pass: () => {
+      const p = path.join(ROOT, "CNAME");
+      if (!fs.existsSync(p)) return "CNAME is missing — the custom domain will not bind";
+      const v = fs.readFileSync(p, "utf8").trim();
+      if (v !== "factbox.app") return `CNAME says "${v}", expected "factbox.app"`;
+      return true;
+    },
+  },
+  {
     name: "every hideable class ships its own [hidden] twin",
     why: "An author rule setting `display:` beats the user agent's " +
          "`[hidden]{display:none}` — author sheets outrank UA before " +
