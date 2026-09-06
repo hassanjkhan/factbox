@@ -12,7 +12,7 @@
    time would cost a document write on every card a reader looks at, duplicate a
    store that already does this better, and leave two numbers for every question
    with no way to say which was right. This is a DOOR: prove the caller is an
-   admin, pick one of fourteen queries THIS FILE wrote, run it against PostHog
+   admin, pick one of seventeen queries THIS FILE wrote, run it against PostHog
    with a key the browser never sees, hand back plain rows.
 
    The contract is published in ANALYTICS-API.md and the dashboard is built
@@ -34,26 +34,29 @@
       Not HogQL, not SQL, not a column, not a table, not an ORDER BY. Accepting
       a query string from a page would be a data-exfiltration hole with extra
       steps: a read-only PostHog key still reads EVERYTHING in the project, so
-      "the key is read-only" is not a defence. The eleven query texts are string
+      "the key is read-only" is not a defence. The seventeen query texts are string
       constants below. A caller sends a NAME and typed VALUES, and every value
       is checked against a character set that contains no quote, no backslash,
       no brace, no semicolon and no comma before it is placed into a query — and
       re-checked by `lit()` at the moment of placement, so a future edit that
       forgets to validate still cannot produce an injection.
 
-   3. NO IDENTITY LEAVES THE FUNCTION, WITH ONE DELIBERATE EXCEPTION.
+   3. NO IDENTITY LEAVES THE FUNCTION, WITH THREE DELIBERATE EXCEPTIONS.
       There is no `SELECT *` in this file. Every column is named. Of the
-      fourteen queries, thirteen select no `distinct_id`, no `person_id`, no
+      seventeen queries, FOURTEEN select no `distinct_id`, no `person_id`, no
       `$ip`, no email and no person property: people are counted with
       `count(DISTINCT person_id)` and the COUNT is returned. The one query that
       reads Firestore uses `count()` aggregations, which return a number without
       opening a document.
 
-      `reader_activity` IS THE EXCEPTION, AND IT IS ON PURPOSE. The owner asked
-      to see "the emails / accounts and which stories they viewed, how far they
-      got" — with a handful of readers, an aggregate percentage says nothing and
-      a list of people says everything. So one query returns one email per
-      reader. Four things keep it narrow:
+      `reader_activity`, `reader_dwell` AND `person_timeline` ARE THE
+      EXCEPTIONS, AND THEY ARE ON PURPOSE. The owner asked to see "the emails
+      / accounts and which stories they viewed, how far they got", then
+      "dwell times per user on each page or card", then "one person did x
+      then y then z and then an hour later" — with a handful of readers, an
+      aggregate percentage says nothing and a list of people says
+      everything. So three queries return one email per reader. The same
+      four things keep all three narrow:
 
         * THE EMAIL NEVER COMES FROM POSTHOG. It is not there and must not be
           put there. PostHog knows the uid, because js/analytics.js calls
@@ -64,15 +67,35 @@
           ("1", "2", ...) that is assigned per response and is not stable
           between two responses, so it cannot be used to follow anyone. It
           exists only so the dashboard can group a reader's story rows.
+
+          AND IT IS ONE ORDINAL SPACE, NOT THREE. All three queries number
+          readers off the SAME roster — reader_activity's query through
+          foldReaders() — so "reader 5" is one person in every table on the
+          page. This is also how `person_timeline` can be asked about a
+          person without ever being told who: the browser sends the integer
+          it was shown, and the resolution back to a person_id happens here,
+          upstream, inside one request, and is discarded with it.
         * A READER WITH NO ACCOUNT STAYS ANONYMOUS. `email` is null and the
           behaviour is intact. Nothing is invented to fill the column.
-        * IT IS BOUNDED AND IT IS LOGGED. A row cap, most-recent-first
-          ordering, and a log line naming the admin who asked — see
-          READER_ROWS below and the `insights personal` line in the endpoint.
+        * IT IS BOUNDED AND IT IS LOGGED. A row cap on all three, a window
+          ceiling on the timeline, most-recent-first ordering, and a log
+          line naming the admin who asked — see READER_ROWS, DWELL_ROWS_MAX
+          and TIMELINE_ROWS_MAX below, and the `insights personal` line in
+          the endpoint, which for a timeline also records WHICH ordinal was
+          asked for and whether it resolved.
 
       ANALYTICS-API.md 6 says the same thing in the contract, because a
-      reader of that file must not conclude from thirteen queries that the
-      fourteenth is impossible.
+      reader of that file must not conclude from fourteen queries that the
+      other three are impossible.
+
+      AND ONE THING THAT IS NOT RETURNED ANYWHERE. `geo_breakdown` reads
+      PostHog's `$geoip_*` properties, which exist on every event, and
+      returns COUNTS BY COUNTRY and nothing else — no city, no region, no
+      timezone, no IP, and never a country beside a named individual. A
+      country on a person's row is a location attached to a person and is a
+      different promise to readers than a map is; privacy.html would need a
+      different sentence before it could be added, and that file is not
+      edited from here.
 
    4. THE ADMIN ACCOUNTS CAN BE TAKEN OUT, SERVER-SIDE, AND ARE BY DEFAULT.
       There are three accounts on this project and all three are founders'.
@@ -171,7 +194,7 @@ const MAX_MESSAGE_CHARS = 200;               /* client_error.message, truncated 
 
 /* --- The admin-exclusion switch ----------------------------------------
    The uids are read from `customers` and cached for a minute. Without the
-   cache a single render is fourteen panels x one collection scan; with it,
+   cache a single render is seventeen panels x one collection scan; with it,
    one scan serves the whole render and the next one too. A minute is short
    enough that granting or revoking admin shows up on the next refresh but
    one, which is the right trade for a flag that changes about once a year. */
@@ -186,6 +209,84 @@ const RE_UID = /^[A-Za-z0-9_-]{1,64}$/;      /* a Firestore doc id we will quote
 const READER_ROWS_DEFAULT = 200;
 const READER_ROWS_MAX = 400;
 const AUTH_BATCH = 100;                      /* getUsers() takes 100 at a time */
+
+/* --- reader_dwell -------------------------------------------------------
+   One row per (person, page, story, card). A reader who works through a
+   twenty-card story at two addresses is forty rows on their own, so the cap
+   is its own and it is larger than reader_activity's. Measured on the live
+   project on 6 September 2026: the WHOLE history — 90 days, 26 readers, 336
+   card views, admins excluded — is 219 such rows. 300 is therefore a cap
+   that does not bite today and 600 is the ceiling; when it does bite,
+   `meta.truncated` is true and the per-reader totals nearest the cut are
+   partial, which ANALYTICS-API.md says beside the query. */
+const DWELL_ROWS_DEFAULT = 300;
+const DWELL_ROWS_MAX = 600;
+
+/* --- The dwell cap, and why there is one -------------------------------
+   `dwell_s` is time a card was ON SCREEN. js/analytics.js already refuses to
+   report anything under 900ms (a swipe) or over 30 minutes (a machine that
+   went to sleep mid-card), so the raw values are bounded at 1800 — but 1800
+   is still a tab somebody left open, and one of those is enough to own a
+   mean. Nothing here reports a mean.
+
+   Every dwell figure comes back twice: the raw sum, and a `_capped` sum in
+   which each individual card view is first clipped to this many seconds.
+
+   The number is measured, not chosen. Over the live project's whole history
+   on 6 September 2026 — 336 card views, admins excluded — a single view's
+   median is 3.0s, its 75th percentile 6.5s, its 90th 23.7s, its 95th 50.7s
+   and its 99th 222.4s, with a longest of 923.6s. A 180s clip therefore
+   touches a little over one view in a hundred and does not go near reading.
+
+   AND THE SIZE OF WHAT IT REMOVES IS THE REASON THIS IS NOT OPTIONAL. Those
+   few views are 21.5% of all the dwell on the site: 4,743 raw seconds
+   against 3,725 capped, and 820 of the 1,018 seconds removed belong to ONE
+   reader whose median card is 3.0s. A mean — at any grouping, over any
+   window — would have been that person's abandoned tab wearing everybody
+   else's name. Nothing here returns a mean. Both sums are returned and
+   `meta.dwell_cap_s` states the clip, so the capped figure is a stated
+   arithmetic rather than a number to be taken on trust. */
+const DWELL_CAP_S = 180;
+
+/* --- person_timeline ----------------------------------------------------
+   One reader's events in time order. The most sensitive query in the file
+   and the most tightly bounded: a row cap, a window ceiling, and an ordinal
+   that has to be resolved against a roster before it names anybody.
+
+   The window ceiling is measured, not guessed. This query filters on a
+   PERSON rather than on an event name, so ClickHouse cannot use the event
+   index and scans the window instead — the same shape of risk `event_volume`
+   hit at 36 days. Measured end to end on 6 September 2026, both upstream
+   calls plus the Firebase Auth join, on the live project: 1 day 101ms,
+   7 days 845ms, 31 days 576-722ms, 90 days 590ms, and a 98-day from/to
+   range 2282ms. Nothing near a timeout, because it returns one person's
+   rows rather than grouping every person by day.
+
+   31 DAYS IS KEPT AS THE CEILING ANYWAY, and the reason is not today's
+   timings. The cost of this scan grows with the whole site's event volume
+   while the answer stays one person's afternoon, so the query gets steadily
+   more expensive to serve the same page; and a month is the window a human
+   actually reads a timeline over. `meta.clamped_to_days` says when the
+   ceiling moved the start date, so a caller asking for 90 is told it got
+   31 rather than left to assume. */
+const TIMELINE_ROWS_DEFAULT = 200;
+const TIMELINE_ROWS_MAX = 500;
+const TIMELINE_MAX_DAYS = 31;
+
+/* A gap longer than this starts a new visit. Half an hour is the same
+   convention every analytics tool uses for a session, and the timeline says
+   `session` on every row so "then an hour later" is visible as a number and
+   as a break, not inferred from two timestamps by whoever is reading. */
+const SESSION_GAP_S = 30 * 60;
+
+/* --- Where readers are --------------------------------------------------
+   PostHog derives these from the IP at ingestion. The Cloudflare Worker in
+   cloudflare/posthog-proxy.js sets X-Forwarded-For from CF-Connecting-IP,
+   which is the line that makes them the READER's country rather than a
+   Cloudflare colo — see the geo_breakdown query for what the live data
+   actually says about that. Property names are PostHog's own and are
+   constants in this file, never parameters. */
+const GEO_UNKNOWN = "Unknown";
 
 /* --- /firststory --------------------------------------------------------
    The cold-arrival URL the launch videos point at. It serves story 01, which
@@ -380,7 +481,7 @@ const KNOWN_EVENTS = [
 /* ==========================================================================
    THE QUERIES
 
-   Eleven. Each is a function of already-validated parameters returning
+   Seventeen. Each is a function of already-validated parameters returning
    { sql, columns } — `columns` is what the rows are called, so the response
    does not depend on PostHog echoing a column list back.
 
@@ -450,6 +551,35 @@ function notAdmins(p) {
   const parts = [];
   for (const u of ids) parts.push(lit(u));
   return "   AND distinct_id NOT IN (" + parts.join(", ") + ")";
+}
+
+/* --- The reader roster, written once and used twice ----------------------
+   `reader_activity` returns it and `person_timeline` resolves an ordinal
+   against it. They MUST be the same rows in the same order or the ordinal a
+   dashboard printed resolves to a different person than the one it named,
+   which is the worst failure this file could have. So there is one query
+   text and one column list, and both queries call them. A second copy that
+   drifted would not fail loudly — it would quietly show the wrong reader. */
+const READER_COLUMNS = ["person", "reader", "story", "opens", "completions",
+                        "cards_seen", "furthest_card", "last_seen"];
+
+function rosterSql(p, rows) {
+  return "SELECT person_id AS person," +
+    " distinct_id AS reader," +
+    " if(event = 'card_view', toString(properties.story)," +
+    "   toString(properties.stack)) AS story," +
+    " countIf(event = 'stack_open') AS opens," +
+    " countIf(event = 'stack_complete') AS completions," +
+    " count(DISTINCT if(event = 'card_view'," +
+    "   toString(properties.card), NULL)) AS cards_seen," +
+    " max(toInt(toString(properties.card))) AS furthest_card," +
+    " max(timestamp) AS last_seen" +
+    " FROM events" +
+    " WHERE event IN ('stack_open', 'card_view', 'stack_complete', 'stack_dropoff')" +
+    "   AND " + since(p) +
+    notAdmins(p) +
+    " GROUP BY person, reader, story" +
+    " ORDER BY last_seen DESC LIMIT " + num(rows);
 }
 
 const QUERIES = {
@@ -793,7 +923,7 @@ const QUERIES = {
      viewed, how far they got in terms of cards". With a handful of readers a
      completion percentage says nothing and a list of people says everything,
      so this exists — and it is deliberately the only exception to a rule the
-     other thirteen queries keep.
+     other fourteen queries keep.
 
      WHAT COMES BACK FROM POSTHOG IS NOT AN EMAIL. It is a person_id and a
      distinct_id. The email is joined on afterwards, in the endpoint, out of
@@ -812,26 +942,106 @@ const QUERIES = {
   reader_activity: {
     params: ["exclude_admins", "days", "limit"],
     personal: true,
-    build: (p) => ({
-      columns: ["person", "reader", "story", "opens", "completions",
-                "cards_seen", "furthest_card", "last_seen"],
+    build: (p) => ({ columns: READER_COLUMNS, sql: rosterSql(p, p.limit + 1) })
+  },
+
+  /* --- One reader's session, in order --------------------------------------
+     "one person did x then y then z and then an hour later someone else did
+     that too" — the owner's own words, and the most valuable of the three
+     things asked for. It is also the most sensitive thing in this file:
+     everything else here is a count, and this is a person's afternoon.
+
+     HOW A CALLER NAMES A READER, AND WHY IT IS NOT AN ID. The parameter is
+     `reader`: the ORDINAL reader_activity already prints — "1", "2", "3".
+     That ordinal is assigned per response and means nothing on its own, so
+     it has to be resolved back to a person, and that resolution happens
+     HERE, upstream, out of a roster this function builds. The browser sends
+     an integer and receives events; no `person_id`, no `distinct_id` and no
+     uid crosses the wire in either direction. This is the whole reason the
+     query costs two upstream calls instead of one.
+
+     THE ORDINAL IS AS OF A WINDOW, AND THE WINDOW HAS TO MATCH. The roster
+     is reader_activity's own rows through reader_activity's own fold — the
+     same SQL, the same grouping, the same sort — so identical parameters
+     give identical ordinals. Different parameters give a different roster
+     and therefore a different person, which is why `meta.reader_email` and
+     `meta.reader_last_seen` come back on every response: the dashboard can
+     show WHO it resolved to, and a human can see at a glance that it is
+     still the row they clicked. Pass an absolute `from`/`to` rather than
+     `days` and the roster stops moving underneath you entirely.
+
+     AN ORDINAL PAST THE END OF THE ROSTER IS NOT AN ERROR. It is a race —
+     a reader who was 7th when the table was drawn is 8th after somebody
+     else reads a card. It answers 200 with no rows and
+     `meta.reader_found: false`, because a 400 here would send a dashboard
+     to an error state over a fact about time.
+
+     WHAT IS IN A ROW, AND WHAT IS DELIBERATELY NOT. `detail` is assembled
+     in shapeTimeline() from named properties — the story, the card, the
+     page, the control's name, the funnel step. It never carries
+     `client_error.message`: that string is the one field on any event that
+     can hold something a reader typed, and a timeline is not the place to
+     find that out. `client_errors` already reports it, grouped, where it is
+     a bug report rather than a person's afternoon. The reader's COUNTRY is
+     not here either, though PostHog holds it — `geo_breakdown` gives the
+     owner geography as counts, and a country on this row would be a
+     location attached to a named individual, which is a different promise
+     to readers and needs a different sentence in privacy.html. One line
+     adds it the day that sentence is written. */
+  person_timeline: {
+    maxDays: TIMELINE_MAX_DAYS,
+    params: ["exclude_admins", "reader", "roster_limit", "days", "limit"],
+    personal: true,
+    twoStep: true,
+    /* Step one: the roster, which is reader_activity's query verbatim. */
+    build: (p) => ({ columns: READER_COLUMNS, sql: rosterSql(p, p.rosterLimit + 1) }),
+    /* Step two: that person's events, most recent first, bounded twice — by
+       the row cap here and by the window ceiling above. Ordered DESC and
+       reversed in shaping, so a cap that bites drops the OLDEST events
+       rather than the ones the owner opened the panel to see. */
+    buildEvents: (p, personId) => ({
+      columns: ["at", "event", "page", "story", "card", "dwell_s", "control",
+                "step", "plan", "why", "via", "source", "line", "cards"],
       sql:
-        "SELECT person_id AS person," +
-        " distinct_id AS reader," +
-        " if(event = 'card_view', toString(properties.story)," +
-        "   toString(properties.stack)) AS story," +
-        " countIf(event = 'stack_open') AS opens," +
-        " countIf(event = 'stack_complete') AS completions," +
-        " count(DISTINCT if(event = 'card_view'," +
-        "   toString(properties.card), NULL)) AS cards_seen," +
-        " max(toInt(toString(properties.card))) AS furthest_card," +
-        " max(timestamp) AS last_seen" +
+        "SELECT timestamp AS at," +
+        " event AS event," +
+        " ifNull(toString(properties.page), '') AS page," +
+        " ifNull(toString(properties.story)," +
+        "   ifNull(toString(properties.stack), '')) AS story," +
+        " toInt(toString(properties.card)) AS card," +
+        " toFloatOrNull(toString(properties.dwell_s)) AS dwell_s," +
+        " ifNull(toString(properties.control), '') AS control," +
+        " ifNull(toString(properties.step), '') AS step," +
+        " ifNull(toString(properties.plan), '') AS plan," +
+        " ifNull(toString(properties.why), '') AS why," +
+        " ifNull(toString(properties.from), '') AS via," +
+        " ifNull(toString(properties.source), '') AS source," +
+        " toInt(toString(properties.line)) AS line," +
+        " toInt(toString(properties.cards)) AS cards" +
         " FROM events" +
-        " WHERE event IN ('stack_open', 'card_view', 'stack_complete', 'stack_dropoff')" +
+        /* toString(), because person_id is a UUID and the literal is a
+           string. The value came from PostHog one call ago and still goes
+           through lit(), which re-asserts the character set at the point of
+           placement exactly as it does for a value a stranger sent. */
+        " WHERE toString(person_id) = " + lit(personId) +
         "   AND " + since(p) +
+        /* THE SITE'S OWN EVENTS ONLY. posthog-js also captures $pageview,
+           $pageleave, $autocapture and $web_vitals, and on a live reader
+           they outnumber everything js/analytics.js sends by roughly four
+           to one: the first run of this query filled all 500 rows with
+           three days of one person's $pageleave and reported itself
+           truncated. Nothing is lost by dropping them — `page_open` is sent
+           on every page of this site and carries the page's NAME, which
+           $pageview does not — and a row cap spent on autocapture is a row
+           cap not spent on the reading the panel exists to show.
+
+           A literal `$` and a literal `%` in a query text this file wrote,
+           which is a different thing from a `%` in a value somebody sent:
+           likeLit() exists because a caller must not be able to turn an
+           equality into a scan, and no caller can reach this string. */
+        "   AND event NOT LIKE '$%'" +
         notAdmins(p) +
-        " GROUP BY person, reader, story" +
-        " ORDER BY last_seen DESC LIMIT " + num(p.limit + 1)
+        " ORDER BY at DESC LIMIT " + num(p.limit + 1)
     })
   },
 
@@ -967,6 +1177,127 @@ const QUERIES = {
     })
   },
 
+  /* --- Where the readers are ----------------------------------------------
+     The owner asked "what country they are from". PostHog can answer that
+     only if it ever sees the reader's IP, and on this site it does not see
+     it directly: every event goes through the Cloudflare Worker in
+     cloudflare/posthog-proxy.js, so the connection PostHog terminates is
+     Cloudflare's. THE ANSWER DEPENDS ENTIRELY ON ONE LINE OF THAT WORKER —
+     `headers.set("X-Forwarded-For", ip)` from CF-Connecting-IP. Without it
+     every reader on earth is one datacentre and this panel is a lie drawn
+     as a map.
+
+     It is there, and the live data says it works: the check is in
+     ANALYTICS-API.md under this query, with the countries it returned. If
+     that ever stops being true the symptom is unmistakable — one row, or
+     one row plus Unknown — and the panel has to come off the page rather
+     than be relabelled.
+
+     WHAT IS NOT RETURNED. Not the city, not the region, not the timezone,
+     not the IP, and not a country per person. A country beside a row of one
+     person's reading is a location attached to an individual; a country
+     with a count beside it is a map. PostHog holds the finer fields and
+     this file does not ask for them.
+
+     THE UNKNOWN ROW IS A ROW. Events recorded when geolocation failed, or
+     from a reader whose IP resolved to nothing, are counted and labelled
+     rather than dropped: a map whose percentages quietly exclude the people
+     it could not place is the same lie in a smaller font. */
+  geo_breakdown: {
+    params: ["exclude_admins", "days", "limit"],
+    build: (p) => ({
+      columns: ["country", "country_code", "people", "opens",
+                "page_opens", "card_views"],
+      sql:
+        "SELECT ifNull(toString(properties.$geoip_country_name), '') AS country," +
+        " ifNull(toString(properties.$geoip_country_code), '') AS country_code," +
+        " count(DISTINCT person_id) AS people," +
+        " countIf(event = 'stack_open') AS opens," +
+        " countIf(event = 'page_open') AS page_opens," +
+        " countIf(event = 'card_view') AS card_views" +
+        " FROM events" +
+        " WHERE event IN ('page_open', 'stack_open', 'card_view')" +
+        "   AND " + since(p) +
+        notAdmins(p) +
+        " GROUP BY country, country_code" +
+        " ORDER BY people DESC, opens DESC LIMIT " + num(p.limit)
+    })
+  },
+
+  /* --- How long each reader spent on each card ----------------------------
+     "dwell times per user on each page or card", which is the owner's own
+     phrasing and is two groupings at once: per reader, and per card at the
+     address they read it on.
+
+     PERSONAL, like reader_activity, and for the same reason and with the
+     same four protections — the email is joined out of Firebase Auth in
+     this function, the uid never reaches the browser, a reader with no
+     account stays anonymous, and it is capped and logged. Read the third
+     block at the top of this file before changing anything here.
+
+     GROUPED BY PAGE AS WELL AS STORY. Story 01 is served at three
+     addresses. "How long did this reader spend on card 7" has a different
+     answer on /firststory than on /cleopatra, and folding the two together
+     would average a cold arrival with a browse.
+
+     THE AVERAGE IS THE TRAP, so there is no average. sum() for the total a
+     reader actually spent, median() for the typical card, max() for the
+     longest single view, and a second sum in which each view is first
+     clipped to DWELL_CAP_S. A mean over dwell is one abandoned tab away
+     from being fiction and is not returned at any grouping. */
+  reader_dwell: {
+    params: ["exclude_admins", "story", "page", "roster_limit", "days", "limit"],
+    personal: true,
+    /* TWO UPSTREAM QUERIES, AND THE SECOND ONE IS THE POINT.
+
+       `reader` has to mean the same person in every query that prints it, or
+       a dashboard where clicking a row in one table opens a timeline in
+       another is showing one reader's afternoon under another reader's
+       heading. The first draft here folded card_view rows and numbered them
+       itself, which produced a SECOND ordinal space: reader_activity ranks
+       everyone who opened a story, this ranks everyone who was measured
+       reading a card, and a person who opened a story without a card view
+       being recorded shifts every ordinal after them by one. Two tables,
+       both labelled "reader 5", two different people, and nothing on screen
+       to say so.
+
+       So this asks for the roster first — reader_activity's own query,
+       through reader_activity's own fold — and labels its rows with the
+       ordinal that roster gives. One ordinal space across reader_activity,
+       reader_dwell and person_timeline. It costs one extra PostHog query,
+       which is why spendBudget() counts upstream calls rather than
+       requests. */
+    twoStep: true,
+    build: (p) => ({ columns: READER_COLUMNS, sql: rosterSql(p, p.rosterLimit + 1) }),
+    buildDwell: (p) => ({
+      columns: ["person", "reader", "page", "story", "card", "views",
+                "dwell_s", "dwell_s_capped", "median_dwell_s",
+                "longest_dwell_s", "last_seen"],
+      sql:
+        "SELECT person_id AS person," +
+        " distinct_id AS reader," +
+        " ifNull(toString(properties.page), '') AS page," +
+        " toString(properties.story) AS story," +
+        " toInt(toString(properties.card)) AS card," +
+        " count() AS views," +
+        " round(sum(toFloatOrNull(toString(properties.dwell_s))), 1) AS dwell_s," +
+        " round(sum(least(toFloatOrNull(toString(properties.dwell_s))," +
+        "   " + num(DWELL_CAP_S) + ")), 1) AS dwell_s_capped," +
+        " round(median(toFloatOrNull(toString(properties.dwell_s))), 1) AS median_dwell_s," +
+        " round(max(toFloatOrNull(toString(properties.dwell_s))), 1) AS longest_dwell_s," +
+        " max(timestamp) AS last_seen" +
+        " FROM events" +
+        " WHERE event = 'card_view'" +
+        "   AND " + since(p) +
+        "   AND toInt(toString(properties.card)) IS NOT NULL" +
+        (p.story ? "   AND toString(properties.story) = " + lit(p.story) : "") +
+        (p.page ? "   AND toString(properties.page) = " + lit(p.page) : "") +
+        notAdmins(p) +
+        " GROUP BY person, reader, page, story, card" +
+        " ORDER BY last_seen DESC LIMIT " + num(p.limit + 1)
+    })
+  },
+
   /* --- The number that is actually true ------------------------------------
      The only query that never touches PostHog. `subscribe_funnel`'s last step
      is derived from a browser event and is therefore subject to ad blockers,
@@ -1056,8 +1387,26 @@ function readWindow(raw, p, echo, cap) {
   const to = dateParam(raw.to, "to");
 
   if (!from && !to) {
-    p.days = intParam(raw.days, DAYS_MIN, DAYS_MAX, DAYS_DEFAULT, "days");
-    echo.days = p.days;
+    /* THE PER-QUERY CEILING APPLIES HERE TOO, and for a while it did not.
+       `cap` was read at the top of readParams and then only ever consulted
+       on the from/to path below, so `event_volume` — whose whole reason for
+       having a ceiling is that a 36-day day-by-day scan timed out upstream
+       with a 502 — answered `{"days": 90}` by running the 90-day scan. The
+       comment beside that query said the range "is clamped here rather than
+       left to fail" and it was true of the path a date picker uses and
+       false of the path every curl and every default uses.
+
+       Found by asking person_timeline for 90 days and getting 90 days. The
+       clamp is the same one: move the number down, echo
+       `clamped_to_days`, and let the caller see the window they actually
+       got rather than the one they asked for. */
+    let d = intParam(raw.days, DAYS_MIN, DAYS_MAX, DAYS_DEFAULT, "days");
+    if (cap && d > cap) {
+      d = cap;
+      echo.clamped_to_days = cap;
+    }
+    p.days = d;
+    echo.days = d;
     return;
   }
 
@@ -1106,15 +1455,66 @@ function readParams(name, raw) {
         readWindow(raw, p, echo, cap);
         break;
       case "limit": {
-        /* reader_activity counts (person, id, story) triples rather than
-           rows-a-human-reads, so a story-per-reader multiplies them; its cap
-           is its own. Everything else keeps the published 1–200. */
-        const hi = name === "reader_activity" ? READER_ROWS_MAX : LIMIT_MAX;
-        const dflt = name === "reader_activity" ? READER_ROWS_DEFAULT : LIMIT_DEFAULT;
+        /* Three queries count something other than rows-a-human-reads and
+           each carries its own cap. reader_activity counts (person, id,
+           story) triples; reader_dwell counts (person, page, story, card)
+           quads, which a twenty-card story multiplies again; person_timeline
+           counts one reader's raw events. Everything else keeps the
+           published 1–200. */
+        const hi = name === "reader_activity" ? READER_ROWS_MAX
+                 : name === "reader_dwell" ? DWELL_ROWS_MAX
+                 : name === "person_timeline" ? TIMELINE_ROWS_MAX
+                 : LIMIT_MAX;
+        const dflt = name === "reader_activity" ? READER_ROWS_DEFAULT
+                   : name === "reader_dwell" ? DWELL_ROWS_DEFAULT
+                   : name === "person_timeline" ? TIMELINE_ROWS_DEFAULT
+                   : LIMIT_DEFAULT;
         p.limit = intParam(raw.limit, LIMIT_MIN, hi, dflt, "limit");
         echo.limit = p.limit;
         break;
       }
+      case "reader": {
+        /* AN ORDINAL, NOT AN IDENTIFIER. What reader_activity printed in its
+           `reader` column: 1 for the most recently active reader, 2 for the
+           next. It is an integer and it is bounded by the roster's own cap,
+           so there is nothing here to quote into a query — the person id it
+           resolves to is read from PostHog's answer to the roster query, not
+           from anything the caller sent.
+
+           It arrives as a string from a dashboard and as a number from curl,
+           and intParam takes either. Rejected rather than clamped: `reader:
+           0` and `reader: 900` are not sliders at their ends, they are a
+           dashboard that has lost track of which row was clicked, and
+           silently answering about reader 1 instead would put one person's
+           afternoon under another person's name. */
+        const v = raw.reader;
+        if (v === undefined || v === null || v === "") throw bad("reader");
+        /* A NUMBER OR A STRING, and nothing else. Without this line JSON's
+           `[1]` arrives, String() turns it into "1", Number() turns that
+           into 1, and a malformed body quietly resolves to reader 1 —
+           somebody's timeline under a request that did not name them. It
+           was caught by sending exactly that. `[1,2]` was already refused,
+           which is the worst kind of nearly-safe: right by accident. */
+        if (typeof v !== "number" && typeof v !== "string") throw bad("reader");
+        const n = typeof v === "number" ? v : Number(v);
+        if (!isFinite(n) || Math.floor(n) !== n || n < 1 || n > READER_ROWS_MAX) {
+          throw bad("reader");
+        }
+        p.reader = n;
+        echo.reader = n;
+        break;
+      }
+      case "roster_limit":
+        /* The `limit` the caller passed to reader_activity when it drew the
+           table the ordinal came from. Ordinals are stable under truncation
+           for every reader before the cut, so this matters only when the
+           roster was actually truncated — but when it was, resolving against
+           a different roster size can resolve to a different person, and
+           "usually right" is not a property this query may have. */
+        p.rosterLimit = intParam(raw.roster_limit, LIMIT_MIN, READER_ROWS_MAX,
+                                 READER_ROWS_DEFAULT, "roster_limit");
+        echo.roster_limit = p.rosterLimit;
+        break;
       case "exclude_admins":
         /* DEFAULT ON. The honest default is "numbers about strangers":
            three accounts exist on this project and all three are founders',
@@ -1225,7 +1625,7 @@ async function requireAdmin(req) {
 
    Cached for a minute, module-scope. That is per instance and therefore not a
    security boundary, which is fine because it is not doing security: it is
-   saving fourteen collection scans per render. maxInstances is 3, so the
+   saving seventeen collection scans per render. maxInstances is 3, so the
    worst case is three copies of a three-element array.
    ========================================================================== */
 
@@ -1370,7 +1770,7 @@ function thisHour(d) { return (d || new Date()).toISOString().slice(0, 13); }
  * and timestamps only; `expiresAt` is written for a TTL policy whether or not
  * one is installed, so installing it later needs no code change.
  */
-async function spendBudget(uid, when, wantsUpstream) {
+async function spendBudget(uid, when, upstreamCost) {
   const day = today(when);
   const hour = thisHour(when);
   const now = when.getTime();
@@ -1399,8 +1799,16 @@ async function spendBudget(uid, when, wantsUpstream) {
     /* The bound that actually caps a bad day. Everything above is per admin
        and there are two or three of those; this is the ceiling on how many
        times this project can ask PostHog anything at all in a day. */
+    /* `upstreamCost` is a COUNT, not a switch: 0 for subscription_totals,
+       which never leaves Google, 1 for a normal query, and 2 for
+       person_timeline, which asks PostHog twice — once for the roster that
+       turns an ordinal into a person and once for that person's events. A
+       query that costs two and is billed one would let the global ceiling
+       be overshot by half, quietly. */
     const upstreamToday = q.day === day ? Number(q.upstream || 0) : 0;
-    if (wantsUpstream && upstreamToday >= GLOBAL_PER_DAY) throw deny("rate_limited", 0);
+    if (upstreamCost > 0 && upstreamToday + upstreamCost > GLOBAL_PER_DAY) {
+      throw deny("rate_limited", 0);
+    }
 
     tx.set(rateRef, {
       uid: uid,
@@ -1414,7 +1822,7 @@ async function spendBudget(uid, when, wantsUpstream) {
 
     tx.set(quotaRef, {
       day: day,
-      upstream: upstreamToday + (wantsUpstream ? 1 : 0),
+      upstream: upstreamToday + upstreamCost,
       total: (q.day === day ? Number(q.total || 0) : 0) + 1
     }, { merge: true });
   });
@@ -1687,7 +2095,15 @@ function shape(name, rows) {
    again after editing this: it is the whole of the privacy design.
    ========================================================================== */
 
-async function shapeReaders(rows, limit) {
+/* THE FOLD AND THE ORDER, EXTRACTED, because two queries now depend on
+   producing exactly the same one. `reader_activity` prints the ordinals and
+   `person_timeline` resolves one back to a person, and if these two ever
+   ordered readers differently the dashboard would show one person's
+   timeline under another person's email — a wrong answer that looks
+   completely right. One function, called by both. The returned records
+   carry the person id; it is the caller's job never to send it on, and
+   shapeReaders() below drops it. */
+function foldReaders(rows, limit) {
   /* The query asked for limit + 1, so an extra row means there were more. */
   const truncated = rows.length > limit;
   const use = truncated ? rows.slice(0, limit) : rows;
@@ -1706,7 +2122,10 @@ async function shapeReaders(rows, limit) {
 
     let rec = byPerson[key];
     if (!rec) {
-      rec = byPerson[key] = { ids: [], last: "", stories: Object.create(null), list: [] };
+      rec = byPerson[key] = {
+        person: String(r.person || ""),
+        ids: [], last: "", stories: Object.create(null), list: []
+      };
       order.push(rec);
     }
 
@@ -1735,18 +2154,33 @@ async function shapeReaders(rows, limit) {
     if (seen > st.last) st.last = seen;
   }
 
+  /* MOST RECENT FIRST, and this line is the definition of the ordinal. It is
+     also the line person_timeline depends on: change the comparator and
+     every ordinal a dashboard is holding points at somebody else. */
+  order.sort(function (a, b) { return a.last < b.last ? 1 : (a.last > b.last ? -1 : 0); });
+
+  return { order: order, ids: ids, truncated: truncated };
+}
+
+/* Every batch failed and there was something to ask. The panel's whole point
+   is the email column, and a screen of readers labelled "anonymous" because
+   Firebase Auth was down is a lie told quietly. Refuse instead. */
+async function emailsOrRefuse(ids) {
   const got = await emailsFor(ids);
-  /* Every batch failed and there was something to ask. The panel's whole
-     point is the email column, and a screen of readers labelled "anonymous"
-     because Firebase Auth was down is a lie told quietly. Refuse instead. */
   if (got.asked > 0 && got.failed >= got.asked) {
     const e = new Error("upstream");
     e.code = "upstream";
     e.reason = "auth_lookup";
     throw e;
   }
+  return got;
+}
 
-  order.sort(function (a, b) { return a.last < b.last ? 1 : (a.last > b.last ? -1 : 0); });
+async function shapeReaders(rows, limit) {
+  const fold = foldReaders(rows, limit);
+  const order = fold.order;
+  const truncated = fold.truncated;
+  const got = await emailsOrRefuse(fold.ids);
 
   const out = [];
   let withEmail = 0;
@@ -1781,6 +2215,382 @@ async function shapeReaders(rows, limit) {
       readers: order.length,
       with_email: withEmail,
       anonymous: order.length - withEmail,
+      truncated: truncated
+    }
+  };
+}
+
+/* ==========================================================================
+   GEOGRAPHY — and the check that has to travel with it
+
+   The rows come back with a country name, a country code and three counts.
+   Two things happen here, and the second is the important one.
+
+   THE UNKNOWN ROW IS NAMED. Events PostHog could not place come back with
+   an empty country and are labelled rather than dropped, because a map
+   whose percentages silently exclude the people it could not locate is
+   worse than one that admits the hole.
+
+   AND THE ANSWER CARRIES ITS OWN AUDIT. `meta.countries` is how many
+   distinct places the window actually contains, and `meta.geo_usable` is
+   false when that number is 0 or 1. This site proxies every event through a
+   Cloudflare Worker; if that Worker ever stops forwarding the reader's IP,
+   the symptom is exactly one country — every reader in the world collapsed
+   into a datacentre — and a panel drawn from that would look completely
+   normal and be completely false. So the failure is DETECTED here and
+   reported as a flag rather than left for someone to notice. A dashboard
+   that draws a map without reading `geo_usable` is drawing a lie.
+
+   PEOPLE DO NOT SUM TO THE SITE'S READERS. count(DISTINCT person_id) is per
+   country, so one reader who travelled — or turned a VPN on — is counted in
+   two rows. `meta.people_rows` is the sum of the column and is not the
+   number of readers; `people_pct` is a share of that sum. Both are named
+   for what they are.
+   ========================================================================== */
+
+function shapeGeo(rows) {
+  let total = 0, countries = 0, unknown = 0;
+  for (const r of rows) {
+    const people = Number(r.people || 0);
+    total += people;
+    if (!r.country) {
+      r.country = GEO_UNKNOWN;
+      r.country_code = null;
+      r.located = false;
+      unknown += people;
+    } else {
+      r.located = true;
+      countries++;
+    }
+  }
+  for (const r of rows) r.people_pct = pct(Number(r.people || 0), total);
+
+  return {
+    rows: rows,
+    meta: {
+      countries: countries,
+      people_rows: total,
+      unlocated_people_rows: unknown,
+      /* One country, or none, means the IP never reached PostHog — see
+         cloudflare/posthog-proxy.js. Do not draw a map on a false. */
+      geo_usable: countries > 1
+    }
+  };
+}
+
+/* ==========================================================================
+   READER DWELL — per reader, per card, and never a mean
+
+   The same three-step shape as shapeReaders: fold on the person, join the
+   email out of Firebase Auth, assign an ordinal. The person id and the uid
+   do not appear in what is returned; check that again after editing.
+
+   THE ONE THING THAT IS DIFFERENT IS THE ARITHMETIC. Every dwell figure is
+   returned twice — raw, and with each individual card view first clipped to
+   DWELL_CAP_S — and there is no mean at any level. `dwell_s` is what the
+   reader's screen actually showed the card for; `dwell_s_capped` is the
+   same sum with an abandoned tab's contribution bounded. They agree for
+   almost every reader, and where they disagree loudly that IS the finding:
+   somebody left the page open. Reporting only the first would inflate the
+   number; reporting only the second would quietly delete real reading.
+
+   PER-READER TOTALS RIDE ON EVERY ROW rather than arriving in a second
+   array, which is the shape reader_activity already uses for `stories` and
+   `last_seen`. A dashboard grouping rows by `reader` has the header numbers
+   in the first row of each group and needs no second lookup.
+   ========================================================================== */
+
+function medianOf(values) {
+  if (!values.length) return null;
+  const v = values.slice().sort(function (a, b) { return a - b; });
+  const mid = v.length >> 1;
+  const m = v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+  return Math.round(m * 10) / 10;
+}
+
+function round1(n) { return Math.round(Number(n || 0) * 10) / 10; }
+
+/* The roster, as a lookup: person id -> the ordinal reader_activity would
+   print for them, and the email that goes with it. Built once from the fold
+   every personal query shares, so "reader 5" is one person across the whole
+   API. Returns a plain object because a person id is a UUID string. */
+function rosterIndex(order, emails) {
+  const index = Object.create(null);
+  for (let i = 0; i < order.length; i++) {
+    const rec = order[i];
+    if (!rec.person) continue;
+    let email = null;
+    for (const id of rec.ids) if (emails[id]) { email = emails[id]; break; }
+    index[rec.person] = { ordinal: String(i + 1), email: email, last: rec.last || null };
+  }
+  return index;
+}
+
+function shapeReaderDwell(rows, limit, index) {
+  const truncated = rows.length > limit;
+  const use = truncated ? rows.slice(0, limit) : rows;
+
+  const byPerson = Object.create(null);
+  const order = [];
+  let unranked = 0;
+
+  for (const r of use) {
+    const key = String(r.person || "");
+    if (!key) continue;
+    /* A card_view whose card did not parse. toInt returned NULL, the row is
+       about no card in particular, and there is no honest label for it. */
+    if (r.card === null || r.card === undefined) continue;
+
+    /* THE ORDINAL COMES FROM THE ROSTER, NOT FROM COUNTING ROWS HERE. Every
+       person with a card_view is in the roster by construction — card_view
+       is one of the four events the roster query selects — so the only way
+       to miss is a roster that truncated. Those rows are kept and labelled
+       `reader: null` rather than dropped: losing a reader's dwell because a
+       cap bit is worse than showing it without a number to click. */
+    const seat = index[key] || null;
+    if (!seat) unranked++;
+
+    let rec = byPerson[key];
+    if (!rec) {
+      rec = byPerson[key] = {
+        reader: seat ? seat.ordinal : null,
+        email: seat ? seat.email : null,
+        last: "",
+        cards: []
+      };
+      order.push(rec);
+    }
+
+    const seen = String(r.last_seen || "");
+    if (seen > rec.last) rec.last = seen;
+
+    rec.cards.push({
+      /* Empty means the view predates `page` shipping on card_view. It is
+         not "the home page" and it is not guessable, so it is named for
+         what it is and left alone. */
+      page: String(r.page || "") || null,
+      story: String(r.story || ""),
+      card: Number(r.card),
+      views: Number(r.views || 0),
+      dwell_s: round1(r.dwell_s),
+      dwell_s_capped: round1(r.dwell_s_capped),
+      median_dwell_s: r.median_dwell_s === null ? null : round1(r.median_dwell_s),
+      longest_dwell_s: r.longest_dwell_s === null ? null : round1(r.longest_dwell_s),
+      last_seen: seen || null
+    });
+  }
+
+  /* Most recent first, the same rule and therefore the same order the
+     ordinals were assigned in. A reader the roster could not rank sorts by
+     recency with everyone else and simply has no number. */
+  order.sort(function (a, b) { return a.last < b.last ? 1 : (a.last > b.last ? -1 : 0); });
+
+  const out = [];
+  let withEmail = 0;
+  for (const rec of order) {
+    const email = rec.email;
+    if (email) withEmail++;
+    const label = rec.reader;
+
+    /* Reading order — the page, then the story, then the card — because
+       "which cards and how long on each" is read down a story, not sorted
+       by size. The dashboard can re-sort; it cannot un-sort. */
+    rec.cards.sort(function (a, b) {
+      const pa = a.page || "", pb = b.page || "";
+      if (pa !== pb) return pa < pb ? -1 : 1;
+      if (a.story !== b.story) return a.story < b.story ? -1 : 1;
+      return a.card - b.card;
+    });
+
+    let total = 0, capped = 0, views = 0;
+    const each = [];
+    for (const c of rec.cards) {
+      total += c.dwell_s;
+      capped += c.dwell_s_capped;
+      views += c.views;
+      each.push(c.dwell_s);
+    }
+
+    for (const c of rec.cards) {
+      out.push({
+        reader: label,
+        email: email,
+        page: c.page,
+        story: c.story,
+        card: c.card,
+        views: c.views,
+        dwell_s: c.dwell_s,
+        dwell_s_capped: c.dwell_s_capped,
+        median_dwell_s: c.median_dwell_s,
+        longest_dwell_s: c.longest_dwell_s,
+        last_seen: c.last_seen,
+        /* The per-reader totals, on every row. Same value in each row of a
+           reader's group; a dashboard reads them off the first. */
+        reader_cards: rec.cards.length,
+        reader_views: views,
+        reader_dwell_s: round1(total),
+        reader_dwell_s_capped: round1(capped),
+        reader_median_card_dwell_s: medianOf(each),
+        reader_last_seen: rec.last || null
+      });
+    }
+  }
+
+  return {
+    rows: out,
+    meta: {
+      readers: order.length,
+      with_email: withEmail,
+      anonymous: order.length - withEmail,
+      card_rows: out.length,
+      /* Rows whose reader is not on the roster, and therefore carries no
+         ordinal. Only reachable when the roster itself truncated. */
+      unranked_rows: unranked,
+      /* What the clip was, so `_capped` is a stated arithmetic rather than a
+         number the dashboard has to trust. */
+      dwell_cap_s: DWELL_CAP_S,
+      /* A FACT. The query asked for limit + 1 rows and got them, so there
+         were more. When this is true the per-reader totals of the readers
+         nearest the cut are PARTIAL — the rows are ordered by recency
+         across everybody, so a cap cuts a reader's older cards away.
+         ANALYTICS-API.md says so beside the query. */
+      truncated: truncated
+    }
+  };
+}
+
+/* ==========================================================================
+   ONE READER'S TIMELINE — the order, and the gaps
+
+   The rows arrive most recent first, because a cap that bites has to drop
+   the oldest events rather than the ones the panel was opened to see. They
+   leave oldest first, because "x then y then z" reads downwards.
+
+   THE GAP IS THE ANSWER, not decoration. The owner's phrasing was "and then
+   an hour later" — the time BETWEEN two events is the part that says whether
+   this was one sitting or somebody coming back. `gap_s` is seconds since the
+   previous row and is null on the first, and `session` counts a new visit
+   every time that gap passes SESSION_GAP_S, so a dashboard can draw the
+   break without re-deriving it from timestamps and getting a different
+   answer than this file would.
+
+   `detail` IS BUILT HERE, out of named properties, and never out of a
+   property that can hold something a reader typed. client_error.message is
+   the one such field on any event this site sends, and it is not read.
+   ========================================================================== */
+
+function timelineDetail(r) {
+  const ev = String(r.event || "");
+  const page = String(r.page || "");
+  const story = String(r.story || "");
+  const card = (r.card === null || r.card === undefined) ? null : Number(r.card);
+  const bits = [];
+
+  if (ev === "card_view") {
+    if (story) bits.push("story " + story);
+    if (card !== null) bits.push("card " + card);
+    if (r.dwell_s !== null && r.dwell_s !== undefined) {
+      bits.push(round1(r.dwell_s) + "s on screen");
+    }
+    if (page) bits.push("on /" + page);
+  } else if (ev === "stack_open" || ev === "stack_complete" || ev === "resume_used") {
+    if (story) bits.push("story " + story);
+    if (card !== null) bits.push("card " + card);
+  } else if (ev === "stack_dropoff") {
+    if (story) bits.push("story " + story);
+    if (card !== null) bits.push("stopped at card " + card);
+  } else if (ev === "story_time") {
+    if (story) bits.push("story " + story);
+    if (r.cards !== null && r.cards !== undefined) {
+      const n = Number(r.cards);
+      bits.push(n + (n === 1 ? " card" : " cards"));
+    }
+  } else if (ev === "page_open") {
+    if (page) bits.push("/" + page);
+  } else if (ev === "ui_click") {
+    if (r.control) bits.push("pressed " + String(r.control));
+    if (page) bits.push("on /" + page);
+  } else if (ev === "join_step" || ev === "join_skip") {
+    if (r.step) bits.push(String(r.step));
+  } else if (ev === "checkout_start" || ev === "subscribe_click" ||
+             ev === "monthly_selected" || ev === "annual_selected") {
+    if (r.plan) bits.push(String(r.plan));
+  } else if (ev === "checkout_blocked") {
+    if (r.why) bits.push(String(r.why));
+    if (r.plan) bits.push(String(r.plan));
+  } else if (ev === "access_gained") {
+    if (r.via) bits.push("via " + String(r.via));
+  } else if (ev === "client_error") {
+    /* The source and the line, never the message. `client_errors` reports
+       that field, grouped, where it is a bug rather than a person. */
+    if (r.source) bits.push(String(r.source));
+    if (r.line !== null && r.line !== undefined) bits.push("line " + Number(r.line));
+    if (page) bits.push("on /" + page);
+  } else {
+    if (story) bits.push("story " + story);
+    if (page) bits.push("on /" + page);
+  }
+  return bits.join(" · ");
+}
+
+function shapeTimeline(rows, limit) {
+  /* Asked for limit + 1 in DESC order: an extra row means there is older
+     history this response does not contain. A fact, not a guess. */
+  const truncated = rows.length > limit;
+  const use = (truncated ? rows.slice(0, limit) : rows).slice().reverse();
+
+  const out = [];
+  let prev = 0, session = 0;
+  let firstAt = null, lastAt = null, cards = 0, dwell = 0, dwellCapped = 0;
+  let longestGap = 0;
+
+  for (const r of use) {
+    const at = String(r.at || "");
+    const t = Date.parse(at);
+    const ok = isFinite(t);
+    /* Null on the first row, and null on a row whose timestamp did not
+       parse — a made-up zero would read as "immediately afterwards". */
+    const gap = (ok && prev) ? Math.max(0, Math.round((t - prev) / 1000)) : null;
+    if (gap === null || gap >= SESSION_GAP_S) session++;
+    if (gap !== null && gap > longestGap) longestGap = gap;
+
+    if (String(r.event) === "card_view") {
+      cards++;
+      const d = Number(r.dwell_s || 0);
+      dwell += d;
+      dwellCapped += Math.min(d, DWELL_CAP_S);
+    }
+
+    out.push({
+      at: at || null,
+      event: String(r.event || ""),
+      detail: timelineDetail(r),
+      gap_s: gap,
+      session: session,
+      /* The named fields the detail string was built from, so a dashboard
+         can lay the timeline out as a table instead of a sentence without
+         parsing prose back apart. */
+      page: String(r.page || "") || null,
+      story: String(r.story || "") || null,
+      card: (r.card === null || r.card === undefined) ? null : Number(r.card),
+      dwell_s: (r.dwell_s === null || r.dwell_s === undefined) ? null : round1(r.dwell_s)
+    });
+
+    if (ok) { prev = t; lastAt = at; if (firstAt === null) firstAt = at; }
+  }
+
+  return {
+    rows: out,
+    meta: {
+      sessions: session,
+      first_event: firstAt,
+      last_event: lastAt,
+      longest_gap_s: longestGap,
+      card_views: cards,
+      reading_s: round1(dwell),
+      reading_s_capped: round1(dwellCapped),
+      dwell_cap_s: DWELL_CAP_S,
+      session_gap_s: SESSION_GAP_S,
       truncated: truncated
     }
   };
@@ -2010,15 +2820,16 @@ exports.insights = onRequest(
       return fail(res, "bad_query", { field: (err && err.field) || undefined });
     }
 
-    /* --- 3. What it costs. ---------------------------------------------- */
-    const wantsUpstream = !spec.firestore;
+    /* --- 3. What it costs. ----------------------------------------------
+       Counted in upstream queries, because person_timeline makes two. */
+    const upstreamCost = spec.firestore ? 0 : (spec.twoStep ? 2 : 1);
 
     const localWait = throttledLocally(who.uid);
     if (localWait) return fail(res, "rate_limited", { retry_after_s: localWait });
 
     const when = new Date();
     try {
-      await spendBudget(who.uid, when, wantsUpstream);
+      await spendBudget(who.uid, when, upstreamCost);
     } catch (err) {
       if (err && err.code === "rate_limited") {
         return fail(res, "rate_limited", {
@@ -2033,8 +2844,8 @@ exports.insights = onRequest(
        Always read, whichever way the switch is set: with it ON the uids
        build the filter, with it OFF the COUNT is still what lets the page
        say "these numbers include N admin accounts" rather than leaving the
-       reader to wonder. Cached for a minute, so a fourteen-panel render is
-       one collection scan and not fourteen. */
+       reader to wonder. Cached for a minute, so a seventeen-panel render is
+       one collection scan and not seventeen. */
     const wantsExclude = parsed.p.excludeAdmins === true;
     let admins = null;
     try {
@@ -2092,6 +2903,36 @@ exports.insights = onRequest(
     if (asked !== name) meta.requested = asked;
 
     let rows;
+    let key = "", project = "";
+    if (!spec.firestore) {
+      key = String(POSTHOG_API_KEY.value() || "");
+      project = String(POSTHOG_PROJECT_ID.value() || "");
+      /* A personal API key is `phx_…`; anything else, including the empty
+         string a never-set secret returns, means "not configured yet". Same
+         shape support.js uses for a missing mail key: the function works, the
+         admin check works, there is simply nothing upstream to ask. */
+      if (!/^phx_[A-Za-z0-9_-]{10,}$/.test(key) || !/^[0-9]{1,12}$/.test(project)) {
+        return fail(res, "upstream", { reason: "not_configured" });
+      }
+    }
+
+    /* One hop upstream, with the one place a failure is turned into a 502.
+       Returns null having ALREADY answered the request when it fails, so
+       every caller checks for null and returns. */
+    async function run(built) {
+      try {
+        return toRows(await ask(built.sql, key, project), built.columns);
+      } catch (err) {
+        logger.error("insights upstream failed", {
+          query: name,
+          reason: (err && err.reason) || "unknown",
+          detail: (err && err.detail) || null
+        });
+        fail(res, "upstream", { reason: (err && err.reason) || undefined });
+        return null;
+      }
+    }
+
     if (spec.firestore) {
       try {
         rows = await subscriptionTotals(admins ? admins.length : undefined);
@@ -2102,35 +2943,15 @@ exports.insights = onRequest(
         return fail(res, "upstream", { reason: "firestore" });
       }
     } else {
-      const key = String(POSTHOG_API_KEY.value() || "");
-      const project = String(POSTHOG_PROJECT_ID.value() || "");
-      /* A personal API key is `phx_…`; anything else, including the empty
-         string a never-set secret returns, means "not configured yet". Same
-         shape support.js uses for a missing mail key: the function works, the
-         admin check works, there is simply nothing upstream to ask. */
-      if (!/^phx_[A-Za-z0-9_-]{10,}$/.test(key) || !/^[0-9]{1,12}$/.test(project)) {
-        return fail(res, "upstream", { reason: "not_configured" });
-      }
-
-      const built = spec.build(parsed.p);
-      let answer;
-      try {
-        answer = await ask(built.sql, key, project);
-      } catch (err) {
-        logger.error("insights upstream failed", {
-          query: name,
-          reason: (err && err.reason) || "unknown",
-          detail: (err && err.detail) || null
-        });
-        return fail(res, "upstream", { reason: (err && err.reason) || undefined });
-      }
-      rows = toRows(answer, built.columns);
+      rows = await run(spec.build(parsed.p));
+      if (rows === null) return;
     }
 
-    /* Two queries are folded rather than shaped: one has to await Firebase
-       Auth, and both carry a person id in the rows PostHog returned that must
-       be dropped before anything is sent. Both return their own meta, which
-       is how a caveat about the answer travels with the answer. */
+    /* Four queries are folded rather than shaped: three have to await
+       Firebase Auth or a second upstream hop, and every one of them carries
+       a person id in the rows PostHog returned that must be dropped before
+       anything is sent. Each returns its own meta, which is how a caveat
+       about an answer travels with the answer. */
     if (name === "reader_activity") {
       let folded;
       try {
@@ -2143,8 +2964,72 @@ exports.insights = onRequest(
       }
       rows = folded.rows;
       for (const k in folded.meta) meta[k] = folded.meta[k];
+
+    } else if (spec.twoStep) {
+      /* --- THE ROSTER, AND THE ORDINAL IT DEFINES ----------------------
+         `rows` at this point is reader_activity's own query through
+         reader_activity's own fold, so "reader 5" here is the same person
+         "reader 5" is there. Both two-step queries resolve against it and
+         neither invents an ordinal of its own. The person ids live in this
+         block and in no response: check that again after editing, because
+         it is the whole of the privacy design. */
+      const fold = foldReaders(rows, parsed.p.rosterLimit);
+      meta.roster_readers = fold.order.length;
+      meta.roster_truncated = fold.truncated;
+
+      let got;
+      try {
+        got = await emailsOrRefuse(fold.ids);
+      } catch (err) {
+        logger.error("insights reader join failed", {
+          reason: (err && err.reason) || "unknown"
+        });
+        return fail(res, "upstream", { reason: (err && err.reason) || undefined });
+      }
+      const index = rosterIndex(fold.order, got.map);
+
+      if (name === "reader_dwell") {
+        const dwell = await run(spec.buildDwell(parsed.p));
+        if (dwell === null) return;
+        const folded = shapeReaderDwell(dwell, parsed.p.limit, index);
+        rows = folded.rows;
+        for (const k in folded.meta) meta[k] = folded.meta[k];
+
+      } else {
+        /* person_timeline: one seat on that roster, resolved here. */
+        const rec = fold.order[parsed.p.reader - 1] || null;
+        if (!rec || !rec.person) {
+          /* Not an error. The table was drawn, somebody else read a card,
+             and the row that was 7th is 8th. Say so, answer with no rows. */
+          meta.reader_found = false;
+          meta.reader_email = null;
+          meta.reader_last_seen = null;
+          rows = [];
+        } else {
+          const seat = index[rec.person] || {};
+          /* WHO IT RESOLVED TO, so a dashboard can print the name beside
+             the timeline and a human can see it is still the row they
+             clicked. The email, which reader_activity already shows for
+             this reader — never the uid and never the person id. */
+          meta.reader_found = true;
+          meta.reader_email = seat.email === undefined ? null : seat.email;
+          meta.reader_last_seen = rec.last || null;
+          meta.reader_stories = rec.list.length;
+
+          const events = await run(spec.buildEvents(parsed.p, rec.person));
+          if (events === null) return;
+          const folded = shapeTimeline(events, parsed.p.limit);
+          rows = folded.rows;
+          for (const k in folded.meta) meta[k] = folded.meta[k];
+        }
+      }
+
     } else if (name === "firststory_funnel") {
       const folded = shapeFirstStory(rows);
+      rows = folded.rows;
+      for (const k in folded.meta) meta[k] = folded.meta[k];
+    } else if (name === "geo_breakdown") {
+      const folded = shapeGeo(rows);
       rows = folded.rows;
       for (const k in folded.meta) meta[k] = folded.meta[k];
     } else {
@@ -2170,6 +3055,13 @@ exports.insights = onRequest(
         uid: who.uid, query: name,
         readers: meta.readers === undefined ? null : meta.readers,
         emails: meta.with_email === undefined ? null : meta.with_email,
+        /* person_timeline read ONE person. Which ordinal was asked for and
+           whether it resolved — never the email, never the uid, never the
+           person id. An ordinal in a log is a number; the thing that makes
+           it mean a person is the roster, and the roster is not stored. */
+        reader: parsed.echo.reader === undefined ? null : parsed.echo.reader,
+        reader_found: meta.reader_found === undefined ? null : meta.reader_found,
+        rows: rows.length,
         admin_filter: meta.admin_filter
       });
     }
@@ -2193,6 +3085,12 @@ exports._KNOWN_EVENTS = KNOWN_EVENTS;
 exports._shape = shape;
 exports._shapeFirstStory = shapeFirstStory;
 exports._shapeReaders = shapeReaders;
+exports._foldReaders = foldReaders;
+exports._shapeReaderDwell = shapeReaderDwell;
+exports._rosterIndex = rosterIndex;
+exports._shapeTimeline = shapeTimeline;
+exports._shapeGeo = shapeGeo;
+exports._timelineDetail = timelineDetail;
 /* alerts.js needs the SAME admin list this file uses, not a second copy of
    the logic. A divergence here does not fail loudly — it fails by the
    launch alarm quietly starting to fire on the founders' own browsing,

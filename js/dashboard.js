@@ -389,7 +389,10 @@
   function kindOf(key) {
     var k = String(key).toLowerCase();
     if (/_ms$/.test(k)) return "ms";
-    if (/_(secs|seconds|sec|s)$/.test(k)) return "sec";
+    /* `dwell_s` and `dwell_s_capped` are both seconds. Without the optional
+       tail, the second renders as the bare number 214.5 beside the first
+       rendered as 3m 35s — two spellings of the same unit in one row. */
+    if (/_(secs|seconds|sec|s)(_[a-z]+)?$/.test(k)) return "sec";
     if (/(^|_)pct($|_)/.test(k) || /_percent$/.test(k)) return "pct";
     if (/_(rate|share|ratio|frac|fraction)$/.test(k)) return "frac";
     return "";
@@ -478,7 +481,19 @@
     errors: "Errors", last_seen: "Last active",
     email: "Email", reader: "Reader", stories: "Stories",
     furthest_card: "Furthest card", cards_seen: "Cards read",
-    story_last_seen: "Last read", arrivals: "Arrivals"
+    story_last_seen: "Last read", arrivals: "Arrivals",
+    /* Where readers are, time on each card, and one person in order. */
+    country: "Country", country_code: "Code", located: "Placed by IP",
+    /* labelOf() strips a trailing _pct, so this would come back as "People"
+       beside the column that IS people — the two-columns-with-one-heading
+       bug this page has shipped once already. */
+    people_pct: "Share of people",
+    page_opens: "Page opens", card_views: "Card views",
+    dwell_s: "Time on card", dwell_s_capped: "Capped time",
+    longest_dwell_s: "Longest single view",
+    cards: "Cards", first_seen: "First seen",
+    at: "When", event: "Event", detail: "What happened",
+    gap_s: "Since the one before"
   };
 
   function labelOf(key, over) {
@@ -655,6 +670,21 @@
 
     var nameCol = opts.nameCol && indexOf(cols, opts.nameCol) >= 0 ? opts.nameCol : null;
 
+    /* A duration is not a proportion, so the key-name rule will never give it
+       a bar — and "where did this reader stall" is exactly a comparison of
+       lengths. So a caller may name ONE column to be drawn against the
+       largest value in this table. Per table, deliberately: each reader's
+       cards are compared with that reader's own longest card, which is the
+       comparison the question asks for. */
+    var barKey = opts.barKey && indexOf(cols, opts.barKey) >= 0 ? opts.barKey : null;
+    var barMax = 0;
+    if (barKey) {
+      for (i = 0; i < t.rows.length; i++) {
+        var bmv = t.rows[i][barKey];
+        if (typeof bmv === "number" && isFinite(bmv) && bmv > barMax) barMax = bmv;
+      }
+    }
+
     var h = "<thead><tr>", c, sortAttr, caret;
     for (i = 0; i < cols.length; i++) {
       c = cols[i];
@@ -688,6 +718,13 @@
                     ? String(r[opts.subKey]) : "";
           h += "<td class=\"dsh-name\">" + esc(txt) +
                (sub ? " <span class=\"dsh-id\">" + esc(sub) + "</span>" : "") + "</td>";
+        } else if (barKey && col === barKey && typeof val === "number" && barMax > 0) {
+          var bf = val / barMax;
+          if (bf < 0) bf = 0;
+          if (bf > 1) bf = 1;
+          h += "<td class=\"dsh-n\"><span class=\"dsh-cell-bar\">" +
+               "<i style=\"width:" + Math.round(bf * 100) + "%\"></i>" +
+               "<span>" + esc(txt) + "</span></span></td>";
         } else if (frac[col]) {
           var f = fracOf(val, kindOf(col));
           h += "<td class=\"dsh-n\"><span class=\"dsh-cell-bar\">" +
@@ -1925,15 +1962,23 @@
      "on any page — not only the story."]
   ];
 
+  /* One visible sentence, the rest behind a disclosure — the shape every
+     caveat on this page takes since the funnel's 454 words were collapsed.
+     `pairs` is [[heading, body], …] and both halves are escaped: nothing from
+     a server ever reaches this, but the rule holds anyway. */
+  function disclosure(summary, pairs) {
+    var out = "", i;
+    for (i = 0; i < pairs.length; i++) {
+      out += "<p class=\"dsh-cav\"><b>" + esc(pairs[i][0]) + "</b> " +
+             esc(pairs[i][1]) + "</p>";
+    }
+    return "<details class=\"dsh-more\"><summary>" + esc(summary) + "</summary>" +
+           out + "</details>";
+  }
+
   /* Built once, not per render: it never changes. */
   function fsMoreHTML() {
-    var out = "", i;
-    for (i = 0; i < FS_MORE.length; i++) {
-      out += "<p class=\"dsh-cav\"><b>" + esc(FS_MORE[i][0]) + "</b> " +
-             esc(FS_MORE[i][1]) + "</p>";
-    }
-    return "<details class=\"dsh-more\"><summary>What these numbers do and " +
-           "do not say</summary>" + out + "</details>";
+    return disclosure("What these numbers do and do not say", FS_MORE);
   }
 
   var FS_BODY = ["dsh-fs-kpis", "dsh-fs-chartbox", "dsh-fs-key", "dsh-fs-box"];
@@ -2108,7 +2153,8 @@
      ========================================================================== */
 
   var RD_NOTE =
-    "This is the only panel on this page that shows a person. The email comes " +
+    "This panel and “Time on each card” below it are the only two that show a " +
+    "person, and the session timeline under them shows one. The email comes " +
     "from Firebase Auth, joined to the analytics by the Firebase user id the " +
     "site attaches once someone signs in — it is not in PostHog and is never " +
     "sent there. A reader with no account has no email and is shown as " +
@@ -2117,6 +2163,12 @@
     "“Cards read” counts only cards that were on screen for 900ms or more.";
 
   var RD_BODY = ["dsh-rd-kpis", "dsh-rd-list"];
+
+  /* The roster size, sent by BOTH this panel and the session panel below it.
+     A reader ordinal means "the Nth row of a reader_activity answer", so the
+     two only agree on who reader 7 is while they agree on how long the list
+     was. One constant, so they cannot drift apart. */
+  var READER_LIMIT = 200;
 
   /* "2026-09-05 09:30:00" and "2026-09-05T09:30:00Z" both become
      "2026-09-05 09:30". Seconds are noise in a list read by a human. */
@@ -2131,12 +2183,15 @@
     bodyOf(RD_BODY, false);
     hide("dsh-rd-note");
 
-    ask("reader_activity", { from: win.from, to: win.to, limit: 200 }, function (err, res, extra) {
+    ask("reader_activity", { from: win.from, to: win.to, limit: READER_LIMIT }, function (err, res, extra) {
       if (err) { failed("dsh-rd-state", RD_BODY, err, extra); return; }
       sayRange(res);
 
       var rows = (res && res.rows) || [], m = (res && res.meta) || {};
       if (!rows.length) {
+        /* The session panel below can only offer reader numbers this answer
+           produced, so an empty answer empties its picker as well. */
+        setReaders([]);
         stateOf("dsh-rd-state", excludeAdmins()
           ? "Nobody outside the admin accounts opened a story in this window. " +
             "Switch “Admin accounts” to Included above to see your own reading."
@@ -2193,11 +2248,33 @@
            "<span class=\"dsh-reader-meta\">" +
              esc(fmtInt(n) + " " + (n === 1 ? "story" : "stories") +
                  " · last active " + shortWhen(g.last)) + "</span>" +
+           /* Straight from here into "One person, in order": this panel is
+              where the reader numbers come from, so it is where choosing one
+              belongs. The id is unique per block because the tables below
+              have sort buttons of their own and are drawn into this same
+              container a moment later. */
+           "<button type=\"button\" class=\"dsh-btn dsh-btn-sm dsh-reader-go\" " +
+             "id=\"dsh-rd-go" + i + "\">See this reader’s session</button>" +
            "</div>" +
            "<div class=\"dsh-scroll\"><table class=\"dsh-tbl\" id=\"dsh-rd-t" + i + "\"></table></div>" +
            "</div>";
     }
     list.innerHTML = h;
+
+    /* What the session panel's picker is filled from, and the only source of
+       a reader number this page will ever send. */
+    var who = [];
+    for (i = 0; i < order.length; i++) {
+      who.push({ key: order[i].key, email: order[i].email, last: order[i].last });
+    }
+    setReaders(who);
+
+    for (i = 0; i < order.length; i++) {
+      (function (k2, n2) {
+        var b = $("dsh-rd-go" + n2);
+        if (b) b.onclick = function () { choosePerson(k2); };
+      })(order[i].key, i);
+    }
 
     /* The tables are drawn after the markup is in the document, because
        drawTable looks its element up by id. */
@@ -2223,6 +2300,1023 @@
         }
       });
     }
+  }
+
+  /* ==========================================================================
+     4b · Where readers are — geo_breakdown
+
+     A table biggest first and a bar per country. NOT A MAP, and that is a
+     decision rather than an omission: with a handful of readers a filled-in
+     country is read as a claim about a place, and what is actually known is
+     "three people". A bar labelled 3 says the same thing without the flourish.
+
+     THE ABSENCE OF THIS DATA IS ITSELF A STATE THIS PANEL HAS TO RENDER.
+     Analytics reaches PostHog through the Cloudflare Worker in
+     cloudflare/posthog-proxy.js, which sets X-Forwarded-For from
+     CF-Connecting-IP so that PostHog geolocates the READER and not the edge
+     node nearest them. If that ever stops being true, or if PostHog is not
+     deriving a country at all, every reader lands in one place — and a bar
+     chart of that is a picture of the proxy, not of the readership. So there
+     are two honest outcomes here besides rows: the function has no such query,
+     which is said in a sentence and nothing is drawn; and one country holding
+     everybody, which is drawn WITH the sentence that says what else looks
+     exactly like that.
+     ========================================================================== */
+
+  var GEO_BODY = ["dsh-geo-kpis", "dsh-geo-chartbox", "dsh-geo-box"];
+
+  /* One visible sentence. The rest is behind the disclosure below it, because
+     454 words under a chart is how the funnel's caveats got collapsed once
+     already and a caveat nobody finishes reading is not a caveat. */
+  var GEO_MISSING =
+    "There is no country in these numbers: the insights function has no " +
+    "geo_breakdown query to ask, so nothing is drawn here.";
+
+  var GEO_MISSING_NOTE =
+    "Nothing on this page is broken and no other panel is affected. This one " +
+    "asks for a query the function does not answer to, and the honest answer " +
+    "to “where are they” is then silence rather than a chart.";
+
+  var GEO_MORE = [
+    ["Either it was never built, or it is not deployed yet",
+     "The function reports an unknown query name and a rejected parameter " +
+     "with the same code, and this panel sends nothing but a date window and " +
+     "the admin flag — so the name is what it is refusing. ANALYTICS-API.md " +
+     "is the record of which of the two it is: if it documents geo_breakdown, " +
+     "the function needs redeploying; if it says the data does not support a " +
+     "country, this sentence is the final answer and not a to-do."],
+    ["The reader's IP does reach PostHog, which is why this was worth trying",
+     "cloudflare/posthog-proxy.js sets X-Forwarded-For from CF-Connecting-IP " +
+     "before forwarding to PostHog, so a reader is located where they are " +
+     "rather than at the Cloudflare colo nearest them. Without that line every " +
+     "reader would appear to be in the same handful of datacentres."],
+    ["One country holding everybody is what a broken pipe looks like too",
+     "The function decides this rather than the page: it returns geo_usable " +
+     "false when everybody landed in one place or in none, and this panel then " +
+     "prints the sentence and draws nothing. A single bar at 100% would read " +
+     "as a finding about the readership, and it is not one."],
+    ["The admin switch moves the event counts and barely moves “people”",
+     "Admin events are left out by matching the analytics id, which is a " +
+     "Firebase uid only after the founders have signed in on that device. " +
+     "Their earlier anonymous events keep their person in the distinct count, " +
+     "so “people” here is a floor rather than a filtered number, while opens, " +
+     "page opens and card views do respect the switch."],
+    ["A country, and no finer",
+     "There is no city or region here even if the source could give one. With " +
+     "readers in single figures, a city is close enough to naming somebody."]
+  ];
+
+  var GEO_NOTE =
+    "Country comes from the reader's IP address at the moment the event was " +
+    "recorded, worked out by PostHog and never stored by this site. It is a " +
+    "guess: a VPN, a corporate network or a phone roaming across a border all " +
+    "move somebody. “People” counts people, so a reader who came back four " +
+    "days running is one of them.";
+
+  function runGeo(win) {
+    stateOf("dsh-geo-state", "Loading…", false);
+    bodyOf(GEO_BODY, false);
+    hide("dsh-geo-note");
+    dropChart("dsh-geo-chart");
+
+    ask("geo_breakdown", { from: win.from, to: win.to, limit: 60 }, function (err, res, extra) {
+      /* bad_query cannot be not_admin, so failed()'s tear-down still handles
+         a refusal — this branch only catches the function saying it has no
+         query by that name. */
+      if (err === "bad_query") {
+        bodyOf(GEO_BODY, false);
+        stateOf("dsh-geo-state", GEO_MISSING, false);
+        noteOn("dsh-geo-note", GEO_MISSING_NOTE,
+               disclosure("Why there is no map here, and no bar either", GEO_MORE));
+        return;
+      }
+      if (err) { failed("dsh-geo-state", GEO_BODY, err, extra); return; }
+      sayRange(res);
+
+      var rows = (res && res.rows) || [], m = (res && res.meta) || {}, i;
+      if (!rows.length) {
+        stateOf("dsh-geo-state",
+          "The query ran and came back with no country at all. That is not a " +
+          "chart of nowhere — it is no answer, so nothing is drawn.", false);
+        noteOn("dsh-geo-note", GEO_NOTE,
+               disclosure("What a country here is and is not", GEO_MORE));
+        return;
+      }
+
+      /* THE FUNCTION ITSELF SAYS WHETHER THIS IS USABLE, and this panel obeys
+         it rather than second-guessing it from the rows. `geo_usable` is
+         false when everybody landed in one place or in none — which is a real
+         answer for a small site AND is exactly the shape of a proxy that
+         stopped forwarding the reader's IP. The two cannot be told apart from
+         here, so nothing is drawn and the sentence says both. */
+      if (m.geo_usable === false) {
+        bodyOf(GEO_BODY, false);
+        stateOf("dsh-geo-state", geoOneSay(rows, m), false);
+        noteOn("dsh-geo-note",
+          "Nothing is drawn above deliberately: one bar at 100% reads as a " +
+          "finding about the readership, and this is not one yet. " + GEO_NOTE,
+          disclosure("What a country here is and is not", GEO_MORE));
+        return;
+      }
+
+      var nameKey = "country";
+      var peopleKey = pick(rows, ["people", "readers"]) || "people";
+      var opensKey = pick(rows, ["opens", "page_opens", "card_views"]);
+
+      var sorted = rows.slice(0).sort(function (a, b) {
+        return cmpVals(a[peopleKey], b[peopleKey]) * -1;
+      });
+
+      var total = typeof m.people_rows === "number" ? m.people_rows : 0;
+      if (!total) {
+        for (i = 0; i < rows.length; i++) {
+          if (typeof rows[i][peopleKey] === "number") total += rows[i][peopleKey];
+        }
+      }
+      /* The biggest PLACED country. "Unknown" is a row and is counted, but it
+         is not somewhere, so it is not the answer to "where are they". */
+      var top = null;
+      for (i = 0; i < sorted.length; i++) {
+        if (sorted[i].located === false) continue;
+        top = sorted[i];
+        break;
+      }
+      var topShare = top && total > 0 && typeof top[peopleKey] === "number"
+        ? top[peopleKey] / total : 0;
+
+      var kh = "";
+      kh += kpi(fmtInt(typeof m.countries === "number" ? m.countries : rows.length),
+                "Countries");
+      kh += kpi(fmtInt(total), "People, added across countries");
+      if (top) {
+        kh += kpi(String(top[nameKey]),
+                  "Biggest" + (topShare ? " — " + fmtPct(topShare * 100, "pct") + " of those" : ""));
+      }
+      if (typeof m.unlocated_people_rows === "number" && m.unlocated_people_rows) {
+        kh += kpi(fmtInt(m.unlocated_people_rows), "Could not be placed");
+      }
+      setKpis("dsh-geo-kpis", kh);
+
+      var items = [];
+      for (i = 0; i < sorted.length && i < 20; i++) {
+        var pv = typeof sorted[i][peopleKey] === "number" ? sorted[i][peopleKey] : 0;
+        var ov = opensKey && typeof sorted[i][opensKey] === "number" ? sorted[i][opensKey] : null;
+        items.push({
+          label: String(sorted[i][nameKey] === null || sorted[i][nameKey] === undefined
+                        ? "—" : sorted[i][nameKey]),
+          value: pv,
+          right: fmtInt(pv) + (pv === 1 ? " person" : " people") +
+                 (ov === null ? "" : " · " + fmtInt(ov) + " " + labelOf(opensKey).toLowerCase())
+        });
+      }
+      chart("dsh-geo-chart", function (w) {
+        return barsSVG(w, items, "People by country, biggest first");
+      });
+      show("dsh-geo-chartbox");
+
+      drawTable("dsh-geo-tbl", rows, {
+        prefer: [nameKey, peopleKey, "people_pct", "opens", "page_opens", "card_views"],
+        sort: peopleKey, dir: -1, nameCol: nameKey, subKey: "country_code",
+        omit: ["country_code"]
+      });
+      show("dsh-geo-box");
+
+      /* The noun is "rows", not "countries": Unknown is a row and is not a
+         country, and this line sits beside a tile that counts the countries.
+         Two numbers under one word is how a page gets read wrong. */
+      stateOf("dsh-geo-state", metaSay(res, rows.length === 1 ? "row" : "rows") +
+        (typeof m.unlocated_people_rows === "number" && m.unlocated_people_rows
+          ? " “Unknown” is a row rather than a rounding: " +
+            fmtInt(m.unlocated_people_rows) + " of the people counted could not " +
+            "be placed at all, and dropping them would quietly change every " +
+            "share beside it."
+          : ""), false);
+      noteOn("dsh-geo-note", GEO_NOTE,
+             disclosure("What a country here is and is not", GEO_MORE));
+    });
+  }
+
+  /* The sentence for the one-place answer. It names what came back — a fact —
+     and then names the other thing that produces exactly this. */
+  function geoOneSay(rows, m) {
+    var where = "", i;
+    for (i = 0; i < rows.length; i++) {
+      if (rows[i].located === false) continue;
+      where = String(rows[i].country || "");
+      break;
+    }
+    var people = typeof m.people_rows === "number" ? m.people_rows : 0;
+    return "Everybody in this window resolved to " +
+      (where ? "one country — " + where : "nowhere the source could name") +
+      (people ? ", across " + fmtInt(people) + " people" : "") +
+      ". That is a plausible answer for a site this size, and it is also " +
+      "exactly what it looks like when the reader's IP stops reaching " +
+      "PostHog and everyone is placed at the proxy instead. The two cannot " +
+      "be told apart from here, so nothing is drawn.";
+  }
+
+  /* ==========================================================================
+     4c · Time on each card — reader_dwell
+
+     "Dwell times per user on each page or card", grouped the way the question
+     is asked: one block per reader, and inside it the cards in the order they
+     were read. The bar in the time column runs against THAT READER'S own
+     longest card, not against a page-wide maximum, because the question is
+     "where did this person stall", and a reader who skims everything would
+     otherwise show a flat row of stubs beside someone who reads slowly.
+     ========================================================================== */
+
+  var DW_BODY = ["dsh-dw-kpis", "dsh-dw-list"];
+
+  var DW_NOTE =
+    "Time on a card is measured in the browser from the card coming into view " +
+    "to it leaving, and the clock stops when the tab is hidden. Two limits " +
+    "come with that and both cut off the extremes: a card on screen for less " +
+    "than 900 milliseconds is not recorded at all, so a card somebody swiped " +
+    "past is missing from their list rather than showing as zero; and a single " +
+    "card is discarded above thirty minutes, so a reader who walked away is " +
+    "dropped rather than logged as the longest stall on the page.";
+
+  var DW_MORE = [
+    ["The bar is against this reader, not against the page",
+     "The widest bar in a block is that reader's longest card. Two blocks " +
+     "cannot be compared by bar length — the times beside them are the " +
+     "comparison, and they are written on every row."],
+    ["“Longest” is the most time on a card, not the longest single look",
+     "Where a card was seen more than once, the time on it is the sum of " +
+     "those views and that sum is what the bar and the block heading name. " +
+     "The longest single view is its own column, and it only appears where it " +
+     "differs from the total."],
+    ["A missing card is not a fast card",
+     "Cards under 900ms are never recorded, so a gap in the numbering means " +
+     "the card was swiped through, not that it was read in no time."],
+    ["Thirty minutes is the ceiling, by design",
+     "js/analytics.js throws away a card view longer than half an hour, " +
+     "because a tab left open is not reading. So the longest stall you can " +
+     "see here is capped, and a genuinely long read is indistinguishable from " +
+     "one that was abandoned just under the limit."],
+    ["Two totals, and the gap between them is the finding",
+     "Every dwell figure comes back twice: the raw sum, and a sum with each " +
+     "single card view first clipped to three minutes. They agree for almost " +
+     "every reader. Where the capped total is far smaller, somebody left the " +
+     "page open on one card — so the block heading says both numbers instead " +
+     "of picking one and being wrong in whichever direction that picked."],
+    ["The reader number is per answer, and it is the same number everywhere",
+     "It is an ordinal the function assigns to each response, most recent " +
+     "first — not an account id, not stable between two answers, and derived " +
+     "from nothing that could follow anybody. All three panels that show " +
+     "people number readers off the same roster, so reader 5 here is reader 5 " +
+     "in Readers and in the timeline. A refresh renumbers everybody."]
+  ];
+
+  function runDwell(win) {
+    stateOf("dsh-dw-state", "Loading…", false);
+    bodyOf(DW_BODY, false);
+    hide("dsh-dw-note");
+
+    /* 600 is this query's own ceiling. Its rows are (reader, page, story,
+       card) quads, and when the cap bites the PER-READER TOTALS of the
+       readers nearest the cut are partial — so on a site this size the cheap
+       answer is to ask for all of them, and to print it when that is still
+       not enough. */
+    ask("reader_dwell",
+        { from: win.from, to: win.to, limit: 600, roster_limit: READER_LIMIT },
+      function (err, res, extra) {
+      if (err === "bad_query") {
+        bodyOf(DW_BODY, false);
+        stateOf("dsh-dw-state",
+          "The insights function has no reader_dwell query to ask, so there is " +
+          "nothing to show per reader yet. Every other panel is unaffected.",
+          false);
+        noteOn("dsh-dw-note",
+          "This page sends that query nothing but a date window and the admin " +
+          "flag, so the name is what is being refused rather than a parameter. " +
+          "ANALYTICS-API.md is the contract: if it documents reader_dwell, the " +
+          "function needs deploying.");
+        return;
+      }
+      if (err) { failed("dsh-dw-state", DW_BODY, err, extra); return; }
+      sayRange(res);
+
+      var rows = (res && res.rows) || [], m = (res && res.meta) || {};
+      if (!rows.length) {
+        stateOf("dsh-dw-state", excludeAdmins()
+          ? "Nobody outside the admin accounts spent 900ms on a card in this " +
+            "window. Switch “Admin accounts” to Included above to see your own."
+          : "Nobody spent 900ms on a card in this window.", false);
+        noteOn("dsh-dw-note", DW_NOTE, disclosure("How this is measured", DW_MORE));
+        return;
+      }
+
+      paintDwell(rows, res, m);
+    });
+  }
+
+  function paintDwell(rows, res, m) {
+    var list = $("dsh-dw-list");
+    if (!list) return;
+
+    var order = [], by = {}, i, k, g, r;
+
+    /* The rows arrive in reading order — reader, then page, then story, then
+       card — and grouped this way they stay in it. Nothing here re-sorts
+       them: that order IS the answer to "which cards, in what order". */
+    var unranked = [];
+
+    for (i = 0; i < rows.length; i++) {
+      r = rows[i];
+      /* `reader` is null when the roster truncated and this row's reader is
+         past the cut. Those rows are NOT merged into one block: there is no
+         way to tell one unnumbered reader from another, and a block headed
+         "longest 4m on card 3" over several people would be a finding about
+         nobody. They are shown together, below, labelled as what they are. */
+      if (r.reader === null || r.reader === undefined || r.reader === "") {
+        if (!r.email) { unranked.push(r); continue; }
+        k = "e:" + String(r.email);
+      } else {
+        k = String(r.reader);
+      }
+      if (!has(by, k)) {
+        /* The per-reader totals ride on every row of the group, so they are
+           read off the first one rather than added up here. Adding them up
+           would disagree with the function the day it counts something this
+           page cannot see. */
+        by[k] = {
+          key: k, ord: (r.reader === null || r.reader === undefined || r.reader === "")
+                       ? "" : String(r.reader),
+          email: r.email || null, cards: [],
+          time: typeof r.reader_dwell_s === "number" ? r.reader_dwell_s : null,
+          capped: typeof r.reader_dwell_s_capped === "number" ? r.reader_dwell_s_capped : null,
+          count: typeof r.reader_cards === "number" ? r.reader_cards : null,
+          last: r.reader_last_seen || r.last_seen || null
+        };
+        order.push(by[k]);
+      }
+      g = by[k];
+      if (!g.email && r.email) g.email = r.email;
+      var nm = storyName(r.story);
+      if (nm) r.title = nm;
+      g.cards.push(r);
+    }
+
+    var allCards = 0, allTime = 0, longest = null;
+
+    for (i = 0; i < order.length; i++) {
+      g = order[i];
+      g.top = null;
+      for (k = 0; k < g.cards.length; k++) {
+        var d = g.cards[k].dwell_s;
+        if (typeof d !== "number" || !isFinite(d)) continue;
+        if (!g.top || d > g.top.dwell_s) g.top = g.cards[k];
+      }
+      if (g.count === null) g.count = g.cards.length;
+      if (g.time === null) {
+        g.time = 0;
+        for (k = 0; k < g.cards.length; k++) {
+          if (typeof g.cards[k].dwell_s === "number") g.time += g.cards[k].dwell_s;
+        }
+      }
+      /* The stall, marked on the row as well as named in the heading. The key
+         is dropped from the table's columns, so it colours a row without
+         becoming one. */
+      if (g.top) g.top.__stall = 1;
+      allCards += g.cards.length;
+      allTime += g.time;
+      if (g.top && (!longest || g.top.dwell_s > longest.dwell_s)) longest = g.top;
+    }
+
+    var kh = "";
+    kh += kpi(fmtInt(typeof m.readers === "number" ? m.readers : order.length),
+              "Readers with a timed card");
+    kh += kpi(fmtInt(typeof m.card_rows === "number" ? m.card_rows : allCards), "Cards timed");
+    kh += kpi(fmtMs(allTime * 1000), "Time on cards, added up");
+    if (longest) {
+      /* The id rather than the title: a story called "How did Cleopatra die?
+         (the snake)" turns a KPI label into three wrapped lines. */
+      kh += kpi(fmtMs(longest.dwell_s * 1000),
+                "Longest stall — " + cardSays({ card: longest.card, story: longest.story,
+                                                page: longest.page }));
+    }
+    setKpis("dsh-dw-kpis", kh);
+
+    var cap = typeof m.dwell_cap_s === "number" ? m.dwell_cap_s : 0;
+
+    var h = "";
+    for (i = 0; i < order.length; i++) {
+      g = order[i];
+
+      /* A column whose value is the same on every row of a block is a column
+         of one repeated value, and it belongs in the heading — section 3
+         already does exactly this with the story id, for the same reason: a
+         story title wrapping to two lines beside seven identical copies of
+         itself is width spent saying nothing. */
+      g.drop = [];
+      g.where = "";
+      var storyKey = null, k2;
+      for (k2 = 0; k2 < g.cards.length; k2++) { if (g.cards[k2].title) { storyKey = "title"; break; } }
+      if (!storyKey) storyKey = "story";
+      if (sameThroughout(g.cards, storyKey)) {
+        g.where = String(g.cards[0][storyKey] === null || g.cards[0][storyKey] === undefined
+                         ? "" : g.cards[0][storyKey]);
+        g.drop.push("title");
+        g.drop.push("story");
+      }
+      /* An address that IS one leads with the story; an address that is
+         missing on every row is a fact about the measurement rather than a
+         place, so it goes after the counts instead of in front of them. */
+      var noAddress = false;
+      if (sameThroughout(g.cards, "page")) {
+        var pg = g.cards[0].page;
+        if (pg) g.where += (g.where ? " · " : "") + "/" + String(pg);
+        else noAddress = true;
+        g.drop.push("page");
+      }
+
+      var bits = g.where ? g.where + " · " : "";
+      bits += fmtInt(g.count) + (g.count === 1 ? " card" : " cards") +
+              " · " + fmtMs(g.time * 1000) + " in total";
+      if (noAddress) {
+        bits += g.count === 1 ? " · no address recorded"
+              : " · no address recorded on any of them";
+      }
+      if (sameThroughout(g.cards, "views") && typeof g.cards[0].views === "number") {
+        bits += g.cards[0].views === 1 ? " · each seen once"
+              : " · each seen " + fmtInt(g.cards[0].views) + " times";
+        g.drop.push("views");
+      }
+      if (g.top && typeof g.top.dwell_s === "number") {
+        bits += " · longest " + fmtMs(g.top.dwell_s * 1000) + " on " +
+                cardSays(g.top, g.drop);
+      }
+      /* The raw total and the capped one agree for almost every reader. Where
+         they do not, that IS the finding — a card left open — so it is said
+         on the block rather than left to be spotted in a column. */
+      if (g.capped !== null && g.time > 0 && g.capped < g.time * 0.8) {
+        bits += " · " + fmtMs(g.capped * 1000) + " with each view capped" +
+                (cap ? " at " + fmtMs(cap * 1000) : "");
+      }
+      /* One ordinal space. reader_activity, reader_dwell and person_timeline
+         all number readers off the SAME roster — which is what this panel
+         sends roster_limit for — so reader 5 here is reader 5 in the readers
+         table and reader 5 in the timeline, and the button can pass the
+         number straight through. Falling back to the email covers the row
+         the roster could not number; a reader with neither gets no button
+         rather than one that might open somebody else's afternoon. */
+      var goKey = g.ord || (g.email ? readerKeyForEmail(g.email) : "");
+      /* THE CARDS FOLD AWAY, and this is not tidiness. On the live project one
+         reader has 165 timed cards and there are twenty-odd readers: drawn
+         open, this section was twelve thousand pixels tall and the panel
+         underneath it was unreachable. The heading is the answer to "where
+         did they stall" — it names the longest card — so the heading is what
+         stays, and the cards themselves are one click away.
+
+         The first few blocks are open, because a page that answers nothing
+         until it is clicked is a worse failure than a long one. */
+      var openIt = i < 3 && g.cards.length <= 40;
+      h += "<div class=\"dsh-reader\">" +
+           "<div class=\"dsh-reader-head\">" +
+           "<span class=\"dsh-reader-who" + (g.email ? "" : " dsh-anon") + "\">" +
+             esc(g.email ? g.email : "Anonymous — no account") + "</span>" +
+           "<span class=\"dsh-reader-meta\">" + esc(bits) + "</span>" +
+           (goKey
+             ? "<button type=\"button\" class=\"dsh-btn dsh-btn-sm dsh-reader-go\" " +
+               "id=\"dsh-dw-go" + i + "\">See this reader’s session</button>"
+             : "") +
+           "</div>" +
+           "<details class=\"dsh-cards\"" + (openIt ? " open" : "") + ">" +
+           "<summary>" + esc(fmtInt(g.cards.length) +
+             (g.cards.length === 1 ? " card, in order" : " cards, in the order they read them")) +
+           "</summary>" +
+           "<div class=\"dsh-scroll\"><table class=\"dsh-tbl\" id=\"dsh-dw-t" + i + "\"></table></div>" +
+           "</details>" +
+           "</div>";
+    }
+    if (unranked.length) {
+      h += "<div class=\"dsh-reader\">" +
+           "<div class=\"dsh-reader-head\">" +
+           "<span class=\"dsh-reader-who dsh-anon\">" +
+             esc("Rows the roster could not number") + "</span>" +
+           "<span class=\"dsh-reader-meta\">" +
+             esc(fmtInt(unranked.length) + (unranked.length === 1 ? " row" : " rows") +
+                 " · more than one reader may be in here, so there is no total " +
+                 "and no longest card") + "</span>" +
+           "</div>" +
+           "<details class=\"dsh-cards\"><summary>" +
+             esc(fmtInt(unranked.length) + " unnumbered rows") + "</summary>" +
+           "<div class=\"dsh-scroll\"><table class=\"dsh-tbl\" id=\"dsh-dw-tx\"></table></div>" +
+           "</details></div>";
+    }
+
+    list.innerHTML = h;
+
+    if (unranked.length) {
+      for (k = 0; k < unranked.length; k++) {
+        var un = storyName(unranked[k].story);
+        if (un) unranked[k].title = un;
+      }
+      drawTable("dsh-dw-tx", unranked, {
+        prefer: ["title", "story", "page", "card", "dwell_s", "views"],
+        omit: ["reader", "email", "__stall", "reader_cards", "reader_views",
+               "reader_dwell_s", "reader_dwell_s_capped",
+               "reader_median_card_dwell_s", "reader_last_seen"],
+        labels: { title: "Story", story: "Story", page: "Read at" },
+        cellFmt: function (col, val) {
+          if (col === "dwell_s" && typeof val === "number") return fmtMs(val * 1000);
+          if (col === "page") return (val === null || val === "") ? "not recorded" : "/" + String(val);
+          if (col === "last_seen") return shortWhen(val);
+          return null;
+        }
+      });
+    }
+
+    for (i = 0; i < order.length; i++) {
+      g = order[i];
+      var hasTitle = false;
+      for (k = 0; k < g.cards.length; k++) { if (g.cards[k].title) { hasTitle = true; break; } }
+      /* And a column identical to the time column on every row is not a
+         second measurement of anything: where a card was seen once, its
+         median, its longest single view and its capped time ARE the time on
+         it, and three more columns of the same number is the duplicated
+         column this page has shipped once before. */
+      var twins = ["median_dwell_s", "longest_dwell_s", "dwell_s_capped"], t2;
+      for (t2 = 0; t2 < twins.length; t2++) {
+        if (matchesColumn(g.cards, twins[t2], "dwell_s")) g.drop.push(twins[t2]);
+      }
+      var nameKey = indexOf(g.drop, hasTitle ? "title" : "story") >= 0
+                    ? null : (hasTitle ? "title" : "story");
+      drawTable("dsh-dw-t" + i, g.cards, {
+        /* PAGE IS A COLUMN, and not decoration: story 01 is served at three
+           addresses, so the same card read at two of them is two rows here.
+           Without the address they read as one card counted twice. */
+        prefer: [hasTitle ? "title" : "story", "page", "card", "dwell_s",
+                 "views", "median_dwell_s", "longest_dwell_s", "dwell_s_capped"],
+        /* What belongs to the reader rather than to the card is in the
+           heading above; repeating it down every row is how a table stops
+           being readable. */
+        omit: ["reader", "email", "__stall", "reader_cards", "reader_views",
+               "reader_dwell_s", "reader_dwell_s_capped",
+               "reader_median_card_dwell_s", "reader_last_seen"]
+              .concat(hasTitle ? ["story"] : []).concat(g.drop),
+        nameCol: nameKey,
+        subKey: nameKey === "title" ? "story" : null,
+        labels: { title: "Story", story: "Story", page: "Read at" },
+        barKey: "dwell_s",
+        markKey: "__stall", markVal: 1,
+        cellFmt: function (col, val, row) {
+          if (col === "dwell_s" && typeof val === "number") {
+            return fmtMs(val * 1000) + (row.__stall ? " · longest" : "");
+          }
+          /* A card view recorded before card_view carried the page. Not "the
+             home page", not guessable, and not blank either. */
+          if (col === "page") {
+            return (val === null || val === "") ? "not recorded" : "/" + String(val);
+          }
+          /* Seconds and microseconds are noise in a column read by a human,
+             and the raw string is wide enough to push every other column off
+             the edge of the box. */
+          if (col === "last_seen") return shortWhen(val);
+          return null;
+        }
+      });
+      (function (grp, n) {
+        var b = $("dsh-dw-go" + n);
+        if (!b) return;
+        b.onclick = function () {
+          var key = grp.ord || (grp.email ? readerKeyForEmail(grp.email) : "");
+          if (key) choosePerson(key);
+        };
+      })(g, i);
+    }
+
+    show("dsh-dw-list");
+    stateOf("dsh-dw-state", metaSay(res, "reader–card rows") +
+      (m && m.unranked_rows
+        ? " " + fmtInt(m.unranked_rows) + " of them belong to readers past the " +
+          "end of the numbered roster: they are shown together at the bottom, " +
+          "unnumbered, rather than folded into somebody else's block."
+        : "") +
+      (m && m.truncated
+        ? " That is the cap, and it matters more here than elsewhere: the rows " +
+          "are ordered by recency across everybody, so the readers nearest the " +
+          "cut have older cards missing and their totals are partial. Narrow " +
+          "the date range."
+        : ""), false);
+    noteOn("dsh-dw-note", DW_NOTE, disclosure("How this is measured", DW_MORE));
+  }
+
+  /* "card 3 of 01 on /firststory" — the address included, because the same
+     card read at two addresses is two different rows and two different
+     answers. `drop` names what the heading around it has already said, so a
+     block that is all one story does not repeat the story on every line. */
+  function cardSays(r, drop) {
+    drop = drop || [];
+    var st = indexOf(drop, "story") >= 0 ? ""
+           : (r.title ? String(r.title)
+             : (r.story === null || r.story === undefined ? "" : String(r.story)));
+    return "card " + String(r.card) +
+           (st ? " of " + st : "") +
+           (r.page && indexOf(drop, "page") < 0 ? " on /" + String(r.page) : "");
+  }
+
+  /* One value down a whole column, and two columns that are the same column. */
+  function sameThroughout(rows, key) {
+    if (!rows.length) return false;
+    var v = rows[0][key], j;
+    for (j = 1; j < rows.length; j++) { if (rows[j][key] !== v) return false; }
+    return true;
+  }
+
+  function matchesColumn(rows, a, b) {
+    var seen = false, j;
+    for (j = 0; j < rows.length; j++) {
+      if (!has(rows[j], a)) return false;
+      if (rows[j][a] !== rows[j][b]) return false;
+      seen = true;
+    }
+    return seen;
+  }
+
+  /* ==========================================================================
+     4d · One person, in order — person_timeline
+
+     The owner's words are the specification: "one person did x then y then z
+     and then an hour later someone else did that too." So the GAP is the
+     column this panel exists for. It is written between every pair of events,
+     and a gap long enough to be a second sitting cuts the spine rather than
+     adding another line of small print — because "an hour later" and "three
+     taps in a row" must not look the same on the way down.
+
+     THE READER IS AN ORDINAL AND THE ORDINAL IS PER ANSWER. reader_activity
+     numbers its rows most-recent-first for that response only; another
+     response renumbers everybody. So this panel remembers the EMAIL and looks
+     the number up again after every refresh, and an anonymous reader — who by
+     definition has nothing to be looked up by — is cleared rather than
+     followed to whoever now holds their old number.
+     ========================================================================== */
+
+  /* Half an hour. Long enough that the reader put the phone down, short
+     enough to still be the same evening — the same boundary every analytics
+     tool draws a session at, and it is written on screen rather than assumed. */
+  var SESSION_GAP_S = 1800;
+
+  var PT_BODY = ["dsh-pt-kpis", "dsh-pt-list"];
+
+  /* Readers, as the readers panel last reported them. The picker is filled
+     from this and nothing else, so the number this panel sends is always one
+     the same window produced. */
+  var READERS = [];
+  var PT_KEY = "";       /* the ordinal currently drawn */
+  var PT_EMAIL = null;   /* what is remembered across a refresh */
+
+  var EVENT_SAYS = {
+    page_open: "Opened a page", home_view: "Opened the home page",
+    stack_open: "Opened a story", card_view: "Read a card",
+    story_time: "Left a story", stack_complete: "Finished a story",
+    stack_dropoff: "Stopped part-way through a story",
+    first_completion_screen_viewed: "Reached the end card",
+    first_story_completed: "Finished their first story",
+    second_story_shown: "Was offered a second story",
+    rec_view: "Was shown what to read next", rec_click: "Picked what to read next",
+    resume_used: "Picked up where they left off",
+    paywall_view: "Hit the paywall", join_view: "Opened the sign-up page",
+    join_step: "Moved through onboarding", join_skip: "Skipped an onboarding step",
+    join_plan_ask: "Was asked to pick a plan", join_plan_pick: "Picked a plan",
+    join_plan_answer: "Answered the plan question",
+    signin_email: "Signed in with email", signin_google: "Signed in with Google",
+    signup_email: "Made an account with email", join_signup: "Made an account",
+    signout: "Signed out",
+    checkout_start: "Was sent to Stripe",
+    checkout_blocked: "A checkout would not start",
+    access_gained: "Got access", billing_portal: "Opened billing",
+    subscribe_click: "Pressed subscribe", trial_cta_clicked: "Pressed the trial button",
+    library_own_view: "Opened their library", library_unsave: "Unsaved a story",
+    /* save_add is not in KNOWN_EVENTS and the timeline reports it anyway —
+       which is the point of falling back to the raw name rather than
+       refusing to draw a row for an event this file has not heard of. */
+    save_add: "Saved a story", save_remove: "Removed a save",
+    other_plans_opened: "Opened the other plans",
+    monthly_selected: "Chose monthly", annual_selected: "Chose annual",
+    join_login_hit: "Was recognised at sign-in", join_restore_use: "Restored a purchase",
+    owner_unlock: "Unlocked with an owner link",
+    ui_click: "Pressed a control", client_error: "Hit an error"
+  };
+
+  function eventSays(name) {
+    var k = String(name || "");
+    if (has(EVENT_SAYS, k)) return EVENT_SAYS[k];
+    var s = k.replace(/_/g, " ").replace(/^\s+|\s+$/g, "");
+    if (!s) return "An event";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  /* The API's timestamps are UTC and PostHog's carry microseconds —
+     "2026-09-06T04:57:32.639000Z". Trim to milliseconds rather than trust
+     every engine to ignore the extra digits, and only add the Z when there is
+     no zone at all, which is the one case where a naive string would be read
+     as local time and every gap on the page would be an hour out. */
+  function parseAt(v) {
+    if (v === null || v === undefined || v === "") return NaN;
+    var s = String(v).replace(" ", "T").replace(/(\.\d{3})\d+/, "$1");
+    if (!/[zZ]$/.test(s) && !/[+-]\d{2}:?\d{2}$/.test(s)) s += "Z";
+    var t = Date.parse(s);
+    return isFinite(t) ? t : NaN;
+  }
+
+  var PT_MORE = [
+    ["The reader number belongs to one answer, not to a person",
+     "The function numbers its rows most-recent-first per response. Pressing " +
+     "Refresh renumbers everybody, so this panel follows the email address and " +
+     "looks the number up again. A reader with no account has nothing to look " +
+     "up and is cleared instead of being followed to whoever now holds that " +
+     "number."],
+    ["This is what the site records, not everything they did",
+     "Reading with JavaScript blocked, or on a second device before signing " +
+     "in, leaves no events. A quiet stretch can be somebody reading with a " +
+     "blocker on as easily as somebody doing nothing."],
+    ["A break is half an hour, and that is a choice",
+     "There is no session in the data — nothing in js/analytics.js opens or " +
+     "closes one. The insights function draws the line at thirty minutes and " +
+     "counts the sittings itself, and this page draws the break where that " +
+     "count changes rather than re-deriving it. The gap is printed beside " +
+     "every break, so a different line can be drawn by eye."],
+    ["Order is by the clock, not by cause",
+     "Two events a second apart are two events a second apart. Nothing here " +
+     "says one caused the other, and events recorded on two devices interleave " +
+     "by time like everything else."]
+  ];
+
+  /* Called by the readers panel with what it just drew, so the picker can
+     only ever offer a number that answer produced. */
+  function setReaders(list) {
+    READERS = list || [];
+    fillPersonPicker();
+
+    /* Follow the same person across a refresh where that is possible, and say
+       so where it is not. */
+    var want = PT_EMAIL ? readerKeyForEmail(PT_EMAIL) : "";
+    if (want) {
+      choosePerson(want, true);
+    } else if (PT_KEY || PT_EMAIL) {
+      clearPerson();
+      stateOf("dsh-pt-state", PT_EMAIL
+        ? "The reader you were looking at is not in this window's list any " +
+          "more, so this cleared rather than showing somebody else. Pick a " +
+          "reader above."
+        : "Reader numbers are assigned per answer, so the anonymous reader you " +
+          "were looking at cannot be followed across a refresh. Pick a reader " +
+          "above.", false);
+      PT_EMAIL = null;
+    }
+  }
+
+  function readerKeyForEmail(email) {
+    if (!email) return "";
+    for (var i = 0; i < READERS.length; i++) {
+      if (READERS[i].email && String(READERS[i].email) === String(email)) {
+        return String(READERS[i].key);
+      }
+    }
+    return "";
+  }
+
+  function readerSaid(key) {
+    for (var i = 0; i < READERS.length; i++) {
+      if (String(READERS[i].key) === String(key)) return READERS[i];
+    }
+    return null;
+  }
+
+  function fillPersonPicker() {
+    var sel = $("dsh-pt-who");
+    if (!sel) return;
+    if (!READERS.length) {
+      sel.innerHTML = "<option value=\"\">No reader list for this window yet</option>";
+      return;
+    }
+    var h = "<option value=\"\">Choose a reader…</option>", i, r;
+    for (i = 0; i < READERS.length; i++) {
+      r = READERS[i];
+      h += "<option value=\"" + esc(r.key) + "\">" +
+           esc("Reader " + r.key + " · " + (r.email ? r.email : "anonymous") +
+               (r.last ? " · last active " + shortWhen(r.last) : "")) +
+           "</option>";
+    }
+    sel.innerHTML = h;
+    if (PT_KEY && readerSaid(PT_KEY)) sel.value = PT_KEY;
+  }
+
+  function clearPerson() {
+    PT_KEY = "";
+    bodyOf(PT_BODY, false);
+    hide("dsh-pt-note");
+    setText("dsh-pt-who-say", " ");
+    var el = $("dsh-pt-list");
+    if (el) el.innerHTML = "";
+    var sel = $("dsh-pt-who");
+    if (sel) sel.value = "";
+    /* "Pick a reader above" over an empty picker is an instruction nobody can
+       follow. Where the numbers come from is the answer instead. */
+    stateOf("dsh-pt-state", READERS.length
+      ? "Pick a reader above, or press “See this reader’s session” on any " +
+        "block in Readers."
+      : "No reader list came back for this window, so there is nobody to " +
+        "follow yet. This panel takes its reader numbers from the Readers " +
+        "panel above and can only offer the people that answer named.", false);
+  }
+
+  /* One way in, from three places: the picker, a button in Readers, and a
+     button in Time on each card. quiet=true is the re-selection after a
+     refresh, which must not yank the page down to this section. */
+  function choosePerson(key, quiet) {
+    key = String(key || "");
+    if (!key) { PT_EMAIL = null; clearPerson(); return; }
+    var r = readerSaid(key);
+    PT_KEY = key;
+    PT_EMAIL = r && r.email ? r.email : null;
+    var sel = $("dsh-pt-who");
+    if (sel) sel.value = key;
+    if (!quiet) {
+      try {
+        var sec = $("dsh-sec-person");
+        if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: "start", behavior: "smooth" });
+      } catch (e) {}
+    }
+    runPerson(currentWindow(), key);
+  }
+
+  function runPerson(win, key) {
+    if (!key) { clearPerson(); return; }
+
+    var who = readerSaid(key);
+    setText("dsh-pt-who-say",
+      "Reader " + key + " · " + (who && who.email ? who.email : "anonymous, no account") +
+      " — the number is this answer's, not the reader's.");
+
+    stateOf("dsh-pt-state", "Loading…", false);
+    bodyOf(PT_BODY, false);
+    hide("dsh-pt-note");
+
+    /* roster_limit is not optional here. The ordinal means "the Nth row of a
+       reader_activity answer", so it only resolves to the same person when
+       the function rebuilds the roster the same size the readers panel asked
+       for. Sending the same number that panel sent is what makes reader 7 the
+       same human in both places. */
+    ask("person_timeline",
+        { reader: key, roster_limit: READER_LIMIT, from: win.from, to: win.to, limit: 200 },
+      function (err, res, extra) {
+        if (PT_KEY !== key) return;                  /* they picked someone else */
+        if (err === "bad_query") {
+          bodyOf(PT_BODY, false);
+          stateOf("dsh-pt-state",
+            "The insights function refused this: either it has no " +
+            "person_timeline query yet, or the reader number this page sent is " +
+            "not one it accepts. Nothing else on the page is affected.", false);
+          noteOn("dsh-pt-note",
+            "An unknown query name and a rejected parameter come back with the " +
+            "same code, so the two cannot be told apart from here. " +
+            "ANALYTICS-API.md is the contract: if it documents person_timeline " +
+            "and its reader parameter, the function needs deploying.");
+          return;
+        }
+        if (err) { failed("dsh-pt-state", PT_BODY, err, extra); return; }
+        sayRange(res);
+
+        var rows = (res && res.rows) || [], m = (res && res.meta) || {};
+
+        if (!rows.length) {
+          /* Not an error and not an empty person: the ordinal ran past the end
+             of a roster that moved while the page was open. Somebody else read
+             a card, everyone shuffled down, and the number now names nobody. */
+          stateOf("dsh-pt-state", m.reader_found === false
+            ? "Reader " + key + " is past the end of the list now. The numbering " +
+              "is rebuilt on every answer and it moves when anybody reads " +
+              "anything, so this one no longer names a person. Press Refresh " +
+              "and pick them again."
+            : "This reader did nothing the site records inside this window.",
+            false);
+          noteOn("dsh-pt-note", ptNoteFor(m),
+                 disclosure("What this timeline is and is not", PT_MORE));
+          return;
+        }
+        paintPerson(rows, res, key);
+      });
+  }
+
+  function paintPerson(rows, res, key) {
+    var el = $("dsh-pt-list");
+    if (!el) return;
+
+    var m = (res && res.meta) || {};
+    var breakAt = typeof m.session_gap_s === "number" ? m.session_gap_s : SESSION_GAP_S;
+    var i, h = "", prevSession = null, biggest = 0, sittings = 0;
+
+    for (i = 0; i < rows.length; i++) {
+      var r = rows[i];
+
+      /* THE GAP COMES FROM THE FUNCTION. It computes `gap_s` and increments
+         `session` from the same timestamps, and re-deriving it here from two
+         strings this browser parsed is how a page ends up drawing a break the
+         server did not count. Falling back to a difference is only for a row
+         that carries no gap at all. */
+      var gap = typeof r.gap_s === "number" && isFinite(r.gap_s) ? r.gap_s : -1;
+      if (gap < 0 && i > 0) {
+        var t = parseAt(r.at), pt = parseAt(rows[i - 1].at);
+        if (isFinite(t) && isFinite(pt)) gap = Math.max(0, (t - pt) / 1000);
+      }
+
+      var sess = typeof r.session === "number" ? r.session : null;
+      var isBreak = sess !== null
+        ? (prevSession !== null && sess !== prevSession)
+        : (gap >= breakAt);
+
+      if (i > 0 && gap >= 0) {
+        if (gap > biggest) biggest = gap;
+        h += "<li class=\"dsh-tl-gap" + (isBreak ? " dsh-tl-break" : "") + "\">" +
+             "<span>" + esc(gapSays(gap, isBreak)) + "</span><i></i></li>";
+      }
+      if (i === 0 || isBreak) sittings++;
+
+      h += "<li class=\"dsh-tl-ev\">" +
+           /* Seconds, not minutes. Half the rows on a real timeline are a
+              second or two apart, and a column of identical HH:MM against
+              gaps that say "1s later" reads as a contradiction. */
+           "<span class=\"dsh-tl-at\">" + esc(atSays(r.at)) + "</span>" +
+           "<span class=\"dsh-tl-what\">" + esc(eventSays(r.event)) +
+             "<span class=\"dsh-tl-tag\">" + esc(String(r.event || "")) + "</span></span>" +
+           (r.detail === null || r.detail === undefined || r.detail === ""
+             ? ""
+             : "<span class=\"dsh-tl-detail\">" + esc(String(r.detail)) + "</span>") +
+           "</li>";
+
+      if (sess !== null) prevSession = sess;
+    }
+
+    el.innerHTML = h;
+    show("dsh-pt-list");
+
+    if (typeof m.sessions === "number" && m.sessions) sittings = m.sessions;
+    if (typeof m.longest_gap_s === "number" && m.longest_gap_s > biggest) {
+      biggest = m.longest_gap_s;
+    }
+
+    var kh = "";
+    kh += kpi(fmtInt(rows.length), "Things they did");
+    kh += kpi(fmtInt(sittings), sittings === 1 ? "Sitting" : "Sittings");
+    if (biggest > 0) kh += kpi(fmtMs(biggest * 1000), "Longest gap");
+    if (typeof m.card_views === "number") kh += kpi(fmtInt(m.card_views), "Cards read");
+    if (typeof m.reading_s === "number" && m.reading_s) {
+      kh += kpi(fmtMs(m.reading_s * 1000), "Time on cards");
+    }
+    setKpis("dsh-pt-kpis", kh);
+
+    var who = readerSaid(key);
+    var firstAt = m.first_event || rows[0].at;
+    var lastAt = m.last_event || rows[rows.length - 1].at;
+    setText("dsh-pt-who-say",
+      "Reader " + key + " · " + (who && who.email ? who.email : "anonymous, no account") +
+      " — " + fmtInt(rows.length) + (rows.length === 1 ? " event" : " events") +
+      " from " + shortWhen(firstAt) + " to " + shortWhen(lastAt) + ", UTC.");
+
+    /* This query has a shorter ceiling than the rest of the page — 31 days —
+       so a 90-day range answers about the last 31 of it. A window nobody was
+       told about is the server quietly answering a different question. */
+    var clamped = (m.params && typeof m.params.clamped_to_days === "number")
+                  ? m.params.clamped_to_days : 0;
+
+    stateOf("dsh-pt-state", metaSay(res, "events in order") +
+      (clamped
+        ? " This panel reads at most " + clamped + " days, so it is answering " +
+          "about " + String(m.from || "").slice(0, 10) + " to " +
+          String(m.to || "").slice(0, 10) + " rather than the whole range above."
+        : "") +
+      (m.truncated
+        ? " That is the row cap: there is older activity in this window that " +
+          "this answer does not contain. The most recent is kept."
+        : ""), false);
+    noteOn("dsh-pt-note", ptNoteFor(m),
+           disclosure("What this timeline is and is not", PT_MORE));
+  }
+
+  function ptNoteFor(m) {
+    var g = typeof m.session_gap_s === "number" ? m.session_gap_s : SESSION_GAP_S;
+    var mins = Math.round(g / 60);
+    return "Times are UTC, as the analytics returns them, and the gap between " +
+      "two events is counted by the same function that returned them — so the " +
+      "break drawn here and the sitting it counts cannot disagree. A gap of " +
+      (g >= 60 ? mins + (mins === 1 ? " minute" : " minutes") : Math.round(g) + " seconds") +
+      " or more starts a new sitting.";
+  }
+
+  function atSays(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    var t = String(v).replace("T", " ");
+    return t.length >= 19 ? t.slice(0, 19) : t;
+  }
+
+  function gapSays(s, isBreak) {
+    var said = s < 1 ? "under a second later"
+             : (s < 60 ? Math.round(s) + "s later" : fmtMs(s * 1000) + " later");
+    return isBreak ? said + " — a different sitting" : said;
   }
 
   /* ==========================================================================
@@ -2303,6 +3397,13 @@
        (absent) numbers. */
     setText("dsh-mode", modeGuess());
     hide("dsh-top-note");
+    /* The reader ordinals are about to be reassigned by a new answer, so the
+       session on screen is drawn against numbering that is no longer current.
+       setReaders() picks the same person back up by email when the readers
+       panel comes back. */
+    clearPerson();
+    READERS = [];
+    fillPersonPicker();
     var win = currentWindow();
     ASKED = win;
     var gen = GEN;
@@ -2324,6 +3425,12 @@
     runFirstStory(win);
     runStories(win);
     runReaders(win);
+    /* The three panels about people, in the order the owner asked for them:
+       where they are, how long they spent on each card, and one of them in
+       order. The third is not asked for here — it needs a reader chosen, and
+       the reader numbers only exist once runReaders has answered. */
+    runGeo(win);
+    runDwell(win);
     runFunnel(win);
     runSubs();
     runOnboarding(win);
@@ -2348,6 +3455,7 @@
     syncPickers();
     fillStoryPicker();
     fillEventPicker();
+    fillPersonPicker();
 
     /* The picker is filled from the PUBLIC story catalogue, not from the
        analytics answer, so it must be refilled when that catalogue lands
@@ -2402,6 +3510,21 @@
       evq.oninput = function () {
         if (t) clearTimeout(t);
         t = setTimeout(function () { if (EV_ROWS.length) paintButtons(); }, 140);
+      };
+    }
+
+    var ptBar = $("dsh-pt-bar");
+    if (ptBar) {
+      ptBar.onsubmit = function (e) { if (e && e.preventDefault) e.preventDefault(); return false; };
+    }
+    var ptWho = $("dsh-pt-who");
+    if (ptWho) {
+      ptWho.onchange = function () {
+        var v = String(ptWho.value || "");
+        /* Chosen from the picker, so the page is already at this section —
+           scrolling it into view would move the ground under the reader. */
+        if (!v) { PT_EMAIL = null; clearPerson(); return; }
+        choosePerson(v, true);
       };
     }
 

@@ -144,7 +144,7 @@ works; there is simply nothing upstream to ask.
 
 ## 3. The queries
 
-Fourteen names. The function builds every one of them; nothing you send becomes SQL.
+Seventeen names. The function builds every one of them; nothing you send becomes SQL.
 
 ### Accepted short names
 
@@ -344,7 +344,9 @@ as `KNOWN_EVENTS`. A name outside it is `bad_query`, not a query for a made-up e
 
 ### `reader_activity` — who read what, and how far
 
-**This is the one query that returns personal data, and it is deliberate. Read §6.**
+**One of three queries that return personal data, and it is deliberate. Read §6.**
+The other two are `reader_dwell` and `person_timeline`, and all three number readers off
+**this** query's roster — see "one ordinal space" under `person_timeline`.
 
 Params: `days`, `limit`, `exclude_admins`. `limit` here is clamped **1–400** and defaults
 to 200, because a row is a (reader, story) pair rather than a person; every other query
@@ -384,6 +386,235 @@ is for tens of people; at 400 rows it stops rather than tries.
 If **every** Firebase Auth batch fails, the query answers `upstream` with
 `reason: "auth_lookup"` rather than returning a screen of readers labelled anonymous.
 A partial failure is a gap in one column and is not an error.
+
+### `geo_breakdown` — where the readers are
+
+*Answers the owner's "what country they are from", as counts on a map and never as a
+location beside a person's name.*
+
+Params: `days` (or `from`/`to`), `limit`, `exclude_admins`.
+
+One row per country, **ordered by `people` descending**.
+
+| column | what it is |
+|---|---|
+| `country` | `$geoip_country_name`, or the literal string `"Unknown"` for events PostHog could not place |
+| `country_code` | `$geoip_country_code` — a two-letter ISO code, `null` on the Unknown row |
+| `people` | distinct people seen from that country in the window |
+| `opens` | `stack_open` count |
+| `page_opens` | `page_open` count |
+| `card_views` | `card_view` count |
+| `located` | `false` on the Unknown row, `true` on every other |
+| `people_pct` | `people` as a share of the summed `people` column (see the warning below) |
+
+`meta` adds `countries`, `people_rows`, `unlocated_people_rows` and **`geo_usable`**.
+
+#### Read `geo_usable` before you draw anything
+
+`geo_usable` is `false` when the window contains one country or none. **Do not draw a map
+on a false.** PostHog derives country from the IP at ingestion, and this site does not send
+PostHog the reader's IP directly — every event goes through the Cloudflare Worker in
+`cloudflare/posthog-proxy.js`, so the connection PostHog terminates is Cloudflare's. One
+line of that Worker, `headers.set("X-Forwarded-For", ip)` from `CF-Connecting-IP`, is the
+whole reason this data is the reader's country rather than a datacentre's. If that line is
+ever lost the symptom is a panel that looks completely normal and is completely false:
+every reader on earth in one place. So the failure is detected server-side and reported.
+
+**It was checked against live data before this shipped, and it is real.** On 6 September
+2026, over the whole 90-day history with admins excluded: United States 55 people / 101
+story opens, Canada 7 / 16, Bangladesh 1, Ireland 1, United Kingdom 1 — five countries,
+`geo_usable: true`, and **zero** unlocated events. Five countries again at a one-day
+window, and again at three, seven and thirty-one. The Worker forwards the IP and PostHog
+resolves it. (These are a snapshot of a live site and they move — the US row was 55 people
+and 101 page opens at 16:32 UTC and 56 and 102 half an hour later, which is a reader
+arriving, not a rounding error.)
+
+#### Three things this column is not
+
+- **`people` does not sum to the site's readers.** It is `count(DISTINCT person_id)` *per
+  country*, so one reader who travelled — or turned on a VPN — is in two rows.
+  `meta.people_rows` is the sum of the column and is named for what it is, not for the
+  number of readers. `people_pct` is a share of that sum.
+- **The Unknown row is a row.** Events that could not be placed are counted and labelled
+  rather than dropped, because a map whose percentages quietly exclude the people it could
+  not locate is the same lie in a smaller font.
+- **`exclude_admins` moves the event counts and barely moves `people`.** Measured on the
+  same day: excluded → included takes Canada's `page_opens` from 64 to 238 and the US
+  `card_views` from 283 to 365, while `people` does not move at all. That is §4's
+  documented `distinct_id` limitation showing up where it is most visible — the founders'
+  *signed-in* events are removed, their pre-`identify` anonymous events are not, and those
+  are enough to keep their `person_id` in the distinct count. **The event columns respect
+  the switch; the `people` column is a floor, not a filtered number.**
+
+#### What is deliberately not here
+
+No city, no region, no timezone, no IP, and **no country on any per-person row**. PostHog
+holds all of them. A country beside one named reader is a location attached to an
+individual, which is a different promise to readers than a map is; it would need a
+sentence in `privacy.html` that is not there yet.
+
+### `reader_dwell` — how long each reader spent on each card
+
+**Personal data, like `reader_activity`. Read §6.**
+
+*Answers the owner's "dwell times per user on each page or card" — which cards, how long
+on each, and a total per reader.*
+
+Params: `days` (or `from`/`to`), `limit` (**1–600**, default **300**), `story` (optional),
+`page` (optional), `roster_limit`, `exclude_admins`.
+
+One row per (reader, page, story, card), grouped by reader, **in reading order within each
+reader** — page, then story, then card ascending.
+
+| column | what it is |
+|---|---|
+| `reader` | the **same ordinal** `reader_activity` prints. See "one ordinal space" below. `null` only when the roster truncated. |
+| `email` | the account's email address, or `null` for a reader with no account |
+| `page` | `card_view.page` — the address it was read at, or **`null` for a view recorded before that property shipped** |
+| `story` | `card_view.story` |
+| `card` | the card number |
+| `views` | how many times this reader saw this card |
+| `dwell_s` | **sum** of `card_view.dwell_s` for this reader and card — the raw total |
+| `dwell_s_capped` | the same sum with each individual view first clipped to `meta.dwell_cap_s` |
+| `median_dwell_s` | median of the individual views |
+| `longest_dwell_s` | the longest single view |
+| `last_seen` | last `card_view` of this card by this reader |
+| `reader_cards` | how many card rows this reader has |
+| `reader_views` | that reader's total `card_view` count |
+| `reader_dwell_s` | that reader's raw total across every card |
+| `reader_dwell_s_capped` | the same total, capped |
+| `reader_median_card_dwell_s` | median of that reader's per-card totals |
+| `reader_last_seen` | that reader's last card view |
+
+The six `reader_*` columns are the **per-reader totals**, repeated on every row of that
+reader's group — the same shape `reader_activity` uses for `stories` and `last_seen`. A UI
+grouping by `reader` reads them off the first row and needs no second request.
+
+`meta` adds `readers`, `with_email`, `anonymous`, `card_rows`, `unranked_rows`,
+`dwell_cap_s`, `roster_readers`, `roster_truncated` and `truncated`.
+
+#### There is no average, and here is why
+
+`dwell_s` is time a card was **on screen**. `js/analytics.js` already refuses anything
+under 900 ms (a swipe) or over 30 minutes (a machine that slept), so raw values are bounded
+at 1800 — and 1800 seconds is still a tab somebody left open, which is enough to own a
+mean.
+
+**So nothing here returns a mean, at any grouping.** What comes back instead is the raw
+sum, the same sum with every individual view clipped to `dwell_cap_s` (**180 seconds**),
+the median, and the longest single view.
+
+The clip is measured, not chosen. Over the whole live history on 6 September 2026 — 336
+card views, admins excluded — a single view's median is **3.0 s**, its 75th percentile
+6.5 s, 90th 23.7 s, 95th 50.7 s, 99th **222.4 s**, longest **923.6 s**. A 180 s clip
+touches a little over one view in a hundred.
+
+And what it removes is the reason the pair of numbers exists: those few views are **21.5%
+of all dwell on the site** — 4,743 raw seconds against 3,725 capped — and **820 of the
+1,018 seconds removed belong to one reader whose median card is 3.0 s**. A mean would have
+been that person's abandoned tab wearing everybody else's name. Show `dwell_s` and
+`dwell_s_capped` together; where they disagree loudly, that *is* the finding.
+
+#### `page` is nearly empty today, and that is correct
+
+`card_view.page` is a new property and **cannot be backfilled**. On 6 September 2026 only
+**4 of 219** rows carried one; the rest are `null`, meaning "this story, at whichever
+address". It fills as readers pick up the current client. A `null` page is not the home
+page and must not be labelled as one.
+
+#### The bound
+
+The query asks for `limit + 1` rows; `meta.truncated: true` means the extra row came back.
+**When it is true, the `reader_*` totals of the readers nearest the cut are partial** —
+rows are ordered by recency across everybody, so a cap takes a reader's older cards away.
+The whole 90-day history is 219 rows against a default cap of 300, so this does not bite
+today.
+
+### `person_timeline` — one reader's session, in order
+
+**Personal data, and the most of it. Read §6.**
+
+*Answers the owner's "one person did x then y then z and then an hour later" — the events,
+in time order, with the time between them.*
+
+Params: `reader` (**required**), `days` (or `from`/`to`, **ceiling 31 days**), `limit`
+(**1–500**, default **200**), `roster_limit`, `exclude_admins`.
+
+Rows come back **oldest first**, which is the order the story reads in.
+
+| column | what it is |
+|---|---|
+| `at` | the event timestamp, ISO |
+| `event` | the event name, exactly as `js/analytics.js` sent it |
+| `detail` | a short human string built by the function from named properties — `"story 01 · card 7 · 6.6s on screen"`, `"pressed fb_acct_btn · on /home"`, `"/explore"`. **Empty when the event carries nothing to say**, in which case the event name is the whole fact. |
+| `gap_s` | **seconds since the previous row**, and `null` on the first. This is the "and then an hour later". |
+| `session` | 1, 2, 3 … incremented whenever `gap_s` reaches `meta.session_gap_s` (1800 s) |
+| `page`, `story`, `card`, `dwell_s` | the named fields `detail` was built from, so a UI can lay this out as a table instead of parsing prose back apart |
+
+`meta` adds `reader_found`, `reader_email`, `reader_last_seen`, `reader_stories`,
+`roster_readers`, `roster_truncated`, `sessions`, `first_event`, `last_event`,
+`longest_gap_s`, `card_views`, `reading_s`, `reading_s_capped`, `dwell_cap_s`,
+`session_gap_s` and `truncated`. The `reading_*` and `card_views` figures describe **the
+rows returned**, not the whole window — when `truncated` is true there is more.
+
+#### `reader` is an ordinal, and the resolution happens server-side
+
+Send the integer `reader_activity` printed. The function re-runs that roster, folds it the
+same way, takes the *n*-th record and asks PostHog for that person's events. **No
+`person_id`, no `distinct_id` and no uid crosses the wire in either direction.** This is
+why the query costs two upstream calls instead of one.
+
+**The ordinal is as of a window, so pass the same window.** The roster is built from the
+parameters *you* send; different parameters give a different roster and therefore a
+different person. Two things make that safe rather than sharp:
+
+- Pass an absolute **`from`/`to`** rather than `days` and the roster stops moving underneath
+  you between the table being drawn and the row being clicked.
+- Every response echoes **`meta.reader_email`** and **`meta.reader_last_seen`**. Print them
+  beside the timeline: a human can then see at a glance that it is still the row they
+  clicked.
+- If the table was drawn with a non-default `limit`, send that same number as
+  `roster_limit`. Ordinals are stable under truncation for every reader *before* the cut,
+  so this only matters when the roster actually truncated — but "usually the right person"
+  is not a property this query is allowed to have.
+
+**An ordinal past the end of the roster is not an error.** A reader who was 7th when the
+table was drawn is 8th after somebody else reads a card. The answer is `200` with
+`rows: []` and **`meta.reader_found: false`**. Branch on that, not on an error code.
+
+#### One ordinal space, across all three personal queries
+
+`reader_activity`, `reader_dwell` and `person_timeline` all number readers off the **same**
+roster — `reader_activity`'s query through the function's one `foldReaders()`. **"Reader 5"
+is one person in every table on the page**, so a row clicked in the dwell table opens the
+right timeline. This is why `reader_dwell` also costs two upstream calls: an earlier draft
+numbered its own rows and produced a second, silently different ordinal space.
+
+#### The bounds, and what a wide window costs
+
+- **Rows:** `limit + 1` is asked for; `meta.truncated: true` means there is older history
+  this response does not contain. A cap that bites drops the **oldest** events, never the
+  most recent.
+- **Window: 31 days, hard.** Ask for 90 and you get 31 with `meta.params.clamped_to_days:
+  31`. This query filters on a *person* rather than an event name, so ClickHouse scans the
+  window instead of using the event index.
+- **Measured** end to end on the live project on 6 September 2026, both upstream calls plus
+  the Firebase Auth join: 1 day **101 ms**, 7 days **845 ms**, 31 days **576–722 ms**,
+  a 98-day range clamped to 31 **2282 ms**. Nothing near a timeout — the ceiling is kept
+  because the scan grows with the whole site's volume while the answer stays one person's
+  afternoon, and a month is the window a human reads a timeline over.
+
+#### What a row will never carry
+
+- **`client_error.message`.** It is the one field on any event this site sends that can
+  hold something a reader typed. `client_errors` reports it, grouped, where it is a bug
+  report rather than a person's afternoon.
+- **PostHog's own autocapture.** `$pageview`, `$pageleave`, `$autocapture` and
+  `$web_vitals` are excluded. They outnumber the site's own events roughly four to one —
+  the first run of this query filled all 500 rows with three days of one person's
+  `$pageleave` and reported itself truncated. Nothing is lost: `page_open` fires on every
+  page of this site and carries the page's **name**, which `$pageview` does not.
+- **The reader's country.** See `geo_breakdown`.
 
 ### `firststory_cards` — how far people scrolled on /firststory
 
@@ -495,7 +726,15 @@ except clamping, and clamping is echoed back in `meta.params`.
 Every query that has a date window takes either form, and the response says which was
 used.
 
-- **`days`** — a relative floor. An integer, clamped to 1–90.
+- **`days`** — a relative floor. An integer, clamped to 1–90, and then to the query's own
+  ceiling if it has one: `event_volume` and `person_timeline` are capped at **31 days**.
+  When a ceiling moves the number, `meta.params.clamped_to_days` says so.
+
+  > **Fixed on 6 September 2026.** The per-query ceiling was only ever applied on the
+  > `from`/`to` path. `event_volume` — whose ceiling exists *because* a 36-day day-by-day
+  > scan timed out upstream with a 502 — answered `{"days": 90}` by running the 90-day
+  > scan. Found by asking `person_timeline` for 90 days and getting 90 days. Both paths
+  > clamp now.
 - **`from`` / ``to`** — two `YYYY-MM-DD` strings, an absolute range, which is what a date
   picker actually has. `to` is **inclusive of its own day**: 21 August to 4 September
   scans both of those days. Give one end and the other is today. Give them backwards and
@@ -516,10 +755,21 @@ used.
 | `contains` (or `q`) | string | `^[A-Za-z0-9 _.:/-]{1,40}$` | no filter |
 | `release` | string | `^[A-Za-z0-9._-]{1,40}$` | all releases |
 | `event` | string | must be in `KNOWN_EVENTS` | — (required) |
+| `reader` | integer | **1–400**, and a JSON number or string only — refused, never clamped. `person_timeline` only. | — (required) |
+| `roster_limit` | integer | 1–400. `person_timeline` and `reader_dwell` only. | 200 |
 | `exclude_admins` | boolean | `true`/`false`, and `1`/`0`/`"true"`/`"false"`/`"yes"`/`"no"`. Anything else is `bad_query`. | **`true`** |
 
-`limit` is clamped 1–200 everywhere except `reader_activity`, where it is 1–400 and
-defaults to 200 — its rows are (reader, story) pairs, not people.
+`limit` is clamped 1–200 everywhere except the three queries whose rows are not
+people: `reader_activity` 1–400 (default 200, rows are reader×story pairs),
+`reader_dwell` 1–600 (default 300, rows are reader×page×story×card), and
+`person_timeline` 1–500 (default 200, rows are one reader's raw events).
+
+**`reader` is refused rather than clamped**, unlike every other integer here. `reader: 0`
+and `reader: 900` are not a slider at its end — they are a caller that has lost track of
+which row was clicked, and quietly answering about reader 1 instead would put one person's
+afternoon under another person's name. It also refuses anything that is not a JSON number
+or string: `[1]` used to coerce through `String()` to `1`, which was found by sending
+exactly that.
 
 ### `exclude_admins`, and what it actually does
 
@@ -569,6 +819,12 @@ caps do not — the answer is tomorrow.
 `subscription_totals` counts against the per-admin limits but not the global upstream one,
 because it never leaves Google.
 
+**The global cap counts upstream queries, not requests.** One request is normally one
+PostHog query, but `person_timeline` and `reader_dwell` make **two** — a roster call to
+resolve the reader ordinal, then the query itself — and each spends two of the 3000. A
+query that cost two and was billed one would let the ceiling be overshot by half,
+quietly.
+
 The per-minute and per-hour caps were 30 and 240 while the dashboard had eleven panels.
 A full render is now **thirteen requests** (fourteen queries, less `subscribe_funnel`,
 which the page no longer draws; fifteen when a story is picked), and at 30 a minute an
@@ -586,50 +842,69 @@ which is the intent.
 Worth stating plainly, because the obvious version of this feature is a hole.
 
 **There is no way to send a query.** Not HogQL, not SQL, not a fragment, not a column
-name, not a table name, not an ORDER BY. The fourteen query texts are string constants in
+name, not a table name, not an ORDER BY. The seventeen query texts are string constants in
 `functions/insights.js`. `params` contributes values only, at positions the function
 chose, and every value has already been checked against a character set that contains no
 quote and no backslash. A read-only PostHog key still reads *everything* in the project —
 so the defence cannot be "the key is read-only", it has to be "the browser never gets to
 write a query". It does not.
 
-**Thirteen of the fourteen queries cannot get an identity out.** They select no
+**Fourteen of the seventeen queries cannot get an identity out.** They select no
 `distinct_id`, no `person_id`, no `$ip`, no email and no person property. People are
 counted with `count(DISTINCT …)` and the count is what is returned. There is no
 `SELECT *` anywhere in the file. The one query that touches Firestore uses `count()`
 aggregations, which return a number and never open a document.
 
-**`reader_activity` is the exception, and it is deliberate.** This paragraph used to say
-"there is no way to get an identity out" without qualification, and it is being changed
-rather than quietly left to rot, because a reader of this file must not conclude from
-thirteen queries that the fourteenth is impossible.
+**`reader_activity`, `reader_dwell` and `person_timeline` are the exceptions, and they
+are deliberate.** This paragraph used to say "there is no way to get an identity out"
+without qualification, and it is being changed rather than quietly left to rot, because a
+reader of this file must not conclude from fourteen queries that the other three are
+impossible.
 
 The owner asked to see "the emails / accounts and which stories they viewed, how far they
-got". With a handful of readers an aggregate percentage says nothing and a list of people
-says everything. So one query returns one email per reader. Five things keep it narrow,
-and every one of them is a property of the code rather than a promise:
+got", then "dwell times per user on each page or card", then "one person did x then y then
+z and then an hour later". With a handful of readers an aggregate percentage says nothing
+and a list of people says everything. So three queries return one email per reader. Five
+things keep all three narrow, and every one of them is a property of the code rather than
+a promise:
 
 1. **The email never comes from PostHog.** It is not there and must not be put there.
    PostHog holds the uid because `identify(uid)` put it there; Firebase Auth holds the
    email; the function holds credentials for both and joins them in memory, per request.
    Nothing is written anywhere.
 2. **The uid and the person id never reach the browser.** Rows carry an ordinal assigned
-   per response, so a row cannot be matched to a row in another response.
+   per response, so a row cannot be matched to a row in another response. There is **one**
+   such ordinal space, shared by all three queries, built by one `foldReaders()` — so
+   "reader 5" is one person across the whole page. `person_timeline` is the reason this
+   matters most: a caller asks about a person by sending back the integer it was shown,
+   and the resolution to a `person_id` happens upstream, inside one request, and is
+   discarded with it.
 3. **A reader with no account stays anonymous.** `email` is `null`, the behaviour is
    intact, and nothing is invented to fill the column.
-4. **It is bounded**: a row cap, most-recent-first ordering, and `meta.truncated`.
-5. **It is logged.** A second log line — `insights personal` — names the admin uid, the
-   query, the reader count and the email count, and carries no email, no uid and no story.
-   A personal-data read that leaves no trace is one nobody can answer a question about
-   later.
+4. **They are bounded**: a row cap on all three, `meta.truncated` as a fact rather than a
+   guess, most-recent-first ordering — and on `person_timeline` a hard **31-day** window
+   ceiling as well, because one person's month is a timeline and one person's year is a
+   dossier.
+5. **They are logged.** A second log line — `insights personal` — names the admin uid, the
+   query, the reader count and the email count, and for a timeline also **which ordinal
+   was asked for and whether it resolved**. It carries no email, no uid, no person id and
+   no story. A personal-data read that leaves no trace is one nobody can answer a question
+   about later.
 
-Two more queries return a `person_id` **from PostHog** and drop it inside the function:
-`firststory_funnel` folds per-person rows into funnel steps, and `reader_activity` folds
-them onto a person. Neither id is in any response. That is worth knowing before editing
-either fold.
+Four queries return a `person_id` **from PostHog** and drop it inside the function:
+`firststory_funnel` folds per-person rows into funnel steps, and `reader_activity`,
+`reader_dwell` and `person_timeline` fold them onto a person. **No `person_id` is in any
+response** — verified by grepping the live responses of all four for a UUID and for the
+calling admin's uid, and finding neither. That is worth knowing before editing any fold.
+
+**Geography is counted, never attached.** `geo_breakdown` reads PostHog's `$geoip_*`
+properties and returns counts by country. It returns no city, no region, no timezone, no
+IP, and **no country on any per-person row** — including `person_timeline`'s. A country
+beside a named reader is a location attached to an individual, which needs a sentence in
+`privacy.html` that is not there.
 
 **No other query gained an identity.** Sweep for it after any change here: nothing but
-`reader_activity` may put an `email` on a row.
+those three may put an `email` on a row.
 
 **There is no way to reach another project.** The PostHog project id is a secret read
 server-side and interpolated into the URL by the function; it is not a parameter.
@@ -677,6 +952,24 @@ curl -s -X POST https://us-central1-factbox-7cb97.cloudfunctions.net/insights \
   -H 'Content-Type: application/json' \
   -d '{"query":"card_dropoff","params":{"story":"26","days":14}}'
 ```
+
+The three that answer the owner's questions about people:
+
+```bash
+# where readers are — check meta.geo_usable before drawing a map
+-d '{"query":"geo_breakdown","params":{"days":90}}'
+
+# how long each reader spent on each card
+-d '{"query":"reader_dwell","params":{"days":31,"limit":600}}'
+
+# who is reader 3 — then reader 3's afternoon, in order, with the gaps
+-d '{"query":"reader_activity","params":{"from":"2026-08-06","to":"2026-09-06"}}'
+-d '{"query":"person_timeline","params":{"reader":3,"from":"2026-08-06","to":"2026-09-06"}}'
+```
+
+Send `reader_activity` and `person_timeline` the **same window**, and prefer `from`/`to`
+over `days` — the ordinal is a position in a roster that keeps moving. Check
+`meta.reader_email` against the row you clicked.
 
 The quickest way to get a token: sign in on factbox.app as the admin account and run
 `await FBU.user().getIdToken()` in the console. That is also how the dashboard should get

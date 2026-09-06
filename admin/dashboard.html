@@ -302,6 +302,92 @@
       <p class="dsh-note" id="dsh-rd-note" hidden></p>
     </section>
 
+    <!-- ---- 4b · Where readers are ----------------------------------------
+         geo_breakdown. Country, people, opens — a table biggest first and a
+         bar for each country, and DELIBERATELY NOT A MAP: with a handful of
+         readers a world map draws a level of precision these numbers do not
+         have, and a filled country is read as a claim about a place rather
+         than as "three people".
+
+         The honest failure here is not an empty chart. Analytics reaches
+         PostHog through the Cloudflare Worker in cloudflare/posthog-proxy.js,
+         which sets X-Forwarded-For from CF-Connecting-IP so PostHog
+         geolocates the READER and not a Cloudflare edge node. If that ever
+         stops being true — or if PostHog is not deriving a country at all —
+         every reader lands in one place and a chart of that is a picture of
+         the proxy. So: when the query is not there, or the answer is one
+         country holding everybody, this panel says so in a sentence and
+         draws nothing rather than drawing something that implies it knows.
+         ---------------------------------------------------------------- -->
+    <section class="dsh-sec" id="dsh-sec-geo">
+      <div class="sechead"><h2>Where readers are</h2><span>by country, biggest first</span></div>
+      <p class="dsh-q">The countries the people in these numbers were in, the
+      largest first, with how many people and how many story opens came from
+      each. There is no map on purpose: with a handful of readers a filled-in
+      country says more than the data does.</p>
+      <div class="dsh-state" id="dsh-geo-state" role="status">Waiting…</div>
+      <div class="dsh-kpis" id="dsh-geo-kpis" hidden></div>
+      <div class="dsh-scroll" id="dsh-geo-chartbox" hidden>
+        <div class="dsh-chart" id="dsh-geo-chart"></div>
+      </div>
+      <div class="dsh-scroll" id="dsh-geo-box" hidden>
+        <table class="dsh-tbl" id="dsh-geo-tbl"></table>
+      </div>
+      <p class="dsh-note" id="dsh-geo-note" hidden></p>
+    </section>
+
+    <!-- ---- 4c · Time on each card ----------------------------------------
+         reader_dwell. The owner's "dwell times per user on each page or
+         card", grouped the way the question is asked: one block per reader,
+         and inside it the cards in the order they were read, each with the
+         time on it drawn as a bar against that reader's own longest card.
+         The stall is the point of the panel, so the longest card is named in
+         the block heading as well as marked in the table. -->
+    <section class="dsh-sec" id="dsh-sec-dwell">
+      <div class="sechead"><h2>Time on each card</h2><span>per reader, card by card</span></div>
+      <p class="dsh-q">How long each reader actually spent on each card, in
+      the order they read them. The bar is against that reader's own longest
+      card, so the place somebody stopped and stared is the widest one in
+      their block — that is what this panel is for.</p>
+      <div class="dsh-state" id="dsh-dw-state" role="status">Waiting…</div>
+      <div class="dsh-kpis" id="dsh-dw-kpis" hidden></div>
+      <div class="dsh-readers" id="dsh-dw-list" hidden></div>
+      <p class="dsh-note" id="dsh-dw-note" hidden></p>
+    </section>
+
+    <!-- ---- 4d · One person, in order --------------------------------------
+         person_timeline. The owner's own words: "one person did x then y then
+         z and then an hour later someone else did that too". So the gap
+         between two events is not a detail here, it is the column the panel
+         exists for — it is written between every pair of events, and a gap
+         long enough to be a different sitting draws a break across the
+         timeline rather than another line of small print.
+
+         The reader is chosen by the ordinal the readers panel above shows.
+         That ordinal is assigned per ANSWER, not per person: refreshing
+         renumbers it, which is why this panel remembers the email and not the
+         number. See ANALYTICS-API.md §6. -->
+    <section class="dsh-sec" id="dsh-sec-person">
+      <div class="sechead"><h2>One person, in order</h2><span>what they did, and how long between</span></div>
+      <p class="dsh-q">Everything one reader did inside the window, oldest
+      first, with the time between each pair of events written between them. A
+      gap of half an hour or more is drawn as a break, because that is a
+      second sitting rather than three taps in a row.</p>
+      <form class="dsh-bar" id="dsh-pt-bar">
+        <div class="dsh-field dsh-grow">
+          <label for="dsh-pt-who">Reader</label>
+          <select class="dsh-select" id="dsh-pt-who">
+            <option value="">Waiting for the readers list…</option>
+          </select>
+        </div>
+      </form>
+      <p class="dsh-range" id="dsh-pt-who-say">&nbsp;</p>
+      <div class="dsh-state" id="dsh-pt-state" role="status">Pick a reader above, or press “See this reader’s session” on any block in Readers.</div>
+      <div class="dsh-kpis" id="dsh-pt-kpis" hidden></div>
+      <ol class="dsh-tl" id="dsh-pt-list" hidden></ol>
+      <p class="dsh-note" id="dsh-pt-note" hidden></p>
+    </section>
+
     <!-- ---- 5 · Subscribers ------------------------------------------------
          THERE USED TO BE A SECOND FUNNEL HERE. `subscribe_funnel` drew the
          site-wide path — locked story, gate, sign-in, account, Stripe, back,

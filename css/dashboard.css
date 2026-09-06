@@ -398,6 +398,126 @@
 .dsh-reader .dsh-tbl tbody tr:last-child td{border-bottom:0}
 
 /* ==========================================================================
+   One person, in order — the session timeline
+
+   The owner's question was "one person did x then y then z and then an hour
+   later someone else did that too", so the GAP between two events is the
+   thing this has to show, not a detail hidden in a column. It is written
+   between every pair of events; and a gap long enough to be a second sitting
+   breaks the spine rather than adding another line of small print, because
+   "an hour later" and "three taps in a row" must not look the same.
+
+   The break is drawn in --accent-ink and not in --crimson. A reader coming
+   back an hour later is not a fault, and the stop colour on this page means
+   a fall-off or a failure and nothing else.
+   ========================================================================== */
+
+.dsh-tl{
+  display:block; list-style:none; margin:0 0 4px; padding:6px 0;
+  position:relative;
+  border-radius:14px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.dsh-tl[hidden]{display:none}
+
+/* Two columns on a desk — when it happened, and what it was — and one column
+   on a phone. The time is tabular so a run of them reads as a column. */
+.dsh-tl-ev{
+  display:grid; grid-template-columns:152px minmax(0,1fr); gap:2px 14px;
+  position:relative; padding:9px 15px 9px 36px;
+}
+.dsh-tl-ev[hidden]{display:none}
+
+/* The spine, drawn per event so a break between two of them is a real gap in
+   the line rather than a strip painted over one. */
+.dsh-tl-ev::before{
+  content:""; position:absolute; left:22px; top:0; bottom:0;
+  width:1px; background:var(--hair);
+}
+.dsh-tl-ev::after{
+  content:""; position:absolute; left:18px; top:15px;
+  width:9px; height:9px; border-radius:50%;
+  background:var(--coral); box-shadow:0 0 0 1px var(--coral-deep);
+}
+
+.dsh-tl-at{
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.dsh-tl-what{
+  font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--ink);
+}
+/* The raw event name, kept beside the readable one: it is what
+   functions/insights.js and js/analytics.js call it, and it is what somebody
+   reading this next to the code will search for. */
+.dsh-tl-tag{
+  margin-left:8px;
+  font-size:var(--fs-fine); font-weight:var(--w-label); color:var(--dimmer);
+}
+.dsh-tl-detail{
+  grid-column:2; margin-top:1px;
+  font-size:var(--fs-meta); color:var(--dim); line-height:var(--lh-body);
+  overflow-wrap:anywhere;
+}
+
+/* The time between two events. Quiet when it is seconds… */
+.dsh-tl-gap{
+  display:flex; align-items:center; gap:10px;
+  position:relative; padding:2px 15px 2px 36px;
+  font-size:var(--fs-fine); font-weight:var(--w-label); color:var(--dimmer);
+  font-variant-numeric:tabular-nums;
+}
+.dsh-tl-gap[hidden]{display:none}
+.dsh-tl-gap::before{
+  content:""; position:absolute; left:22px; top:0; bottom:0;
+  width:1px; background:var(--hair);
+}
+.dsh-tl-gap i{display:block; flex:1 1 auto; height:0}
+
+/* …and unmissable when it is long enough to be a different sitting. The
+   spine stops, a dashed rule crosses, and the words say how long. */
+.dsh-tl-break{
+  padding-top:10px; padding-bottom:10px;
+  color:var(--accent-ink); font-weight:var(--w-head); font-size:var(--fs-meta);
+}
+.dsh-tl-break::before{background:none}
+.dsh-tl-break i{border-top:1px dashed var(--accent-ink); opacity:.55}
+
+/* The cards inside a reader's block, folded away.
+
+   Not tidiness: one reader on the live project has 165 timed cards and there
+   are twenty-odd readers, which drew a section twelve thousand pixels tall
+   and put the panel below it out of reach. The heading above this already
+   names the longest card, which is the answer the panel exists to give; the
+   card-by-card table is the detail behind it. */
+.dsh-cards{display:block; border-top:1px solid var(--hair)}
+.dsh-cards[hidden]{display:none}
+.dsh-cards > summary{
+  cursor:pointer; list-style:none;
+  display:flex; align-items:center; gap:7px;
+  min-height:var(--tap); padding:0 15px;
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--accent-ink);
+}
+.dsh-cards > summary[hidden]{display:none}
+.dsh-cards > summary::-webkit-details-marker{display:none}
+.dsh-cards > summary::after{
+  content:""; width:6px; height:6px;
+  border-right:2px solid currentColor; border-bottom:2px solid currentColor;
+  transform:rotate(45deg) translate(-1px,-1px);
+  transition:transform .16s ease;
+}
+.dsh-cards[open] > summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.dsh-cards[open] > summary{border-bottom:1px solid var(--hair)}
+@media (prefers-reduced-motion: reduce){
+  .dsh-cards > summary::after{transition:none}
+}
+
+/* A button in a block heading — "see this reader's session". Smaller in
+   padding, never in tap target: it keeps the 44px the rest of the site uses. */
+.dsh-btn-sm{padding:8px 14px; font-size:var(--fs-meta)}
+.dsh-reader-go{margin-left:auto}
+
+/* ==========================================================================
    Charts
 
    Inline SVG, drawn by js/dashboard.js at the pixel width of its container
@@ -484,6 +604,10 @@
      table and the table is short on a phone; drop it rather than ship the
      artefact. */
   .dsh-tbl thead th{position:static}
+  /* The timeline's time column and its event stack on top of each other
+     rather than squeezing the event text into a third of a phone. */
+  .dsh-tl-ev{grid-template-columns:minmax(0,1fr)}
+  .dsh-tl-detail{grid-column:1}
 }
 
 @media (prefers-reduced-motion:reduce){

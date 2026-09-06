@@ -58,9 +58,9 @@ routes.
 
 ## 2 · What each section answers, and what it calls
 
-Fourteen queries exist; this page draws **thirteen** of them. A full render
-issues thirteen requests — fifteen with a story picked — **two at a time**
-through a queue in `js/dashboard.js`. `ANALYTICS-API.md` §5 caps an admin at
+Seventeen queries exist; this page draws **sixteen** of them. A full render
+issues thirteen requests — fifteen with a story picked, sixteen once a reader
+is chosen — **two at a time** through a queue in `js/dashboard.js`. `ANALYTICS-API.md` §5 caps an admin at
 sixty a minute (raised from thirty when the panel count grew) and explicitly
 asks for small batches. Pressing Refresh mid-render bumps a generation counter
 and abandons the rest of the old batch, so two renders cannot paint over each
@@ -74,6 +74,9 @@ other.
 | 3 | **Inside a story** | story name, card number, dwell, how far they get | `card_dropoff` |
 | 3b | **Where they stop** | of those who stopped, which card was the last | `story_stop_points` |
 | 4 | **Readers** | who read what, how far, and their email | `reader_activity` |
+| 4b | **Where readers are** | which countries they were in | `geo_breakdown` |
+| 4c | **Time on each card** | how long each reader spent on each card | `reader_dwell` |
+| 4d | **One person, in order** | x then y then z, and the gap between | `person_timeline` |
 | 5 | **Subscribers** | how many subscribers there actually are | `subscription_totals` |
 | 5b | **Blocked before Stripe** | why a checkout never started | `checkout_blocks` |
 | 6 | **Onboarding** | how far through `/join` people get, how many finish | `onboarding_funnel` |
@@ -100,6 +103,111 @@ allow-listed, still documented in `ANALYTICS-API.md` §3, and still one `curl`
 away. Putting the panel back is restoring six elements in
 `admin/dashboard.html` and the `ask("subscribe_funnel", …)` block in
 `js/dashboard.js`; both are named in a comment where they used to be.
+
+### The three panels about people
+
+The owner asked for three things in one sentence — *"what country they are
+from, dwell times per user on each page or card… so we can see oh one person
+did x then y then z and then an hour later someone else did that too"* — and
+they are three panels because they are three questions with three shapes.
+
+**§4b Where readers are — `geo_breakdown`.** A table biggest first and a bar
+per country. **There is no map, and that is a decision.** With readers in
+double figures a filled-in country is read as a claim about a place when what
+is known is "seven people"; a bar labelled 7 says the same thing and stops
+there. There is no city and no region either — at this size a city is close
+enough to naming somebody, and the function does not ask PostHog for one.
+
+The absence of this data is a state the panel renders rather than an empty
+chart, and there are two of them:
+
+- **The query is not there.** `bad_query` from a panel that sends nothing but a
+  date window and the admin flag is the function refusing the NAME. One
+  sentence says so and nothing is drawn. It cannot say *why* — an unknown query
+  and a rejected parameter share a code — so it points at `ANALYTICS-API.md`,
+  which is the record of whether the query was never built or is merely not
+  deployed.
+- **`meta.geo_usable` is false.** The function decides this, not the page: it
+  is false when everybody landed in one country or in none. That is a plausible
+  answer for a small site **and** it is exactly the shape of a proxy that has
+  stopped forwarding the reader's IP — `cloudflare/posthog-proxy.js` sets
+  `X-Forwarded-For` from `CF-Connecting-IP`, and without that line every reader
+  is placed at a Cloudflare colo. The two cannot be told apart from here, so
+  the panel prints both possibilities and draws nothing. A single bar at 100%
+  would read as a finding about the readership, and it would not be one.
+
+An **Unknown** row is a row, counted and labelled, never dropped: percentages
+that quietly exclude the people they could not place are the same lie in a
+smaller font.
+
+**§4c Time on each card — `reader_dwell`.** One block per reader; inside it the
+cards in the order they were read, with the time on each drawn as a bar
+**against that reader's own longest card**. Two blocks cannot be compared by
+bar length and are not meant to be — the times are written on every row — but
+within one reader the place they stopped and stared is the widest bar in the
+block, which is the whole point of the panel. The longest card is named in the
+block heading as well, so a collapsed block still answers it.
+
+Three things this panel does that the readers panel does not need to:
+
+- **The cards fold away.** On the live project one reader has 165 timed cards
+  and there are twenty-odd readers: drawn open, this section was **twelve
+  thousand pixels tall** and the panel under it was unreachable. The first
+  three blocks are open, the rest are one click, and the heading carries the
+  answer either way.
+- **A column that is the same on every row of a block moves into the heading** —
+  the story, the address — exactly as §3 already does with the story id. Seven
+  copies of a story title wrapping to two lines is width spent saying nothing.
+- **A column identical to another column on every row is dropped.** Where a
+  card was seen once, its median, its longest single view and its capped time
+  ARE the time on it, and four columns of one number is the duplicated column
+  this page has shipped before.
+
+`page` is a column and not decoration: story 01 is served at three addresses,
+so the same card read at two of them is two rows with two different answers.
+
+**§4d One person, in order — `person_timeline`.** A vertical timeline, oldest
+first, **with the gap written between every pair of events**, because "and then
+an hour later" is the part of the owner's sentence the data has to answer. A
+gap long enough to be a second sitting cuts the spine and says so in words:
+three taps in a row and an hour's absence must not look the same on the way
+down.
+
+**The gap is the function's, not the page's.** `person_timeline` returns
+`gap_s` and a `session` counter computed from the same timestamps it returned,
+and this page draws the break where that counter changes rather than
+re-deriving it from two strings a browser parsed — two answers to one question
+is how a page ends up drawing a break the server did not count. The threshold
+is printed under the timeline rather than assumed.
+
+### The reader number is per answer, and this cost a design
+
+`reader_activity` assigns an **ordinal** — 1, 2, 3 — most recent first, *for
+that response only*. It is derived from nothing and cannot follow anybody,
+which is exactly why it is safe and exactly why it is awkward:
+
+- **The session panel sends `roster_limit`** — the same `limit` the readers
+  panel sent — because an ordinal means "the Nth row of a `reader_activity`
+  answer" and only resolves to the same person against the same roster size.
+  One constant in `js/dashboard.js` feeds both.
+- **All three personal queries number readers off the same roster**, so
+  reader 5 is one person in every table on this page and a button in the dwell
+  panel opens the right timeline. That is what `roster_limit` buys, and it is
+  why §4c costs two upstream calls: an earlier draft of the function numbered
+  its own rows and produced a second, silently different ordinal space.
+- **`reader_dwell` returns `reader: null`** for a row whose reader is past the
+  end of a truncated roster. Those rows are not merged into one block — there
+  is no way to tell one unnumbered reader from another, and a block headed
+  "longest 4m on card 3" over several people is a finding about nobody. They
+  are shown together at the bottom, labelled, with no total and no longest, and
+  `meta.unranked_rows` is printed in the section's own line.
+- **A refresh renumbers everybody**, so the session panel remembers the email
+  and looks the number up again. A reader with no account has nothing to look
+  up: the panel clears and says why instead of following their old number to
+  whoever now holds it.
+- **An ordinal past the end of the roster is a race, not an error** — somebody
+  read a card and everyone shuffled down. The function answers `reader_found:
+  false` with no rows, and the panel says the numbering moved.
 
 ### The admin switch
 
@@ -133,10 +241,19 @@ subscriber number — the only thing it is for. `meta.admin_filter` comes back
 the note under them says all of this rather than letting the switch appear to
 have been honoured.
 
-### The one panel that shows people
+### The panels that show people — now three of them
 
-**§4 Readers is the only panel on this page that returns an identity**, and
-every other query was deliberately built so that it could not. It is the
+**§4 Readers, §4c Time on each card and §4d One person, in order are the
+panels that return an identity.** §4 was the only one when this page was
+built; `reader_dwell` and `person_timeline` are marked `personal: true` in
+`functions/insights.js` for the same reason and with the same protections, and
+the verification below was widened from "an email appears nowhere outside
+`#dsh-sec-readers`" to those three sections. **`geo_breakdown` is not one of
+them**: it returns countries with counts beside them and never a country
+beside a person, which is a different promise and the reason there is no
+country on a timeline row.
+
+The paragraph below is about §4 and holds for all three. It is the
 deliberate exception recorded in `ANALYTICS-API.md` §6: with a handful of
 readers, aggregate percentages tell the owner nothing and a list of actual
 people tells them everything.
@@ -238,6 +355,7 @@ for the decision.
 |---|---|
 | `not_admin` | tears the whole page down — see §1 |
 | `bad_query` | says it is a bug in this page, names `field` if given |
+| `bad_query` on §4b/§4c/§4d | **a state, not a fault.** Those three send nothing but a date window, the admin flag and (for §4d) a reader number, so a refusal is the function refusing the query NAME. The panel says the query is not there, draws nothing, and points at `ANALYTICS-API.md` rather than claiming a bug it cannot prove. |
 | `rate_limited` | says how long to wait if `retry_after_s` is present, otherwise "resets tomorrow" |
 | `upstream` | says it is upstream, names `reason`, points at Refresh |
 | `upstream` + `reason: "not_configured"` | **a state, not a fault** — see below |
@@ -271,7 +389,7 @@ The page treats that as a state of the world rather than a fault:
 
 ## 5 · What the owner asked for that the data cannot answer
 
-Four things. None of them is drawn as a chart that implies otherwise.
+Thirteen things. None of them is drawn as a chart that implies otherwise.
 
 **1. "Are people muting the music or playing it?" — half answered.**
 `audio_usage` says how many people touch the sound and how often. It **cannot**
@@ -343,6 +461,40 @@ inside the window, on any page. That rule is printed under the chart, because a
 retention number whose rule is not on screen is a number nobody can argue
 with.
 
+**9. A country is a guess, and it is per event rather than per person.** It is
+derived by PostHog from the IP the event arrived with. A VPN, a corporate
+network or a phone roaming across a border all move somebody, and a reader who
+travelled inside the window is in two rows. `people` is a distinct count within
+a country, so the countries do not add up to the number of people on the site —
+the tile says "added across countries" rather than "people".
+
+**10. Dwell is bounded at both ends, by the client, and neither bound can be
+recovered.** `js/analytics.js` refuses to report a card view under 900ms or
+over thirty minutes. So a card somebody swiped past is **missing from their
+list rather than zero**, and the longest stall the page can ever show is capped
+at half an hour — a genuinely long read is indistinguishable from a tab
+abandoned just under the limit. The function returns every dwell figure twice,
+raw and with each view clipped to three minutes, and §4c prints both on a block
+where they disagree by more than a fifth, because that disagreement IS the
+finding: somebody left the page open.
+
+**11. There is no session in the data.** Nothing in `js/analytics.js` opens or
+closes one. "A different sitting" is a thirty-minute gap, drawn by the function
+and printed on screen as a number so a different line can be drawn by eye.
+
+**12. A timeline is what the site records, not what the person did.** Reading
+with a blocker on, or on a second device before signing in, leaves no events —
+so a quiet stretch is not evidence of a quiet reader. And §4d reads at most
+**31 days** where the rest of the page reads 90: the query filters on a person
+rather than on an event, so it scans the window rather than using the event
+index. When the range above is longer, the panel says which 31 days it
+answered about.
+
+**13. An anonymous reader cannot be followed across a refresh**, because the
+only handle on them is an ordinal that the next answer reassigns. That is a
+property of the ordinal being derived from nothing, which is the property that
+makes it safe to send to a browser at all.
+
 Two smaller ones worth knowing:
 
 - **A `card_view` needs 900ms on screen.** A swipe passing through is not a
@@ -402,15 +554,24 @@ only the absolute form is stable at both.
 which 404s every clean URL and has produced a false result in this repo before.
 `/explore` returning 200 was confirmed first.
 
-**Real Chrome, via puppeteer-core, fifteen scenarios.** The `insights` function
-is not reachable from this machine, so responses are stubbed **at the network
-layer** with request interception: the page's own `XMLHttpRequest`, its own
-`Authorization` header, the CORS preflight and its own JSON parsing all run for
-real, and only the bytes coming back are fixtures shaped exactly as
-`ANALYTICS-API.md` documents. Auth is stubbed by installing a `window.FBU`
-before any script runs — `js/auth.js` opens with
+**Real Chrome, via puppeteer-core, fifteen scenarios.** Responses are stubbed
+**at the network layer** with request interception: the page's own
+`XMLHttpRequest`, its own `Authorization` header, the CORS preflight and its
+own JSON parsing all run for real, and only the bytes coming back are fixtures
+shaped exactly as `ANALYTICS-API.md` documents. Auth is stubbed by installing a
+`window.FBU` before any script runs — `js/auth.js` opens with
 `if (W.FBU && W.FBU.__factbox) return`, so a stub wearing that flag makes the
 real module stand down and the page takes its production code path.
+
+**And against the live function, which is now reachable.** The three panels
+below were also driven against the deployed `insights` with a real Firebase ID
+token for an admin uid, from `localhost:8899` — an origin the function's
+allowlist already carries — so the same code path ran over real PostHog rows:
+26 readers, 5 countries, one reader with 165 timed cards and one 60-event
+timeline. **That is where the twelve-thousand-pixel section was found**, which
+no fixture of three tidy readers would ever have shown. The fixtures remain,
+because the states that matter — a query that is not there, one country holding
+everybody, `not_configured` — cannot be produced on demand from live data.
 
 Scenarios, all green:
 
@@ -433,6 +594,23 @@ column-flex field stretching the story picker to 220px tall, two different
 columns both headed "Finished", a duplicated story-id column, and SVG `<text>`
 collapsing the whitespace between two figures so they ran together.
 
+**The three panels about people were driven the same way**, at 1440 and 375, in
+five modes: live, fixtures, `geo_usable: false`, the three new queries answering
+`bad_query`, and everything answering `upstream`/`not_configured`. Every run
+asserted zero `pageerror`, zero `console.error` from the page, no horizontal
+body scroll, **every `[hidden]` element computing `display:none`**, nothing
+overflowing outside a `.dsh-scroll`, and no `undefined` / `NaN` /
+`[object Object]` in the rendered text. Every request body was read: **all
+sixteen carry `exclude_admins`**, which is what makes "the switch applies to
+the new panels too" a fact rather than an assumption about `ask()`.
+
+The screenshots were read, not just measured, and four things came out of that
+which no assertion would have caught: the section that was twelve thousand
+pixels tall; a story title repeated down seven rows and wrapping to two lines
+in each; four columns showing the same number because a card seen once has one
+dwell; and a geography panel whose sentence said "6 countries" beside a tile
+saying "5 Countries", because Unknown is a row and is not a country.
+
 **The admin switch, the readers panel and the journey funnel were driven the
 same way**, with one addition that matters: the stub reads
 `params.exclude_admins` out of each request body and answers with a **different
@@ -445,9 +623,12 @@ asserted every run:
 - **every request carries `exclude_admins`** — the harness reads each POST body,
   so a panel that forgot to send it fails the run rather than quietly reporting
   unfiltered numbers;
-- **an email address appears nowhere on the page outside `#dsh-sec-readers`** —
-  every leaf element is scanned for something email-shaped and the section it
-  sits in is recorded;
+- **an email address appears nowhere on the page outside `#dsh-sec-readers`,
+  `#dsh-sec-dwell` and `#dsh-sec-person`** — every leaf element is scanned for
+  something email-shaped and the section it sits in is recorded. That list grew
+  from one to three when `reader_dwell` and `person_timeline` landed, and it
+  grew deliberately: those two are `personal: true` in the function for the
+  same reason §4 is. Nothing else on the page may show one;
 - the anonymous reader renders with their reading intact, the row cap prints
   *"That is the cap: there were more…"*, and the unattributed card views print
   their own sentence under the funnel.
