@@ -1,0 +1,17 @@
+# Everything tracked in this repo is served by GitHub Pages, so this file is
+# not a fence — it is a map. It exists because /robots.txt and /sitemap.xml
+# were both 404 and Google had no way to find a single one of the 51 stories.
+User-agent: *
+Allow: /
+
+# The owner's dashboard. Nothing there is secret enough to matter, but it is
+# not content and it should not sit in an index next to the stories.
+Disallow: /admin/
+
+# Deliberately NOT disallowed: /read, /join, /login, /account, /settings and
+# /unlock. Disallow blocks the FETCH, so a crawler told to stay out never sees
+# read.html's own `<meta name="robots" content="noindex">` and the URL can
+# still surface, titleless, from links pointing at it. noindex only works on a
+# page a crawler is allowed to read.
+
+Sitemap: https://factbox.app/sitemap.xml

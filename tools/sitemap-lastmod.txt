@@ -1,0 +1,66 @@
+# <lastmod> for sitemap.xml, carried rather than stamped.
+#
+# Written by tools/build-story-pages.py. Each line is
+#     <date>  <sha256[:12] of what the URL is built from>  <url>
+# and the date only moves when that hash does, so building on another
+# machine, or on another day, produces a byte-identical sitemap.
+# Do not hand-edit: run the generator.
+
+2026-09-07  49cf2538ee45  /
+2026-09-07  76829aae2f5e  /explore
+2026-09-07  ea1d510ccfaa  /stories
+2026-09-07  16aefc8738fa  /library
+2026-09-07  94ab822f7e5e  /story
+2026-09-07  167c1639da0b  /cleopatra
+2026-09-07  c9fac7486e9d  /firststory
+2026-09-07  45383546a521  /history/how-did-cleopatra-die-the-snake
+2026-09-07  1a0674d14b50  /history/cleopatra-the-seductress
+2026-09-07  665b242c44c0  /history/cleopatra-s-body-has-never-been-found
+2026-09-07  4c35649d1bd0  /history/7-deadly-sins-explained
+2026-09-07  13a893887ab1  /history/the-ark-of-the-covenant
+2026-09-07  4e06734dadcb  /history/the-secret-gospel-of-mary-magdalene
+2026-09-07  fb74d98970bb  /history/lincoln-s-looks-the-slavery-debates
+2026-09-07  3400624c8e05  /history/king-david-and-bathsheba
+2026-09-07  43c233b065e2  /history/how-did-lincoln-not-have-security
+2026-09-07  9745abc392b5  /history/chernobyl
+2026-09-07  e9627c9709d2  /history/the-death-of-the-apostle-paul
+2026-09-07  8c5685257e10  /history/saint-peter-the-first-pope
+2026-09-07  ebc4a0276281  /history/three-facts-about-saint-peter
+2026-09-07  73b39ace9231  /history/satan-isn-t-god-s-rival
+2026-09-07  b76a62937a21  /history/timeline-of-the-book-of-revelation
+2026-09-07  e91989200884  /history/cyrus-the-great
+2026-09-07  2a312426b37b  /history/the-dead-sea-scrolls
+2026-09-07  9392588a48a3  /history/cleopatra-s-tomb
+2026-09-07  3e59726a63bb  /history/how-cleopatra-died
+2026-09-07  1ac2f6cb09f9  /history/cleopatra-s-situationships
+2026-09-07  066bee02cd7f  /history/the-woman-who-made-two-powerful-men-fall
+2026-09-07  bb6e714f5d14  /history/lincoln-kept-losing
+2026-09-07  05fa73c5f667  /history/galatians-5-the-fruit-test
+2026-09-07  5d2637c0310c  /history/mary-magdalene-wasn-t-a-prostitute
+2026-09-07  249bad2a94bc  /history/why-did-they-actually-kill-jesus
+2026-09-07  be3d7ec4ca00  /history/nasa-and-the-darkness-at-the-crucifixion
+2026-09-07  60e6626e0e4e  /history/the-gnostics
+2026-09-07  a90fd459fc1c  /history/cleopatra-s-four-children
+2026-09-07  73441cdf248f  /history/lincoln-wasn-t-the-only-target
+2026-09-07  77fd49db6623  /history/why-did-jesus-need-to-be-betrayed
+2026-09-07  2eedd0c3baf2  /history/who-decided-which-books-got-into-the-bible
+2026-09-07  10bd1ae4e00b  /history/alexander-the-great-s-missing-tomb
+2026-09-07  c29131671ed1  /history/joan-of-arc
+2026-09-07  02154bf559da  /history/satan-does-not-rule-hell
+2026-09-07  6dc204b4cc83  /history/biblical-creatures-look-nothing-like-paintings
+2026-09-07  852e414fa771  /history/jesus-s-brothers-and-sisters
+2026-09-07  265f9bf08899  /history/what-happened-to-pontius-pilate
+2026-09-07  a14d50641622  /history/the-book-of-enoch
+2026-09-07  51b691e8e07c  /history/what-killed-alexander-the-great
+2026-09-07  bf24ff0dd467  /history/napoleon-wasn-t-short
+2026-09-07  34f2e4780f07  /history/joan-of-arc-s-trial-reversed
+2026-09-07  2bb222795b18  /history/nero-didn-t-fiddle-while-rome-burned
+2026-09-07  1fb2eeb8dbf0  /history/the-emperor-who-converted
+2026-09-07  e47461cae718  /history/rasputin-wouldn-t-die
+2026-09-07  7fdf8108c1cd  /history/genghis-khan-s-hidden-grave
+2026-09-07  d3b6e73e3e67  /history/jesus-s-lost-years
+2026-09-07  8aacff12f1ea  /history/where-was-the-garden-of-eden
+2026-09-07  87df32d041e9  /history/christians-who-said-jesus-didn-t-suffer
+2026-09-07  43b7c2bcb998  /history/666-and-the-roman-emperor
+2026-09-07  bbb8bca78826  /history/the-antichrist
+2026-09-07  0d29dcf74dd0  /history/the-ides-of-march

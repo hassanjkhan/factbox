@@ -94,6 +94,26 @@ else
   FAIL=1
 fi
 
+head_ "6 · the crawlable story pages match data/index.json"
+# /history/<slug>, sitemap.xml and img/og/*.jpg are generated from
+# data/index.json. Nothing warns you when they drift: a retitled story keeps
+# serving its old page at its old URL, a dropped story keeps a page that is no
+# longer in the shelf, and the sitemap goes on advertising both. None of that
+# 404s, so no other check here sees it.
+#
+# Like section 5, it REFUSES rather than regenerating. Rewriting 51 pages and
+# 12MB of JPEG underneath someone who typed `git commit` puts content nobody
+# reviewed into the commit — the same reasoning as section 1.
+if out=$(python3 tools/build-story-pages.py --check 2>&1); then
+  grn "  $(echo "$out" | tail -1)"
+else
+  echo "$out" | sed 's/^/  /'
+  red "  The story pages, their share images or the sitemap are out of date."
+  red "  Fix with:  python3 tools/build-story-pages.py"
+  red "  then stage history/, img/og/, sitemap.xml and tools/sitemap-lastmod.txt."
+  FAIL=1
+fi
+
 echo
 if [ "$FAIL" = "0" ]; then grn "ready to commit"; else red "NOT ready — fix the above"; fi
 exit $FAIL
