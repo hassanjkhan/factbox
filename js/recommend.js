@@ -2098,11 +2098,25 @@ var FBR = (function () {
          kind. `page` is left to default, which reads the pathname, so
          /firststory and /story stay distinguishable in the funnel.
 
-         `stacks` is not passed. The one screen that would use it — the story
-         pick — carries its own covers and only consults the index for a
-         better image, so a null costs nothing here; the alternative is
-         plumbing the story index through two callers, one of which does not
-         have it. If the covers ever need it, it arrives as an opt.
+         `stacks` IS passed, and the note that used to sit here was wrong.
+
+         It said the only screen that wanted the catalogue was the story pick,
+         which carries its own covers, so a null cost nothing. The RESULTS
+         screen wants it too — for the story TITLES — and without it the
+         engine fell back to its own placeholder and told readers their
+         personalised feed was "Story 50", "Story 01", "Story 02". Three
+         museum paintings under three catalogue numbers, at the exact moment
+         the funnel is meant to be showing off.
+
+         FB.loadIndex() caches (js/gate.js `_index`), and read.html already
+         calls it at page load to build the end card, so by the time somebody
+         has read a story and reached this the array is in hand and the
+         reference below is free. The preload starts when the sheet is BUILT
+         rather than when the quiz mounts, so the tap never waits on a fetch.
+
+         If it somehow has not resolved, `stacks` is null and the engine loads
+         the index itself rather than printing a placeholder — the fallback
+         lives there because that is the file that knows what it needs.
 
          Returns whether there is a live quiz to show. FALSE MEANS DO NOT
          PAINT: an engine that would not mount must never leave an empty sheet
@@ -2110,6 +2124,16 @@ var FBR = (function () {
          through to the next stage instead, which is the funnel working with
          one screen missing rather than the funnel stopped. */
       var quizUp = false;
+      var quizStacks = null;
+      /* Started here, not in mountQuiz, so the tap never waits on a fetch. */
+      try {
+        if (window.FB && typeof FB.loadIndex === "function") {
+          FB.loadIndex().then(function (list) {
+            quizStacks = (list && list.length) ? list : null;
+          }, function () { quizStacks = null; });
+        }
+      } catch (e) { quizStacks = null; }
+
       function mountQuiz() {
         if (quizUp) return true;
         var E = obe();
@@ -2119,6 +2143,7 @@ var FBR = (function () {
           ok = !!E.mount(quiz, {
             from: "story",
             startAt: E.resumeAt(),
+            stacks: quizStacks,
             onDone: function () { quizUp = false; afterQuiz(); },
             onExit: function () { quizUp = false; shut(); }
           });

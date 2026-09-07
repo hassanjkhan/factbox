@@ -1,437 +1,622 @@
 /* ==========================================================================
    Factbox — the quiz onboarding engine. The stylesheet for js/onboard.js.
 
-   SCOPE. Everything here is under .fbob, which is the single element the
-   engine builds inside whatever node it was handed. Nothing here styles a
-   bare tag, so loading this file on a page cannot change anything the page
-   already draws.
+   WHAT THIS FILE IS NOW. A port of journey 3a of the Quiz Funnel mockup,
+   screen for screen. The mockup draws inside a 390x844 phone frame and every
+   offset in it is absolute against that frame, so this file does the same:
+   .fbob IS the frame. Sizes below are the mockup's own literals, in px,
+   because the ladder in css/app.css is a clamp() ladder for pages that reflow
+   and these screens do not reflow — they are a phone.
 
-   WHERE IT LIVES. Inside the bottom sheet whose host is .fbg-sheet in
-   css/recommend.css: max-width 520px, 22px of padding, and max-height 94vh
-   with its own overflow-y. That is the constraint the layout below is bent
-   around. .fbob is a flex column that fits inside that box and .ob-body is
-   the only thing that scrolls, so the sheet never grows the page behind it
-   and the Continue button never walks off the bottom of the screen. On a
-   390px phone the whole flow is one thumb's reach.
+   THE FRAME. .fbob is position:absolute against .fbg-sheet.fbg-quiz, which
+   css/recommend.css already makes top:0, full height, no radius. Absolutely
+   positioned children resolve against a PADDING BOX, so inset:0 here covers
+   the host's own 14/20/bottom-safe padding as well and the port gets the
+   whole 390x844 rather than an inset rectangle. That is what makes screen 1's
+   hero full-bleed without this file touching recommend.css's padding.
 
-   COLOUR. Every value is a token from css/app.css. There is not one colour
-   literal in this file, on purpose: the palette inverted once already and the
-   rules that carried their own rgba() are exactly the ones that broke. The
-   ones used here and what they are for:
+   COLOUR, AND WHY THE TOKENS ARE RE-DECLARED. The funnel is CREAM: #E7E0D3
+   ground, #172E5B ink, #3B9EF4 fills. Those are css/app.css's --ground, --ink
+   and --coral exactly. But this flow is mounted on the reader, and
+   css/reader-rail.css repaints :root for night — --ground becomes #090C16 and
+   --ink becomes cream. Rendering the funnel through those tokens is precisely
+   the inversion the owner rejected. So the paper palette is re-declared at
+   the one scope this file owns, .fbob, with app.css's own values. Below that
+   line every rule is a var().
 
-     --raise / --menu   an option's ground, a card lifted off the page
-     --ink / --dim      the words, and the quieter words
-     --dimmer           metadata and the fine print
-     --coral            a FILL, never type: the chosen state and the button
-     --on-accent        the only thing you may write on --coral
-     --accent-ink       the blue you may WRITE in: eyebrows, the phase label
-     --accent-wash      a chosen option's ground
-     --accent-edge      its hairline
-     --hair             every other hairline
-     --tint-3           an unfilled track
-     --night            the backstop behind a plate, for the milliseconds
-                        before the painting decodes — a cream flash there is
-                        the one thing worse than a dark one
-     --display          the serif, for a headline and nothing else
-
-   TYPE. --display for the four headlines that carry the flow. Everything else
-   is --ui at one of the four real weights. No size that is not on app.css's
-   ladder.
+   The literals this file is allowed, and they are the mockup's:
+     #2B0E13         the ground behind a painting, and screen 1's ground
+     #F4EFE6         type on a painting (= app.css --on-glass)
+     rgba(19,6,9,·)  the four art scrims
+     rgba(43,14,19,·) screen 1's two gradients
    ========================================================================== */
 
 .fbob{
-  display:flex; flex-direction:column;
-  gap:14px;
-  width:100%;
-  /* The sheet is 94vh and carries its own padding; this keeps the column
-     inside it rather than pushing it taller. 44px is the top row. */
-  max-height:calc(94vh - 44px);
-  min-height:0;
+  /* ---- the paper palette, re-declared. Values are css/app.css's. ---- */
+  --ground:#E7E0D3;
+  --raise:#F1EBDF;
+  --ink:#172E5B;
+  --dim:rgba(23,46,91,.82);
+  --dimmer:rgba(23,46,91,.74);
+  --hair:rgba(23,46,91,.14);
+  --tint-2:rgba(23,46,91,.12);
+  --tint-3:rgba(23,46,91,.18);
+  --accent-wash:rgba(59,158,244,.12);
+  --accent-edge:rgba(59,158,244,.5);
+  --coral:#3B9EF4;
+  --coral-deep:#1B5FA8;
+  --on-accent:#06182E;
+  --ring:#1A5BA1;
+
+  /* the mockup's own two, which app.css has no token for */
+  --plate:#2B0E13;
+  --on-plate:#F4EFE6;
+
+  /* The mockup pins its buttons at bottom:26 / bottom:30 of an 844px frame.
+     On a phone with a home indicator that band is not free, so the indicator
+     is added to it and nothing else is. */
+  --ob-safe:env(safe-area-inset-bottom, 0px);
+
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  overflow:hidden;
+  background:var(--ground);
   color:var(--ink);
   font-family:var(--ui);
+  font-size:16px;
   text-align:left;
+  -webkit-font-smoothing:antialiased;
 }
 
-/* When the host is the whole screen rather than a bottom sheet, fill it.
-   .ob-body is already flex:1 and .ob-foot flex:0, so the only thing standing
-   between this column and a full-height layout is the 94vh cap it needed
-   while it lived in a sheet. Lift the cap, take the height, and the footer
-   button lands where a full-screen page puts it instead of halfway up. */
-.fbg.is-quiz .fbg-quiz .fbob{
-  max-height:none;
-  height:100%;
-  flex:1 1 auto;
+/* Every screen fades in the way the mockup's `qfade` does — on ARRIVAL only.
+   Ticking a tick repaints the screen, and repainting it through the entry
+   animation flashes the whole phone on every tap. js/onboard.js sets is-enter
+   for the first render of a screen and for no other. */
+@keyframes ob-fade{ from{opacity:0} to{opacity:1} }
+.fbob .ob-screen{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+}
+.fbob .ob-screen.is-enter{animation:ob-fade .3s ease}
+
+/* the mockup's .fbscroll: it scrolls, it shows no bar */
+.fbob .ob-scroll{
+  overflow-y:auto; overflow-x:hidden;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.fbob .ob-scroll::-webkit-scrollbar{width:0; height:0}
+
+/* ==========================================================================
+   THE PRIMARY BUTTON. One declaration, four screens.
+   mockup: 16/20 padding, 52 min-height, 12 radius, 15px 700 .06em uppercase.
+   ========================================================================== */
+.fbob .ob-cta{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%;
+  padding:16px 20px; min-height:52px;
+  border:0; border-radius:12px;
+  background:var(--coral); color:var(--on-accent);
+  box-shadow:0 8px 22px rgba(27,95,168,.26);
+  font-family:var(--ui); font-size:15px; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; line-height:1.2;
+  cursor:pointer;
+}
+/* Off, not hidden. The mockup's CTA_OFF: it says it is waiting. */
+.fbob .ob-cta.is-off{
+  background:rgba(23,46,91,.1); color:rgba(23,46,91,.42);
+  box-shadow:none; cursor:default;
 }
 
-/* ---- chrome ------------------------------------------------------------- */
-
+/* ==========================================================================
+   CHROME. The mockup's fixed top bar: a 38px round back arrow, the centred
+   logo and wordmark, and three phase bars with labels underneath.
+   ========================================================================== */
 .fbob .ob-top{
-  flex:0 0 auto;
-  display:flex; align-items:center; gap:12px;
-  min-height:var(--tap);
+  position:absolute; top:0; left:0; right:0; z-index:20;
+  padding:16px 18px 12px;
+  background:var(--ground);
 }
-
+.fbob .ob-toprow{
+  display:flex; align-items:center; gap:10px;
+  min-height:38px;
+}
 .fbob .ob-back{
   -webkit-appearance:none; appearance:none;
   flex:0 0 auto;
-  display:inline-flex; align-items:center; gap:6px;
-  min-height:var(--tap); padding:0 12px 0 8px;
-  border:0; border-radius:var(--pill);
-  background:none; color:var(--dim);
-  font-family:inherit; font-size:var(--fs-note); font-weight:var(--w-label);
+  width:38px; height:38px; min-height:38px;
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:0; border:0; border-radius:999px;
+  background:none; color:var(--ink);
+  font-family:var(--ui); font-size:17px; line-height:1;
   cursor:pointer;
 }
-.fbob .ob-back::before{
-  content:""; width:9px; height:9px;
-  border-left:2px solid currentColor; border-bottom:2px solid currentColor;
-  transform:rotate(45deg);
-}
-.fbob .ob-back:hover{color:var(--ink)}
-
-.fbob .ob-phases{
+.fbob .ob-mark{
   flex:1 1 auto;
-  display:flex; gap:8px; min-width:0;
+  display:flex; align-items:center; justify-content:center; gap:7px;
 }
-.fbob .ob-phases.is-off{visibility:hidden}
+.fbob .ob-mark img{display:block}
+.fbob .ob-markw{
+  font-size:12px; font-weight:700; letter-spacing:.3em;
+  color:var(--coral-deep);
+}
+.fbob .ob-topgap{flex:0 0 auto; width:38px}
+
+.fbob .ob-phases{display:flex; gap:6px; margin:12px 0 0}
 .fbob .ob-phase{flex:1 1 0; min-width:0}
 .fbob .ob-track{
-  height:4px; border-radius:var(--pill);
-  background:var(--tint-3); overflow:hidden;
+  height:4px; border-radius:999px; overflow:hidden;
+  background:var(--hair);
 }
 .fbob .ob-fill{
   display:block; height:100%; width:0;
-  border-radius:var(--pill); background:var(--coral);
+  border-radius:999px; background:var(--coral);
   transition:width .3s ease;
 }
 .fbob .ob-plabel{
   margin:7px 0 0; text-align:center;
-  font-size:var(--fs-micro); font-weight:var(--w-strong);
-  letter-spacing:var(--ls-caps); text-transform:uppercase;
-  color:var(--dimmer);
+  font-size:11px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dimmer);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.fbob .ob-phase.is-on .ob-plabel{color:var(--accent-ink)}
+.fbob .ob-phase.is-on .ob-plabel{color:var(--coral-deep)}
 
-/* ---- the scrolling middle -----------------------------------------------
-   THE ONLY SCROLLER. overscroll-behavior:contain stops a flick at the end of
-   the list from scrolling the story underneath the sheet, which on iOS is how
-   a bottom sheet ends up dismissing itself mid-question. */
-.fbob .ob-body{
-  flex:1 1 auto;
-  min-height:0;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;
+/* ==========================================================================
+   PLATES. Every painting in this file is an <img> inside a positioned box, so
+   a 404 has a fallback to swap to (js/onboard.js sets data-fallback) and the
+   box keeps the dark ground underneath while it decodes.
+   ========================================================================== */
+.fbob .ob-plate{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  background:var(--plate);
 }
-
-.fbob .ob-eyebrow{
-  margin:0 0 10px;
-  font-size:var(--fs-micro); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase;
-  color:var(--accent-ink);
-}
-
-.fbob .ob-head{
-  margin:0;
-  font-family:var(--display); font-weight:var(--w-display);
-  font-size:var(--fs-h1); line-height:var(--lh-head);
-  letter-spacing:var(--ls-head);
-  color:var(--ink);
-  text-wrap:balance;
-}
-
-.fbob .ob-sub{
-  margin:10px 0 0; max-width:34ch;
-  color:var(--dim);
-  font-size:var(--fs-body); font-weight:var(--w-body); line-height:var(--lh-body);
-  text-wrap:pretty;
-}
-
-/* The disclosure line. It is not garnish — js/personalize.js calls it the
-   sentence that makes the personalization honest rather than a cheque the
-   catalogue cannot cash. It is quiet, it is not hidden. */
-.fbob .ob-fine{
-  margin:14px 0 0; max-width:40ch;
-  color:var(--dimmer);
-  font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.5;
-}
-
-.fbob .ob-note{
-  margin:12px 0 0;
-  color:var(--dim);
-  font-size:var(--fs-note); font-weight:var(--w-label);
-}
-
-.fbob .ob-hero{
-  position:relative; margin:0 0 16px;
-  height:150px; border-radius:18px; overflow:hidden;
-  background:var(--night);
-}
-.fbob .ob-hero img{
+.fbob .ob-plate img{
   display:block; width:100%; height:100%;
-  object-fit:cover; object-position:center 24%;
+  object-fit:cover; object-position:center 26%;
 }
+.fbob .ob-scrim{position:absolute; top:0; right:0; bottom:0; left:0}
 
-/* ---- options ------------------------------------------------------------ */
-
-.fbob .ob-opts{
-  display:flex; flex-direction:column; gap:10px;
-  margin:18px 0 0;
+/* ==========================================================================
+   1 · WELCOME. The mockup's is1: full-bleed painting to 600px, a gradient
+   floor from 396px, the wordmark, a 44px serif headline, the lede, Continue
+   at bottom:30 and the terms line under it.
+   ========================================================================== */
+.fbob .ob-welcome{background:var(--plate)}
+.fbob .ob-w-art{
+  position:absolute; top:0; left:0; right:0; height:600px;
+  overflow:hidden;
 }
+.fbob .ob-w-art .ob-plate img{object-position:center 22%}
+.fbob .ob-w-artscrim{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  background:linear-gradient(to top,
+    #2B0E13 0%, rgba(43,14,19,.9) 26%,
+    rgba(43,14,19,.34) 66%, rgba(43,14,19,.18) 100%);
+}
+.fbob .ob-w-floor{
+  position:absolute; left:0; right:0; bottom:0; top:396px;
+  background:linear-gradient(to bottom,
+    rgba(43,14,19,0) 0%, #2B0E13 22%, #2B0E13 100%);
+}
+.fbob .ob-w-text{position:absolute; left:24px; right:24px; top:474px}
+.fbob .ob-w-mark{
+  margin:0 0 18px;
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:700; letter-spacing:.3em;
+  color:var(--on-plate);
+}
+.fbob .ob-w-mark img{display:block}
+.fbob .ob-w-head{
+  margin:0;
+  font-family:var(--display); font-size:44px; font-weight:500;
+  line-height:1; letter-spacing:-.022em;
+  color:var(--on-plate); text-wrap:balance;
+}
+.fbob .ob-w-lede{
+  margin:16px 0 0; max-width:31ch;
+  font-size:17px; font-weight:400; line-height:1.45;
+  color:rgba(244,239,230,.82);
+}
+.fbob .ob-w-foot{
+  position:absolute; left:24px; right:24px;
+  bottom:calc(30px + var(--ob-safe));
+}
+.fbob .ob-w-foot .ob-cta{box-shadow:0 10px 30px rgba(27,95,168,.42)}
+.fbob .ob-terms{
+  margin:14px 0 0; text-align:center;
+  font-size:11px; font-weight:400; line-height:1.5;
+  color:rgba(244,239,230,.74);
+}
+.fbob .ob-terms a{color:inherit; text-decoration:underline}
+
+/* ==========================================================================
+   2 · A QUESTION. The mockup's q block: the scroller runs from under the
+   chrome at 104 to 98 off the floor, the options are centred in whatever is
+   left, and Continue is pinned at bottom:26.
+   ========================================================================== */
+.fbob .ob-qscroll{
+  position:absolute; top:104px; left:0; right:0;
+  bottom:calc(72px + 26px + var(--ob-safe));
+  display:flex; flex-direction:column;
+  padding:0 18px;
+}
+/* The loader's interruption borrows this layout but has no chrome over it,
+   so it starts where the loader's own headline does. */
+.fbob .ob-qscroll.is-bare{top:88px}
+.fbob .ob-qhead{
+  margin:0; flex:0 0 auto;
+  font-size:24px; font-weight:600; line-height:1.16;
+  letter-spacing:-.012em; text-wrap:balance;
+}
+.fbob .ob-qhint{
+  flex:0 0 auto; margin:8px 0 0;
+  font-size:14px; font-weight:500;
+  color:var(--dimmer);
+}
+.fbob .ob-optwrap{
+  flex:1 1 auto;
+  display:flex; flex-direction:column; justify-content:center;
+  min-height:0; padding:8px 0 20px;
+}
+.fbob .ob-opts{display:flex; flex-direction:column; gap:8px}
 
 .fbob .ob-opt{
   -webkit-appearance:none; appearance:none;
   display:flex; align-items:center; gap:12px;
   width:100%; min-height:60px; padding:11px 14px;
-  border:1.5px solid var(--hair); border-radius:14px;
-  background:var(--raise); color:var(--ink);
-  font-family:inherit; font-size:var(--fs-body); font-weight:var(--w-strong);
-  line-height:var(--lh-tight); text-align:left;
-  cursor:pointer;
+  border-radius:14px;
+  background:var(--raise); border:1.5px solid var(--tint-2);
+  color:var(--ink);
+  font-family:var(--ui); font-size:16px; font-weight:600; line-height:1.25;
+  text-align:left; cursor:pointer;
   transition:border-color .16s ease, background-color .16s ease;
 }
 .fbob .ob-opt.is-on{
   background:var(--accent-wash);
   border-color:var(--accent-edge);
 }
-.fbob .ob-b{flex:1 1 auto; min-width:0}
-.fbob .ob-btext{flex:1 1 auto; min-width:0; display:block}
-.fbob .ob-blurb{
-  display:block; margin:3px 0 0;
-  color:var(--dimmer);
-  font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.4;
-}
+.fbob .ob-b{flex:1 1 auto; min-width:0; text-align:left}
 
+/* the 46px cover chip on the genre rows */
 .fbob .ob-tile{
   flex:0 0 auto; position:relative;
   width:46px; height:46px; border-radius:10px; overflow:hidden;
-  background:var(--night);
+  background:var(--plate);
 }
-.fbob .ob-tile img{
-  display:block; width:100%; height:100%;
-  object-fit:cover; object-position:center 26%;
-}
+.fbob .ob-tile img{object-position:center 26%}
 
-/* The tick. Unchecked is an empty ring, checked is a filled one with the only
-   mark this file draws. Two borders rather than a glyph, so a webview with no
-   emoji font still shows a tick. */
+/* The tick. A real glyph, the way the mockup draws it: transparent when off
+   so the ring is the whole control, filled and dark-on-blue when on. */
 .fbob .ob-tick{
-  flex:0 0 auto; position:relative;
-  width:24px; height:24px; border-radius:var(--pill);
-  border:1.5px solid var(--tint-3);
-  background:none;
-  transition:background-color .16s ease, border-color .16s ease;
+  flex:0 0 auto;
+  width:24px; height:24px; border-radius:999px;
+  display:grid; place-items:center;
+  font-size:13px; line-height:1; font-style:normal;
+  background:transparent; border:1.5px solid rgba(23,46,91,.2);
+  color:transparent;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease;
 }
 .fbob .ob-tick.is-sq{border-radius:7px}
 .fbob .ob-opt.is-on .ob-tick{
-  background:var(--coral); border-color:var(--coral);
-}
-.fbob .ob-opt.is-on .ob-tick::after,
-.fbob .ob-cover.is-on .ob-tick::after,
-.fbob .ob-tickrow.is-on .ob-tick::after{
-  content:""; position:absolute; left:7px; top:5px;
-  width:5px; height:10px;
-  border-right:2px solid var(--on-accent);
-  border-bottom:2px solid var(--on-accent);
-  transform:rotate(42deg);
+  background:var(--coral); border-color:var(--coral); color:var(--on-accent);
 }
 
-/* the genre grid: same rows, one per line at 390px, two up when there is room */
-@media (min-width:460px){
-  .fbob .ob-grid{
-    display:grid; grid-template-columns:1fr 1fr; gap:10px;
-  }
-  .fbob .ob-grid .ob-opt{min-height:76px}
+.fbob .ob-ctawrap{
+  position:absolute; left:18px; right:18px;
+  bottom:calc(26px + var(--ob-safe));
+  z-index:15;
 }
 
-/* ---- the four covers ---------------------------------------------------- */
+/* The disclosure line under the genre grid. js/personalize.js calls it the
+   sentence that makes the personalization honest rather than a cheque the
+   catalogue cannot cash. It is quiet, it is not hidden, and it is inside the
+   scroller so it can never be cut off mid-word. */
+.fbob .ob-fine{
+  flex:0 0 auto;
+  margin:0 0 20px;
+  font-size:12px; font-weight:400; line-height:1.5;
+  color:var(--dimmer);
+}
 
+/* the demo card the mockup puts on its five-minutes question */
+.fbob .ob-demo{
+  flex:0 0 auto; position:relative;
+  height:216px; margin:16px 0 0;
+  border-radius:18px; overflow:hidden; background:var(--plate);
+}
+.fbob .ob-demo .ob-plate img{object-position:center 24%}
+.fbob .ob-demoscrim{
+  background:linear-gradient(to top,
+    rgba(19,6,9,.94) 0%, rgba(19,6,9,.5) 52%, rgba(19,6,9,.24) 100%);
+}
+.fbob .ob-demotitle{
+  position:absolute; left:16px; right:16px; bottom:15px; margin:0;
+  font-family:var(--display); font-size:24px; font-weight:500;
+  line-height:1.1; letter-spacing:-.012em;
+  color:var(--on-plate); text-wrap:balance;
+  text-shadow:0 2px 16px rgba(0,0,0,.6);
+}
+.fbob .ob-demotail{
+  flex:0 0 auto; margin:14px 0 0;
+  font-size:16px; font-weight:400; line-height:1.5;
+  color:var(--dim); text-wrap:pretty;
+}
+
+/* ==========================================================================
+   3 · AN INTERSTITIAL. The mockup's is3 / is6: 430px of painting, a 38px
+   serif headline at 462, the body under it, Continue at bottom:30.
+   ========================================================================== */
+.fbob .ob-i-art{
+  position:absolute; top:0; left:0; right:0; height:430px; overflow:hidden;
+}
+.fbob .ob-i-art .ob-plate img{object-position:center 30%}
+.fbob .ob-i-text{position:absolute; left:24px; right:24px; top:462px}
+.fbob .ob-i-head{
+  margin:0;
+  font-family:var(--display); font-size:38px; font-weight:500;
+  line-height:1.02; letter-spacing:-.02em;
+  text-wrap:balance;
+}
+.fbob .ob-i-body{
+  margin:16px 0 0; max-width:33ch;
+  font-size:17px; font-weight:400; line-height:1.5;
+  color:var(--dim); text-wrap:pretty;
+}
+.fbob .ob-i-foot{
+  position:absolute; left:24px; right:24px;
+  bottom:calc(30px + var(--ob-safe));
+}
+
+/* ==========================================================================
+   9 · WHICH WOULD YOU CLICK FIRST. The mockup's is8: two up, 3/4.4, hook
+   first, and no Continue — the tap IS the answer.
+   ========================================================================== */
+.fbob .ob-pickscroll{
+  position:absolute; top:104px; left:0; right:0;
+  bottom:calc(26px + var(--ob-safe));
+  padding:0 18px;
+}
+.fbob .ob-pickpad{height:26px}
 .fbob .ob-covers{
-  display:grid; grid-template-columns:1fr 1fr; gap:12px;
+  display:grid; grid-template-columns:1fr 1fr; gap:11px;
   margin:18px 0 0;
 }
-
 .fbob .ob-cover{
   -webkit-appearance:none; appearance:none;
   position:relative; display:block; width:100%;
-  padding:0 0 132%;              /* 3:4-ish, by padding rather than
-                                    aspect-ratio, which is iOS 15+ and a real
-                                    share of this traffic is older */
-  overflow:hidden;
-  border:1px solid var(--hair); border-radius:18px;
-  background:var(--night);
+  /* 3:4.4 by padding rather than aspect-ratio, which is iOS 15+ and a real
+     share of this traffic is older. 4.4/3 = 146.67%. */
+  height:0; padding:0 0 146.67%;
+  overflow:hidden; border-radius:18px;
+  border:1px solid var(--hair);
+  background:var(--plate);
   cursor:pointer;
   transition:border-color .16s ease;
 }
 .fbob .ob-cover.is-on{border:2.5px solid var(--coral)}
-
-.fbob .ob-covart{position:absolute; top:0; right:0; bottom:0; left:0}
-.fbob .ob-covart img{
-  display:block; width:100%; height:100%;
-  object-fit:cover; object-position:center 26%;
+.fbob .ob-coverscrim{
+  background:linear-gradient(to top,
+    rgba(19,6,9,.94) 0%, rgba(19,6,9,.62) 42%, rgba(19,6,9,.16) 100%);
 }
-
 .fbob .ob-cap{
-  position:absolute; left:0; right:0; bottom:0;
-  padding:26px 12px 12px;
-  text-align:left;
-  background:linear-gradient(to top, var(--glass-deep), var(--glass-0));
-}
-.fbob .ob-who{
-  display:block;
-  color:var(--on-glass-soft);
-  font-size:var(--fs-micro); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  position:absolute; left:13px; right:13px; bottom:13px;
+  display:block; text-align:left;
 }
 .fbob .ob-chead{
-  display:block; margin:4px 0 0;
-  color:var(--on-glass);
-  font-size:var(--fs-meta); font-weight:var(--w-head); line-height:1.25;
+  display:block;
+  font-family:var(--display); font-size:19px; font-weight:500;
+  line-height:1.14; letter-spacing:-.01em;
+  color:var(--on-plate);
+  text-shadow:0 2px 14px rgba(0,0,0,.6);
 }
-.fbob .ob-cover .ob-tick{
+.fbob .ob-who{
+  display:block; margin-top:7px;
+  font-size:11px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(244,239,230,.82);
+}
+.fbob .ob-mark2{
   position:absolute; right:10px; top:10px;
-  width:26px; height:26px;
-  border-color:var(--on-glass-soft);
-  background:var(--glass);
+  width:26px; height:26px; border-radius:999px;
+  display:grid; place-items:center;
+  font-size:13px; font-weight:700; line-height:1; font-style:normal;
+  background:rgba(19,6,9,.5); color:transparent;
 }
-.fbob .ob-cover.is-on .ob-tick{background:var(--coral); border-color:var(--coral)}
+.fbob .ob-cover.is-on .ob-mark2{background:var(--coral); color:var(--on-accent)}
 
-/* ---- the loader ---------------------------------------------------------- */
+/* ==========================================================================
+   10 · THE LOADER. The mockup's is11: the headline, the picked genres each
+   with a tick that lights as the bar passes it, the bar, the percentage, and
+   a 236px cover card at top:474 whose title cycles under dot indicators.
+   ========================================================================== */
+.fbob .ob-l-top{position:absolute; left:22px; right:22px; top:88px}
+.fbob .ob-l-head{
+  margin:0;
+  font-family:var(--display); font-size:32px; font-weight:500;
+  line-height:1.06; letter-spacing:-.015em; text-wrap:balance;
+}
+.fbob .ob-l-sub{
+  margin:10px 0 0;
+  font-size:15px; font-weight:500; line-height:1.5;
+  color:var(--dim);
+}
+.fbob .ob-picks{display:flex; flex-direction:column; gap:11px; margin:20px 0 0}
+.fbob .ob-pick{
+  margin:0; display:flex; align-items:center; gap:11px;
+  font-size:16px; font-weight:600; line-height:1.3;
+}
+.fbob .ob-ptick{
+  flex:0 0 auto;
+  width:22px; height:22px; border-radius:999px;
+  display:grid; place-items:center;
+  font-size:12px; line-height:1; font-style:normal;
+  background:rgba(23,46,91,.1); color:transparent;
+  transition:background-color .2s ease, color .2s ease;
+}
+.fbob .ob-pick.is-on .ob-ptick{background:var(--coral); color:var(--on-accent)}
 
 .fbob .ob-loadtrack{
-  margin:20px 0 0; height:8px;
-  border-radius:var(--pill); background:var(--tint-3);
-  overflow:hidden;
+  height:5px; margin:26px 0 0;
+  border-radius:999px; background:var(--hair); overflow:hidden;
 }
 .fbob .ob-loadfill{
   display:block; height:100%; width:0;
-  border-radius:var(--pill); background:var(--coral);
-  box-shadow:var(--glow-accent);
+  border-radius:999px; background:var(--coral);
   transition:width .32s linear;
 }
 .fbob .ob-pct{
-  margin:8px 0 0;
-  color:var(--dimmer);
-  font-size:var(--fs-meta); font-weight:var(--w-label);
+  margin:10px 0 0;
+  font-size:13px; font-weight:600; color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
 
-.fbob .ob-ticks{
-  list-style:none; margin:16px 0 0; padding:0;
-  display:flex; flex-direction:column; gap:10px;
+.fbob .ob-l-cover{position:absolute; left:22px; right:22px; top:474px}
+.fbob .ob-covercard{
+  position:relative; height:236px;
+  border-radius:20px; overflow:hidden; background:var(--plate);
 }
-.fbob .ob-tickrow{
-  display:flex; align-items:center; gap:10px;
-  color:var(--dimmer);
-  font-size:var(--fs-note); font-weight:var(--w-label);
-  transition:color .2s ease;
+.fbob .ob-covercard .ob-plate img{object-position:center 26%}
+.fbob .ob-cardscrim{
+  background:linear-gradient(to top,
+    rgba(19,6,9,.92) 0%, rgba(19,6,9,.42) 54%, rgba(19,6,9,.14) 100%);
 }
-.fbob .ob-tickrow.is-on{color:var(--ink)}
-.fbob .ob-tickrow .ob-tick{width:22px; height:22px}
-.fbob .ob-tickrow.is-on .ob-tick{background:var(--coral); border-color:var(--coral)}
-.fbob .ob-tickrow.is-on .ob-tick::after{left:6px; top:4px}
-
-/* the interruption: two buttons side by side, so the pause reads as a
-   question and not as the loader having failed */
-.fbob .ob-yn{
-  display:grid; grid-template-columns:1fr 1fr; gap:10px;
-  margin:20px 0 0;
+.fbob .ob-covertitle{
+  position:absolute; left:16px; right:16px; bottom:14px; margin:0;
+  font-family:var(--display); font-size:21px; font-weight:500; line-height:1.14;
+  color:var(--on-plate); text-shadow:0 2px 14px rgba(0,0,0,.6);
 }
-.fbob .ob-ynb{justify-content:center; text-align:center; min-height:56px}
+.fbob .ob-dots{display:flex; justify-content:center; gap:6px; margin:14px 0 0}
+.fbob .ob-dot{
+  display:block; width:6px; height:6px; border-radius:999px;
+  background:var(--tint-3);
+  transition:width .2s ease, background-color .2s ease;
+}
+.fbob .ob-dot.is-on{width:18px; background:var(--coral)}
 
-/* ---- the payoff ---------------------------------------------------------- */
+.fbob .ob-l-foot{
+  position:absolute; left:22px; right:22px;
+  bottom:calc(26px + var(--ob-safe));
+}
 
+/* ==========================================================================
+   11 · THE PAYOFF. The mockup's is12: three full-bleed 186px art cards, each
+   with a 22px serif headline over a gradient and a meta line, and a floor
+   that fades the ground up behind Start reading.
+   ========================================================================== */
+.fbob .ob-res{position:absolute; top:0; right:0; bottom:0; left:0}
+.fbob .ob-resin{padding:74px 22px 130px}
+.fbob .ob-r-head{
+  margin:0;
+  font-family:var(--display); font-size:34px; font-weight:500;
+  line-height:1.04; letter-spacing:-.016em; text-wrap:balance;
+}
+.fbob .ob-r-note{
+  margin:10px 0 0;
+  font-size:15px; font-weight:500; color:var(--dim);
+}
 .fbob .ob-cards{
-  list-style:none; margin:18px 0 0; padding:0;
-  display:flex; flex-direction:column; gap:12px;
+  list-style:none; margin:22px 0 0; padding:0;
+  display:flex; flex-direction:column; gap:13px;
 }
 .fbob .ob-card{
-  display:flex; align-items:center; gap:12px;
-  padding:10px; border-radius:14px;
-  background:var(--raise);
-  box-shadow:inset 0 0 0 1px var(--hair);
+  position:relative; height:186px;
+  border-radius:18px; overflow:hidden; background:var(--plate);
 }
-.fbob .ob-cardart{
-  flex:0 0 auto; position:relative;
-  width:56px; height:74px; border-radius:10px; overflow:hidden;
-  background:var(--night);
+.fbob .ob-card .ob-plate img{object-position:center 24%}
+.fbob .ob-cardscrim2{
+  background:linear-gradient(to top,
+    rgba(19,6,9,.94) 0%, rgba(19,6,9,.5) 52%, rgba(19,6,9,.18) 100%);
 }
-.fbob .ob-cardart img{
-  display:block; width:100%; height:100%;
-  object-fit:cover; object-position:center 24%;
-}
-.fbob .ob-cardtext{flex:1 1 auto; min-width:0}
 .fbob .ob-cardhead{
-  margin:0; color:var(--ink);
-  font-size:var(--fs-sub); font-weight:var(--w-head);
-  line-height:var(--lh-tight); letter-spacing:var(--ls-title);
+  position:absolute; left:16px; right:16px; bottom:36px; margin:0;
+  font-family:var(--display); font-size:22px; font-weight:500;
+  line-height:1.12; letter-spacing:-.01em;
+  color:var(--on-plate); text-wrap:balance;
+  text-shadow:0 2px 14px rgba(0,0,0,.6);
 }
 .fbob .ob-meta{
-  margin:5px 0 0; color:var(--dimmer);
-  font-size:var(--fs-meta); font-weight:var(--w-label);
+  position:absolute; left:16px; right:16px; bottom:14px; margin:0;
+  font-size:12px; font-weight:600; color:rgba(244,239,230,.82);
   font-variant-numeric:tabular-nums;
 }
+/* The disclosure again, and for the same reason as on the genre grid. It
+   sits in the scroller above the floor, so the whole sentence is reachable. */
+.fbob .ob-resin .ob-fine{margin:18px 0 0; max-width:none}
 
-/* ---- the foot ------------------------------------------------------------
-   Sticky rather than scrolling away, because the whole flow is one decision
-   per screen and the decision must never be below the fold. */
-.fbob .ob-foot{
-  flex:0 0 auto;
-  display:flex; flex-direction:column; align-items:center; gap:6px;
-  padding-top:12px;
-  background:var(--menu);
-  box-shadow:0 -12px 16px -12px var(--hair);
+.fbob .ob-r-foot{
+  position:absolute; left:0; right:0; bottom:0; z-index:15;
+  padding:16px 22px calc(26px + var(--ob-safe));
+  background:linear-gradient(to top,
+    var(--ground) 0%, var(--ground) 62%, rgba(231,224,211,0) 100%);
 }
+.fbob .ob-r-foot .ob-cta{box-shadow:0 10px 26px rgba(27,95,168,.3)}
 
-.fbob .ob-cta{
-  -webkit-appearance:none; appearance:none;
-  display:block; width:100%; min-height:52px; padding:16px 20px;
-  border:0; border-radius:12px;
-  background:var(--coral); color:var(--on-accent);
-  box-shadow:var(--shadow-go);
-  font-family:inherit; font-size:var(--fs-lead); font-weight:var(--w-head);
-  letter-spacing:var(--ls-badge); text-transform:uppercase;
-  line-height:1.2;
-  cursor:pointer;
-}
-/* Off, not hidden: a button that vanishes when unanswered leaves the screen
-   looking finished. This one says it is waiting. */
-.fbob .ob-cta.is-off{
-  background:var(--tint-2); color:var(--dimmer);
-  box-shadow:none; cursor:default;
-}
-
-.fbob .ob-skip{
-  -webkit-appearance:none; appearance:none;
-  min-height:var(--tap); padding:0 14px;
-  border:0; border-radius:var(--pill);
-  background:none; color:var(--dimmer);
-  font-family:inherit; font-size:var(--fs-note); font-weight:var(--w-label);
-  text-decoration:underline; text-underline-offset:3px;
-  cursor:pointer;
-}
-.fbob .ob-skip:hover{color:var(--ink)}
+/* ==========================================================================
+   The loader's two interruptions. Not in the mockup — they are this engine's
+   own, and they are the reason the loader is not dead time. They borrow the
+   mockup's demo-question layout exactly rather than inventing a third look.
+   ========================================================================== */
+.fbob .ob-yn{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+/* Two buttons that are the answer, not two rows with a state: there is no
+   selected yes/no to show, so the ring that would sit there is not drawn. */
+.fbob .ob-yn .ob-tick{display:none}
+.fbob .ob-yn .ob-opt{justify-content:center; text-align:center; min-height:56px}
+.fbob .ob-yn .ob-b{flex:0 0 auto; text-align:center}
 
 /* ---- focus, and the one ring ------------------------------------------- */
-.fbob button:focus-visible{
+.fbob button:focus-visible,
+.fbob a:focus-visible{
   outline:2px solid var(--ring);
   outline-offset:2px;
   border-radius:12px;
 }
 
-/* ---- smaller phones ----------------------------------------------------- */
-@media (max-height:680px){
-  .fbob{gap:10px}
-  .fbob .ob-hero{height:110px}
+/* ==========================================================================
+   SHORTER PHONES. The mockup is drawn at 844. A 667 or 736 phone has to give
+   something up, and it is never the headline or the button: the paintings
+   come down and the blocks that sit on absolute offsets ride up with them.
+   ========================================================================== */
+@media (max-height:800px){
+  .fbob .ob-w-art{height:540px}
+  .fbob .ob-w-floor{top:350px}
+  .fbob .ob-w-text{top:400px}
+  .fbob .ob-w-head{font-size:38px}
+  .fbob .ob-i-art{height:380px}
+  .fbob .ob-i-text{top:410px}
+  .fbob .ob-i-head{font-size:34px}
+  .fbob .ob-l-top{top:70px}
+  .fbob .ob-l-cover{top:436px}
+  .fbob .ob-covercard{height:200px}
+  .fbob .ob-resin{padding-top:56px}
+}
+@media (max-height:700px){
+  .fbob .ob-w-art{height:460px}
+  .fbob .ob-w-floor{top:290px}
+  .fbob .ob-w-text{top:330px}
+  .fbob .ob-w-head{font-size:32px}
+  .fbob .ob-w-lede{font-size:15px; margin-top:12px}
+  .fbob .ob-i-art{height:310px}
+  .fbob .ob-i-text{top:336px}
+  .fbob .ob-i-head{font-size:29px}
+  .fbob .ob-i-body{font-size:15px}
+  .fbob .ob-l-top{top:52px}
+  .fbob .ob-l-head{font-size:26px}
+  .fbob .ob-l-cover{top:372px}
+  .fbob .ob-covercard{height:168px}
+  .fbob .ob-covertitle{font-size:18px}
   .fbob .ob-opt{min-height:54px}
-  .fbob .ob-cta{min-height:48px; padding:14px 20px}
+  /* The loader's interruption borrows this layout but has no chrome over it,
+   so it starts where the loader's own headline does. */
+.fbob .ob-qscroll.is-bare{top:88px}
+.fbob .ob-qhead{font-size:21px}
 }
 
 @media (prefers-reduced-motion:reduce){
+  .fbob .ob-screen.is-enter{animation:none}
   .fbob .ob-fill,
   .fbob .ob-loadfill,
   .fbob .ob-opt,
   .fbob .ob-tick,
-  .fbob .ob-cover,
-  .fbob .ob-tickrow{transition:none}
+  .fbob .ob-ptick,
+  .fbob .ob-dot,
+  .fbob .ob-cover{transition:none}
 }

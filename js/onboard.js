@@ -15,6 +15,34 @@
    /join's question screens. Nothing here is named start.
 
    ---------------------------------------------------------------------------
+   WHAT IT LOOKS LIKE: JOURNEY 3a, PORTED
+
+   The screens are the Quiz Funnel mockup's journey 3a, ported rather than
+   interpreted. The mockup draws inside a 390x844 phone and every block in it
+   sits on an absolute offset against that frame, so css/onboard.css makes
+   .fbob that frame and this file builds the blocks into it. The mockup's own
+   numbers — 600px of hero, an interstitial's 430px of painting, the loader's
+   cover at top:474 — are in the stylesheet, not here.
+
+   THE FUNNEL IS CREAM. #E7E0D3 ground, #172E5B ink, #3B9EF4 fills. It is
+   mounted on the reader, which css/reader-rail.css paints for night, so the
+   stylesheet re-declares the paper palette at .fbob. There is no colour in
+   THIS file: a screen that needed one would be a screen that could invert.
+
+   FOUR THINGS THE MOCKUP DOES THAT THIS FILE NOW DOES TOO
+     · Chrome — a back arrow, the wordmark and three phase bars — is on the
+       QUESTIONS and nowhere else. The welcome, the interstitials, the loader
+       and the payoff carry none.
+     · Tapping an option selects it. Continue is what moves. That is why the
+       CTA has a disabled state, and it is why there is no Skip: the mockup
+       has none, and a question you cannot answer wrongly does not need one.
+     · The loader is not a bar in a field of nothing. It names the genres and
+       ticks them off, it runs a percentage, and it cycles a cover from the
+       feed being built with dot indicators under it.
+     · The payoff is three full-bleed plates with the story's own headline on
+       them, out of data/index.json. See THE CATALOGUE below.
+
+   ---------------------------------------------------------------------------
    THE FOUR EVENTS, AND THE ONE THING THAT MUST NOT DRIFT
 
      ob_step    a screen was committed to the display
@@ -133,8 +161,10 @@ var FBOB = (function () {
   var TERMINUS = "results";
 
   /* The five question screens, in flow order, for the phase chrome. The
-     interstitials, the loader and the payoff are not work to get through and
-     do not appear on the bar. */
+     welcome, the interstitials, the loader and the payoff are not work to get
+     through and carry no chrome at all — which is how the mockup draws them.
+     The story pick is the sixth thing asked and keeps the bar with every
+     phase full; see chromeAt(). */
   var QSTEPS = ["q_draw", "q_relate", "q_genres", "q_time", "q_streak"];
   var PHASES = [
     { label: "You",   keys: ["q_draw", "q_relate"] },
@@ -156,15 +186,24 @@ var FBOB = (function () {
      come from a vocabulary js/account.js owns or the analytics and the stored
      profile drift apart. Same four variants, same register, three of them
      word for word. */
+  /* Third entry is the story whose painting the screen is drawn on. The
+     mockup called for four photographs under img/onboarding/ that this repo
+     does not have; the season's own art is what it does have, and a plate the
+     reader is about to meet in their feed is a better acknowledgement than a
+     stock library interior would have been. */
   var AFFIRM_DRAW = {
     people: ["People are why any of it sticks.",
-             "Factbox tells history through the people in it — their motives, their mistakes, and what it cost them."],
+             "Factbox tells history through the people in it — their motives, their mistakes, and what it cost them.",
+             "20"],
     turning: ["Let’s fill in the good parts.",
-              "You know the basics. Factbox gives you the scandals, mysteries and details they usually leave out."],
+              "You know the basics. Factbox gives you the scandals, mysteries and details they usually leave out.",
+              "50"],
     thread: ["You’re definitely not alone.",
-             "History is hard to remember when it’s taught as dates and names. It’s much easier when it feels like a story."],
+             "History is hard to remember when it’s taught as dates and names. It’s much easier when it feels like a story.",
+             "31"],
     tiktok: ["Good. We can skip the boring stuff.",
-             "Factbox goes beyond the textbook into the details, controversies and rabbit holes worth knowing."]
+             "Factbox goes beyond the textbook into the details, controversies and rabbit holes worth knowing.",
+             "41"]
   };
 
   /* Branch 2 — SCROLL, verbatim, including the skip. The mockup skips this
@@ -172,14 +211,22 @@ var FBOB = (function () {
      say; here the empty answer is the one with nothing to acknowledge. */
   var AFFIRM_RELATE = {
     stories: ["Your scrolling isn’t the problem.",
-              "What you’re scrolling is. Let’s make five minutes of it worth remembering."],
+              "What you’re scrolling is. Let’s make five minutes of it worth remembering.",
+              "17"],
     other: ["Let’s make more of it stick.",
-            "Five minutes is enough to learn one story you’ll still remember tomorrow."]
+            "Five minutes is enough to learn one story you’ll still remember tomorrow.",
+            "19"]
   };
 
-  /* Branch 3 — IDENTITY, rekeyed onto the goal in minutes. Copy on an
-     existing screen rather than a screen of its own, which is what the mockup
-     does with it. All five variants survive. */
+  /* Branch 3 — IDENTITY, rekeyed onto the goal in minutes.
+
+     NOT RENDERED, AND DELIBERATELY KEPT. The mockup gives this its own screen
+     (is10) between the goal question and the loader. FLOW is the published
+     contract — js/recommend.js reads it and functions/insights.js carries a
+     copy of SCREENS — so a twelfth screen is not this file's to add, and the
+     payoff screen it used to borrow is now the mockup's is12 word for word.
+     The five variants stay here so that adding the screen is one render
+     function and not a rewrite of the copy. */
   var IDENTITY = {
     "-1": ["There’s a lot you were never taught.",
            "Five minutes at a time, you’ll start connecting the people, events and ideas that shaped the world."],
@@ -236,8 +283,9 @@ var FBOB = (function () {
      which the iOS file this vocabulary came from says out loud. They are
      still the reader's, so they are kept rather than discarded. */
   var INTERRUPTS = [
-    { at: 34, head: "Would you rather spend five minutes on one of these…",
-      sub: "…than scrolling another twenty posts you’ll forget?" },
+    { at: 34, head: "Would you rather spend five minutes learning this…",
+      sub: "…than scrolling through another 20 posts you’ll forget?",
+      art: "20" },
     { at: 72, head: "If it only took five minutes a day, would you keep it up?",
       sub: "" }
   ];
@@ -386,11 +434,21 @@ var FBOB = (function () {
   /* the loader */
   var loadPct = 0;
   var loadTimer = 0;
+  var loadCycle = 0;      /* which cover is showing, and which dot is long */
+  var loadIds = null;     /* one story per picked genre; computed once */
   var interruptAt = -1;   /* index into INTERRUPTS while one is showing */
   var interruptsDone = 0;
 
-  /* the affirmation auto-release */
+  /* True for the first render of a screen and false for every repaint of it.
+     The fade belongs to ARRIVING somewhere; running it again because a tick
+     was ticked makes every answer flash the whole screen, which is not what
+     the mockup does and is not what a tap should feel like. */
+  var entering = false;
+
+  /* the affirmation auto-release, and the beat the story pick holds for so
+     its tick is seen before the screen changes */
   var affirmTimer = 0;
+  var pickTimer = 0;
 
   /* ======================================================================
      DOM.
@@ -423,28 +481,6 @@ var FBOB = (function () {
       };
     }
     return b;
-  }
-
-  function tick(cls) {
-    var i = el("i", cls || "ob-tick");
-    i.setAttribute("aria-hidden", "true");
-    return i;
-  }
-
-  function art(imgName, cls) {
-    var box = el("div", cls);
-    box.setAttribute("aria-hidden", "true");
-    var im = D().createElement("img");
-    im.alt = "";
-    im.decoding = "async";
-    im.setAttribute("data-fallback", "/img/stacks/" + str(imgName) + ".webp");
-    im.onerror = function () {
-      this.onerror = null;                       /* one retry, never a loop */
-      this.src = this.getAttribute("data-fallback");
-    };
-    im.src = "/img/thumbs/" + str(imgName) + ".webp";
-    box.appendChild(im);
-    return box;
   }
 
   /* ======================================================================
@@ -487,12 +523,6 @@ var FBOB = (function () {
      reader who taps all six has said nothing. */
   var GENRE_MIN = 2;
   var GENRE_MAX = 3;
-
-  function genreList() {
-    var F = fbfit();
-    if (F && F.GENRES) return F.GENRES;
-    return [];
-  }
 
   /* ======================================================================
      The events.
@@ -681,6 +711,7 @@ var FBOB = (function () {
   function clearTimers() {
     try { if (loadTimer) { clearInterval(loadTimer); loadTimer = 0; } } catch (e) {}
     try { if (affirmTimer) { clearTimeout(affirmTimer); affirmTimer = 0; } } catch (e2) {}
+    try { if (pickTimer) { clearTimeout(pickTimer); pickTimer = 0; } } catch (e2b) {}
     try {
       if (rafId && window.cancelAnimationFrame) window.cancelAnimationFrame(rafId);
     } catch (e3) {}
@@ -795,8 +826,11 @@ var FBOB = (function () {
     committed = false;
     leftThisScreen = false;
     loadPct = 0;
+    loadCycle = 0;
+    loadIds = null;
     interruptAt = -1;
     interruptsDone = 0;
+    entering = true;
 
     render();
     stampRun(null);
@@ -837,65 +871,243 @@ var FBOB = (function () {
   }
 
   /* ======================================================================
-     Rendering.
+     THE CATALOGUE, AND WHY THIS FILE LOADS IT ITSELF.
+
+     Every title and every painting on the last three screens comes out of
+     data/index.json. The caller passes it as opts.stacks — js/recommend.js
+     kicks FB.loadIndex() off when the sheet is BUILT so the tap never waits
+     on a fetch — but the caller is allowed not to, and for a while it did
+     not, which is how the payoff screen shipped reading "Story 50" instead
+     of "The Ides of March". A catalogue id is not a headline and must never
+     reach the display as one.
+
+     So the engine asks for the index itself the moment it mounts, and takes
+     whichever answer arrives. FB.loadIndex() is the right door: it is cached
+     in js/gate.js and read.html has usually already opened it. A direct
+     fetch is the fallback for a page that never loaded gate.js at all.
+
+     When the catalogue lands late, the screen that wanted it is repainted —
+     render() only builds DOM, so a repaint costs nothing in the funnel and
+     emits no second ob_step.
      ====================================================================== */
 
+  var stacksLoading = false;
+
+  function normStacks(v) {
+    if (!v) return null;
+    if (typeof v.length === "number") return v.length ? v : null;
+    if (v.stacks && typeof v.stacks.length === "number" && v.stacks.length) {
+      return v.stacks;
+    }
+    return null;
+  }
+
+  function haveStacks() { return !!(stacks && stacks.length); }
+
+  function adoptStacks(list) {
+    var got = normStacks(list);
+    if (!got) return;
+    stacks = got;
+    loadIds = null;
+    if (idx < 0 || !host) return;
+    if (FLOW[idx] === "building") { paintLoader(); return; }
+    render();
+  }
+
+  function loadStacks() {
+    if (haveStacks() || stacksLoading) return;
+    stacksLoading = true;
+    var ok = function (list) { stacksLoading = false; adoptStacks(list); };
+    var no = function () { stacksLoading = false; };
+    try {
+      if (window.FB && typeof FB.loadIndex === "function") {
+        FB.loadIndex().then(ok, no);
+        return;
+      }
+    } catch (e) {}
+    try {
+      if (typeof window.fetch === "function") {
+        window.fetch("/data/index.json", { cache: "force-cache" })
+          .then(function (r) {
+            if (!r || !r.ok) throw new Error("HTTP");
+            return r.json();
+          })
+          .then(function (d) { ok(d && d.stacks ? d.stacks : d); }, no);
+        return;
+      }
+    } catch (e2) {}
+    stacksLoading = false;
+  }
+
+  function stackById(id) {
+    try {
+      var list = normStacks(stacks);
+      if (!list) return null;
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i].id) === String(id)) return list[i];
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  /* The image name for a story. The catalogue carries it; without the
+     catalogue it is the id lowercased, which is how js/personalize.js does it
+     and the only reason "07B" resolves to s07b.webp. */
+  function imgFor(id) {
+    var s = stackById(id);
+    if (s && s.img) return str(s.img);
+    return "s" + str(id).toLowerCase();
+  }
+
+  function titleOf(id) {
+    var s = stackById(id);
+    return (s && s.title) ? str(s.title) : "";
+  }
+
+  /* ======================================================================
+     Rendering. A port of journey 3a of the Quiz Funnel mockup: the frame is
+     390x844 and every block below sits on the offset the mockup gave it.
+     ====================================================================== */
+
+  function logoImg() {
+    var im = D().createElement("img");
+    im.src = "/img/logo-96.png";
+    im.alt = "";
+    im.width = 22;
+    im.height = 22;
+    return im;
+  }
+
+  /* A painting. A <span> rather than a <div> because half of these live
+     inside a <button>. data-fallback is the second file to try: the thumbs
+     and the stacks directories carry the same picture at two sizes and a
+     404 in either must cost a slower plate, never a hole. */
+  function plate(cls, src, fallback) {
+    var box = el("span", "ob-plate" + (cls ? " " + cls : ""));
+    box.setAttribute("aria-hidden", "true");
+    var im = D().createElement("img");
+    im.alt = "";
+    im.decoding = "async";
+    if (fallback) im.setAttribute("data-fallback", fallback);
+    im.onerror = function () {
+      this.onerror = null;                       /* one retry, never a loop */
+      var f = this.getAttribute("data-fallback");
+      if (f) this.src = f;
+    };
+    im.src = src;
+    box.appendChild(im);
+    return box;
+  }
+
+  function smallPlate(id, cls) {
+    var n = imgFor(id);
+    return plate(cls, "/img/thumbs/" + n + ".webp", "/img/stacks/" + n + ".webp");
+  }
+
+  function bigPlate(id, cls) {
+    var n = imgFor(id);
+    return plate(cls, "/img/stacks/" + n + ".webp", "/img/thumbs/" + n + ".webp");
+  }
+
+  function scrim(cls) {
+    var s = el("span", "ob-scrim" + (cls ? " " + cls : ""));
+    s.setAttribute("aria-hidden", "true");
+    return s;
+  }
+
+  function glyph(cls) {
+    var i = el("i", cls, "✓");
+    i.setAttribute("aria-hidden", "true");
+    return i;
+  }
+
+  function cta(label, on, fn) {
+    var b = btn("ob-cta" + (on ? "" : " is-off"), label, function () {
+      if (on) fn();
+    });
+    if (!on) b.setAttribute("aria-disabled", "true");
+    return b;
+  }
+
+  /* "ob-screen" plus the entry animation, and only on arrival. */
+  var enterNow = false;
+  function screenCls() { return "ob-screen" + (enterNow ? " is-enter" : ""); }
+
   function render() {
-    var id = FLOW[idx];
+    var id = FLOW[idx], scr = null;
+    enterNow = entering;
+    entering = false;
     while (host.firstChild) host.removeChild(host.firstChild);
 
     var root = el("div", "fbob");
     root.setAttribute("data-step", id);
 
-    root.appendChild(chrome());
+    if (chromeAt(id) > -1) root.appendChild(chrome(id));
 
-    var body = el("div", "ob-body");
-    root.appendChild(body);
+    if (id === "welcome")            scr = screenWelcome();
+    else if (id === "q_draw")        scr = qDraw();
+    else if (id === "affirm_draw")   scr = screenAffirm(AFFIRM_DRAW[getDraw()] || AFFIRM_DRAW.people);
+    else if (id === "q_relate")      scr = qRelate();
+    else if (id === "affirm_relate") scr = screenAffirm(has(getRelates(), "stories") ? AFFIRM_RELATE.stories : AFFIRM_RELATE.other);
+    else if (id === "q_genres")      scr = qGenres();
+    else if (id === "q_time")        scr = qNumber("goal", "How long should one Factbox take?", TIME_OPTS, getGoal(), setGoalAnswer);
+    else if (id === "q_streak")      scr = qNumber("streak", "How many days in a row do you want to aim for?", STREAK_OPTS, getStreak(), setStreakAnswer);
+    else if (id === "pick_story")    scr = screenPick();
+    else if (id === "building")      scr = screenBuilding();
+    else if (id === "results")       scr = screenResults();
 
-    var foot = el("div", "ob-foot");
-    root.appendChild(foot);
-
-    if (id === "welcome")       screenWelcome(body, foot);
-    else if (id === "q_draw")   screenSingle(body, foot, "draw", "What pulls you into a history story?", "", DRAW_OPTS, getDraw(), setDraw);
-    else if (id === "affirm_draw")   screenAffirm(body, foot, AFFIRM_DRAW[getDraw() || "people"] || AFFIRM_DRAW.people);
-    else if (id === "q_relate") screenRelate(body, foot);
-    else if (id === "affirm_relate") screenAffirm(body, foot, has(getRelates(), "stories") ? AFFIRM_RELATE.stories : AFFIRM_RELATE.other);
-    else if (id === "q_genres") screenGenres(body, foot);
-    else if (id === "q_time")   screenNumber(body, foot, "goal", "How long should one Factbox take?", TIME_OPTS, getGoal(), setGoalAnswer);
-    else if (id === "q_streak") screenNumber(body, foot, "streak", "How many days in a row do you want to aim for?", STREAK_OPTS, getStreak(), setStreakAnswer);
-    else if (id === "pick_story") screenPick(body, foot);
-    else if (id === "building")   screenBuilding(body, foot);
-    else if (id === "results")    screenResults(body, foot);
-
+    if (scr) root.appendChild(scr);
     host.appendChild(root);
+    enterNow = false;
+
+    if (id === "building") paintLoader();
   }
 
-  /* ---- chrome: Back, and the phase bar over the question screens --------- */
+  /* ---- chrome ------------------------------------------------------------
+     The mockup's fixed top bar, and it is on the QUESTIONS only: the welcome,
+     the two interstitials, the loader and the payoff carry none, exactly as
+     the mockup draws them. The story pick is the sixth thing the reader is
+     asked, so it keeps the bar with every phase full — the questions really
+     are done by then, and a bar that jumped backwards there would be lying.
+     --------------------------------------------------------------------- */
 
-  function chrome() {
+  function chromeAt(id) {
+    var i;
+    for (i = 0; i < QSTEPS.length; i++) { if (QSTEPS[i] === id) return i; }
+    if (id === "pick_story") return QSTEPS.length;
+    return -1;
+  }
+
+  function chrome(id) {
+    var at = chromeAt(id);
     var top = el("div", "ob-top");
 
-    var back = btn("ob-back", "Back", function () { goBack(); });
+    var row = el("div", "ob-toprow");
+    var back = btn("ob-back", "←", function () { goBack(); });
     back.setAttribute("aria-label", "Back");
-    top.appendChild(back);
+    row.appendChild(back);
 
-    var id = FLOW[idx];
-    var at = -1;
-    for (var i = 0; i < QSTEPS.length; i++) { if (QSTEPS[i] === id) at = i; }
+    var mark = el("span", "ob-mark");
+    mark.appendChild(logoImg());
+    mark.appendChild(el("span", "ob-markw", "FACTBOX"));
+    row.appendChild(mark);
+    row.appendChild(el("span", "ob-topgap"));
+    top.appendChild(row);
 
     var bar = el("div", "ob-phases");
-    if (at < 0) bar.className = "ob-phases is-off";
-    for (var p = 0; p < PHASES.length; p++) {
-      var ph = PHASES[p];
-      var lo = QSTEPS.length, hi = -1, q;
+    var p, q, ph, lo, hi, span, pct, on, seg, track, fill;
+    for (p = 0; p < PHASES.length; p++) {
+      ph = PHASES[p];
+      lo = QSTEPS.length; hi = -1;
       for (q = 0; q < QSTEPS.length; q++) {
         if (has(ph.keys, QSTEPS[q])) { if (q < lo) lo = q; if (q > hi) hi = q; }
       }
-      var span = (hi - lo + 1) || 1;
-      var pct = at > hi ? 100 : (at < lo ? 0 : Math.round((at - lo + 1) / span * 100));
-      var seg = el("div", "ob-phase" + (at >= lo && at <= hi ? " is-on" : ""));
-      var track = el("div", "ob-track");
-      var fill = el("i", "ob-fill");
+      span = (hi - lo + 1) || 1;
+      pct = at > hi ? 100 : (at < lo ? 0 : Math.round((at - lo + 1) / span * 100));
+      on = at >= lo && at <= hi;
+      seg = el("div", "ob-phase" + (on ? " is-on" : ""));
+      track = el("div", "ob-track");
+      fill = el("i", "ob-fill");
       fill.style.width = pct + "%";
       track.appendChild(fill);
       seg.appendChild(track);
@@ -906,180 +1118,123 @@ var FBOB = (function () {
     return top;
   }
 
-  function heads(body, head, sub) {
-    body.appendChild(el("h2", "ob-head", head));
-    if (sub) body.appendChild(el("p", "ob-sub", sub));
+  /* ---- 1 · welcome. The mockup's is1. ----------------------------------- */
+
+  function link(href, text) {
+    var a = el("a", null, text);
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener";
+    /* Same reason as every button here: js/analytics.js fires ui_click on any
+       tappable element it does not recognise, and this one is inside a screen
+       that already reports its own departure. */
+    a.setAttribute("data-fbt", "-");
+    return a;
   }
 
-  function cta(foot, label, on, fn) {
-    var b = btn("ob-cta" + (on ? "" : " is-off"), label, function () {
-      if (on) fn();
-    });
-    if (!on) b.setAttribute("aria-disabled", "true");
-    foot.appendChild(b);
+  function screenWelcome() {
+    var s = el("div", screenCls() + " ob-welcome");
+
+    var art = el("div", "ob-w-art");
+    art.appendChild(plate(null, "/img/cards/c01-05.webp", "/img/stacks/s01.webp"));
+    art.appendChild(scrim("ob-w-artscrim"));
+    s.appendChild(art);
+    s.appendChild(scrim("ob-w-floor"));
+
+    var t = el("div", "ob-w-text");
+    var mark = el("p", "ob-w-mark");
+    mark.appendChild(logoImg());
+    mark.appendChild(D().createTextNode("FACTBOX"));
+    t.appendChild(mark);
+    t.appendChild(el("h1", "ob-w-head", "Know the stories everyone should know."));
+    t.appendChild(el("p", "ob-w-lede",
+      "Trade five minutes of scrolling for history you’ll actually remember."));
+    s.appendChild(t);
+
+    var f = el("div", "ob-w-foot");
+    f.appendChild(cta("Continue", true, function () { advance("forward"); }));
+    var fine = el("p", "ob-terms");
+    fine.appendChild(D().createTextNode("By continuing you agree to our "));
+    fine.appendChild(link("/terms", "Terms"));
+    fine.appendChild(D().createTextNode(" and "));
+    fine.appendChild(link("/privacy", "Privacy Policy"));
+    fine.appendChild(D().createTextNode("."));
+    f.appendChild(fine);
+    s.appendChild(f);
+    return s;
+  }
+
+  /* ---- a question. The mockup's q block. --------------------------------
+     Tapping an option SELECTS it and nothing else; Continue is what moves.
+     That is the mockup's own behaviour and the reason it has a disabled CTA
+     at all, and it is what lets a reader change their mind before committing.
+     --------------------------------------------------------------------- */
+
+  function optRow(o, on, multi, onTap) {
+    var b = btn("ob-opt" + (on ? " is-on" : ""), null, onTap);
+    b.setAttribute("data-k", o.k);
+    b.setAttribute("role", multi ? "checkbox" : "radio");
+    b.setAttribute("aria-checked", on ? "true" : "false");
+    if (o.img) {
+      var tile = el("span", "ob-tile");
+      tile.appendChild(smallPlate(o.img));
+      b.appendChild(tile);
+    }
+    b.appendChild(el("span", "ob-b", o.b));
+    b.appendChild(glyph("ob-tick" + (multi ? " is-sq" : "")));
     return b;
   }
 
-  /* Skip clears the answer. A skipped step must be indistinguishable from one
-     never reached, or a later screen reads back something the reader never
-     said — which is js/account.js's own rule for its setters. */
-  function skipBtn(foot, clear) {
-    var b = btn("ob-skip", "Skip", function () {
-      try { if (clear) clear(); } catch (e) {}
-      advance("skip");
-    });
-    foot.appendChild(b);
-    return b;
+  function demoCard(id, tail) {
+    var f = D().createDocumentFragment();
+    var d = el("div", "ob-demo");
+    d.appendChild(smallPlate(id));
+    d.appendChild(scrim("ob-demoscrim"));
+    var t = titleOf(id);
+    if (t) d.appendChild(el("p", "ob-demotitle", t));
+    f.appendChild(d);
+    if (tail) f.appendChild(el("p", "ob-demotail", tail));
+    return f;
   }
 
-  /* ---- 1 · welcome ------------------------------------------------------ */
+  /* spec: head, hint, fine, demo{id,tail}, opts, multi, isOn, tap,
+           ready, ctaLabel, bare */
+  function screenQuestion(spec) {
+    var s = el("div", screenCls());
+    var sc = el("div", "ob-scroll ob-qscroll" + (spec.bare ? " is-bare" : ""));
 
-  function screenWelcome(body, foot) {
-    body.appendChild(art("s20", "ob-hero"));
-    heads(body, "Know the stories everyone should know.",
-          "Trade five minutes of scrolling for history you’ll actually remember.");
-    body.appendChild(el("p", "ob-fine",
-      "Six questions. Nothing to fill in, nothing to sign up for yet."));
-    cta(foot, "Get started", true, function () { advance("forward"); });
+    sc.appendChild(el("h1", "ob-qhead", spec.head));
+    if (spec.hint) sc.appendChild(el("p", "ob-qhint", spec.hint));
+    if (spec.demo) sc.appendChild(demoCard(spec.demo.id, spec.demo.tail));
+
+    var wrap = el("div", "ob-optwrap");
+    var opts = el("div", "ob-opts" + (spec.pair ? " ob-yn" : ""));
+    var i;
+    for (i = 0; i < spec.opts.length; i++) {
+      (function (o) {
+        opts.appendChild(optRow(o, !!spec.isOn(o), !!spec.multi, function () {
+          spec.tap(o);
+        }));
+      })(spec.opts[i]);
+    }
+    wrap.appendChild(opts);
+    sc.appendChild(wrap);
+
+    if (spec.fine) sc.appendChild(el("p", "ob-fine", spec.fine));
+    s.appendChild(sc);
+
+    if (spec.next) {
+      var f = el("div", "ob-ctawrap");
+      f.appendChild(cta(spec.ctaLabel || "Continue", !!spec.ready, spec.next));
+      s.appendChild(f);
+    }
+    return s;
   }
-
-  /* ---- 2 · a single-select question ------------------------------------- */
 
   function setDraw(k) {
     var A = fba();
     try { if (A && A.setDraw) A.setDraw(k); } catch (e) {}
   }
-
-  function screenSingle(body, foot, q, head, hint, list, cur, put) {
-    heads(body, head, hint);
-    var wrap = el("div", "ob-opts");
-    var i;
-    for (i = 0; i < list.length; i++) {
-      (function (o) {
-        var on = cur === o.k;
-        var b = btn("ob-opt" + (on ? " is-on" : ""), null, function () {
-          put(o.k);
-          emitAnswer(screenAt(idx), q, o.k);
-          stampRun(null);
-          advance("forward");
-        });
-        b.setAttribute("data-k", o.k);
-        b.setAttribute("role", "radio");
-        b.setAttribute("aria-checked", on ? "true" : "false");
-        b.appendChild(el("span", "ob-b", o.b));
-        b.appendChild(tick());
-        wrap.appendChild(b);
-      })(list[i]);
-    }
-    body.appendChild(wrap);
-    skipBtn(foot, function () { put(""); });
-  }
-
-  /* ---- 3 · an interstitial ---------------------------------------------- */
-
-  function screenAffirm(body, foot, pair) {
-    var p = pair || ["", ""];
-    body.appendChild(el("p", "ob-eyebrow", "Noted"));
-    heads(body, p[0], p[1]);
-    cta(foot, "Continue", true, function () { advance("forward"); });
-  }
-
-  /* ---- 4 · the multi-select ---------------------------------------------- */
-
-  function screenRelate(body, foot) {
-    var cur = getRelates();
-    heads(body, "Which of these sounds like you?",
-          "Pick any that fit. If none of them do, skip it.");
-    var wrap = el("div", "ob-opts");
-    var i;
-    for (i = 0; i < RELATE_OPTS.length; i++) {
-      (function (o) {
-        var on = has(cur, o.k);
-        var b = btn("ob-opt" + (on ? " is-on" : ""), null, function () {
-          var list = getRelates(), at = -1, j;
-          for (j = 0; j < list.length; j++) { if (list[j] === o.k) at = j; }
-          if (at > -1) list.splice(at, 1); else list.push(o.k);
-          var A = fba();
-          try { if (A && A.setRelates) A.setRelates(list); } catch (e) {}
-          stampRun(null);
-          render();
-        });
-        b.setAttribute("data-k", o.k);
-        b.setAttribute("role", "checkbox");
-        b.setAttribute("aria-checked", on ? "true" : "false");
-        b.appendChild(el("span", "ob-b", o.b));
-        b.appendChild(tick("ob-tick is-sq"));
-        wrap.appendChild(b);
-      })(RELATE_OPTS[i]);
-    }
-    body.appendChild(wrap);
-    cta(foot, "Continue", true, function () {
-      var list = getRelates();
-      /* Sorted and joined with the pipe gaParams() already uses for arrays,
-         so a multi-select is one value and one row rather than three. */
-      emitAnswer(screenAt(idx), "relates", list.slice(0).sort().join("|"));
-      advance("forward");
-    });
-  }
-
-  /* ---- 6 · the genre pick. The one answer that drives anything. ---------- */
-
-  function screenGenres(body, foot) {
-    var F = fbfit();
-    var cur = getGenres();
-    var list = genreList();
-    heads(body, "What kind of stories pull you in?",
-          "Pick two or three. This is what sets the order of your feed.");
-    var wrap = el("div", "ob-opts ob-grid");
-    var i;
-    for (i = 0; i < list.length; i++) {
-      (function (g) {
-        var on = has(cur, g.key);
-        var b = btn("ob-opt ob-gopt" + (on ? " is-on" : ""), null, function () {
-          var picks = getGenres(), at = -1, j;
-          for (j = 0; j < picks.length; j++) { if (picks[j] === g.key) at = j; }
-          if (at > -1) picks.splice(at, 1);
-          else if (picks.length < GENRE_MAX) picks.push(g.key);
-          else return;                       /* three is the ceiling */
-          var A = fba();
-          try { if (A && A.setInterests) A.setInterests(picks); } catch (e) {}
-          stampRun(null);
-          render();
-        });
-        b.setAttribute("data-k", g.key);
-        b.setAttribute("role", "checkbox");
-        b.setAttribute("aria-checked", on ? "true" : "false");
-        if (g.cover) b.appendChild(art(coverImg(g.cover), "ob-tile"));
-        var txt = el("span", "ob-btext");
-        txt.appendChild(el("span", "ob-b", g.label));
-        if (g.blurb) txt.appendChild(el("span", "ob-blurb", g.blurb));
-        b.appendChild(txt);
-        b.appendChild(tick("ob-tick is-sq"));
-        wrap.appendChild(b);
-      })(list[i]);
-    }
-    body.appendChild(wrap);
-
-    /* Not decoration. FBFIT's own header calls this the sentence that makes
-       the personalization honest rather than a cheque the catalogue cannot
-       cash, and says a template that drops it is overclaiming. */
-    var disc = "";
-    try { disc = F && F.disclosure ? F.disclosure() : ""; } catch (e2) {}
-    if (disc) body.appendChild(el("p", "ob-fine", disc));
-
-    var ready = cur.length >= GENRE_MIN;
-    cta(foot, ready ? "Continue" : "Pick two", ready, function () {
-      emitAnswer(screenAt(idx), "genres", getGenres().slice(0).sort().join("|"));
-      advance("forward");
-    });
-  }
-
-  function coverImg(id) {
-    var s = stackById(str(id));
-    return (s && s.img) ? s.img : ("s" + str(id));
-  }
-
-  /* ---- 7, 8 · the two number questions ---------------------------------- */
 
   function setGoalAnswer(v) {
     var A = fba();
@@ -1091,95 +1246,251 @@ var FBOB = (function () {
     try { if (A && A.setStreak) A.setStreak(v); } catch (e) {}
   }
 
-  function screenNumber(body, foot, q, head, list, cur, put) {
-    heads(body, head, "");
-    var wrap = el("div", "ob-opts");
-    var i;
-    for (i = 0; i < list.length; i++) {
-      (function (o) {
-        var on = cur === o.v;
-        var b = btn("ob-opt" + (on ? " is-on" : ""), null, function () {
-          put(o.v);
-          /* The key, not the number: "auto" is a real answer and 0 is the
-             store's word for "never asked". Sending 0 for both would make
-             them the same row. */
-          emitAnswer(screenAt(idx), q, o.k);
-          stampRun(null);
-          advance("forward");
-        });
-        b.setAttribute("data-k", o.k);
-        b.setAttribute("role", "radio");
-        b.setAttribute("aria-checked", on ? "true" : "false");
-        b.appendChild(el("span", "ob-b", o.b));
-        b.appendChild(tick());
-        wrap.appendChild(b);
-      })(list[i]);
-    }
-    body.appendChild(wrap);
-    skipBtn(foot, function () { put(0); });
+  /* ---- 2 · what pulls you in -------------------------------------------- */
+
+  function qDraw() {
+    var cur = getDraw();
+    return screenQuestion({
+      head: "What pulls you into a history story?",
+      opts: DRAW_OPTS,
+      isOn: function (o) { return cur === o.k; },
+      tap: function (o) {
+        setDraw(o.k);
+        emitAnswer(screenAt(idx), "draw", o.k);
+        stampRun(null);
+        render();
+      },
+      ready: !!cur,
+      next: function () { advance("forward"); }
+    });
   }
 
-  /* ---- 9 · which would you click first ---------------------------------- */
+  /* ---- 4 · which of these sounds like you (multi) ------------------------ */
 
-  function stackById(id) {
-    try {
-      var list = stacks;
-      if (list && !(typeof list.length === "number") && list.stacks) list = list.stacks;
-      if (!list || typeof list.length !== "number") return null;
-      for (var i = 0; i < list.length; i++) {
-        if (String(list[i].id) === String(id)) return list[i];
+  function qRelate() {
+    var cur = getRelates();
+    return screenQuestion({
+      head: "Which of these sounds like you?",
+      hint: "Pick any that fit. If none of them do, just continue.",
+      opts: RELATE_OPTS,
+      multi: true,
+      isOn: function (o) { return has(cur, o.k); },
+      tap: function (o) {
+        var list = getRelates(), at = -1, j;
+        for (j = 0; j < list.length; j++) { if (list[j] === o.k) at = j; }
+        if (at > -1) list.splice(at, 1); else list.push(o.k);
+        var A = fba();
+        try { if (A && A.setRelates) A.setRelates(list); } catch (e) {}
+        stampRun(null);
+        render();
+      },
+      ready: true,
+      next: function () {
+        /* Sorted and joined with the pipe gaParams() already uses for arrays,
+           so a multi-select is one value and one row rather than three. */
+        emitAnswer(screenAt(idx), "relates", getRelates().slice(0).sort().join("|"));
+        advance("forward");
       }
-    } catch (e) {}
-    return null;
+    });
   }
 
-  function screenPick(body, foot) {
+  /* ---- 3, 5 · an interstitial. The mockup's is3 / is6. ------------------- */
+
+  function screenAffirm(pair) {
+    var p = pair || ["", "", "20"];
+    var s = el("div", screenCls());
+
+    var a = el("div", "ob-i-art");
+    a.appendChild(bigPlate(p[2] || "20"));
+    s.appendChild(a);
+
+    var t = el("div", "ob-i-text");
+    t.appendChild(el("h1", "ob-i-head", p[0]));
+    t.appendChild(el("p", "ob-i-body", p[1]));
+    s.appendChild(t);
+
+    var f = el("div", "ob-i-foot");
+    f.appendChild(cta("Continue", true, function () { advance("forward"); }));
+    s.appendChild(f);
+    return s;
+  }
+
+  /* ---- 6 · the genre pick. The one answer that drives anything. ---------- */
+
+  function genreList() {
+    var F = fbfit();
+    if (F && F.GENRES) return F.GENRES;
+    return [];
+  }
+
+  function qGenres() {
+    var F = fbfit();
+    var cur = getGenres();
+    var list = genreList();
+    var opts = [], i;
+    for (i = 0; i < list.length; i++) {
+      opts.push({ k: list[i].key, b: list[i].label, img: list[i].cover });
+    }
+    var disc = "";
+    try { disc = F && F.disclosure ? F.disclosure() : ""; } catch (e) {}
+
+    return screenQuestion({
+      head: "What kind of stories pull you in?",
+      hint: "Pick two or three. The first three set your feed.",
+      opts: opts,
+      multi: true,
+      isOn: function (o) { return has(cur, o.k); },
+      tap: function (o) {
+        var picks = getGenres(), at = -1, j;
+        for (j = 0; j < picks.length; j++) { if (picks[j] === o.k) at = j; }
+        if (at > -1) picks.splice(at, 1);
+        else if (picks.length < GENRE_MAX) picks.push(o.k);
+        else return;                              /* three is the ceiling */
+        var A = fba();
+        try { if (A && A.setInterests) A.setInterests(picks); } catch (e) {}
+        stampRun(null);
+        render();
+      },
+      /* Not decoration. js/personalize.js calls this the sentence that makes
+         the personalization honest rather than a cheque the catalogue cannot
+         cash, and says a template that drops it is overclaiming. */
+      fine: disc,
+      ready: cur.length >= GENRE_MIN,
+      ctaLabel: cur.length >= GENRE_MIN ? "Continue" : "Pick two",
+      next: function () {
+        emitAnswer(screenAt(idx), "genres", getGenres().slice(0).sort().join("|"));
+        advance("forward");
+      }
+    });
+  }
+
+  /* ---- 7, 8 · the two number questions ---------------------------------- */
+
+  function qNumber(q, head, list, cur, put) {
+    return screenQuestion({
+      head: head,
+      opts: list,
+      isOn: function (o) { return cur === o.v; },
+      tap: function (o) {
+        put(o.v);
+        /* The key, not the number: "auto" is a real answer and 0 is the
+           store's word for "never asked". Sending 0 for both would make them
+           the same row. */
+        emitAnswer(screenAt(idx), q, o.k);
+        stampRun(null);
+        render();
+      },
+      ready: !!cur,
+      next: function () { advance("forward"); }
+    });
+  }
+
+  /* ---- 9 · which would you click first. The mockup's is8. ---------------
+     No Continue: the tap is the answer, and it holds for a beat so the tick
+     is seen before the screen changes. That beat is the mockup's own 260ms.
+     --------------------------------------------------------------------- */
+
+  function screenPick() {
     var cur = getStory();
-    heads(body, "Which one would you click first?",
-          "There is no wrong answer. It tells us what a good hook looks like to you.");
-    var grid = el("div", "ob-covers");
+    var s = el("div", screenCls());
+    var sc = el("div", "ob-scroll ob-pickscroll");
+    sc.appendChild(el("h1", "ob-qhead", "Which one would you click first?"));
+
+    var g = el("div", "ob-covers");
     var i;
     for (i = 0; i < COVERS.length; i++) {
       (function (c) {
-        var s = stackById(c.id);
         var on = cur === c.id;
         var b = btn("ob-cover" + (on ? " is-on" : ""), null, function () {
           setStory(c.id);
           emitAnswer(screenAt(idx), "story", c.id);
-          advance("forward");
+          render();
+          try {
+            pickTimer = setTimeout(function () {
+              pickTimer = 0;
+              if (FLOW[idx] === "pick_story") advance("forward");
+            }, 260);
+          } catch (e) { advance("forward"); }
         });
         b.setAttribute("data-k", c.id);
-        b.appendChild(art((s && s.img) ? s.img : c.img, "ob-covart"));
-        var cap = el("div", "ob-cap");
-        cap.appendChild(el("span", "ob-who", c.who));
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+        b.appendChild(smallPlate(c.id));
+        b.appendChild(scrim("ob-coverscrim"));
+        var cap = el("span", "ob-cap");
         cap.appendChild(el("span", "ob-chead", c.head));
+        cap.appendChild(el("span", "ob-who", c.who));
         b.appendChild(cap);
-        b.appendChild(tick("ob-tick is-mark"));
-        grid.appendChild(b);
+        b.appendChild(glyph("ob-mark2"));
+        g.appendChild(b);
       })(COVERS[i]);
     }
-    body.appendChild(grid);
-    skipBtn(foot, null);
+    sc.appendChild(g);
+    sc.appendChild(el("div", "ob-pickpad"));
+    s.appendChild(sc);
+    return s;
   }
 
-  /* ---- 10 · the loader that interrupts itself ---------------------------
-     Dead time turned into commitment. The bar runs on one interval; at two
-     points it stops and asks something, and it does not resume until the
-     reader answers. The questions are stored through FBA.addPlanAnswer and
-     reported as ob_answer{q:"plan"} on step "building" — a value in the
-     existing q dimension, not a fifth event name.
+  /* ---- 10 · the loader. The mockup's is11. ------------------------------
+     The bar runs on one interval. The genres the reader picked stand under
+     the headline and tick off as the bar passes them, and a cover from their
+     own feed cycles underneath with dot indicators, so the wait is the thing
+     being built rather than a spinner.
+
+     At two points the bar stops and asks something. That pause is NOT in the
+     mockup — it is this engine's own, it is the reason the dead time is worth
+     having, and it borrows the mockup's demo-question layout rather than
+     inventing a third look. Both answers lead to the same place; they are
+     still the reader's, so they are kept.
      --------------------------------------------------------------------- */
+
+  function labelOf(key) {
+    var F = fbfit();
+    try { if (F && F.labelOf) return F.labelOf(key); } catch (e) {}
+    return str(key);
+  }
+
+  /* One story per picked genre — the best-ranked story for that pick alone,
+     so the covers that cycle really are of the feed being built. */
+  function cycleIds() {
+    if (loadIds) return loadIds;
+    var F = fbfit();
+    var picks = getGenres();
+    var out = [], seenId = {}, i, one;
+    for (i = 0; i < picks.length; i++) {
+      one = null;
+      /* The genre's own best, with the two feed passes off: `lead` promotes a
+         free story into slot one and `spread` holds the faith-first stories
+         apart, and both are right for a feed and wrong here — they hand every
+         genre the same two covers, which is a carousel of one picture. */
+      try {
+        one = F && F.rank
+          ? F.rank([picks[i]], stacks, { lead: false, spread: false })[0]
+          : null;
+      } catch (e) {}
+      if (one && !seenId[one]) { seenId[one] = 1; out.push(one); }
+    }
+    if (!out.length) {
+      try {
+        var all = F && F.rank ? F.rank(picks, stacks) : [];
+        for (i = 0; i < all.length && out.length < 3; i++) out.push(all[i]);
+      } catch (e2) {}
+    }
+    loadIds = out;
+    return out;
+  }
 
   function startLoader() {
     var ms = typeof opts.tickMs === "number" ? opts.tickMs : 320;
+    loadCycle = 0;
+    loadIds = null;
     try {
       loadTimer = setInterval(function () {
-        if (interruptAt > -1) return;                   /* held on a question */
-        if (loadPct >= 100) return;
-        loadPct = Math.min(100, loadPct + 7);
-        var nx = INTERRUPTS[interruptsDone];
-        if (nx && loadPct >= nx.at) {
-          interruptAt = interruptsDone;
+        loadCycle++;
+        if (interruptAt > -1) { return; }             /* held on a question */
+        if (loadPct < 100) {
+          loadPct = Math.min(100, loadPct + 7);
+          var nx = INTERRUPTS[interruptsDone];
+          if (nx && loadPct >= nx.at) interruptAt = interruptsDone;
         }
         paintLoader();
       }, ms);
@@ -1198,77 +1509,97 @@ var FBOB = (function () {
     paintLoader();
   }
 
-  function screenBuilding(body, foot) {
-    body.setAttribute("data-ob-load", "1");
-    paintLoader();
+  function screenBuilding() {
+    var s = el("div", screenCls());
+    s.setAttribute("data-ob-load", "1");
+    return s;
   }
 
   /* Repaints the loader in place rather than re-rendering the screen, so the
      screen is never replaced and never produces a second ob_step. */
   function paintLoader() {
     if (FLOW[idx] !== "building" || !host) return;
-    var body = host.querySelector(".ob-body");
-    var foot = host.querySelector(".ob-foot");
-    if (!body || !foot) return;
-    while (body.firstChild) body.removeChild(body.firstChild);
-    while (foot.firstChild) foot.removeChild(foot.firstChild);
-
-    var F = fbfit();
-    var picks = getGenres();
-    var copy = null;
-    try { copy = F && F.copyFor ? F.copyFor(picks) : null; } catch (e) {}
+    var wrap = host.querySelector("[data-ob-load]");
+    if (!wrap) return;
+    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
 
     if (interruptAt > -1) {
-      var q = INTERRUPTS[interruptAt];
-      body.appendChild(el("p", "ob-eyebrow", "One moment —"));
-      heads(body, q.head, q.sub);
-      var pair = el("div", "ob-yn");
-      pair.appendChild(btn("ob-opt ob-ynb", YES, function () { answerInterrupt(true); }));
-      pair.appendChild(btn("ob-opt ob-ynb", NO, function () { answerInterrupt(false); }));
-      var kids = pair.childNodes;
-      kids[0].setAttribute("data-k", "yes");
-      kids[1].setAttribute("data-k", "no");
-      body.appendChild(pair);
+      wrap.appendChild(loaderAsk(INTERRUPTS[interruptAt]));
       return;
     }
 
-    body.appendChild(el("p", "ob-eyebrow", "Building your feed"));
-    heads(body, copy ? copy.loaderHead : "Putting your stories in order.",
-          copy ? copy.loaderSub : "");
+    var picks = getGenres();
+    var top = el("div", "ob-l-top");
+    top.appendChild(el("h1", "ob-l-head", "Building your history feed"));
+    top.appendChild(el("p", "ob-l-sub",
+      "Based on what you picked, we’ll prioritize:"));
+
+    var rows = el("div", "ob-picks");
+    var i, shown, row;
+    for (i = 0; i < picks.length; i++) {
+      shown = loadPct >= (i + 1) * (100 / (picks.length + 1));
+      row = el("p", "ob-pick" + (shown ? " is-on" : ""));
+      row.appendChild(glyph("ob-ptick"));
+      row.appendChild(el("span", "ob-b", labelOf(picks[i])));
+      rows.appendChild(row);
+    }
+    top.appendChild(rows);
 
     var track = el("div", "ob-loadtrack");
     var fill = el("i", "ob-loadfill");
     fill.style.width = loadPct + "%";
     track.appendChild(fill);
-    body.appendChild(track);
-    var pctLine = el("p", "ob-pct", loadPct + "%");
-    pctLine.setAttribute("role", "status");
-    body.appendChild(pctLine);
+    top.appendChild(track);
+    var pct = el("p", "ob-pct", loadPct + "%");
+    pct.setAttribute("role", "status");
+    top.appendChild(pct);
+    wrap.appendChild(top);
 
-    var ul = el("ul", "ob-ticks");
-    var i;
-    for (i = 0; i < picks.length; i++) {
-      var shownAt = (i + 1) * (100 / (picks.length + 1));
-      var li = el("li", "ob-tickrow" + (loadPct >= shownAt ? " is-on" : ""));
-      li.appendChild(tick("ob-tick is-round"));
-      li.appendChild(el("span", "ob-b", labelOf(picks[i])));
-      ul.appendChild(li);
+    var ids = cycleIds();
+    if (ids.length) {
+      var ci = loadCycle % ids.length;
+      var cover = el("div", "ob-l-cover");
+      var card = el("div", "ob-covercard");
+      card.appendChild(smallPlate(ids[ci]));
+      card.appendChild(scrim("ob-cardscrim"));
+      var t = titleOf(ids[ci]);
+      if (t) card.appendChild(el("p", "ob-covertitle", t));
+      cover.appendChild(card);
+      var dots = el("div", "ob-dots"), j;
+      for (j = 0; j < ids.length; j++) {
+        dots.appendChild(el("i", "ob-dot" + (j === ci ? " is-on" : "")));
+      }
+      cover.appendChild(dots);
+      wrap.appendChild(cover);
     }
-    body.appendChild(ul);
 
     var done = loadPct >= 100;
-    cta(foot, done ? "See my stories" : "Building…", done, function () {
+    var f = el("div", "ob-l-foot");
+    f.appendChild(cta(done ? "See my stories" : "Building…", done, function () {
       advance("forward");
+    }));
+    wrap.appendChild(f);
+  }
+
+  function loaderAsk(q) {
+    /* The second question names no story of its own, so it is asked over the
+       reader's — the same cover the loader was cycling a moment ago. Two
+       buttons alone in an empty cream field is the screen this pause is
+       supposed to be worth interrupting for, and it is not. */
+    var artId = q.art || cycleIds()[0] || "";
+    return screenQuestion({
+      bare: true,
+      head: q.head,
+      demo: artId ? { id: artId, tail: q.sub } : null,
+      hint: artId ? "" : q.sub,
+      pair: true,
+      opts: [{ k: "yes", b: YES }, { k: "no", b: NO }],
+      isOn: function () { return false; },
+      tap: function (o) { answerInterrupt(o.k === "yes"); }
     });
   }
 
-  function labelOf(key) {
-    var F = fbfit();
-    try { if (F && F.labelOf) return F.labelOf(key); } catch (e) {}
-    return str(key);
-  }
-
-  /* ---- 11 · the payoff --------------------------------------------------- */
+  /* ---- 11 · the payoff. The mockup's is12. ------------------------------ */
 
   function mins(secs) {
     var halves = Math.max(1, Math.round((Number(secs) || 0) / 30));
@@ -1277,55 +1608,80 @@ var FBOB = (function () {
     return whole + (halves % 2 ? "½" : "") + " min";
   }
 
-  function screenResults(body, foot) {
+  /* The three the reader is handed. Ranked by their picks, with the story
+     they SAID they would click first promoted to the front — they told us,
+     and ignoring it on the very next screen would be the funnel asking a
+     question it does not use. An id with no catalogue row behind it is
+     skipped rather than printed: a number is not a headline. */
+  function firstThree() {
     var F = fbfit();
     var picks = getGenres();
-    var goal = getGoal();
-    var id = IDENTITY[String(goal)] || IDENTITY["0"];
-
-    body.appendChild(el("p", "ob-eyebrow", "Your first stories are ready"));
-    heads(body, id[0], id[1]);
-
     var ranked = [];
     try { if (F && F.rank) ranked = F.rank(picks, stacks); } catch (e) {}
 
-    /* The story they said they would click first leads, if it is real. They
-       told us; ignoring it on the very next screen would be the funnel asking
-       a question it does not use. */
     var story = getStory();
     if (story) {
       var at = -1, j;
       for (j = 0; j < ranked.length; j++) { if (ranked[j] === story) at = j; }
-      if (at > -1) ranked = [story].concat(ranked.slice(0, at)).concat(ranked.slice(at + 1));
-    }
-
-    var listEl = el("ul", "ob-cards");
-    var shown = 0, i;
-    for (i = 0; i < ranked.length && shown < 3; i++) {
-      var s = stackById(ranked[i]);
-      var li = el("li", "ob-card");
-      li.appendChild(art(s && s.img ? s.img : ("s" + str(ranked[i])), "ob-cardart"));
-      var txt = el("div", "ob-cardtext");
-      txt.appendChild(el("p", "ob-cardhead", s && s.title ? s.title : ("Story " + str(ranked[i]))));
-      if (s) {
-        txt.appendChild(el("p", "ob-meta",
-          (s.cards ? s.cards.length : 0) + " cards · " + mins(s.secs)));
+      if (at > -1) {
+        ranked = [story].concat(ranked.slice(0, at)).concat(ranked.slice(at + 1));
       }
-      li.appendChild(txt);
-      listEl.appendChild(li);
-      shown++;
     }
-    body.appendChild(listEl);
 
+    var out = [], i, s;
+    for (i = 0; i < ranked.length && out.length < 3; i++) {
+      s = stackById(ranked[i]);
+      if (s && s.title) out.push(s);
+    }
+    return out;
+  }
+
+  function screenResults() {
+    var F = fbfit();
+    var picks = getGenres();
     var copy = null;
-    try { copy = F && F.copyFor ? F.copyFor(picks) : null; } catch (e2) {}
-    if (copy && copy.labels) {
-      body.appendChild(el("p", "ob-note", "Picked from " + copy.labels + "."));
-    }
-    /* Again, and for the same reason as on the genre grid. */
-    if (copy && copy.disclosure) body.appendChild(el("p", "ob-fine", copy.disclosure));
+    try { copy = F && F.copyFor ? F.copyFor(picks) : null; } catch (e) {}
 
-    cta(foot, "Start reading", true, function () { advance("forward"); });
+    var s = el("div", screenCls());
+    var sc = el("div", "ob-scroll ob-res");
+    var inn = el("div", "ob-resin");
+
+    inn.appendChild(el("h1", "ob-r-head", "Your first stories are ready."));
+    if (copy && copy.labels) {
+      inn.appendChild(el("p", "ob-r-note", "Picked from " + copy.labels + "."));
+    }
+
+    var rows = firstThree();
+    var ul = el("ul", "ob-cards");
+    var i, st, li;
+    for (i = 0; i < rows.length; i++) {
+      st = rows[i];
+      li = el("li", "ob-card");
+      li.appendChild(bigPlate(st.id));
+      li.appendChild(scrim("ob-cardscrim2"));
+      li.appendChild(el("p", "ob-cardhead", str(st.title)));
+      li.appendChild(el("p", "ob-meta",
+        (st.cards ? st.cards.length : 0) + " cards · " + mins(st.secs)));
+      ul.appendChild(li);
+    }
+    if (rows.length) inn.appendChild(ul);
+    else {
+      /* The catalogue has not landed. loadStacks() repaints this screen the
+         moment it does; until then the screen says so rather than showing a
+         card with an id where its headline goes. */
+      inn.appendChild(el("p", "ob-r-note", "Your shelf is coming up now…"));
+    }
+
+    /* Again, and for the same reason as on the genre grid. */
+    if (copy && copy.disclosure) inn.appendChild(el("p", "ob-fine", copy.disclosure));
+
+    sc.appendChild(inn);
+    s.appendChild(sc);
+
+    var f = el("div", "ob-r-foot");
+    f.appendChild(cta("Start reading", true, function () { advance("forward"); }));
+    s.appendChild(f);
+    return s;
   }
 
   /* ======================================================================
@@ -1399,7 +1755,11 @@ var FBOB = (function () {
 
     opts = o || {};
     host = node;
-    stacks = opts.stacks || null;
+    stacks = normStacks(opts.stacks);
+    /* Started here rather than on the screen that needs it: the payoff is ten
+       screens away, so by the time a title is wanted this has long resolved,
+       and the reader never waits on a fetch. */
+    loadStacks();
     page = opts.page ? str(opts.page) : pageName();
     from = opts.from && has(FROMS, opts.from) ? opts.from : fromParam();
 
