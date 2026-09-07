@@ -287,13 +287,36 @@ const CHECKS = [
     },
   },
   {
-    name: "today's story is free to everyone, on the reader too",
-    why: "js/access.js answers three ways now — access, permanently free, or " +
-         "today's Factbox — and canRead(id) is the only one that knows all " +
-         "three. Asking FB.unlocked() alone puts a paywall in front of the " +
-         "one story that is deliberately open to everybody, every day.",
-    pass: () => /FBX\.canRead\(s\.id\)/.test(read("read.html")) &&
-                /FBX\.isToday/.test(read("js/recommend.js")),
+    name: "today's story is free to everyone, and the server is what says so",
+    why: "js/access.js answers three ways — access, permanently free, or " +
+         "today's Factbox — and asking FB.unlocked() alone puts a paywall in " +
+         "front of the one story that is deliberately open to everybody, " +
+         "every day. The reader page used to answer it with FBX.canRead(id): " +
+         "the browser's own clock deciding whether to draw text the browser " +
+         "had already downloaded, so moving a device clock moved which story " +
+         "was free. There is no downloaded text to gate now. " +
+         "functions/story.js works today's story out from the SERVER's clock " +
+         "and either sends the cards or refuses, so the invariant here is the " +
+         "opposite one: the reader must NOT re-decide, it must draw whatever " +
+         "arrives and draw the wall only on a refusal.",
+    pass: () => {
+      const r = read("read.html"), g = read("js/gate.js");
+      if (!/STORY_FN/.test(g) || !/Authorization/.test(g)) {
+        return "js/gate.js no longer asks functions/story.js with a token";
+      }
+      if (!/meta\.free === true/.test(g)) {
+        return "js/gate.js no longer routes on the permanently-free flag, so " +
+               "either paid text is being fetched statically or today's free " +
+               "story is being decided in the browser again";
+      }
+      if (!/e\.locked/.test(r) || !/wallFromCatalogue/.test(r)) {
+        return "read.html no longer tells a refusal apart from a failure";
+      }
+      if (!/FBX\.isToday/.test(read("js/recommend.js"))) {
+        return "js/recommend.js stopped knowing about today's story";
+      }
+      return true;
+    },
   },
   {
     name: "reading the unlock flag does not grant it",
@@ -416,14 +439,16 @@ const CHECKS = [
 
       let total = 0, sourced = 0;
       try {
-        const d = JSON.parse(read("data/stacks.json") || "{}");
+        /* The corpus is the untracked build input at content/stacks.json now:
+           data/ is published, and that file is every word of all 51 stories. */
+        const d = JSON.parse(read("content/stacks.json") || "{}");
         const st = d.stacks || d;
         const list = Array.isArray(st) ? st : Object.keys(st).map((k) => st[k]);
         list.forEach((s) => (s.cards || []).forEach((c) => {
           total++;
           if (String(c.src || "").trim()) sourced++;
         }));
-      } catch (e) { return "could not read data/stacks.json to check: " + e.message; }
+      } catch (e) { return "could not read content/stacks.json to check: " + e.message; }
 
       if (total && sourced === total) return true;   /* the claim came true */
       return claiming.join(", ") + " claim every card is sourced, but only " +
@@ -464,6 +489,146 @@ const CHECKS = [
         if (!s) continue;
         if (!/\/join\?from=story/.test(s)) return false;
       }
+      return true;
+    },
+  },
+  {
+    name: "no paid story's text ships as a static file",
+    why: "This is the leak the whole gated read path was built to close. " +
+         "data/stacks.json was 413KB of every word of all 51 stories, served " +
+         "by GitHub Pages to anyone who typed the URL, and data/story/26.json " +
+         "was one paid story on its own — no account, no token, no payment. " +
+         "The realistic way it comes back is not a decision, it is a copy: " +
+         "someone re-runs a build that writes the corpus back into data/, or " +
+         "restores a file from an old branch because a fallback 404'd. So " +
+         "this reads the data rather than the code. Paid text lives in " +
+         "Firestore and leaves through functions/story.js, which checks the " +
+         "reader; the only story files under data/ are the permanently free " +
+         "ones, and data/index.json carries headlines and covers but no " +
+         "card bodies.",
+    pass: () => {
+      const DATA = path.join(ROOT, "data");
+      let index;
+      try {
+        index = JSON.parse(fs.readFileSync(path.join(DATA, "index.json"), "utf8"));
+      } catch (e) { return "data/index.json is unreadable: " + e.message; }
+      const stacks = (index && index.stacks) || [];
+      if (!stacks.length) return "data/index.json has no stacks";
+      /* `=== true`, never truthy: this one test decides whether a story's
+         text may be published. */
+      const free = new Set(stacks.filter((s) => s.free === true).map((s) => String(s.id)));
+      if (!free.size) return "data/index.json marks no story free — that cannot be right";
+
+      /* 1 · the monolith, by name. It is the specific file that leaked. */
+      if (fs.existsSync(path.join(DATA, "stacks.json"))) {
+        return "data/stacks.json is back — that file is every word of all " +
+               stacks.length + " stories, and data/ is published. The corpus " +
+               "belongs at content/stacks.json (untracked).";
+      }
+
+      /* 2 · one file per permanently free story, and no other file at all. */
+      const dir = path.join(DATA, "story");
+      const files = fs.existsSync(dir)
+        ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
+      const have = new Set(files.map((f) => f.replace(/\.json$/, "")));
+      const extra = [...have].filter((id) => !free.has(id));
+      if (extra.length) {
+        return "data/story/ publishes stories that are not free: " + extra.join(", ") +
+               " — run node tools/split-stacks.js";
+      }
+      const missing = [...free].filter((id) => !have.has(id));
+      if (missing.length) {
+        return "free stories with no static file: " + missing.join(", ") +
+               " — run node tools/split-stacks.js";
+      }
+
+      /* 3 · every other file under data/, structurally. A card is an object
+         with a head and a body; only the free story files may hold one. */
+      const walk = (d, out) => {
+        for (const f of fs.readdirSync(d)) {
+          const p = path.join(d, f);
+          if (fs.statSync(p).isDirectory()) walk(p, out);
+          else out.push(p);
+        }
+        return out;
+      };
+      const all = walk(DATA, []);
+      const allowed = new Set([...free].map((id) => path.join(dir, id + ".json")));
+      const bodies = (v, at, hits) => {
+        if (Array.isArray(v)) { v.forEach((x, i) => bodies(x, at + "[" + i + "]", hits)); return hits; }
+        if (v && typeof v === "object") {
+          for (const k of Object.keys(v)) {
+            if (k === "body" && typeof v[k] === "string" && v[k].trim().length > 20) {
+              hits.push(at + ".body");
+            }
+            bodies(v[k], at + "." + k, hits);
+          }
+        }
+        return hits;
+      };
+      for (const p of all) {
+        if (allowed.has(p) || !p.endsWith(".json")) continue;
+        let doc;
+        try { doc = JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { continue; }
+        const hits = bodies(doc, "", []);
+        if (hits.length) {
+          return path.relative(ROOT, p) + " carries " + hits.length +
+                 " card bodies (first at " + hits[0] + ") — only the free " +
+                 "stories may publish text";
+        }
+      }
+
+      /* 4 · and textually, against the real thing, when the corpus is here.
+         The structural pass above knows what a card looks like; this one
+         knows what the paid stories actually SAY, so it also catches text
+         copied into a file that never mentions a card. The stack's own hook
+         is exempt: it is the cover line, it is the pitch, and split-stacks
+         publishes it on purpose. */
+      const corpus = path.join(ROOT, "content", "stacks.json");
+      if (fs.existsSync(corpus)) {
+        let src;
+        try { src = JSON.parse(fs.readFileSync(corpus, "utf8")).stacks; }
+        catch (e) { return "content/stacks.json is unreadable: " + e.message; }
+        const texts = all.map((p) => [p, fs.readFileSync(p, "utf8")]);
+        for (const s of src) {
+          if (s.free === true) continue;
+          const hook = String(s.hook || "");
+          for (const c of s.cards || []) {
+            const b = String(c.body || "").trim();
+            if (b.length < 40 || hook.indexOf(b) !== -1) continue;
+            for (const [p, t] of texts) {
+              if (t.indexOf(b) !== -1) {
+                return path.relative(ROOT, p) + " contains the body of card " +
+                       c.n + " of story " + s.id + ", which is a paid story";
+              }
+            }
+          }
+        }
+        /* The corpus itself must never be tracked, or the next push publishes
+           it and nothing above would notice: it is not under data/. */
+        try {
+          const tracked = require("child_process")
+            .execSync("git ls-files content", { cwd: ROOT }).toString().trim();
+          if (tracked) return "content/ is tracked by git (" + tracked.split("\n")[0] +
+                              ") — the corpus would be published on the next deploy";
+        } catch (e) { /* no git here; the file checks above still stand */ }
+      }
+
+      /* 5 · and the reader's head script must know the same list, or it
+         speculatively fetches a file that is not there on every locked open. */
+      const rd = read("read.html");
+      const m = /window\.FB_FREE_FILE\s*=\s*\{([^}]*)\}/.exec(rd);
+      if (rd && !m) return "read.html no longer declares FB_FREE_FILE";
+      if (m) {
+        const listed = new Set((m[1].match(/"([A-Za-z0-9_-]+)"\s*:/g) || [])
+          .map((x) => x.replace(/["':\s]/g, "")));
+        const a = [...free].sort().join(","), b = [...listed].sort().join(",");
+        if (a !== b) {
+          return "read.html's FB_FREE_FILE is [" + b + "] but data/index.json " +
+                 "says the free stories are [" + a + "]";
+        }
+      }
+
       return true;
     },
   },

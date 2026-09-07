@@ -581,9 +581,11 @@ var FBX = (function () {
   /* Set once. The catalogue is the one input to today's pick that is not the
      clock, so it may be established exactly once per page and never replaced.
      Without that, `FBX.catalogue([{id:"44"}])` from a console is a way to
-     nominate any story as today's — a static site cannot stop somebody with
-     devtools reading data/stacks.json anyway (js/gate.js says so at the top),
-     but the access module should not hand them a shorter path to it. */
+     nominate any story as today's. That used to be a shorter path to text
+     that was public anyway; it is not any more — functions/story.js decides
+     which story is free today from the SERVER's clock, so a console can move
+     what this page DRAWS and cannot move what the server will hand over. The
+     access module should still not hand anybody the shorter path. */
   function catalogue(stacks) {
     try {
       if (CAT) return CAT;

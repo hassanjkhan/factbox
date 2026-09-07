@@ -28,6 +28,7 @@
    ========================================================================== */
 "use strict";
 const path = require("path");
+const fs = require("fs");
 const ROOT = path.resolve(__dirname, "..");
 const FN = path.join(ROOT, "functions");
 const BASE = (process.argv[2] || "http://127.0.0.1:8899").replace(/\/$/, "");
@@ -363,7 +364,8 @@ try {
 
 function stubFBU(over) {
   const s = Object.assign({ uid: "", email: "", known: true, ok: true,
-                            unavailable: false, signedIn: false, premium: false }, over);
+                            unavailable: false, signedIn: false, premium: false,
+                            token: "stub.id.token" }, over);
   const premFns = [];
   return {
     __state: s, __premFns: premFns,
@@ -372,7 +374,11 @@ function stubFBU(over) {
     onReady: (f) => setTimeout(() => f(null), 0),
     known: () => s.known, billingReady: () => Promise.resolve(s.premium),
     ok: () => s.ok, unavailable: () => s.unavailable, timedOut: () => false,
-    user: () => (s.signedIn ? { uid: s.uid } : null),
+    /* getIdToken, because a paid story's text no longer sits in a public
+       file: js/gate.js asks functions/story.js for it with this token on the
+       request. A stub user without one is a subscriber who cannot prove it,
+       and every locked story would 401. */
+    user: () => (s.signedIn ? { uid: s.uid, getIdToken: () => Promise.resolve(s.token) } : null),
     uid: () => s.uid, email: () => s.email, phone: () => "", name: () => "",
     emailVerified: () => true, signedIn: () => s.signedIn,
     provider: () => "", providers: () => [], providerText: () => "",
@@ -385,6 +391,53 @@ function stubFBU(over) {
     billingKnown: () => true,
     PORTAL: "https://billing.stripe.com/p/login/aFa9AS5OVgeL7zp4823F600",
     signOut: () => Promise.resolve(true)
+  };
+}
+
+/* ---------------------------------------------------------------- story fn
+
+   A stand-in for functions/story.js, with the same rules and the same
+   refusals. The real one is deployed and is tested against production by
+   tools/check-backend.js; what has to be true HERE is the half that lives in
+   the browser — that the reader page asks for a paid story with the
+   subscriber's ID token on the request, renders what comes back, and is
+   refused without one exactly as production refuses it.
+
+   The endpoint is read out of js/gate.js rather than written down twice, so
+   this cannot end up stubbing a URL the site no longer calls. */
+const STORY_FN = (function () {
+  const m = /var STORY_FN\s*=\s*"([^"]+)"/.exec(
+    fs.readFileSync(path.join(ROOT, "js", "gate.js"), "utf8"));
+  return m ? m[1] : "";
+})();
+const CORPUS = (function () {
+  try {
+    return JSON.parse(fs.readFileSync(
+      path.join(ROOT, "content", "stacks.json"), "utf8")).stacks;
+  } catch (e) { return null; }
+})();
+
+function stubStory(w, FBU) {
+  const real = w.fetch;
+  w.fetch = (u, o) => {
+    const url = String(u);
+    if (!STORY_FN || url.indexOf(STORY_FN) !== 0) return real(u, o);
+    const id = ((/[?&]id=([^&]+)/.exec(url) || [])[1] || "").toUpperCase();
+    const st = CORPUS ? CORPUS.filter((x) => String(x.id).toUpperCase() === id)[0] : null;
+    const auth = String(((o && o.headers) || {}).Authorization || "");
+    const tokened = /^Bearer\s+.+/.test(auth);
+    const send = (status, body) => Promise.resolve(new Response(JSON.stringify(body), {
+      status: status, headers: { "Content-Type": "application/json" } }));
+    if (!st) return send(404, { ok: false, error: "not_found" });
+    if (st.free === true) return send(200, { ok: true, id: id, access: "free", story: st });
+    /* The client is never believed: the token has to be there AND the account
+       has to be paying. The premium flag is read at request time, so a
+       revoked subscriber is refused on their next open, not ten minutes on. */
+    if (!tokened) return send(401, { ok: false, error: "auth_required", id: id, free: false });
+    if (!FBU.__state.premium) {
+      return send(403, { ok: false, error: "subscription_required", id: id, free: false });
+    }
+    return send(200, { ok: true, id: id, access: "subscriber", story: st });
   };
 }
 
@@ -493,7 +546,8 @@ async function partRevocation() {
 
   const FBU = stubFBU({ known: true, signedIn: true, premium: true,
                         uid: "woJ4di0ze9XkQ2rTb8mNpLcVaH3f", email: "hassan@example.com" });
-  const { dom, errors } = await load(BASE + "/read?s=03", (w) => { w.FBU = FBU; }, 4500);
+  const { dom, errors } = await load(BASE + "/read?s=03",
+    (w) => { w.FBU = FBU; stubStory(w, FBU); }, 4500);
   const w = dom.window;
   line(w.FBX.can() === true && w.FBX.why() === "subscriber",
        "a subscriber opens the paid story 03 and reads it",
@@ -537,12 +591,38 @@ async function partRevocation() {
        "the gate above must not have silenced the pitch for everybody");
 
   const out = stubFBU({ known: true, signedIn: false, premium: false });
-  const free = await load(BASE + "/read?s=01", (w2) => { w2.FBU = out; }, 4500);
+  const free = await load(BASE + "/read?s=01",
+    (w2) => { w2.FBU = out; stubStory(w2, out); }, 4500);
   const fd = free.dom.window.document;
   line(!free.errors.some((e) => /navigation to another Document/.test(e)) &&
        (fd.body.textContent || "").trim().length > 500,
        "a signed-out reader on the FREE story 01 is not reloaded out from under",
        (fd.body.textContent || "").trim().length + " characters on screen, no reload");
+
+  /* THE LEAK, ASSERTED FROM THE READER'S SIDE.
+
+     /data/stacks.json used to be 413KB of every word of all 51 stories, and
+     data/story/03.json was one paid story on its own. Both were public files,
+     so this reader — signed out, paying nothing — had the whole product. The
+     check-regressions guard says no such file is published; this says the
+     page cannot get the text by any other route either. It must end on the
+     wall, with the story's headlines and none of its sentences. */
+  if (CORPUS) {
+    const anon = stubFBU({ known: true, signedIn: false, premium: false });
+    const shut = await load(BASE + "/read?s=03",
+      (w3) => { w3.FBU = anon; stubStory(w3, anon); }, 4500);
+    const sd = shut.dom.window.document;
+    const deck = sd.getElementById("deck");
+    const seen = ((deck || sd.body).textContent || "").replace(/\s+/g, " ");
+    const s03 = CORPUS.filter((x) => x.id === "03")[0] || { cards: [] };
+    const bodies = (s03.cards || []).map((c) => String(c.body || ""))
+      .filter((b) => b.length > 60 && String(s03.hook || "").indexOf(b) === -1);
+    const leaked = bodies.filter((b) => seen.indexOf(b.slice(0, 60)) > -1);
+    line(!leaked.length && /is-wall/.test((deck || {}).className || "") && seen.length > 60,
+         "a signed-out reader on paid story 03 gets the wall, and not one sentence of it",
+         bodies.length + " card bodies looked for, " + leaked.length + " on screen; deck '" +
+         ((deck || {}).className || "(none)") + "'");
+  }
 }
 
 /* -------------------------------------------------------------------------- */

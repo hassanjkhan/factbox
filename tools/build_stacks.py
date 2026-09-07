@@ -226,8 +226,13 @@ for s in content["stacks"]:
         "free":  sid in FREE,
     })
 
-(SITE / "data").mkdir(exist_ok=True)
-p = SITE / "data" / "stacks.json"
+# content/, not data/. data/ is published by GitHub Pages, and this file is
+# every word of all 51 stories — the whole product, free, to anyone who typed
+# the URL. It is the build input now: seed-firebase.js fills Firestore from it
+# and split-stacks.js writes the public metadata from it. .gitignore keeps it
+# untracked so it cannot be deployed by accident.
+(SITE / "content").mkdir(exist_ok=True)
+p = SITE / "content" / "stacks.json"
 p.write_text(json.dumps({"stacks": out}, ensure_ascii=False, separators=(",", ":")))
 
 n_att = sum(1 for s in out if (s["cr"] or {}).get("attrib"))
@@ -258,7 +263,7 @@ print(f"share-alike missing a link : "
 _secs = sorted(x["secs"] for x in out)
 print(f"reading time               : {_secs[0]}s - {_secs[-1]}s "
       f"(median {_secs[len(_secs)//2]}s), {sum(x['words'] for x in out)} words total")
-print(f"data/stacks.json           : {p.stat().st_size//1024} KB")
+print(f"content/stacks.json        : {p.stat().st_size//1024} KB (untracked; never deployed)")
 
 # Every referenced image must exist on disk, or a card renders on a blank ground.
 have = {f.stem for f in (SITE/'img'/'stacks').glob('*.webp')}

@@ -47,14 +47,24 @@
      fetched — a whole round trip earlier on a cold webview.
 
      Nothing depends on this. No fetch, no match, a rejection: gate.js falls
-     through to asking for itself, and then to the full corpus. -->
+     through to asking for itself, and then to functions/story.js.
+
+     ONLY FOR THE STORIES THAT HAVE A FILE. data/story/<ID>.json exists for
+     the permanently free stories and for nothing else — every other story's
+     text is served by functions/story.js, to a reader it has checked. So a
+     speculative fetch for a paid id is a guaranteed 404 (and on GitHub Pages
+     a 404 arrives with a page attached) on every locked open, for nothing.
+     FB_FREE_FILE is that list; tools/check-regressions.js fails if it drifts
+     from the `free` flags in data/index.json. -->
 <script>
+window.FB_FREE_FILE = { "01": 1, "02": 1 };
 (function () {
   try {
     if (!window.fetch) return;
     var m = /[?&]s=([A-Za-z0-9_-]{1,24})(?:&|#|$)/.exec(location.search || "?s=" + (window.FB_STORY || ""));
     if (!m) return;
     var id = m[1].toUpperCase();
+    if (!window.FB_FREE_FILE[id]) return;
     var p = fetch("/data/story/" + id + ".json", { cache: "force-cache" })
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
@@ -97,7 +107,12 @@
       if (cors) l.crossOrigin = "anonymous";
       head.appendChild(l);
     }
-    pre("/data/story/" + id + ".json", "fetch", true);
+    /* Same rule as the fetch above: only the free stories have a file, so
+       only they are worth preloading. The painting is worth it either way —
+       a locked story shows its first plate behind the wall. */
+    if (window.FB_FREE_FILE && window.FB_FREE_FILE[id]) {
+      pre("/data/story/" + id + ".json", "fetch", true);
+    }
     pre("/img/cards/c" + id.toLowerCase() + "-01.webp", "image");
   } catch (e) {}
 })();
@@ -156,9 +171,9 @@
 read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></noscript>
 
 <script src="/js/drag-deck.js?v=7bc7ed89"></script>
-<script src="/js/progress.js?v=5eaa11d5"></script>
-<script src="/js/access.js?v=d02b9aff"></script>
-<script src="/js/gate.js?v=c49b9c50"></script>
+<script src="/js/progress.js?v=44e9d717"></script>
+<script src="/js/access.js?v=253a4e0f"></script>
+<script src="/js/gate.js?v=bfce3033"></script>
 <!-- The price ladder. Nothing on this page may contain a dollar figure: the
      completion screen's offer line and every number on the paywall are read
      out of FBA, which is the one place that knows what Stripe charges. Without
@@ -355,15 +370,17 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     return null;
   }
 
-  /* Both the story list and the answer to "is this reader a subscriber".
-     Deciding on the first alone is what sent a signed-in subscriber into the
-     sign-up funnel: FB.unlocked() is synchronous and Firebase is not, so the
-     paywall rendered before the account had answered, and a reader could tap
-     through it before the correction landed.
+  /* "Has the account answered yet."
 
-     Capped, so a reader whose auth never resolves still gets the page rather
-     than a spinner. Falling through to the paywall is the safe direction —
-     it offers a way in; a blank screen offers nothing. */
+     This used to be half of the decision to draw a story: FB.unlocked() is
+     synchronous and Firebase is not, so a paywall could render before the
+     account had spoken and a paying reader could tap through it. It is no
+     longer any part of that decision — the story either arrives with its
+     text or it does not, and functions/story.js is what decides which (see
+     the load below). js/gate.js does its own waiting for a token.
+
+     It stays because the end card and the sheet still want to know when the
+     account is knowable, and because one module should own that answer. */
 
   /* One module owns both the answer and when it is knowable. */
   function accessSettled() {
@@ -388,17 +405,20 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
 
      This was Promise.all([FB.load(), accessSettled()]): the entire 413KB
      corpus AND the access gate, both resolved, before a single word was
-     drawn. Both were the wrong thing to wait for.
+     drawn. Both were the wrong thing to wait for, and the first one was
+     worse than slow — that 413KB was every word of all 51 stories, sent to
+     anybody who opened this page.
 
-     The corpus: one story is 12KB. FB.loadStory() fetches only that, and
-     falls back to the monolith if the split file is not there.
+     The corpus: FB.loadStory() fetches ONE story. A permanently free one
+     comes from its own public file; every other one comes from
+     functions/story.js, which checks the reader's token before it sends a
+     card. There is no monolith to fall back to and there is not going to be.
 
-     The gate: two of the fifty-one stories are free, and they are the two
-     every new reader arrives on. Nothing about a free story depends on who
-     is asking, so a free story no longer waits for the account to answer at
-     all. A locked story still waits — drawing its text before the gate has
-     spoken is exactly the bug this wait exists to prevent, and it stays
-     prevented.
+     The gate: nothing on this page decides who may read. The request either
+     comes back with text — which is the server saying yes, to a free story,
+     to today's story, or to a subscriber's — or it comes back 401, which is
+     the paywall. Drawing a story we are holding cannot be premature, because
+     we are not holding one we should not have.
      -------------------------------------------------------------------- */
 
   function notInSeason() {
@@ -434,7 +454,13 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      season is fifty-one of them. Two is a hook and its turn — enough that
      stopping costs something, which is the whole mechanism.
 
-     Nothing here decides who may read. FBX.canRead does, above, and this is
+     WHAT THE RUN IS MADE OF NOW. The cards here are the catalogue's, not the
+     story's: headline, cover art, credit line, no body. A refused story
+     arrives with no text at all, because functions/story.js sends none — so
+     the boundary a reader can see is built from the pitch, which was always
+     public, and the story itself stays on the other side of it.
+
+     Nothing here decides who may read. functions/story.js does, and this is
      only ever called with its answer.
      -------------------------------------------------------------------- */
   var FREE_RUN = 2;
@@ -1320,16 +1346,45 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
   }
 
   /* Guarded, like every other entry point on this site: an HTML file can be
-     fresh while a cached gate.js is not, and a missing helper must cost a
-     reader a slower page, never a blank one. */
+     fresh while a cached gate.js is not. What is different now is that there
+     is nothing sensible to fall back TO. FB.load() resolves with the
+     catalogue, which carries no card text at all — a gate.js old enough to
+     lack loadStory cannot open a story on this page, and a stated problem is
+     the only honest screen for that. */
   function storyPromise() {
     if (FB.loadStory) return FB.loadStory(id);
-    var want = String(id == null ? "" : id).toUpperCase();
-    return FB.load().then(function (stacks) {
+    var stale = new Error("this page needs a newer js/gate.js");
+    stale.offline = true;
+    return Promise.reject(stale);
+  }
+
+  function cannotLoad() {
+    deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +
+      '<p>Check your connection and reload.</p>' +
+      '<a class="ghost" href="/explore">All stories</a></section>';
+  }
+
+  /* THE WALL, BUILT OUT OF THE CATALOGUE.
+
+     A refused story arrives with no text, and that is the point: the function
+     will not hand a stranger two cards of a paid story any more than it will
+     hand them ten. data/index.json still carries the pitch — the cover, the
+     title, the hook, and every card's HEADLINE — so the locked run is drawn
+     from that. Real headlines, the story's own painting, the same boundary
+     and the same sheet, and not one sentence anybody is paying for.
+
+     What this costs, said plainly: the first two cards used to arrive with
+     their body text and now arrive as headlines. That text was only ever
+     there because the whole corpus was public. */
+  function wallFromCatalogue() {
+    return FB.loadIndex().then(function (stacks) {
+      var want = String(id == null ? "" : id).toUpperCase(), meta = null;
       for (var q = 0; q < stacks.length; q++) {
-        if (String(stacks[q].id).toUpperCase() === want) return stacks[q];
+        if (String(stacks[q].id).toUpperCase() === want) meta = stacks[q];
       }
-      return null;
+      if (!meta) { notInSeason(); return; }
+      document.title = meta.title + " · Factbox";
+      showWall(meta);
     });
   }
 
@@ -1337,61 +1392,70 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
     if (!s) { notInSeason(); return; }
     document.title = s.title + " · Factbox";
 
-    /* Free is free for everyone. There is no question for the gate to answer,
-       so nothing here asks it. */
-    if (s.free) { render(s); return; }
+    /* THE TEXT IS IN HAND, AND THAT IS THE ANSWER.
 
-    /* Locked. Asked after the wait, so this is the account's answer and not a
-       guess made before it arrived. */
-    /* Locked, and "locked" is now a per-STORY question rather than a
-       per-reader one: js/access.js's canRead(id) is true when this reader has
-       access, OR the story is permanently free, OR it is today's Factbox,
-       which is free for everybody every day. FB.unlocked() only answers the
-       first of the three, so asking it alone would put a wall in front of
-       today's story. Guarded, because an older cached access.js has can()
-       and not canRead(). */
-    return accessSettled().then(function () {
-      if (window.FBX && FBX.canRead) return FBX.canRead(s.id);
-      return FB.unlocked();
-    }).then(function (ok) {
-      if (!ok) { showWall(s); return; }
-      /* They can read it — which is the answer for a reader who signed in and
-         already had a subscription. Whatever they were doing at the boundary
-         before they left, the offer is not the thing to come back to, so the
-         record of that trip is dropped here rather than left for the end card
-         to find and rebuild a wall out of. */
-      try { if (window.FBR && FBR.forgetPending) FBR.forgetPending(); } catch (e) {}
-      render(s);
+       This used to load the story and then ask the browser whether the
+       reader was allowed to see what it had already downloaded — FB.unlocked()
+       first, then FBX.canRead(id), which is true for a permanently free
+       story, for today's Factbox, or for a subscriber. Every one of those
+       answers was worked out in the browser, from the browser's own clock
+       and its own idea of the account, in front of a copy of the text it
+       already had. Moving a device clock moved which story was free.
 
-      /* THE OTHER DIRECTION, AND IT IS THE ONE THAT COSTS US MONEY.
+       Nothing that reaches here is a story this reader may not read. A
+       permanently free story came from its own public file. Anything else
+       came from functions/story.js, which verified a Firebase ID token
+       against Google's keys and read customers/{uid}.premium out of
+       Firestore, or decided from the SERVER's clock that this is today's
+       free Factbox — and sent no cards at all if neither was true. So there
+       is no question left to ask, and asking one again is how a paying
+       reader gets shown a wall.
 
-         showWall() below registers FBX.correct(false) — "I drew the wall,
-         reload if that turns out wrong" — and nothing registered the reverse,
-         so a reader whose subscription ENDED while a story was open kept the
-         whole story on screen. Stripe said cancelled, the webhook wrote
-         `premium: false`, js/auth.js's snapshot delivered it and
-         js/access.js flipped to `none` — measured, all four — and the page
-         went on rendering the text, because nothing had asked to be told.
-         Revocation reached the database and not the reader.
+       js/access.js still answers canRead() for the SHELVES, where a padlock
+       has to be drawn before anybody taps anything. That is a paint
+       decision. It is not this. */
+    render(s);
 
-         `drew` is `true` here: this render IS the unlocked view. FBX.correct
-         owns the rest, including the one-reload-per-tab guard, so this cannot
-         become the reload loop the shelf once had.
+    /* Both of these are about an ACCOUNT-level yes, not about the fact that
+       we rendered. canRead(id) is also true for a free story and for today's,
+       and a signed-out reader on one of those has drawn an unlocked page
+       while can() is false.
 
-         GUARDED ON can(), not on the fact that we rendered. canRead(id) is
-         also true for the two permanently free stories and for today's, and a
-         signed-out reader on one of those has drawn an unlocked page while
-         can() is false. Registering there would compare `true` against a
-         `false` that is not a change at all and reload a page that is
-         perfectly correct. Only an ACCOUNT-level yes is worth correcting. */
-      try {
-        if (window.FBX && FBX.correct && FBX.can && FBX.can()) FBX.correct(true);
-      } catch (e) {}
-    });
-  }).catch(function () {
-    deck.innerHTML = '<section class="pane"><h2>Could not load this story.</h2>' +
-      '<p>Check your connection and reload.</p>' +
-      '<a class="ghost" href="/explore">All stories</a></section>';
+       forgetPending: they can read it, so whatever offer they left behind at
+       a boundary is not the thing to come back to.
+
+       correct(true): THE DIRECTION THAT COSTS US MONEY. A reader whose
+       subscription ENDED mid-story used to keep the whole story on screen —
+       Stripe said cancelled, the webhook wrote premium:false, js/auth.js
+       delivered it, js/access.js flipped, and this page went on rendering,
+       because nothing had asked to be told. FBX.correct owns the reload and
+       its one-per-tab guard, so this cannot become a loop. */
+    try {
+      if (window.FBX && FBX.can && FBX.can()) {
+        try { if (window.FBR && FBR.forgetPending) FBR.forgetPending(); } catch (e) {}
+        if (FBX.correct) FBX.correct(true);
+      }
+    } catch (e) {}
+  }).catch(function (e) {
+    /* A REFUSAL AND A BROKEN CONNECTION ARE NOT THE SAME SCREEN.
+
+       401 or 403 is the server saying this reader may not have this story,
+       which is precisely the moment the paywall exists for: it names the
+       story, shows its cover and offers the way in. Rendering "check your
+       connection" there would hide the offer at the one moment it is the
+       answer. Anything else — offline, DNS, the function down, a CORS
+       failure, a 500 — is a stated problem and must never be dressed up as a
+       paywall either, or we would be asking for money to fix our own outage.
+
+       Neither branch may end in nothing on the screen. If even the catalogue
+       cannot be fetched, the wall has no cover to draw and this falls to the
+       same stated problem. */
+    if (e && e.locked) {
+      FB.track("story_locked", { stack: String(id || ""), status: e.status || 0 });
+      wallFromCatalogue()["catch"](cannotLoad);
+      return;
+    }
+    cannotLoad();
   });
 })();
 </script>

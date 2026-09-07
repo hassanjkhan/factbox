@@ -1,13 +1,24 @@
 /* ==========================================================================
    Factbox — access gate and shared helpers.
 
-   HONEST LIMITATION, stated here so nobody is surprised later: this site is
-   static files on GitHub Pages. There is no server, so there is no way to
-   actually withhold the text — data/stacks.json is fetchable by anyone who
-   opens dev tools. This gate is a product surface, not a security boundary.
-   It is the right trade for a launch test (does anyone pay at all?) and the
-   wrong one for a real subscription business. Turning it into a real gate
-   means a server that checks a Stripe customer before serving the content.
+   THAT LIMITATION IS FIXED, and the note is kept because the shape of the
+   fix is worth knowing. This used to say: the site is static files on GitHub
+   Pages, there is no server, so there is no way to actually withhold the
+   text — data/stacks.json is fetchable by anyone who opens dev tools, and
+   this gate is a product surface, not a security boundary. All of that was
+   true and it meant the entire paid season was one URL away from anybody.
+
+   There is a server now. functions/story.js serves one story per request,
+   verifies the caller's Firebase ID token and reads customers/{uid}.premium
+   out of Firestore before it hands over a card. No file under data/ carries
+   the body text of a story anyone has to pay for; tools/check-regressions.js
+   fails the build if one ever does again.
+
+   So this file is still a product surface — it decides what a reader SEES,
+   which screen, which offer — and it is no longer the only thing standing
+   between a stranger and the corpus. What it must get right is the routing
+   below: free text from a static file, everything else from the function,
+   with the token attached, and a refusal drawn as the paywall.
    ========================================================================== */
 
 var FB = (function () {
@@ -202,23 +213,53 @@ var FB = (function () {
     } catch (e) {}
   }
 
-  /* --- the corpus, in three sizes ----------------------------------------
+  /* --- the corpus, and which half of it a browser may have ---------------
 
-     data/stacks.json is every word of all 51 stories: 413KB, about 95KB
-     gzipped. Every page used to fetch the whole thing — the reader, to show
-     one story; the shelves, to draw covers that display no card text at all.
+     data/stacks.json used to be fetched right here: 413KB, every word of all
+     fifty-one stories, served by GitHub Pages to anyone who typed the URL.
+     The gate above was a product surface and this was the hole underneath it
+     — the whole paid season, free, no account, one request. That file is no
+     longer published. The corpus lives at content/stacks.json, untracked
+     (see .gitignore), as the build input for tools/seed-firebase.js and
+     tools/split-stacks.js.
 
-     tools/split-stacks.js writes two smaller shapes from it:
+     What a browser can still fetch, and why each one is safe:
 
-       data/index.json        every stack, cards reduced to { n, head }.
-                              What a shelf needs. ~21KB gzipped.
-       data/story/<ID>.json   one stack, complete. ~3KB gzipped.
+       data/index.json       every stack, with each card reduced to
+                             { n, head }. Headlines, covers, credits,
+                             durations, the cover hook: the pitch. A locked
+                             story is still sold on it, and none of it is
+                             what a subscriber is paying for.
 
-     Both fall back to the monolith. If the split files were never generated,
-     or a deploy shipped without them, or an id has no file, these resolve
-     from data/stacks.json exactly as before. A 404 must cost a reader a
-     slower page, never an empty one.
+       data/story/<ID>.json  ONE FILE PER PERMANENTLY FREE STORY, and nothing
+                             else ever gets one. 01 and 02 are the top of the
+                             funnel: free to everybody forever, wanted by
+                             signed-out readers on /firststory and the
+                             composed pages, and worth serving from a cache
+                             that works offline.
+
+     Every other story — the other forty-nine, and today's rotating free one
+     — comes from functions/story.js, one story per request, with this
+     reader's Firebase ID token on it. That function verifies the signature
+     and reads customers/{uid}.premium out of Firestore itself before any
+     card leaves the building; it also decides from the SERVER's clock which
+     story is free today. Nothing in this file can grant access and nothing
+     here tries to. It asks, and it renders whichever answer comes back:
+     a 200 is a read this reader is entitled to, a 401 or 403 is the paywall.
      ---------------------------------------------------------------------- */
+
+  /* The story endpoint. One URL, here, because js/gate.js is the only file
+     that fetches story text. The gen-2 function answers on both its Cloud Run
+     hostname and .../us-central1-factbox-7cb97.cloudfunctions.net/story;
+     this is the one functions/story.js is deployed as. */
+  var STORY_FN = "https://story-b3xuodosjq-uc.a.run.app";
+
+  /* How long to wait for Firebase to say who is holding the phone before
+     asking the function anyway. A subscriber whose token is not ready yet
+     would be told 401 and shown a wall they have paid to pass, so this wait
+     is worth having; a signed-out reader on today's free story must not be
+     made to sit behind it, so it is capped. */
+  var TOKEN_WAIT_MS = 4000;
 
   function getJSON(url) {
     return fetch(url, { cache: "force-cache" }).then(function (r) {
@@ -227,63 +268,202 @@ var FB = (function () {
     });
   }
 
-  var _cache = null;
-  function load() {
-    if (_cache) return _cache;
-    _cache = getJSON("/data/stacks.json").then(function (d) { return d.stacks; });
-    return _cache;
+  /* Two failures, told apart, because they are two different screens.
+       .locked   the server refused: the reader may not read this. Paywall.
+       .offline  we never got an answer. "Check your connection." */
+  function lockedErr(status) {
+    var e = new Error("locked");
+    e.locked = true; e.status = status;
+    return e;
+  }
+  function offlineErr(why) {
+    var e = new Error("unreachable: " + (why && why.message ? why.message : why));
+    e.offline = true;
+    return e;
   }
 
   /* Every stack, without the card bodies. Shelves want this; nothing that
-     renders card text should. */
+     renders card text should. There is no monolith to fall back to any more,
+     so a failure here is a real failure and says so — and the cached promise
+     is dropped on the way out, so the next caller retries rather than
+     inheriting one bad minute forever. */
   var _index = null;
   function loadIndex() {
     if (_index) return _index;
-    if (_cache) return _cache;          /* the full thing is already in hand */
     _index = getJSON("/data/index.json")
       .then(function (d) {
         if (!d || !d.stacks || !d.stacks.length) throw new Error("empty index");
         return d.stacks;
       })
-      .catch(function () { return load(); });
+      .catch(function (e) { _index = null; throw offlineErr(e); });
     return _index;
   }
 
-  /* One story, complete. Resolves with the stack, or with null if there is
-     no such id — which is a different answer from "the fetch failed", and
-     the reader page renders a different screen for each. */
+  /* FB.load() used to resolve with every word of the corpus. Nothing may have
+     that any more, so it resolves with the index: every stack, every cover
+     field, no card text. Its callers — join.html, js/today.js, read.html's
+     fallback — all use it to LIST stories, which the index does exactly as
+     well. It stays exported rather than deleted because a page can be fresh
+     while a cached copy of it is not, and `FB.load is not a function` on a
+     shipped page is a blank screen. */
+  function load() { return loadIndex(); }
+
+  function findStack(stacks, want) {
+    for (var i = 0; i < stacks.length; i++) {
+      if (String(stacks[i].id).toUpperCase() === want) return stacks[i];
+    }
+    return null;
+  }
+
+  /* An ID token if there is one going, "" if there is not.
+
+     Waits for Firebase to settle first. js/auth.js publishes FBU.ready(),
+     which resolves once the SDK knows whether anybody is signed in; asking
+     for a token before that resolves gets null from a subscriber and earns
+     them a 401 on a story they pay for. Capped at TOKEN_WAIT_MS so a reader
+     whose auth never answers still gets today's free story. */
+  function withToken(cb) {
+    var done = false, timer = null;
+    function go(t) {
+      if (done) return;
+      done = true;
+      try { if (timer) clearTimeout(timer); } catch (e) {}
+      cb(t || "");
+    }
+    var U = null;
+    try { U = window.FBU; } catch (e) {}
+    if (!U || typeof U.user !== "function") { go(""); return; }
+    try { timer = setTimeout(function () { go(""); }, TOKEN_WAIT_MS); } catch (e) {}
+
+    function ask() {
+      var u = null;
+      try { u = U.user(); } catch (e) {}
+      if (!u || typeof u.getIdToken !== "function") { go(""); return; }
+      try {
+        u.getIdToken().then(function (t) { go(String(t || "")); },
+                            function () { go(""); });
+      } catch (e) { go(""); }
+    }
+
+    try {
+      if (typeof U.ready === "function") { U.ready().then(ask, ask); return; }
+      if (typeof U.onReady === "function") { U.onReady(ask); return; }
+    } catch (e) {}
+    ask();
+  }
+
+  /* One story, from the function that is allowed to decide.
+
+     Resolves with the stack, resolves with null if there is no such story,
+     rejects .locked on a refusal and .offline on anything else. The token is
+     attached when there is one and left off when there is not — an anonymous
+     request is a legitimate read of a free story, and today's free story
+     comes back 200 to nobody in particular. */
+  function fromFunction(want) {
+    return new Promise(function (resolve, reject) {
+      withToken(function (tok) {
+        var opts = { method: "GET", cache: "no-store" };
+        if (tok) opts.headers = { Authorization: "Bearer " + tok };
+        fetch(STORY_FN + "?id=" + encodeURIComponent(want), opts)
+          .then(function (r) {
+            if (r.status === 401 || r.status === 403) {
+              reject(lockedErr(r.status));
+              return null;
+            }
+            if (r.status === 404) { resolve(null); return null; }
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.json().then(function (d) {
+              /* The function answers { ok, id, access, story }. The static
+                 files answer { stack }. Accept either, so neither shape is
+                 something the caller has to know about. */
+              var st = d && (d.story || d.stack);
+              if (!st || !st.cards || !st.cards.length) {
+                throw new Error("empty story");
+              }
+              resolve(st);
+              return null;
+            });
+          })
+          .catch(function (e) {
+            /* A rejection that has already happened is a no-op here; this is
+               for the ones that have not. */
+            reject(e && (e.locked || e.offline) ? e : offlineErr(e));
+          });
+      });
+    });
+  }
+
+  function fromStatic(want) {
+    return getJSON("/data/story/" + want + ".json").then(function (d) {
+      var st = d && d.stack;
+      if (!st || !st.cards || !st.cards.length) throw new Error("empty story");
+      return st;
+    });
+  }
+
+  /* One story, complete — for a reader who is allowed to have it.
+
+     ROUTING, and it is the whole point of this file now:
+
+       permanently free (`free: true` in data/index.json) -> the static file.
+         Fast, cacheable, offline, and what /firststory and the composed
+         pages serve. Its existence IS the free flag: tools/split-stacks.js
+         writes a file for no other kind of story.
+
+       anything else -> functions/story.js, with the token.
+
+     Today's rotating free story is deliberately NOT decided here. js/access.js
+     carries a note about the last time this arithmetic was done in a browser:
+     the reader's own clock picked the free story, so moving the clock moved
+     which story was free. The function works it out from the server's clock
+     and hands the text over — or does not. A 200 to an anonymous caller IS
+     the free read; a 401 is the wall.
+
+     Resolves with the stack, or null for an id that is not in the season —
+     which is a different answer from "the fetch failed", and the reader page
+     renders a different screen for each. */
   function loadStory(id) {
     var want = String(id == null ? "" : id).toUpperCase();
-    function fromAll() {
-      return load().then(function (stacks) {
-        for (var i = 0; i < stacks.length; i++) {
-          if (String(stacks[i].id).toUpperCase() === want) return stacks[i];
-        }
-        return null;
-      });
-    }
-    /* The id becomes a path segment, so only the characters ids actually use
-       may reach the URL. Anything else never gets fetched. */
-    if (!want || !/^[A-Z0-9_-]{1,24}$/.test(want)) return fromAll();
-    if (_cache) return fromAll();       /* already paid for the monolith */
+    /* The id becomes a path segment and a query value, so only the characters
+       ids actually use may reach either. Anything else is not a story. */
+    if (!want || !/^[A-Z0-9_-]{1,24}$/.test(want)) return Promise.resolve(null);
 
-    /* read.html issues this exact request from its <head>, before this file
-       has been fetched. Adopting that promise is a round trip earlier on a
-       cold webview, and it is the same request rather than a second one. */
+    /* read.html issues the free-story request from its <head>, before this
+       file has been fetched. Adopting that promise is a round trip earlier on
+       a cold webview, and it is the same request rather than a second one.
+       It is only ever issued for a story that has a file, so a resolved one
+       is proof of a permanently free story and needs no index lookup. */
     var pre = null;
     try {
       if (window.FB_STORY_PRE && window.FB_STORY_PRE.id === want
           && window.FB_STORY_PRE.p) pre = window.FB_STORY_PRE.p;
     } catch (e) {}
+    if (pre) {
+      return pre.then(function (d) {
+        var st = d && d.stack;
+        if (!st || !st.cards || !st.cards.length) throw new Error("empty story");
+        return st;
+      }).catch(function () { return route(want); });
+    }
+    return route(want);
+  }
 
-    return (pre || getJSON("/data/story/" + want + ".json"))
-      .then(function (d) {
-        if (!d || !d.stack || !d.stack.cards || !d.stack.cards.length) {
-          throw new Error("empty story");
-        }
-        return d.stack;
-      })
-      .catch(fromAll);
+  function route(want) {
+    return loadIndex().then(function (stacks) {
+      var meta = findStack(stacks, want);
+      if (!meta) return null;                       /* not in this season */
+      /* `=== true`, never truthy: this test decides whether a request for
+         text goes to a public file or to the thing that checks the reader. */
+      if (meta.free === true) {
+        return fromStatic(want).catch(function () { return fromFunction(want); });
+      }
+      return fromFunction(want);
+    }, function () {
+      /* The index did not arrive. The function is the authority on access
+         anyway, so ask it rather than giving up: a free story still opens and
+         a paid one still gets its 401. */
+      return fromFunction(want);
+    });
   }
 
   function esc(s) {

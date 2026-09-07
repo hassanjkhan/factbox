@@ -7,7 +7,8 @@ public-domain plates are a courtesy list, the other thirteen are an obligation.
 import json, pathlib, sys, html
 
 SITE = pathlib.Path(sys.argv[1])
-stacks = json.load(open(SITE/"data"/"stacks.json"))["stacks"]
+# The corpus is the untracked build input at content/, not a published file.
+stacks = json.load(open(SITE/"content"/"stacks.json"))["stacks"]
 
 plates = []
 for s in stacks:

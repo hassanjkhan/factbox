@@ -276,7 +276,7 @@ async function main() {
   /* ----------------------------------------------------------------- 10 */
   console.log("\n8  the corpus is complete");
   {
-    const src = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "stacks.json"), "utf8")).stacks;
+    const src = JSON.parse(fs.readFileSync(path.join(ROOT, "content", "stacks.json"), "utf8")).stacks;
     let docs = [], pageToken = "";
     for (;;) {
       const r = await req(

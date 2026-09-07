@@ -6,7 +6,25 @@ http.server does not do it at all. Testing a redirect to a clean URL against a
 plain static server measures the server, not the site.
 """
 import http.server, functools, os, sys
+# What Pages CANNOT serve, and neither may this.
+#
+# GitHub Pages publishes tracked files. content/stacks.json — every word of all
+# 51 stories — is deliberately untracked, so it does not exist in production at
+# any URL. A plain static server pointed at a working tree does not know that:
+# it would hand the whole corpus to anyone testing against localhost, and a
+# scrape test run here would come back green about a file that is only absent
+# by accident of `git status`. Serving the site "the way GitHub Pages does"
+# means refusing it.
+PRIVATE = ("/content/", "/.git/", "/functions/node_modules/")
+
 class H(http.server.SimpleHTTPRequestHandler):
+    def send_head(self):
+        p = self.path.split("?", 1)[0].split("#", 1)[0]
+        if any(p.startswith(x) for x in PRIVATE):
+            self.send_error(404, "Not Found")
+            return None
+        return super().send_head()
+
     def translate_path(self, path):
         # Strip the query and fragment before resolving. SimpleHTTPRequestHandler
         # already does this for a path that exists, but the /foo -> foo.html

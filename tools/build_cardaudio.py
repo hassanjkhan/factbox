@@ -365,7 +365,9 @@ R["50"] = [
 # --------------------------------------------------------------------------
 # Build + verify
 # --------------------------------------------------------------------------
-stacks = json.load(open(os.path.join(ROOT, "data/stacks.json")))["stacks"]
+# content/stacks.json: the corpus is the untracked build input, not a
+# published file. See .gitignore.
+stacks = json.load(open(os.path.join(ROOT, "content/stacks.json")))["stacks"]
 by_id = dict((s["id"], s) for s in stacks)
 
 TOPIC_BED = {

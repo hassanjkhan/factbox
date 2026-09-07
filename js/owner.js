@@ -9,14 +9,18 @@
    in seconds — by brute-forcing a guessable passphrase, or simply by setting
    the unlock flag in localStorage by hand.
 
-   That costs us nothing *today*, because there is nothing to protect: the full
-   text of all 51 stories already sits in data/stacks.json, which any visitor
-   can fetch. This exists so the owner can get past their own paywall on a new
-   phone without paying, and so a demo does not require a Stripe checkout.
+   That used to cost nothing, because there was nothing to protect: the full
+   text of all 51 stories sat in data/stacks.json, which any visitor could
+   fetch. It is not free any more. Paid text lives in Firestore and comes out
+   through functions/story.js, which verifies a Firebase ID token and reads
+   customers/{uid}.premium before it sends a card.
 
-   The day the content actually needs protecting, the answer is a server that
-   checks a session before serving the text. See SPEC.md §9 and the backend
-   section of the launch notes.
+   So this unlocks the PRODUCT SURFACE and nothing else: the padlocks come
+   off the covers, the walls stop being drawn, and every request for a paid
+   story is still refused by the server unless the account behind it is
+   paying. The owner's own account is a paying one. This exists so a demo does
+   not require a Stripe checkout, not so anybody can read for free — and the
+   flag it sets can no longer produce a single sentence of text.
 
    TO CHANGE THE PASSPHRASE
      python3 -c "import hashlib;print(hashlib.sha256(b'your-new-phrase').hexdigest())"

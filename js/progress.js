@@ -8,11 +8,14 @@
 
    HONEST LIMITATIONS, kept next to the code so they cannot drift:
 
-   1. This is still not a security boundary. gate.js says it and it is still
-      true: data/stacks.json is a public file. Anyone who opens dev tools can
-      read all fifty-one stories without paying, and nothing here changes
-      that. What this file buys is that a person who DID pay is not asked to
-      pay twice.
+   1. This is still not a security boundary — but it is no longer the only
+      thing standing in the way. It used to be: data/stacks.json was a public
+      file and anyone who opened dev tools could read all fifty-one stories
+      without paying. That file is gone. Paid text comes from
+      functions/story.js, which checks the reader's token and the premium
+      flag in Firestore, so the flags in this file decide what a page DRAWS
+      and never whether text exists to draw. What this file buys is that a
+      person who DID pay is not asked to pay twice.
 
    2. The restore link is a bearer token. There is no server, so there is
       nothing to check a token against — possession is the whole proof.

@@ -2,9 +2,13 @@
 /* ==========================================================================
    Factbox — push the story corpus and the audio beds into Firebase.
 
-   `data/stacks.json` and `data/audio.json` stay the source of truth (SPEC.md
-   §5). Firestore and Storage are a serving copy, and this is the thing that
-   makes the copy match. It is a sync, not an import: run it as often as you
+   `content/stacks.json` and `data/audio.json` stay the source of truth
+   (SPEC.md §5). Firestore and Storage are a serving copy, and this is the
+   thing that makes the copy match. The corpus moved out of `data/` because
+   `data/` is published: every word of all 51 stories was one URL away from
+   anybody. It is untracked now (see .gitignore) and rebuilt by
+   tools/build_stacks.py; Firestore is where paid text is READ from, and
+   functions/story.js is the only thing that hands it out. It is a sync, not an import: run it as often as you
    like, and a run in which nothing has changed writes nothing at all.
 
    ---------------------------------------------------------------------------
@@ -374,7 +378,7 @@ async function commit(writes) {
 
 async function main() {
   const stacks = JSON.parse(
-    fs.readFileSync(path.join(ROOT, "data", "stacks.json"), "utf8")
+    fs.readFileSync(path.join(ROOT, "content", "stacks.json"), "utf8")
   ).stacks;
   const audio = JSON.parse(
     fs.readFileSync(path.join(ROOT, "data", "audio.json"), "utf8")
