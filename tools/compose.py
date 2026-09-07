@@ -17,7 +17,7 @@ Two jobs, and they used to be one.
                                <body> wrapper, painting inlined, because a
                                relative path has nothing to resolve against.
 """
-import base64, pathlib, re, sys
+import base64, importlib.util, pathlib, re, sys
 
 # The site serves clean URLs (/explore, not /explore.html), which means every
 # asset path has to be root-relative — a relative one resolves differently from
@@ -29,6 +29,26 @@ from cleanurls import rootify, cleanlinks
 HERE = pathlib.Path(__file__).parent      # tools/
 SITE = HERE.parent                        # the repo root: the site itself
 S    = SITE / "scenes"                    # the flagship story's source
+
+# The cache-busting stamp, IMPORTED rather than reimplemented.
+#
+# These three pages cannot be stamped by a pass that runs after this build.
+# precommit.sh section 4 md5s story.html, re-runs this file, and refuses the
+# commit if the hash moved; a separate stamping pass afterwards would mean the
+# committed file never matches what compose produces, and that gate would fail
+# forever. So compose owns the stamps on the three files it writes, and does it
+# as its last step, which keeps this build deterministic: same read.html, same
+# assets on disk, byte-identical output.
+#
+# tools/stamp-assets.py has a hyphen in its name because it is a command
+# first, so it cannot be imported by name. Loading it by path is still far
+# better than a second copy of the hashing rule: two copies drift, and the
+# drift would show up as three pages caching differently from the other
+# seventeen, which is precisely the bug this is all for.
+_spec = importlib.util.spec_from_file_location("stamp_assets",
+                                               HERE / "stamp-assets.py")
+stamp_assets = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(stamp_assets)
 
 shell_html = (S / "shell.html").read_text()
 SCENE_FILES = [f for f in ("a", "b", "c", "d", "e") if (S / f"{f}.css").exists()]
@@ -144,7 +164,12 @@ for _name, _canon in (("cleopatra.html", "/cleopatra"), ("firststory.html", "/fi
 # Everything else about the reader — the paywall, the gate, the audio rail,
 # progress, recommendations — is read.html's, unmodified and unforked.
 # ==========================================================================
-READER = (SITE / "read.html").read_text()
+# read.html is served too, so it carries asset stamps of its own. They are
+# stripped on this copy and re-applied at the bottom, once, on each finished
+# page: the gates below search for the bare `src="/js/gate.js"`, and the
+# output must not depend on whether read.html happened to be stamped when
+# this ran. read.html itself is not written by this build.
+READER = stamp_assets.unstamp_text((SITE / "read.html").read_text())
 STORY_ID = "01"
 
 TITLE = "How did Cleopatra die? — Factbox"
@@ -399,7 +424,10 @@ for _name, _canon, _asks in (("story.html", "/story", False),
     _p = _p.replace("</body>", _ASK.strip("\n") + "\n</body>", 1)
     _p = cleanlinks(rootify(_p))
     check_ids(_p, _name)
-    (SITE / _name).write_text(_p)
+    # Not written yet. The gates below read these strings as they were
+    # written — bare, unstamped — and the file is written once, stamped, at
+    # the bottom. One write per page, and nothing on disk in between that a
+    # crash could leave half-composed.
     _written.append((_name, _p, _asks))
 
 # The one rule: never ship a page that renders empty. This is the cheap half —
@@ -442,6 +470,23 @@ for _name, _p, _asks in _written:
     if 'content="noindex"' in _p:
         raise SystemExit(f"BUILD FAILED — {_name} still says noindex; it is a "
                          "page people are sent to.")
+
+# --------------------------------------------------------------------------
+# Last step: stamp the asset URLs, then write.
+#
+# It has to be last. Everything above searches these pages for literal script
+# tags, and a stamp in the middle of one is how a gate stops seeing what it is
+# guarding. It also has to be HERE and not in a later pass — see the note on
+# the import at the top: a pass that ran after compose would put this build
+# permanently at odds with precommit.sh section 4.
+# --------------------------------------------------------------------------
+_stamp_warn = []
+for _name, _p, _asks in _written:
+    _out, _w = stamp_assets.stamp_text(_p, SITE)
+    _stamp_warn += [f"{_name}: {u}" for u in _w]
+    (SITE / _name).write_text(_out)
+for _line in sorted(set(_stamp_warn)):
+    print(f"WARNING asset not on disk, left unstamped: {_line}")
 
 print(f"id lookups verified            : {', '.join(looked_up)}")
 print(f"painting placeholders replaced : {n_plate}")

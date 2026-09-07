@@ -810,7 +810,38 @@ var FBOB = (function () {
 
   function getDraw()    { var A = fba(); try { return A ? A.draw() : ""; } catch (e) { return ""; } }
   function getRelates() { var A = fba(); try { return A ? A.relates() : []; } catch (e) { return []; } }
-  function getGenres()  { var A = fba(); try { return A ? A.interests() : []; } catch (e) { return []; } }
+  /* Only keys FBFIT actually knows.
+
+     FBA.interests() is a general-purpose field: it predates this funnel and
+     has been written with stacks.json TOPIC keys ("cleopatra", "disaster") by
+     older code and by anyone whose browser still carries a record from then.
+     FBFIT.labelOf() returns its argument unchanged when it does not recognise
+     it, so those went to the screen raw — the loader told the owner it was
+     prioritising "cleopatra" and "disaster", in lower case, next to two
+     properly-titled genres.
+
+     Filtering here rather than at the label means every consumer of this —
+     the loader rows, the ranking, the results note — sees the same clean set,
+     and a stale record degrades to fewer genres rather than to nonsense. */
+  function knownGenre(k) {
+    var F = fbfit(), i, list;
+    try {
+      list = F && F.GENRES;
+      if (!list || !list.length) return true;   /* no map loaded: do not filter */
+      for (i = 0; i < list.length; i++) if (list[i].key === k) return true;
+    } catch (e) { return true; }
+    return false;
+  }
+
+  function getGenres() {
+    var A = fba(), raw, out = [], i;
+    try { raw = A ? A.interests() : []; } catch (e) { raw = []; }
+    if (!raw || !raw.length) return [];
+    for (i = 0; i < raw.length; i++) {
+      if (knownGenre(raw[i])) out.push(raw[i]);
+    }
+    return out;
+  }
   function getGoal()    { var A = fba(); try { return A ? A.goal() : 0; } catch (e) { return 0; } }
   function getStreak()  { var A = fba(); try { return A ? A.streak() : 0; } catch (e) { return 0; } }
   function getPlans()   { var A = fba(); try { return A ? A.planAnswers() : []; } catch (e) { return []; } }
@@ -847,6 +878,25 @@ var FBOB = (function () {
      The events.
      ====================================================================== */
 
+  /* WHICH BUILD THIS SCREEN WAS DRAWN BY.
+
+     js/analytics.js's RELEASE constant, read through FBQ rather than copied,
+     because a second literal is a release id that is right until somebody
+     bumps one of them. Returns "" when analytics never loaded or the reader
+     opted out — in which case nothing is being sent anyway.
+
+     `release` is NOT a new property name. analytics.js has put it on
+     client_error since before this file existed, so GA4 has it registered
+     already and this costs none of the twenty-two remaining registrations.
+     It is here, and on no other ob_ event, because it is a fact about the
+     RUN and every event of a run has an ob_step in front of it. */
+  function rel() {
+    try {
+      var r = window.FBQ && FBQ.RELEASE;
+      return typeof r === "string" ? r : "";
+    } catch (e) { return ""; }
+  }
+
   function emitStep(sc) {
     track("ob_step", {
       page:  page,
@@ -855,7 +905,8 @@ var FBOB = (function () {
       n:     sc.n,
       run:   run,
       state: firstStep ? runState : "fresh",
-      from:  from
+      from:  from,
+      release: rel()
     });
     firstStep = false;
     seen[sc.id] = 1;
@@ -1861,7 +1912,11 @@ var FBOB = (function () {
   }
 
   function startLoader() {
-    var ms = typeof opts.tickMs === "number" ? opts.tickMs : 320;
+    /* 320ms read as a flicker — the bar was through its 7% steps before the
+       eye had settled on the genre it had just lit, which made the one screen
+       that is supposed to feel like work look like a glitch. 480 gives the
+       same fifteen steps about seven seconds, and each tick pop its own beat. */
+    var ms = typeof opts.tickMs === "number" ? opts.tickMs : 480;
     loadCycle = 0;
     loadIds = null;
     try {

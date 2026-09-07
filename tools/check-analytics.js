@@ -71,7 +71,13 @@ const CHECKS = [
       /* The TAG, not a mention of it. start.html names the file in a comment
          explaining why it is loaded, and a looser test passed on the comment
          alone while the tag was gone. */
-      const tag = /<script\b[^>]*\bsrc\s*=\s*["']\/js\/analytics\.js["']/;
+      /* The optional ?v= is tools/stamp-assets.py's content hash. The URL is
+         the only cache key GitHub Pages gives us, so every local script tag
+         now carries one, and a pattern that insisted on the bare path would
+         have reported the tag missing from every page in the site. It stays
+         optional rather than required: an unstamped tag still loads the file,
+         so it is not this guard's business to fail one. */
+      const tag = /<script\b[^>]*\bsrc\s*=\s*["']\/js\/analytics\.js(\?v=[0-9a-f]+)?["']/;
       const missing = PAGES.filter(f => !tag.test(read(f)));
       return missing.length ? "missing on " + missing.join(", ") : true;
     },
@@ -419,6 +425,81 @@ const CHECKS = [
       if (!/^\d{4}-\d{2}-\d{2}[a-z]?$/.test(m[1]))
         return "RELEASE is \"" + m[1] + "\"; it must be yyyy-mm-dd with an optional letter, so two deploys on one day are two releases";
       if (!/release: RELEASE/.test(s)) return "RELEASE is declared but not sent on client_error";
+      return true;
+    },
+  },
+  {
+    name: "the quiz funnel's screen list is the same list in both files",
+    why: "js/onboard.js declares SCREENS and functions/insights.js declares " +
+         "OB_STEPS, and the funnel's order, kind and declared position come " +
+         "from the second while the events come from the first. A step " +
+         "nobody reached returns NO ROW from PostHog, so the dashboard " +
+         "zero-fills from OB_STEPS — which means a screen inserted into the " +
+         "engine and not into OB_STEPS is a screen that never appears, and a " +
+         "screen inserted in the MIDDLE relabels every row below it with the " +
+         "name of the screen above. That already happened once: q_genres was " +
+         "added at position 6 after ONBOARDING-ANALYTICS.md was written, and " +
+         "everything from q_time down moved. Neither file fails loudly on " +
+         "its own; the funnel just quietly answers about the wrong screens.",
+    pass: () => {
+      const eng = read("js/onboard.js");
+      const api = read("functions/insights.js");
+
+      const engBlock = eng.match(/var SCREENS = \[([\s\S]*?)\n  \];/);
+      if (!engBlock) return "js/onboard.js has no `var SCREENS = [ ... ];` block";
+      const apiBlock = api.match(/const OB_STEPS = \[([\s\S]*?)\n\];/);
+      if (!apiBlock) return "functions/insights.js has no `const OB_STEPS = [ ... ];` block";
+
+      const engRe = /\{\s*id:\s*"([a-z0-9_]+)"\s*,\s*kind:\s*"([a-z0-9_]+)"\s*,\s*n:\s*(\d+)\s*\}/g;
+      const apiRe = /\[\s*"([a-z0-9_]+)"\s*,\s*"([a-z0-9_]+)"\s*,\s*(\d+)\s*,/g;
+      const grab = (re, src) => {
+        const out = [];
+        let m;
+        while ((m = re.exec(src))) out.push(m[1] + "/" + m[2] + "/" + m[3]);
+        return out;
+      };
+      const a = grab(engRe, engBlock[1]);
+      const b = grab(apiRe, apiBlock[1]);
+
+      if (!a.length) return "no screens parsed out of js/onboard.js SCREENS";
+      if (a.length !== b.length)
+        return "js/onboard.js declares " + a.length + " screens and " +
+               "functions/insights.js declares " + b.length;
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i])
+          return "position " + (i + 1) + ": js/onboard.js says " + a[i] +
+                 ", functions/insights.js says " + b[i];
+      }
+      /* The declared position is the thing the funnel sorts and labels by, so
+         an n that is not its own index is a list that will mislabel itself
+         however well the two files agree. */
+      for (let i = 0; i < a.length; i++) {
+        if (a[i].split("/")[2] !== String(i + 1))
+          return "screen " + a[i].split("/")[0] + " is at position " + (i + 1) +
+                 " but declares n=" + a[i].split("/")[2];
+      }
+      return true;
+    },
+  },
+  {
+    name: "the build marker on ob_step is read, not copied",
+    why: "The quiz funnel is sliced by `release` so a reverted onboarding is " +
+         "visible as two groups of runs rather than as a step change nobody " +
+         "can date. A second RELEASE literal in js/onboard.js would be right " +
+         "until the day somebody bumped one of the two, and a build marker " +
+         "that lies is worse than none: the dashboard would report the old " +
+         "build's runs under the new build's name. So analytics.js exports " +
+         "it and onboard.js reads it.",
+    pass: () => {
+      const a = read("js/analytics.js"), o = read("js/onboard.js");
+      if (!/RELEASE: RELEASE/.test(a))
+        return "js/analytics.js no longer exports RELEASE on window.FBQ";
+      if (!/FBQ\.RELEASE/.test(o))
+        return "js/onboard.js does not read FBQ.RELEASE";
+      if (/var RELEASE\s*=/.test(o))
+        return "js/onboard.js has its own RELEASE literal — it must read analytics.js's";
+      if (!/release:\s*rel\(\)/.test(o))
+        return "ob_step no longer carries `release`";
       return true;
     },
   },

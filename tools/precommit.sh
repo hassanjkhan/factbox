@@ -66,6 +66,34 @@ if [ "$before" != "$after" ]; then
   FAIL=1
 else grn "  story/cleopatra/firststory match read.html"; fi
 
+head_ "5 · every asset URL carries its file's content hash"
+# This section exists because of an hour spent on a deploy that HAD shipped.
+# The funnel was live, incognito showed it, the owner's normal Chrome profile
+# ran the previous scripts out of its cache and he reported "not shipped"
+# three times. GitHub Pages sends max-age=600 and nothing in the repo moved
+# the URL, so a returning browser had no reason to fetch anything again.
+#
+# The stamp is only worth having if it cannot be forgotten, and the moment it
+# is forgotten is not when a page is edited — it is when a JS file is edited
+# and the pages that load it are not touched at all. So this checks EVERY
+# shipped page against the assets on disk, not just the ones in the staged
+# list, which is why a commit that only changes js/ can fail here.
+#
+# It refuses; it does not restamp. Rewriting seventeen files underneath a
+# committer who typed `git commit` is how content nobody reviewed gets into a
+# commit — the same reasoning as section 1. Section 4 has already re-run
+# compose, so story/cleopatra/firststory are current by the time we get here;
+# these are the other seventeen.
+if out=$(python3 tools/stamp-assets.py --check 2>&1); then
+  grn "  $(echo "$out" | tail -1)"
+else
+  echo "$out" | sed 's/^/  /'
+  red "  Out-of-date asset URLs. Browsers will keep serving the old files."
+  red "  Fix with:  python3 tools/stamp-assets.py && python3 tools/compose.py"
+  red "  then stage the pages it rewrote."
+  FAIL=1
+fi
+
 echo
 if [ "$FAIL" = "0" ]; then grn "ready to commit"; else red "NOT ready — fix the above"; fi
 exit $FAIL

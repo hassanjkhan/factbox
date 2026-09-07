@@ -26,9 +26,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/css/app.css">
-<link rel="stylesheet" href="/css/account.css">
-<link rel="stylesheet" href="/css/join.css">
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<link rel="stylesheet" href="/css/account.css?v=34033720">
+<link rel="stylesheet" href="/css/join.css?v=497eef97">
 
 </head>
 <body>
@@ -327,20 +327,20 @@
   </p>
 </main>
 
-<script src="/js/progress.js"></script>
-<script src="/js/access.js"></script>
-<script src="/js/gate.js"></script>
-<script src="/js/account.js"></script>
+<script src="/js/progress.js?v=5eaa11d5"></script>
+<script src="/js/access.js?v=d02b9aff"></script>
+<script src="/js/gate.js?v=c49b9c50"></script>
+<script src="/js/account.js?v=381c71cc"></script>
 <!-- The live founding-member count. One unauthenticated XHR against the world
      readable meta/founding document the Stripe webhook maintains; it blocks
      nothing, and when it cannot be read the plan screen simply shows the price
      with no founding line at all. See the header of js/founding.js. -->
-<script src="/js/founding.js"></script>
+<script src="/js/founding.js?v=8c57ef6e"></script>
 <!-- The onboarding answers reach customers/{uid}/profile/onboarding through
      this file. /join did not load it before, because /join was not where the
      questions were asked; it is now, so it loads it. Every write it makes is
      debounced, guarded and a no-op when signed out or denied. -->
-<script src="/js/profile-sync.js"></script>
+<script src="/js/profile-sync.js?v=32cb826a"></script>
 <script>
 /* ==========================================================================
    join.html — the iOS onboarding, ported to the web.
@@ -1442,9 +1442,9 @@
      document is parsed and BEFORE DOMContentLoaded, whatever position this tag
      is in. The ES5 block below therefore cannot read window.FBU at the moment
      it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
-<script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/auth.js?v=35b20584"></script>
 
-<script src="/js/analytics.js"></script>
-<script src="/js/acct.js"></script>
+<script src="/js/analytics.js?v=a72ffef9"></script>
+<script src="/js/acct.js?v=9427c787"></script>
 </body>
 </html>

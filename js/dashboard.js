@@ -494,7 +494,25 @@
     longest_dwell_s: "Longest single view",
     cards: "Cards", first_seen: "First seen",
     at: "When", event: "Event", detail: "What happened",
-    gap_s: "Since the one before"
+    gap_s: "Since the one before",
+    /* The opening questions. `order` and `n` are declared positions in the
+       flow and not counts, which is the whole reason two readers who branch
+       differently still compare, so they are named for that. */
+    order: "In the flow", never_fired: "Instrumented",
+    forwards: "Continued", backs: "Went back", skips: "Skipped",
+    exits: "Left the flow", unaccounted: "Left without us seeing how",
+    dwell_s_capped: "Capped time on screen",
+    q: "Question", answer: "Answer chosen", answers: "Answers",
+    accounts: "Signed in after", stripe: "Sent to Stripe",
+    finished_pct: "Finished the questions",
+    subscribed_pct: "Subscribed after",
+    bucket: "How the run ended", runs: "Runs",
+    median_screens: "Screens seen", median_furthest_n: "Got as far as",
+    median_total_s: "Time in the flow",
+    release: "Build", first_day: "First seen", last_day: "Last seen",
+    cohort: "Group", reached_paywall: "Reached the paywall",
+    signed_any: "Signed in", subscribed: "Subscribed",
+    returned_later: "Came back later"
   };
 
   function labelOf(key, over) {
@@ -983,8 +1001,25 @@
      what share of the first step that is; between rows, in the stop colour,
      how many were lost on the way. The fall-out is the point of the chart, so
      it is written rather than implied by two bar lengths. */
-  function funnelSVG(w, steps, title) {
+  /* `showPct` is the fourth argument and it defaults to true, so the three
+     callers written before it are unchanged. It exists because the opening
+     questions panel may be drawing a funnel of seven people: a bar labelled
+     "3 · 42.9%" reads as a rate, and a rate over seven is a sentence about
+     seven people wearing a statistic's clothes. The SERVER decides — the
+     panel passes meta.pct_usable straight through and does not form its own
+     opinion — and when it is false the bars still draw, because a proportion
+     of seven is an honest picture of seven, but nothing is labelled with a
+     percentage and the drop line between two rows loses its percentage
+     clause too.
+
+     A step may also carry `right`, a string printed instead of the count and
+     percentage — which is how a screen that has NEVER fired says so rather
+     than showing a zero it never measured — and `blank`, which suppresses
+     the drop line on both sides of it, because "100% lost here" between a
+     real step and an unmeasured one is a fabricated finding. */
+  function funnelSVG(w, steps, title, showPct) {
     if (!steps.length) return "";
+    var pctOn = showPct !== false;
     var rowH = 44, dropH = 22, top = 10, i;
     var labW = Math.max(140, Math.min(330, Math.round(w * 0.30)));
     var x0 = labW + 12, valW = 172;
@@ -1008,8 +1043,11 @@
            "\" height=\"" + (bh - 1) + "\" rx=\"3.5\"></rect>";
       s += "<text class=\"dsh-t\" x=\"0\" y=\"" + (by + 16) + "\">" +
            esc(clipTo(steps[i].label, labW)) + "</text>";
+      var right = typeof steps[i].right === "string" && steps[i].right
+                  ? steps[i].right
+                  : (fmtInt(v) + (pctOn ? " · " + (Math.round(frac * 1000) / 10) + "%" : ""));
       s += "<text class=\"dsh-t\" x=\"" + (x0 + barW + 8) + "\" y=\"" + (by + 16) + "\">" +
-           esc(fmtInt(v) + " · " + (Math.round(frac * 1000) / 10) + "%") + "</text>";
+           esc(right) + "</text>";
 
       y += rowH;
 
@@ -1017,13 +1055,19 @@
         var next = steps[i + 1].value || 0;
         var lost = v - next;
         var lp = v > 0 ? lost / v : 0;
-        s += "<text class=\"dsh-t-drop\" x=\"" + x0 + "\" y=\"" + (y + 12) + "\">" +
-             esc(lost > 0
-                 ? ("↓ " + fmtInt(lost) + " lost here — " + (Math.round(lp * 1000) / 10) +
-                    "% of the step above")
-                 : (lost < 0 ? "↑ " + fmtInt(-lost) + " more than the step above"
-                             : "↓ nobody lost here")) +
-             "</text>";
+        /* Neither side may be a step that was never measured: the difference
+           between a number and an absence is not a loss. */
+        var quiet = steps[i].blank === true || steps[i + 1].blank === true;
+        var dropSay = quiet ? ""
+          : (lost > 0
+             ? ("↓ " + fmtInt(lost) + " lost here" +
+                (pctOn ? " — " + (Math.round(lp * 1000) / 10) + "% of the step above" : ""))
+             : (lost < 0 ? "↑ " + fmtInt(-lost) + " more than the step above"
+                         : "↓ nobody lost here"));
+        if (dropSay) {
+          s += "<text class=\"dsh-t-drop\" x=\"" + x0 + "\" y=\"" + (y + 12) + "\">" +
+               esc(dropSay) + "</text>";
+        }
         y += dropH;
       }
     }
@@ -1635,6 +1679,622 @@
       show("dsh-ob-box");
       stateOf("dsh-ob-state", metaSay(res, "steps"), false);
     });
+  }
+
+  /* ==========================================================================
+     6b · The opening questions — onboarding_steps, onboarding_conversion,
+          onboarding_answers, onboarding_runs
+
+     THE PANEL ABOVE IS A DIFFERENT FLOW. `onboarding_funnel` is /join's five
+     panes and it keeps its name and its section; this is the thirteen-screen
+     quiz js/onboard.js renders. Two journeys, two step lists, two panels, and
+     the two must never be folded together — a step id from one measured
+     against a denominator from the other is a number that looks fine.
+
+     FOUR REQUESTS, FIVE UPSTREAM QUERIES. A full render of this page was
+     fourteen; it is nineteen now, against PER_ADMIN_PER_MIN = 60, which is
+     about three full refreshes a minute before an admin locks themselves out
+     of their own numbers. That is still headroom and it is written down here
+     because the next panel added is the one that spends it.
+
+     THE FUNCTION DECIDES WHETHER A PERCENTAGE MAY BE PRINTED. `pct_usable`
+     is false when fewer than meta.pct_min_people reached the first declared
+     screen, and this panel obeys it everywhere — bars, tiles and tables —
+     rather than forming its own opinion from the rows. That is the
+     geo_usable precedent and it is deliberately weaker than geo's: the bars
+     still draw here, because a proportion of seven is an honest picture of
+     seven, where one geo bar at 100% is indistinguishable from a broken
+     proxy.
+     ========================================================================== */
+
+  var OBQ_BODY = ["dsh-obq-kpis", "dsh-obq-chartbox", "dsh-obq-tblbox"];
+  var OBQ_CBODY = ["dsh-obq-convbox", "dsh-obq-convtblbox", "dsh-obq-cmpbox"];
+  var OBQ_ABODY = ["dsh-obq-ansbox"];
+  var OBQ_RBODY = ["dsh-obq-runsbox", "dsh-obq-buildbox"];
+
+  /* One sentence, said where a number is, because these two dwells are
+     measured under different rules and adding them is the mistake this line
+     exists to stop. */
+  var OBQ_DWELL_SAY =
+    "Time on an onboarding screen has no minimum. Time on a story card " +
+    "ignores anything under 900ms. The two numbers are not comparable and " +
+    "must not be added together.";
+
+  var OBQ_MORE = [
+    ["A screen with no row and a screen with a zero are different findings",
+     "The thirteen screens are declared in functions/insights.js, copied from " +
+     "the engine that renders them, so a screen that returned nothing still " +
+     "gets a row — drawn as an em-dash and labelled “not seen in this " +
+     "window”, never as 0. A zero is the result of a measurement; this is the " +
+     "absence of one. Two screens are like this by design today: account and " +
+     "paywall are declared here but owned by other surfaces, and nothing " +
+     "fires them yet."],
+    ["“Left without us seeing how” is the size of the blind spot, not a bug",
+     "Most readers here arrive through the Instagram and TikTok in-app " +
+     "browsers, whose back arrow frequently dismisses the whole webview " +
+     "rather than calling anything this site can hear. When that happens no " +
+     "leave event escapes at all. Those views are counted in this column " +
+     "rather than folded into “left the flow”, because “we stopped seeing " +
+     "them here” is a different claim from “they left”."],
+    ["The window truncates the tail, in both directions",
+     "Somebody who answered on day 1 of a fourteen-day window and paid on day " +
+     "20 is counted as an answer and not as a sale. Widening the range moves " +
+     "the number. The range the server actually scanned is printed at the top " +
+     "of this page."],
+    ["“Made an account” is undercounted and “sent to Stripe” is not a payment",
+     "login.html fires the same event for a new Google account and a " +
+     "returning one, so account creation is short by every Google sign-up — " +
+     "which is why “signed in or made an account” is the rung and the split " +
+     "is context. And everything between the Stripe request and coming back " +
+     "happens on somebody else's origin: a checkout with no return is the " +
+     "union of never-arrived, declined, closed the tab, and paid on a phone " +
+     "and came back on a laptop. It is not an abandonment rate. The " +
+     "subscriber tiles in The funnel are the authoritative payment number."],
+    ["Nothing here is anything a reader typed",
+     "The answer column holds keys from lists this repository owns — people, " +
+     "notime|stories, 10, 01 — and there is no text box anywhere in these " +
+     "questions. A multi-select arrives as its keys sorted and joined with a " +
+     "bar."]
+  ];
+
+  var OBQ_CMP_MORE = [
+    ["These two groups were not assigned by a coin toss",
+     "One group saw the opening questions and the other reached the paywall " +
+     "without them, and which one a reader landed in depends on where they " +
+     "arrived from and on what had shipped that day. So this is a " +
+     "description of two groups of people and not an experiment, and the " +
+     "difference between the two rows is not the effect of the questions."],
+    ["Both columns are inside this window only",
+     "Somebody in either group who paid after the window closed is a zero " +
+     "here. At this traffic one person moving between the two rows changes " +
+     "every figure in them."]
+  ];
+
+  var OBQ_BUILD_MORE = [
+    ["“Build” is the RELEASE constant in js/analytics.js, put on every screen view",
+     "This site has no build step — the files are served raw at the same URLs " +
+     "forever — so the release is written down in js/analytics.js and bumped " +
+     "by hand in the commit that changes behaviour. A run carries the build " +
+     "it started on. If two versions of the questions shipped under one " +
+     "release string they are one row here and cannot be told apart, and if " +
+     "nobody bumped the constant this table has one row and is telling the " +
+     "truth about that."],
+    ["A build with a handful of runs is not a verdict on that build",
+     "Runs are not distributed evenly over a window: a build that shipped " +
+     "yesterday has a day of traffic and the one before it has a fortnight. " +
+     "Read the dates beside each row before reading the finish rates against " +
+     "each other."]
+  ];
+
+  /* Percentages the server has said are not usable are REMOVED from the rows
+     rather than hidden with CSS or rendered as a dash, so nothing downstream
+     — a sort, a bar behind a cell, a column that appears because a row
+     carried the key — can put one back on screen. */
+  function obqStrip(rows, keys) {
+    var out = [], i, j, k, r, c;
+    for (i = 0; i < rows.length; i++) {
+      r = rows[i];
+      c = {};
+      for (k in r) {
+        if (!has(r, k)) continue;
+        var drop = false;
+        for (j = 0; j < keys.length; j++) { if (keys[j] === k) { drop = true; break; } }
+        if (!drop) c[k] = r[k];
+      }
+      out.push(c);
+    }
+    return out;
+  }
+
+  /* The thin-data sentence, in the words the number deserves. */
+  function obqThinSay(m) {
+    var n = typeof m.first_people === "number" ? m.first_people : 0;
+    var min = typeof m.pct_min_people === "number" ? m.pct_min_people : 20;
+    return "Counts only — " + fmtInt(n) + " " + (n === 1 ? "person" : "people") +
+           " reached the first screen, and percentages are not printed below " +
+           min + ". A percentage of " + fmtInt(n) + " is a sentence about " +
+           fmtInt(n) + " " + (n === 1 ? "person" : "people") + ".";
+  }
+
+  /* WHETHER A PERCENTAGE MAY BE PRINTED, ACROSS THE WHOLE PANEL.
+
+     `pct_usable` comes back on onboarding_steps and onboarding_conversion —
+     the two queries that have a first declared step to count — and it has to
+     govern the answers and the builds tables as well, or the panel prints
+     "Counts only, a percentage of 3 is a sentence about 3 people" at the top
+     and a column of 0% two tables down.
+
+     The other two answer on their own clock, so they STASH what came back
+     and repaint when the flag lands rather than assuming the queue delivered
+     in order. `null` is "not known yet" and is treated as usable, so a first
+     paint is never held back waiting for permission; a later `false`
+     repaints it without the percentages. And FALSE WINS if the two ever
+     disagreed: the honest answer to "may I print this" is the more cautious
+     of the two. */
+  var OBQ_PCT = null;
+  var OBQ_ANS = null, OBQ_RUNS = null;
+
+  function obqPctOn() { return OBQ_PCT !== false; }
+
+  function obqSetPct(res) {
+    var m = (res && res.meta) || {};
+    if (typeof m.pct_usable !== "boolean") return;
+    var was = OBQ_PCT;
+    OBQ_PCT = (OBQ_PCT === false || m.pct_usable === false) ? false : true;
+    if (was === OBQ_PCT) return;
+    if (OBQ_ANS) paintObqAnswers(OBQ_ANS);
+    if (OBQ_RUNS) paintObqRuns(OBQ_RUNS);
+  }
+
+  function runObQuiz(win) {
+    OBQ_PCT = null;
+    OBQ_ANS = null;
+    OBQ_RUNS = null;
+    runObqSteps(win);
+    runObqConversion(win);
+    runObqAnswers(win);
+    runObqRuns(win);
+  }
+
+  /* ---- Screen by screen ------------------------------------------------- */
+
+  function runObqSteps(win) {
+    stateOf("dsh-obq-state", "Loading…", false);
+    bodyOf(OBQ_BODY, false);
+    hide("dsh-obq-note");
+    dropChart("dsh-obq-chart");
+
+    ask("onboarding_steps", { from: win.from, to: win.to }, function (err, res, extra) {
+      /* A refusal here is a STATE, not a fault: this panel sends a date
+         window and the admin flag and nothing else, so there is no parameter
+         to have got wrong — the function is refusing the query NAME, which
+         means these queries are written and not deployed. */
+      if (err === "bad_query") {
+        bodyOf(OBQ_BODY, false);
+        stateOf("dsh-obq-state",
+          "The analytics function has no onboarding_steps query to ask, so " +
+          "there is nothing to draw here. Nothing else on this page is " +
+          "affected: this panel sends only a date window and the admin " +
+          "switch, so the name is what is being refused, and the queries are " +
+          "written but not deployed yet.", false);
+        noteOn("dsh-obq-note", OBQ_DWELL_SAY,
+               disclosure("What this panel would say once it is deployed", OBQ_MORE));
+        return;
+      }
+      if (err) { failed("dsh-obq-state", OBQ_BODY, err, extra); return; }
+      sayRange(res);
+
+      var rows = (res && res.rows) || [], m = (res && res.meta) || {}, i;
+      var fired = typeof m.steps_fired === "number" ? m.steps_fired : 0;
+      var first = typeof m.first_people === "number" ? m.first_people : 0;
+      obqSetPct(res);
+      var pctOn = obqPctOn();
+
+      /* NOTHING AT ALL, and whether zero is the right answer. */
+      if (!rows.length || !fired) {
+        bodyOf(OBQ_BODY, false);
+        stateOf("dsh-obq-state", excludeAdmins()
+          ? "Nobody outside the admin accounts started the opening questions " +
+            "in this window. Switch “Admin accounts” to Included above to see " +
+            "your own."
+          : "Nobody started the opening questions in this window. If the flow " +
+            "is not linked from anywhere yet, that is the right answer; if it " +
+            "is, widen the range.", false);
+        noteOn("dsh-obq-note", OBQ_DWELL_SAY,
+               disclosure("How to read this panel", OBQ_MORE));
+        return;
+      }
+
+      /* ONE PERSON IS NOT A FUNNEL. A single reader's path drawn as bars is
+         a proportion with a denominator of one, and the eye reads a bar as a
+         rate whatever the label beside it says.
+
+         SO THE CHART AND THE TILES GO AND THE TABLE STAYS. This is a
+         deliberate softening of ONBOARDING-ANALYTICS.md, which says n = 1
+         draws nothing at all, and the reason is that the live project is n =
+         1 today: the table is where the per-screen dwell lives, and "the
+         interstitials are dismissed in a fifth of a second" is a real finding
+         about one person that a funnel chart could not have shown anyway.
+         A column of counts with every percentage removed is not a rate and
+         cannot be misread as one. The bars, the tiles and every percentage
+         are gone; the sentence names the denominator; and the panel points
+         at the tool that IS built for one person. */
+      var alone = first <= 1;
+      if (alone) {
+        hide("dsh-obq-kpis");
+        dropChart("dsh-obq-chart");
+        hide("dsh-obq-chartbox");
+        pctOn = false;
+      }
+
+      var steps = [], deepest = null, missing = 0;
+      for (i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        var gone = r.never_fired === true;
+        if (gone) missing++;
+        var v = typeof r.people === "number" ? r.people : 0;
+        if (!gone && v > 0) deepest = r;
+        steps.push({
+          label: String(r.label || r.step),
+          value: v,
+          blank: gone,
+          right: gone ? "— not seen in this window" : ""
+        });
+      }
+
+      var kh = "";
+      kh += kpi(fmtInt(first), "Reached the first screen");
+      if (deepest) {
+        kh += kpi(fmtInt(deepest.people),
+                  "Got to “" + String(deepest.label || deepest.step) + "”");
+      }
+      kh += kpi(fmtInt(fired) + " of " + fmtInt(rows.length), "Screens that ever fired");
+      var unacc = 0;
+      for (i = 0; i < rows.length; i++) {
+        if (typeof rows[i].unaccounted === "number") unacc += rows[i].unaccounted;
+      }
+      /* Always shown when there are any, never folded into “left the flow”. */
+      if (unacc > 0) kh += kpi(fmtInt(unacc), "Left without us seeing how");
+      if (!alone) {
+        setKpis("dsh-obq-kpis", kh);
+        chart("dsh-obq-chart", function (w) {
+          return funnelSVG(w, steps, "How far people get through the opening questions", pctOn);
+        });
+        show("dsh-obq-chartbox");
+      }
+
+      var tblRows = pctOn ? rows : obqStrip(rows, ["reach_pct", "dropoff_pct"]);
+      drawTable("dsh-obq-tbl", tblRows, {
+        prefer: ["label", "kind", "people", "runs", "views", "median_dwell_s",
+                 "dwell_s_capped", "forwards", "backs", "skips", "exits",
+                 "unaccounted", "reach_pct", "dropoff_pct"],
+        nameCol: "label",
+        subKey: "step",
+        omit: ["step", "order"],
+        /* `never_fired` is a boolean and "yes" is the wrong word for it in
+           both directions: the useful reading is whether a measurement
+           happened at all. */
+        cellFmt: function (col, val) {
+          if (col === "never_fired") return val === true ? "not seen" : "measured";
+          return null;
+        }
+      });
+      show("dsh-obq-tblbox");
+
+      /* THE MOST USEFUL SENTENCE THIS PANEL CAN PRINT AT THIS TRAFFIC. A
+         screen with no rows that has traffic BELOW it did not lose anybody —
+         people cannot be past it without going through it — so it is almost
+         certainly not instrumented, and reading it as a drop-off would send
+         somebody to fix a funnel that is not broken. */
+      var gaps = (m.steps_missing_midflow && m.steps_missing_midflow.length)
+                 ? m.steps_missing_midflow : [];
+      var say = alone
+        ? (fmtInt(first) + " " + (first === 1 ? "person" : "people") +
+           " reached the first screen in this window, so no chart is drawn " +
+           "and no percentage is printed: one person's path is a timeline, " +
+           "not a funnel, and “One person, in order” below is the panel built " +
+           "for it. The counts and the time on each screen are still worth " +
+           "reading and are in the table.")
+        : (pctOn ? metaSay(res, "screens") : obqThinSay(m));
+      if (gaps.length) {
+        say += " No screen view arrived for " +
+               (gaps.length === 1 ? "“" + String(gaps[0]) + "”"
+                                  : fmtInt(gaps.length) + " screens in the middle of the flow") +
+               ", but later screens did — which cannot be a drop-off, because " +
+               "nobody reaches a later screen without passing through. Check " +
+               "the funnel script before reading that row as a loss.";
+      }
+      if (missing > gaps.length) {
+        say += " " + fmtInt(missing - gaps.length) + " declared screen" +
+               (missing - gaps.length === 1 ? " is" : "s are") +
+               " drawn as an em-dash because nothing has ever fired " +
+               ((missing - gaps.length) === 1 ? "it" : "them") + " — account " +
+               "and paywall belong to other surfaces and are not instrumented yet.";
+      }
+      stateOf("dsh-obq-state", say, false);
+      noteOn("dsh-obq-note", OBQ_DWELL_SAY,
+             disclosure("How to read this panel", OBQ_MORE));
+    });
+  }
+
+  /* ---- All the way to the money, and quiz against no quiz --------------- */
+
+  function runObqConversion(win) {
+    stateOf("dsh-obq-cstate", "Loading…", false);
+    bodyOf(OBQ_CBODY, false);
+    hide("dsh-obq-cnote");
+    dropChart("dsh-obq-conv");
+
+    ask("onboarding_conversion", { from: win.from, to: win.to }, function (err, res, extra) {
+      if (err === "bad_query") {
+        bodyOf(OBQ_CBODY, false);
+        stateOf("dsh-obq-cstate",
+          "The analytics function has no onboarding_conversion query to ask. " +
+          "Written, not deployed — this panel sends only a date window and " +
+          "the admin switch, so there is no parameter for it to be refusing.",
+          false);
+        return;
+      }
+      if (err) { failed("dsh-obq-cstate", OBQ_CBODY, err, extra); return; }
+      sayRange(res);
+
+      var rows = (res && res.rows) || [], m = (res && res.meta) || {}, i;
+      var first = typeof m.first_people === "number" ? m.first_people : 0;
+      obqSetPct(res);
+      var pctOn = obqPctOn();
+
+      if (!rows.length || !first) {
+        bodyOf(OBQ_CBODY, false);
+        stateOf("dsh-obq-cstate",
+          "Nobody opened the questions in this window, so there is no ladder " +
+          "to draw from them to a subscription.", false);
+        return;
+      }
+
+      /* Rungs only in the chart. A row whose pct_of_previous is null is a
+         leak or a piece of context, and the page already reads that signal
+         generically — the same one subscribe_funnel's blocked row carries. */
+      var steps = [], context = [];
+      for (i = 0; i < rows.length; i++) {
+        if (rows[i].pct_of_previous === null) { context.push(rows[i]); continue; }
+        steps.push({
+          label: String(rows[i].label || rows[i].step),
+          value: typeof rows[i].people === "number" ? rows[i].people : 0
+        });
+      }
+      if (steps.length && first > 1) {
+        chart("dsh-obq-conv", function (w) {
+          return funnelSVG(w, steps, "From the first screen to a subscription", pctOn);
+        });
+        show("dsh-obq-convbox");
+      }
+
+      var ctblRows = pctOn ? rows : obqStrip(rows, ["pct_of_first", "pct_of_previous"]);
+      drawTable("dsh-obq-convtbl", ctblRows, {
+        prefer: ["label", "people", "pct_of_first", "pct_of_previous"],
+        nameCol: "label", subKey: "step", omit: ["step"]
+      });
+      show("dsh-obq-convtblbox");
+
+      /* THE COMPARISON THE QUESTION WAS ASKED FOR: the people who saw the
+         questions against the people who reached the same paywall without
+         them. Two rows, the same columns, no chart — a bar chart of two
+         groups of single figures is a picture of an argument. */
+      var cmp = m.compare || null;
+      if (cmp && cmp.quiz && cmp.noquiz) {
+        var cmpRows = [
+          obqSide("Saw the opening questions", cmp.quiz, pctOn),
+          obqSide("Reached the paywall without them", cmp.noquiz, pctOn)
+        ];
+        drawTable("dsh-obq-cmptbl", cmpRows, {
+          prefer: ["cohort", "people", "reached_paywall", "signed_any",
+                   "stripe", "subscribed", "subscribed_pct", "returned_later"],
+          nameCol: "cohort"
+        });
+        show("dsh-obq-cmpbox");
+      }
+
+      var say = pctOn
+        ? (fmtInt(first) + " " + (first === 1 ? "person" : "people") +
+           " opened the questions in this window.")
+        : obqThinSay(m);
+      if (m.truncated === true) {
+        say += " The per-person scan hit its cap, so this is a sample of the " +
+               "window rather than all of it — narrow the dates.";
+      }
+      var cn = cmp && cmp.noquiz ? cmp.noquiz.people : 0;
+      if (cmp) {
+        say += " The comparison below is " + fmtInt(cmp.quiz.people) + " " +
+               (cmp.quiz.people === 1 ? "person" : "people") + " who saw the " +
+               "questions against " + fmtInt(cn) + " who reached the paywall " +
+               "without them" +
+               (cn === 0
+                 ? " — nobody, so there is nothing to compare against yet."
+                 : ". They were not split by a coin toss and this is not an " +
+                   "experiment.");
+      }
+      stateOf("dsh-obq-cstate", say, false);
+      noteOn("dsh-obq-cnote",
+        "“Sent to Stripe” is a request leaving this browser and not a " +
+        "payment; everything after it happens on Stripe's origin and no " +
+        "event of ours can see it. The subscriber tiles in The funnel are " +
+        "the number that is actually true.",
+        disclosure("Why the two rows below are a description and not a test",
+                   OBQ_CMP_MORE));
+    });
+  }
+
+  /* One side of the comparison, as a table row. Built here rather than
+     server-side because the column set is a presentation choice and the
+     percentage is dropped whole when the server says it is not usable. */
+  function obqSide(name, side, pctOn) {
+    var r = {
+      cohort: name,
+      people: typeof side.people === "number" ? side.people : 0,
+      reached_paywall: typeof side.reached_paywall === "number" ? side.reached_paywall : 0,
+      signed_any: typeof side.signed_any === "number" ? side.signed_any : 0,
+      stripe: typeof side.stripe === "number" ? side.stripe : 0,
+      subscribed: typeof side.subscribed === "number" ? side.subscribed : 0,
+      returned_later: typeof side.returned_later === "number" ? side.returned_later : 0
+    };
+    if (pctOn && r.people > 0) {
+      r.subscribed_pct = Math.round(1000 * r.subscribed / r.people) / 10;
+    }
+    return r;
+  }
+
+  /* ---- Which answers people give ---------------------------------------- */
+
+  function runObqAnswers(win) {
+    stateOf("dsh-obq-astate", "Loading…", false);
+    bodyOf(OBQ_ABODY, false);
+    hide("dsh-obq-anote");
+
+    ask("onboarding_answers", { from: win.from, to: win.to, limit: 60 },
+        function (err, res, extra) {
+      if (err === "bad_query") {
+        bodyOf(OBQ_ABODY, false);
+        stateOf("dsh-obq-astate",
+          "The analytics function has no onboarding_answers query to ask. " +
+          "Written, not deployed.", false);
+        return;
+      }
+      if (err) { failed("dsh-obq-astate", OBQ_ABODY, err, extra); return; }
+      sayRange(res);
+      /* Stashed so a later `pct_usable: false` can repaint this table
+         without asking for it again. */
+      OBQ_ANS = res;
+      paintObqAnswers(res);
+    });
+  }
+
+  function paintObqAnswers(res) {
+    var rows = (res && res.rows) || [], m = (res && res.meta) || {};
+    if (!rows.length) {
+      bodyOf(OBQ_ABODY, false);
+      stateOf("dsh-obq-astate",
+        "Nobody chose an answer in this window.", false);
+      return;
+    }
+
+    drawTable("dsh-obq-anstbl",
+      obqPctOn() ? rows : obqStrip(rows, ["finished_pct", "subscribed_pct"]), {
+      /* `q` stays its own column rather than becoming a sub-label under
+         the answer. "people draw" and "notime|stories relates" read as one
+         string and they are two different things: the question, and the
+         key that was chosen on it. */
+      prefer: ["q", "answer", "people", "runs", "finished", "finished_pct",
+               "accounts", "stripe", "subscribed", "subscribed_pct"],
+      nameCol: "q", omit: ["answers"]
+    });
+    show("dsh-obq-ansbox");
+
+    var say = metaSay(res, rows.length === 1 ? "answer" : "answers");
+    if (m.truncated === true) {
+      say += " The per-person scan hit its cap, so this is a sample of the " +
+             "window rather than all of it — narrow the dates.";
+    }
+    if (typeof m.outcomes_missing === "number" && m.outcomes_missing > 0) {
+      say += " " + fmtInt(m.outcomes_missing) + " answer" +
+             (m.outcomes_missing === 1 ? "" : "s") +
+             " could not be matched to an outcome, so every column to the " +
+             "right of “People” is a floor rather than a total.";
+    }
+    stateOf("dsh-obq-astate", say, false);
+    noteOn("dsh-obq-anote",
+      "Every value in “Answer chosen” is a key from a fixed list in this " +
+      "repository — there is no text box in these questions and nothing a " +
+      "reader typed can reach this table. The outcome columns count only " +
+      "what happened inside this window: somebody who answered on the " +
+      "first day and paid after the last is a zero here and is not a lost " +
+      "sale. At this traffic these are descriptions of a few people and " +
+      "not a reason to change a question.");
+  }
+
+  /* ---- Runs, and which build they ran on -------------------------------- */
+
+  function runObqRuns(win) {
+    stateOf("dsh-obq-rstate", "Loading…", false);
+    bodyOf(OBQ_RBODY, false);
+    hide("dsh-obq-rnote");
+
+    ask("onboarding_runs", { from: win.from, to: win.to }, function (err, res, extra) {
+      if (err === "bad_query") {
+        bodyOf(OBQ_RBODY, false);
+        stateOf("dsh-obq-rstate",
+          "The analytics function has no onboarding_runs query to ask. " +
+          "Written, not deployed.", false);
+        return;
+      }
+      if (err) { failed("dsh-obq-rstate", OBQ_RBODY, err, extra); return; }
+      sayRange(res);
+      OBQ_RUNS = res;
+      paintObqRuns(res);
+    });
+  }
+
+  function paintObqRuns(res) {
+    var rows = (res && res.rows) || [], m = (res && res.meta) || {}, i;
+    var total = typeof m.runs === "number" ? m.runs : 0;
+    if (!rows.length || !total) {
+      bodyOf(OBQ_RBODY, false);
+      stateOf("dsh-obq-rstate",
+        "No run of the opening questions was recorded in this window.", false);
+      return;
+    }
+
+    drawTable("dsh-obq-runstbl", rows, {
+      prefer: ["label", "runs", "people", "median_screens",
+               "median_furthest_n", "median_total_s"],
+      nameCol: "label", subKey: "bucket", omit: ["bucket"]
+    });
+    show("dsh-obq-runsbox");
+
+    /* THE BUILD SLICE, and the answer to "he may revert the motion". */
+    var builds = (m.builds && m.builds.length) ? m.builds : [];
+    if (builds.length) {
+      drawTable("dsh-obq-buildtbl",
+        obqPctOn() ? builds : obqStrip(builds, ["finished_pct"]), {
+        prefer: ["release", "runs", "people", "finished", "finished_pct",
+                 "first_day", "last_day"],
+        nameCol: "release", sort: "last_day", dir: -1,
+        cellFmt: function (col, val) {
+          /* A run whose screen views predate the build marker is not
+             "build null" and is not the newest build either. */
+          if (col === "release" && (val === null || val === "")) {
+            return "before the build marker shipped";
+          }
+          return null;
+        }
+      });
+      show("dsh-obq-buildbox");
+    }
+
+    var say = fmtInt(total) + " run" + (total === 1 ? "" : "s") +
+              " by " + fmtInt(typeof m.people === "number" ? m.people : 0) +
+              " " + ((m.people === 1) ? "person" : "people") +
+              ". A run is one go at the questions, so somebody who gave up " +
+              "and started again is two runs and one person.";
+    if (m.truncated === true) {
+      say += " The scan hit its cap of runs, so this is a sample of the " +
+             "window rather than all of it — narrow the dates.";
+    }
+    if (builds.length === 1) {
+      say += " Every run in this window ran on one build, so there is " +
+             "nothing to compare against — the questions have not changed " +
+             "inside this range, or the release constant was not bumped " +
+             "when they did.";
+    } else if (builds.length > 1) {
+      say += " " + fmtInt(builds.length) + " builds are represented, so a " +
+             "change to the questions inside this window shows as two " +
+             "groups of runs rather than as a step in one line.";
+    }
+    stateOf("dsh-obq-rstate", say, false);
+    noteOn("dsh-obq-rnote",
+      "Every figure in the first table is a median, never a mean: one run " +
+      "left open in a background tab owns the average of four runs and " +
+      "says nothing true about any of them.",
+      disclosure("What “build” means here", OBQ_BUILD_MORE));
   }
 
   /* ==========================================================================
@@ -2999,7 +3659,14 @@
     monthly_selected: "Chose monthly", annual_selected: "Chose annual",
     join_login_hit: "Was recognised at sign-in", join_restore_use: "Restored a purchase",
     owner_unlock: "Unlocked with an owner link",
-    ui_click: "Pressed a control", client_error: "Hit an error"
+    ui_click: "Pressed a control", client_error: "Hit an error",
+    /* The opening questions. Without these four the timeline prints the raw
+       ids beside a reader's email, which is the one place on this page where
+       a raw id is read as a fact about a person. */
+    ob_step: "Saw a screen of the opening questions",
+    ob_answer: "Answered one of the opening questions",
+    ob_leave: "Left a screen of the opening questions",
+    ob_done: "Reached the end of the opening questions"
   };
 
   function eventSays(name) {
@@ -3435,6 +4102,10 @@
     runFunnel(win);
     runSubs();
     runOnboarding(win);
+    /* Placed after runOnboarding so the two onboarding panels read together.
+       Four requests, five upstream queries: this line is what takes a full
+       render from fourteen to nineteen against PER_ADMIN_PER_MIN = 60. */
+    runObQuiz(win);
     runButtons(win);
     runAudio(win);
     runErrors(win);

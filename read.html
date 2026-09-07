@@ -84,18 +84,18 @@
      Georgia, which is a real fallback and is not the design. Same string as
      /explore and / so the three share one cached stylesheet. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
-<link rel="stylesheet" href="/css/app.css">
-<script src="/js/loader.js"></script>
-<link rel="stylesheet" href="/css/recommend.css">
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<script src="/js/loader.js?v=1b02aa41"></script>
+<link rel="stylesheet" href="/css/recommend.css?v=bdec6d86">
 <!-- The eleven onboarding screens. Everything in it is scoped under .fbob and
      it is written to live INSIDE .fbg-sheet, which css/recommend.css above
      defines — so it is loaded after that file for the same reason it is
      loaded after css/app.css: every colour and size in it is a token one of
      those two declares. -->
-<link rel="stylesheet" href="/css/onboard.css">
-<link rel="stylesheet" href="/css/scenes.css">
-<link rel="stylesheet" href="/css/audio-reader.css">
-<link rel="stylesheet" href="/css/reader-rail.css">
+<link rel="stylesheet" href="/css/onboard.css?v=d533585a">
+<link rel="stylesheet" href="/css/scenes.css?v=c09a81fe">
+<link rel="stylesheet" href="/css/audio-reader.css?v=0cd80c5f">
+<link rel="stylesheet" href="/css/reader-rail.css?v=f91d2934">
 </head>
 <body>
 
@@ -129,16 +129,16 @@
 <noscript><p style="padding:24px;color:#FFF7ED">Factbox needs JavaScript to
 read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></noscript>
 
-<script src="/js/drag-deck.js"></script>
-<script src="/js/progress.js"></script>
-<script src="/js/access.js"></script>
-<script src="/js/gate.js"></script>
+<script src="/js/drag-deck.js?v=7bc7ed89"></script>
+<script src="/js/progress.js?v=5eaa11d5"></script>
+<script src="/js/access.js?v=d02b9aff"></script>
+<script src="/js/gate.js?v=c49b9c50"></script>
 <!-- The price ladder. Nothing on this page may contain a dollar figure: the
      completion screen's offer line and every number on the paywall are read
      out of FBA, which is the one place that knows what Stripe charges. Without
      it js/recommend.js draws both screens with no amounts on them rather than
      with invented ones. -->
-<script src="/js/account.js"></script>
+<script src="/js/account.js?v=381c71cc"></script>
 <!-- The onboarding engine, and the ranker it reads. THE ORDER IS THE
      DEPENDENCY ORDER and is not incidental: js/onboard.js writes every answer
      through FBA, so js/account.js has to be above it, and it ranks the
@@ -173,12 +173,12 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      onboardingComplete. Adding a twelfth question that needs a new key means
      editing firestore.rules and privacy.html in the same commit, or it will
      silently stop mirroring the eleven that work today. -->
-<script src="/js/personalize.js"></script>
-<script src="/js/onboard.js"></script>
-<script src="/js/profile-sync.js"></script>
-<script src="/js/saves.js"></script>
-<script src="/js/recommend.js"></script>
-<script src="/js/scenes.js" defer></script>
+<script src="/js/personalize.js?v=41896023"></script>
+<script src="/js/onboard.js?v=e1113dc8"></script>
+<script src="/js/profile-sync.js?v=32cb826a"></script>
+<script src="/js/saves.js?v=b3ba85f2"></script>
+<script src="/js/recommend.js?v=54144f46"></script>
+<script src="/js/scenes.js?v=cd75cf00" defer></script>
 <script>
 (function () {
   var deck = document.getElementById("deck");
@@ -1368,7 +1368,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
   });
 })();
 </script>
-<script src="/js/audio-reader.js"></script>
+<script src="/js/audio-reader.js?v=1c2b6c03"></script>
 <!-- No account control on this page. The reader is the story and the next
      one; a "Sign in" pill floating over a painting is a second offer at the
      moment the reader is inside the first. Sign-in lives on the pages that
@@ -1380,7 +1380,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      module, so the browser defers it — it runs after the document is parsed
      and before DOMContentLoaded, whatever position this tag is in, and
      access.js reaches it through the whenFBU() bridge in AUTH.md §2. -->
-<script type="module" src="/js/auth.js"></script>
-<script src="/js/analytics.js"></script>
+<script type="module" src="/js/auth.js?v=35b20584"></script>
+<script src="/js/analytics.js?v=a72ffef9"></script>
 </body>
 </html>

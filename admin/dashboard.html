@@ -31,8 +31,8 @@
      differently under the two: from /admin/dashboard, `css/app.css` means
      /css/app.css; from /admin/dashboard.html it means /admin/css/app.css.
      Only the absolute form is the same URL at both addresses. -->
-<link rel="stylesheet" href="/css/app.css">
-<link rel="stylesheet" href="/css/dashboard.css">
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<link rel="stylesheet" href="/css/dashboard.css?v=9cbd78e1">
 </head>
 <body>
 
@@ -440,6 +440,68 @@
       </div>
     </section>
 
+    <!-- ---- 6b · The opening questions ------------------------------------
+         The quiz funnel js/onboard.js renders. A different flow from the one
+         above it: that panel is /join's five panes, this one is the thirteen
+         screens of the opening questions, and they are kept apart because
+         they measure two different journeys with two different step lists.
+
+         Four queries, five upstream calls, four state lines. Every block
+         starts hidden and is shown only when it has something in it — a
+         table headed "Screens" with nothing under it is worse than no table.
+         -->
+    <section class="dsh-sec" id="dsh-sec-obquiz">
+      <div class="sechead"><h2>The opening questions</h2><span>how far people get, and what it is worth</span></div>
+      <p class="dsh-q">The quiz funnel: thirteen declared screens, how far
+      people get through them, how long each screen holds them, which way they
+      left, and whether the people who answered went on to sign in and pay.
+      The screen list comes from the engine that renders it, so a screen
+      nobody reached shows as a gap rather than quietly vanishing.</p>
+
+      <h3 class="dsh-h3">Screen by screen</h3>
+      <div class="dsh-state" id="dsh-obq-state" role="status">Waiting…</div>
+      <div class="dsh-kpis" id="dsh-obq-kpis" hidden></div>
+      <div class="dsh-scroll" id="dsh-obq-chartbox" hidden>
+        <div class="dsh-chart" id="dsh-obq-chart"></div>
+      </div>
+      <div class="dsh-scroll" id="dsh-obq-tblbox" hidden>
+        <table class="dsh-tbl" id="dsh-obq-tbl"></table>
+      </div>
+      <p class="dsh-note" id="dsh-obq-note" hidden></p>
+
+      <h3 class="dsh-h3">All the way to the money</h3>
+      <div class="dsh-state" id="dsh-obq-cstate" role="status">Waiting…</div>
+      <div class="dsh-scroll" id="dsh-obq-convbox" hidden>
+        <div class="dsh-chart" id="dsh-obq-conv"></div>
+      </div>
+      <div class="dsh-scroll" id="dsh-obq-convtblbox" hidden>
+        <table class="dsh-tbl" id="dsh-obq-convtbl"></table>
+      </div>
+      <!-- Quiz against no quiz. The owner's question, and the one number on
+           this page that invites a decision it cannot support on its own. -->
+      <div class="dsh-scroll" id="dsh-obq-cmpbox" hidden>
+        <table class="dsh-tbl" id="dsh-obq-cmptbl"></table>
+      </div>
+      <p class="dsh-note" id="dsh-obq-cnote" hidden></p>
+
+      <h3 class="dsh-h3">Which answers people give</h3>
+      <div class="dsh-state" id="dsh-obq-astate" role="status">Waiting…</div>
+      <div class="dsh-scroll" id="dsh-obq-ansbox" hidden>
+        <table class="dsh-tbl" id="dsh-obq-anstbl"></table>
+      </div>
+      <p class="dsh-note" id="dsh-obq-anote" hidden></p>
+
+      <h3 class="dsh-h3">Runs, and which build they ran on</h3>
+      <div class="dsh-state" id="dsh-obq-rstate" role="status">Waiting…</div>
+      <div class="dsh-scroll" id="dsh-obq-runsbox" hidden>
+        <table class="dsh-tbl" id="dsh-obq-runstbl"></table>
+      </div>
+      <div class="dsh-scroll" id="dsh-obq-buildbox" hidden>
+        <table class="dsh-tbl" id="dsh-obq-buildtbl"></table>
+      </div>
+      <p class="dsh-note" id="dsh-obq-rnote" hidden></p>
+    </section>
+
     <!-- ---- 7 · Events ---------------------------------------------------- -->
     <section class="dsh-sec" id="dsh-sec-events">
       <div class="sechead"><h2>Buttons</h2><span>every control, by name</span></div>
@@ -541,8 +603,8 @@
      numbers this page reports — and landing in button_presses, which is a
      table this page draws. A dashboard that measures its own use corrupts
      its own answer. See DASHBOARD.md. -->
-<script src="/js/dashboard.js"></script>
-<script type="module" src="/js/auth.js"></script>
+<script src="/js/dashboard.js?v=01fad622"></script>
+<script type="module" src="/js/auth.js?v=35b20584"></script>
 
 </body>
 </html>

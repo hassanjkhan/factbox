@@ -31,9 +31,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/css/app.css">
-<script src="/js/loader.js"></script>
-<link rel="stylesheet" href="/css/library.css">
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<script src="/js/loader.js?v=1b02aa41"></script>
+<link rel="stylesheet" href="/css/library.css?v=76abf653">
 
 </head>
 <body>
@@ -84,18 +84,18 @@
      gate.js, because gate.js's claim() strips the query string at parse time
      and progress.js needs Stripe's session_id out of it first. saves.js is
      independent of both; library.js needs all three and goes last. -->
-<script src="/js/progress.js"></script>
-<script src="/js/access.js"></script>
-<script src="/js/gate.js"></script>
-<script src="/js/saves.js"></script>
-<script src="/js/library.js"></script>
+<script src="/js/progress.js?v=5eaa11d5"></script>
+<script src="/js/access.js?v=d02b9aff"></script>
+<script src="/js/gate.js?v=c49b9c50"></script>
+<script src="/js/saves.js?v=b3ba85f2"></script>
+<script src="/js/library.js?v=9d92f3ac"></script>
 <!-- js/auth.js is a module, so the browser defers it: it runs after the
      document is parsed and BEFORE DOMContentLoaded, whatever position this tag
      is in. The ES5 block below therefore cannot read window.FBU at the moment
      it runs, and does not — it uses the whenFBU() bridge from AUTH.md §2. -->
-<script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/auth.js?v=35b20584"></script>
 
-<script src="/js/analytics.js"></script>
-<script src="/js/acct.js"></script>
+<script src="/js/analytics.js?v=a72ffef9"></script>
+<script src="/js/acct.js?v=9427c787"></script>
 </body>
 </html>

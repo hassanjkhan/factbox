@@ -305,6 +305,26 @@ const FIRSTSTORY_STACK = "01";
 const STACK_01_PAGES = ["firststory", "read", "cleopatra"];
 const FS_PERSON_ROWS = 5000;                 /* the per-person scan's own cap */
 
+/* --- The quiz funnel's own bounds ---------------------------------------
+   Every one of these is a cost bound on a scan, not a display limit, and
+   none of them is reachable by a caller: the four onboarding queries take
+   `days` and `exclude_admins`, and only onboarding_answers takes `limit` —
+   which trims the ROWS RETURNED after the join, never the scan.
+
+   PCT_MIN_PEOPLE is different in kind and is the reason it lives here
+   rather than in js/dashboard.js. This product has almost no readers, and a
+   funnel chart with n=3 that reads like a trend is the likeliest way this
+   panel misleads its only reader. So THE FUNCTION decides whether a
+   percentage may be printed and the page obeys it, exactly as geo_breakdown
+   decides `geo_usable` and the map obeys that. A minimum-n constant in the
+   page would be a second opinion, and two opinions about whether a number
+   is real is how one of them ships wrong. */
+const OB_PERSON_ROWS = 5000;    /* onboarding_conversion, one row per person */
+const ANSWER_ROWS_MAX = 2000;   /* (person, q, answer) triples */
+const OUTCOME_ROWS_MAX = 400;   /* the per-person outcome roster it joins to */
+const RUN_ROWS_MAX = 1000;      /* onboarding_runs, one row per run */
+const PCT_MIN_PEOPLE = 20;      /* below this, counts only — no percentages */
+
 /* --- CORS ---------------------------------------------------------------
    The allowlist story.js and support.js already use. Not the security
    boundary — the token is — but there is no reason to let an arbitrary page
@@ -1299,6 +1319,294 @@ const QUERIES = {
     })
   },
 
+
+  /* ======================================================================
+     THE QUIZ FUNNEL — four queries, five upstream calls
+
+     js/onboard.js is the engine and it fires four events: ob_step (a screen
+     was committed to the display), ob_answer (an option was chosen),
+     ob_leave (a screen ended, and how) and ob_done (the flow reached its
+     terminus). ONBOARDING-ANALYTICS.md is the specification; these are the
+     queries it names, under the names it reserved, because
+     `onboarding_funnel` and its alias `onboarding` belong to /join's five
+     panes and must be left alone while join.html still fires join_step.
+
+     THE SCREEN LIST IS DECLARED HERE AND IT IS NOT INFERRED. OB_STEPS below
+     is a verbatim copy of FBOB.SCREENS in js/onboard.js and
+     tools/check-analytics.js fails the build when the two drift. That is not
+     tidiness: a step nobody reached returns NO ROW from PostHog, so a funnel
+     built from the rows narrows silently instead of showing a gap, and a
+     step inserted into the engine without being inserted here relabels every
+     row below it. The engine's list is thirteen long — q_genres was added at
+     position 6 after the spec was written — and this list is thirteen long
+     for that reason and no other.
+     ====================================================================== */
+
+  /* id, kind and declared position — the three fields FBOB.SCREENS carries,
+     in its order — plus the label this API prints. The first three columns
+     are the contract the check compares; the fourth is ours. */
+  /* (declared as OB_STEPS below the QUERIES table, beside JOIN_STEPS.) */
+
+  /* --- Per screen: how far people get, how long they stay, which way they
+         left ---------------------------------------------------------------
+     ONE row per screen, folded from two events. `views`, `runs` and `people`
+     are three different denominators and all three are returned, because
+     they answer three different questions and a panel that silently picks
+     one is a panel that argues with itself: a reader who goes back to
+     q_draw and forward again is two views, one run and one person.
+
+     DWELL HERE IS NOT CARD DWELL. js/analytics.js refuses a card_view under
+     900ms; ob_leave has no floor at all, on purpose, because the affirmation
+     screens are designed to be dismissed in well under a second and a floor
+     deletes the exact measurement being asked for. The two numbers are
+     measured under different rules and must never be added or compared —
+     which is a sentence the dashboard prints rather than a rule it keeps in
+     its head. The 30-minute ceiling IS inherited, and it is applied in the
+     browser: over it, ob_leave is not sent at all.
+
+     `dwell_s_capped` clips each individual screen view to DWELL_CAP_S before
+     summing, the reader_dwell convention, because no mean is returned
+     anywhere and a raw sum can be owned by one tab somebody left open. */
+  onboarding_steps: {
+    params: ["exclude_admins", "days"],
+    build: (p) => ({
+      columns: ["step", "kind", "views", "runs", "people", "forwards", "backs",
+                "skips", "exits", "dwell_s", "dwell_s_capped", "median_dwell_s"],
+      sql:
+        "SELECT toString(properties.step) AS step," +
+        " toString(properties.kind) AS kind," +
+        " countIf(event = 'ob_step') AS views," +
+        " count(DISTINCT if(event = 'ob_step'," +
+        "   toString(properties.run), NULL)) AS runs," +
+        " count(DISTINCT if(event = 'ob_step', person_id, NULL)) AS people," +
+        " countIf(event = 'ob_leave'" +
+        "   AND toString(properties.why) = 'forward') AS forwards," +
+        " countIf(event = 'ob_leave'" +
+        "   AND toString(properties.why) = 'back') AS backs," +
+        " countIf(event = 'ob_leave'" +
+        "   AND toString(properties.why) = 'skip') AS skips," +
+        " countIf(event = 'ob_leave'" +
+        "   AND toString(properties.why) IN ('exit_back', 'away')) AS exits," +
+        " round(sum(if(event = 'ob_leave'," +
+        "   toFloatOrNull(toString(properties.dwell_ms)) / 1000, NULL)), 1) AS dwell_s," +
+        " round(sum(if(event = 'ob_leave'," +
+        "   least(toFloatOrNull(toString(properties.dwell_ms)) / 1000," +
+        "     " + num(DWELL_CAP_S) + "), NULL)), 1) AS dwell_s_capped," +
+        " round(median(if(event = 'ob_leave'," +
+        "   toFloatOrNull(toString(properties.dwell_ms)) / 1000, NULL)), 1) AS median_dwell_s" +
+        " FROM events" +
+        " WHERE event IN ('ob_step', 'ob_leave')" +
+        "   AND " + since(p) +
+        "   AND toString(properties.step) != ''" +
+        notAdmins(p) +
+        /* FIXED, not p.limit. The screen set is closed and thirteen long, so
+           there is nothing here for a caller to widen — the same reason
+           onboarding_funnel's LIMIT is fixed at 60. */
+        " GROUP BY step, kind ORDER BY people DESC LIMIT 60"
+    })
+  },
+
+  /* --- The whole ladder, and the comparison the owner actually asked for --
+     PER PERSON, not one wide aggregate row, and that is a deliberate
+     departure from ONBOARDING-ANALYTICS.md §4, which said to mirror
+     subscribe_funnel. The question is "how do the BOTH perform" — the quiz
+     against no quiz — and a single aggregate row cannot answer it: it can
+     say how many people reached the paywall and how many people saw the
+     quiz, and it cannot say whether they were the same people. One row per
+     person can, from the same scan, at the same cost. This is the
+     firststory_funnel shape and shapeOnboarding() folds it exactly the way
+     shapeFirstStory() does.
+
+     FIVE QUESTION RUNGS, NOT FOUR. The spec's ladder predates q_genres. The
+     engine asks draw, relates, genres, goal and streak, in that order, and
+     the ladder follows the engine.
+
+     THE PERSON ID LIVES IN THIS BLOCK AND IN NO RESPONSE. Check that again
+     after editing; shapeOnboarding() drops it and it is the whole of the
+     privacy design here. */
+  onboarding_conversion: {
+    params: ["exclude_admins", "days"],
+    build: (p) => ({
+      columns: ["person", "ob_events", "opened", "q1_shown", "q1_answered",
+                "q2_answered", "q3_answered", "q4_answered", "q5_answered",
+                "pick_shown", "picked", "loader", "results", "finished",
+                "account_screen", "join_gate", "signed_any", "account_created",
+                "paywall_screen", "paywall_hit", "plan_picked", "stripe",
+                "came_back", "subscribed", "blocked", "days_active"],
+      sql:
+        "SELECT person_id AS person," +
+        " countIf(event IN ('ob_step', 'ob_answer', 'ob_done')) AS ob_events," +
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.step) = 'welcome') AS opened," +
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.step) = 'q_draw') AS q1_shown," +
+        " countIf(event = 'ob_answer'" +
+        "   AND toString(properties.q) = 'draw') AS q1_answered," +
+        " countIf(event = 'ob_answer'" +
+        "   AND toString(properties.q) = 'relates') AS q2_answered," +
+        " countIf(event = 'ob_answer'" +
+        "   AND toString(properties.q) = 'genres') AS q3_answered," +
+        " countIf(event = 'ob_answer'" +
+        "   AND toString(properties.q) = 'goal') AS q4_answered," +
+        " countIf(event = 'ob_answer'" +
+        "   AND toString(properties.q) = 'streak') AS q5_answered," +
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.step) = 'pick_story') AS pick_shown," +
+        " countIf(event = 'ob_answer'" +
+        "   AND toString(properties.q) = 'story') AS picked," +
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.step) = 'building') AS loader," +
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.step) = 'results') AS results," +
+        " countIf(event = 'ob_done') AS finished," +
+        /* account and paywall are declared screens that another surface
+           owns. Nothing fires them today, which is a finding rather than a
+           zero, and shapeOnboarding() reports the two surfaces split. */
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.step) = 'account') AS account_screen," +
+        " countIf(event = 'join_view') AS join_gate," +
+        /* One rung, as ANALYTICS.md 4 item 2 says it has to be:
+           login.html fires signin_google for a new account and a returning
+           one alike, so "made an account" is undercounted by every Google
+           sign-up and is reported below as context rather than as a rung. */
+        " countIf(event IN ('signin_email', 'signin_google'," +
+        "   'signup_email', 'join_signup')) AS signed_any," +
+        " countIf(event IN ('signup_email', 'join_signup')) AS account_created," +
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.step) = 'paywall') AS paywall_screen," +
+        " countIf(event = 'paywall_view') AS paywall_hit," +
+        " countIf(event IN ('subscribe_click', 'join_plan_pick')) AS plan_picked," +
+        " countIf(event = 'checkout_start') AS stripe," +
+        " countIf(event = 'access_gained') AS came_back," +
+        " countIf(event = 'access_gained'" +
+        "   AND toString(properties.from) = 'stripe') AS subscribed," +
+        " countIf(event = 'checkout_blocked') AS blocked," +
+        /* The same definition firststory_funnel uses, deliberately, so the
+           two panels agree about what "came back" means: more than one
+           calendar day in UTC with any event on it, inside this window. */
+        " count(DISTINCT toString(toDate(timestamp))) AS days_active" +
+        " FROM events" +
+        " WHERE " + since(p) +
+        "   AND event IN ('ob_step', 'ob_answer', 'ob_done', 'join_view'," +
+        "     'paywall_view', 'signin_email', 'signin_google', 'signup_email'," +
+        "     'join_signup', 'subscribe_click', 'join_plan_pick'," +
+        "     'checkout_start', 'access_gained', 'checkout_blocked')" +
+        notAdmins(p) +
+        " GROUP BY person" +
+        " ORDER BY ob_events DESC LIMIT " + num(OB_PERSON_ROWS)
+    })
+  },
+
+  /* --- Which answers, and whether the people who gave them converted ------
+     TWO UPSTREAM CALLS, the reader_dwell pattern, and the join is done in
+     JS on person_id. One HogQL query cannot both group by (q, answer) and
+     carry a per-person outcome without a window function or an array
+     aggregate, and functions/insights.js has one rule about those: an
+     untested HogQL construct takes the WHOLE panel down rather than one row
+     of it. Two bounded queries and a Map is the boring answer.
+
+     THE OUTCOME COLUMNS COUNT INSIDE THIS WINDOW ONLY. Somebody who
+     answered on day 1 of a fortnight and paid on day 20 is `subscribed: 0`
+     here and is not a lost sale. At this traffic these percentages are
+     descriptive and never predictive, and the panel says so rather than
+     offering them as a reason to change a question.
+
+     NOTHING A READER TYPED IS IN `answer`. It is a key from a vocabulary
+     js/account.js owns — DRAWS, RELATES, the genre keys, GOALS, STREAKS —
+     or a catalogue story id, and a multi-select arrives as those keys
+     sorted and joined with "|". There is no text box in this flow, and if
+     one is ever added the rule is `answer:"other"` and nothing else. */
+  onboarding_answers: {
+    params: ["exclude_admins", "days", "limit"],
+    twoUpstream: true,
+    build: (p) => ({
+      columns: ["person", "q", "answer", "answers", "runs"],
+      sql:
+        "SELECT person_id AS person," +
+        " toString(properties.q) AS q," +
+        " toString(properties.answer) AS answer," +
+        " count() AS answers," +
+        " count(DISTINCT toString(properties.run)) AS runs" +
+        " FROM events" +
+        " WHERE event = 'ob_answer'" +
+        "   AND " + since(p) +
+        "   AND toString(properties.q) != ''" +
+        notAdmins(p) +
+        " GROUP BY person, q, answer" +
+        " ORDER BY answers DESC LIMIT " + num(ANSWER_ROWS_MAX)
+    }),
+    buildOutcomes: (p) => ({
+      columns: ["person", "finished", "account", "stripe", "subscribed"],
+      sql:
+        "SELECT person_id AS person," +
+        " countIf(event = 'ob_done') AS finished," +
+        " countIf(event IN ('signin_email', 'signin_google'," +
+        "   'signup_email', 'join_signup')) AS account," +
+        " countIf(event = 'checkout_start') AS stripe," +
+        " countIf(event = 'access_gained'" +
+        "   AND toString(properties.from) = 'stripe') AS subscribed" +
+        " FROM events" +
+        " WHERE " + since(p) +
+        "   AND event IN ('ob_done', 'signin_email', 'signin_google'," +
+        "     'signup_email', 'join_signup', 'checkout_start', 'access_gained')" +
+        notAdmins(p) +
+        " GROUP BY person" +
+        " ORDER BY finished DESC LIMIT " + num(OUTCOME_ROWS_MAX)
+    })
+  },
+
+  /* --- Runs: abandoned, resumed, finished — and on which build -----------
+     THE RUN IS WHY ANY OF THE PERCENTAGES ABOVE MEAN ANYTHING. DASHBOARD.md
+     item 11: nothing on this site opens or closes a session, so without a
+     run id one person's three attempts are one denominator and every
+     drop-off figure is wrong. js/onboard.js mints an eight-character random
+     string per run and puts it on all four events.
+
+     BUCKETING HAPPENS IN shapeOnboardingRuns(), NOT IN SQL. A HogQL
+     subquery is an untested construct here and the rule above applies.
+
+     `release` IS THE BUILD MARKER, AND IT IS NOT A NEW PROPERTY NAME.
+     js/analytics.js has carried a RELEASE constant and put it on
+     client_error since before this panel existed, so `release` is a
+     property name GA4 has already registered and this costs none of the
+     remaining twenty-two. It is on ob_step only, it is at most forty
+     characters of [A-Za-z0-9._-], and it is what makes "the onboarding
+     changed twice and he may revert the motion" a question with an answer:
+     runs split by the build they ran on. min() rather than any(): a run
+     that spans a deploy started on the earlier build, and that is the true
+     answer for a run. */
+  onboarding_runs: {
+    params: ["exclude_admins", "days"],
+    build: (p) => ({
+      columns: ["run", "person", "screens", "furthest_n", "resumed",
+                "finished", "total_s", "first_day", "last_day", "release"],
+      sql:
+        "SELECT toString(properties.run) AS run," +
+        /* Carried so people can be counted per bucket, and dropped by
+           shapeOnboardingRuns() before anything is sent. */
+        " min(toString(person_id)) AS person," +
+        " count(DISTINCT if(event = 'ob_step'," +
+        "   toString(properties.step), NULL)) AS screens," +
+        " max(toInt(toString(properties.n))) AS furthest_n," +
+        " countIf(event = 'ob_step'" +
+        "   AND toString(properties.state) = 'resume') AS resumed," +
+        " countIf(event = 'ob_done') AS finished," +
+        " round(sum(if(event = 'ob_leave'," +
+        "   toFloatOrNull(toString(properties.dwell_ms)) / 1000, NULL)), 1) AS total_s," +
+        " min(toString(toDate(timestamp))) AS first_day," +
+        " max(toString(toDate(timestamp))) AS last_day," +
+        " min(if(event = 'ob_step'," +
+        "   toString(properties.release), NULL)) AS release" +
+        " FROM events" +
+        " WHERE event IN ('ob_step', 'ob_answer', 'ob_leave', 'ob_done')" +
+        "   AND " + since(p) +
+        "   AND toString(properties.run) != ''" +
+        notAdmins(p) +
+        " GROUP BY run" +
+        " ORDER BY last_day DESC LIMIT " + num(RUN_ROWS_MAX)
+    })
+  },
+
   /* --- The number that is actually true ------------------------------------
      The only query that never touches PostHog. `subscribe_funnel`'s last step
      is derived from a browser event and is therefore subject to ad blockers,
@@ -1320,6 +1628,142 @@ const QUERIES = {
    that file is only two long and ALL is five; all five are reported here
    because "how far through" is a question about screens seen. */
 const JOIN_STEPS = ["jn-you", "jn-loading", "jn-plan", "jn-login", "jn-done"];
+
+/* ==========================================================================
+   THE QUIZ FUNNEL'S SCREEN LIST — A VERBATIM COPY OF FBOB.SCREENS
+
+   js/onboard.js declares SCREENS and exports it as FBOB.SCREENS. This is the
+   same list, in the same order, with the same `kind` and the same declared
+   position, plus the label this API prints. tools/check-analytics.js compares
+   the id/kind/n triples in both files and fails the build when they drift.
+
+   WHY A COPY AND NOT AN INFERENCE. Two reasons, and the second is the one
+   that costs money:
+
+     1. Order. The same rule JOIN_STEPS already follows — an order inferred
+        from counts is right until the day a step gains traffic from
+        somewhere else, and then it is silently wrong.
+
+     2. Absence. A screen nobody reached returns NO ROW from PostHog, which
+        looks identical to a screen that was never instrumented. Those are
+        completely different findings — "nobody got that far" and "we are not
+        measuring that" — and the only way to tell them apart is to know the
+        list of screens that ought to exist. shapeOnboardingSteps() zero-fills
+        from this list and marks the fills `never_fired`, and the panel draws
+        them as an em-dash rather than a 0, because a zero implies a
+        measurement was taken.
+
+   `n` IS THE DECLARED POSITION, not the count of screens a reader saw, so
+   two readers who branch differently still compare. THIRTEEN, not the twelve
+   ONBOARDING-ANALYTICS.md was written against: the engine inserted q_genres
+   at position 6 and everything from there down moved by one. If this list
+   still said twelve, every row from q_time onward would be labelled with the
+   name of the screen above it.
+
+   The label is what a human reads; it is short because it has to fit a
+   chart's label column, and the full screen id is in the table beside it. */
+const OB_STEPS = [
+  ["welcome",       "intro",    1,  "Welcome"],
+  ["q_draw",        "question", 2,  "Q1 · What draws you in"],
+  ["affirm_draw",   "affirm",   3,  "After Q1"],
+  ["q_relate",      "question", 4,  "Q2 · What you relate to"],
+  ["affirm_relate", "affirm",   5,  "After Q2"],
+  ["q_genres",      "question", 6,  "Q3 · Which histories"],
+  ["q_time",        "question", 7,  "Q4 · How long"],
+  ["q_streak",      "question", 8,  "Q5 · Streak"],
+  ["pick_story",    "pick",     9,  "Pick a story"],
+  ["building",      "loader",   10, "Building your feed"],
+  ["results",       "results",  11, "Results"],
+  ["account",       "account",  12, "Account screen"],
+  ["paywall",       "paywall",  13, "Paywall screen"]
+];
+
+/* The end-to-end ladder, in the order it happens, from the first screen of
+   the questions to somebody coming back a day later. Each rung is a key from
+   onboarding_conversion's per-person row and a test on it; the test is a
+   function so a rung that is "either of two surfaces" — reached the login
+   screen, reached the paywall — can say so rather than being split into two
+   rungs that both look like drop-off.
+
+   Every label says what the number IS rather than what it would be nice for
+   it to mean. "Sent to Stripe" and not "started paying": everything past
+   that request happens on somebody else's origin and no browser event of
+   ours can see it. */
+const OB_FUNNEL_STEPS = [
+  ["opened",          "Opened the questions",
+   (r) => cnt(r.opened) > 0],
+  ["q1_shown",        "Saw the first question",
+   (r) => cnt(r.q1_shown) > 0],
+  ["q1_answered",     "Answered: what draws you in",
+   (r) => cnt(r.q1_answered) > 0],
+  ["q2_answered",     "Answered: what you relate to",
+   (r) => cnt(r.q2_answered) > 0],
+  ["q3_answered",     "Answered: which histories",
+   (r) => cnt(r.q3_answered) > 0],
+  ["q4_answered",     "Answered: how long",
+   (r) => cnt(r.q4_answered) > 0],
+  ["q5_answered",     "Answered: streak",
+   (r) => cnt(r.q5_answered) > 0],
+  ["pick_shown",      "Saw the story pick",
+   (r) => cnt(r.pick_shown) > 0],
+  ["picked",          "Picked a story",
+   (r) => cnt(r.picked) > 0],
+  ["loader",          "Reached the loader",
+   (r) => cnt(r.loader) > 0],
+  ["results",         "Saw the results",
+   (r) => cnt(r.results) > 0],
+  ["finished",        "Finished the questions",
+   (r) => cnt(r.finished) > 0],
+  /* Either surface counts. The split is returned below as context. */
+  ["reached_login",   "Reached a way to sign in",
+   (r) => cnt(r.account_screen) > 0 || cnt(r.join_gate) > 0],
+  ["signed_any",      "Signed in or made an account",
+   (r) => cnt(r.signed_any) > 0],
+  ["reached_paywall", "Reached the paywall",
+   (r) => cnt(r.paywall_screen) > 0 || cnt(r.paywall_hit) > 0 || cnt(r.join_gate) > 0],
+  ["plan_picked",     "Picked a plan",
+   (r) => cnt(r.plan_picked) > 0],
+  ["stripe",          "Sent to Stripe",
+   (r) => cnt(r.stripe) > 0],
+  ["came_back",       "Came back with access",
+   (r) => cnt(r.came_back) > 0],
+  ["subscribed",      "Came back from Stripe with access",
+   (r) => cnt(r.subscribed) > 0],
+  /* A DEFINITION rather than an event, and identical to firststory_funnel's
+     on purpose so the two panels agree: more than one calendar day in UTC
+     with any event on it, inside this window. */
+  ["returned_later",  "Came back on a later day",
+   (r) => cnt(r.days_active) > 1]
+];
+
+/* Not rungs. `pct_of_previous: null` is how a row says "do not draw me in the
+   funnel" — the signal subscribe_funnel's `blocked` row already carries and
+   js/dashboard.js already reads generically, so adding one here needs no
+   change there.
+
+   `account_created` is here rather than in the ladder because it is
+   undercounted by every account made with Google: login.html fires
+   signin_google for a new account and a returning one alike. Until
+   getAdditionalUserInfo(cred).isNewUser lands in js/auth.js, `signed_any` is
+   the trustworthy line and this is context. */
+const OB_CONTEXT_STEPS = [
+  ["account_created", "Made an account (undercounted — see the note)",
+   (r) => cnt(r.account_created) > 0],
+  ["login_via_quiz",  "Reached the quiz's own account screen",
+   (r) => cnt(r.account_screen) > 0],
+  ["login_via_join",  "Reached /join instead",
+   (r) => cnt(r.join_gate) > 0],
+  ["blocked",         "Blocked before Stripe",
+   (r) => cnt(r.blocked) > 0]
+];
+
+/* One place that turns whatever PostHog put in a cell into a number. Every
+   test above runs through it, so a column that arrives as the string "3"
+   because the property was a string on some events is still three. */
+function cnt(v) {
+  const x = Number(v || 0);
+  return isFinite(x) ? x : 0;
+}
 
 /* Human labels for the funnel, in step order. Kept beside the query rather
    than in the dashboard so the two cannot drift. */
@@ -2068,6 +2512,432 @@ function shape(name, rows) {
   return rows;
 }
 
+
+/* ==========================================================================
+   THE QUIZ FUNNEL — four folds
+
+   Called by the endpoint instead of shape(), like shapeGeo and
+   shapeFirstStory, because each returns its own `meta`: a caveat about an
+   answer has to travel with the answer rather than be remembered by whoever
+   reads it.
+
+   THE ONE RULE THAT RUNS THROUGH ALL FOUR. This product has almost no
+   readers. `meta.pct_usable` is false when the funnel's first declared step
+   has fewer than PCT_MIN_PEOPLE people, and when it is false the page prints
+   counts and no percentages anywhere in the panel. The threshold is decided
+   HERE and obeyed there, which is the geo_usable precedent: the function
+   says whether a number is real, and the page does not get a second opinion.
+   `meta.first_people` comes back with it so the page can name the
+   denominator in its sentence without recomputing it from the rows.
+   ========================================================================== */
+
+/* A step that is DECLARED and returned no row is not the same as a step that
+   returned a zero, and this is the whole reason OB_STEPS is declared. It is
+   marked `never_fired` and the page draws an em-dash. */
+function shapeOnboardingSteps(rows) {
+  /* Fold by step id. GROUP BY step, kind can in principle return two rows
+     for one screen — if `kind` were ever missing on one of the two events
+     that carry it — and two rows for one rung would double a denominator.
+     Counts add; the median comes from whichever row had the most views,
+     because medians cannot be added and averaging two of them would invent
+     a number. */
+  const by = Object.create(null);
+  for (const r of rows) {
+    const id = String(r.step || "");
+    if (!id) continue;
+    const seen = by[id];
+    if (!seen) {
+      by[id] = {
+        views: cnt(r.views), runs: cnt(r.runs), people: cnt(r.people),
+        forwards: cnt(r.forwards), backs: cnt(r.backs), skips: cnt(r.skips),
+        exits: cnt(r.exits), dwell_s: cnt(r.dwell_s),
+        dwell_s_capped: cnt(r.dwell_s_capped),
+        median_dwell_s: r.median_dwell_s === null || r.median_dwell_s === undefined
+          ? null : cnt(r.median_dwell_s),
+        top: cnt(r.views)
+      };
+      continue;
+    }
+    seen.views += cnt(r.views);
+    seen.runs += cnt(r.runs);
+    seen.people += cnt(r.people);
+    seen.forwards += cnt(r.forwards);
+    seen.backs += cnt(r.backs);
+    seen.skips += cnt(r.skips);
+    seen.exits += cnt(r.exits);
+    seen.dwell_s += cnt(r.dwell_s);
+    seen.dwell_s_capped += cnt(r.dwell_s_capped);
+    if (cnt(r.views) > seen.top) {
+      seen.top = cnt(r.views);
+      seen.median_dwell_s = r.median_dwell_s === null || r.median_dwell_s === undefined
+        ? null : cnt(r.median_dwell_s);
+    }
+  }
+
+  const out = [];
+  let first = 0, prev = 0, everFired = 0, lastFiredOrder = 0;
+
+  for (let i = 0; i < OB_STEPS.length; i++) {
+    const id = OB_STEPS[i][0], kind = OB_STEPS[i][1];
+    const order = OB_STEPS[i][2], label = OB_STEPS[i][3];
+    const g = by[id] || null;
+    const people = g ? g.people : 0;
+    if (i === 0) first = people;
+    if (g) { everFired++; lastFiredOrder = order; }
+
+    out.push({
+      step: id,
+      label: label,
+      kind: kind,
+      order: order,
+      /* NEVER a zero for a step with no row. A zero is the result of a
+         measurement and this is the absence of one. */
+      never_fired: !g,
+      views: g ? g.views : null,
+      runs: g ? g.runs : null,
+      people: g ? g.people : null,
+      forwards: g ? g.forwards : null,
+      backs: g ? g.backs : null,
+      skips: g ? g.skips : null,
+      exits: g ? g.exits : null,
+      /* THE SIZE OF THE BLIND SPOT, PRINTED RATHER THAN ABSORBED.
+         ONBOARDING-ANALYTICS.md section 2: the in-app browsers this audience
+         arrives through frequently tear the webview down without firing
+         pagehide at all, so some screen views end with no ob_leave of any
+         kind. Folding those into `exits` would report "we stopped seeing
+         them here" as "they left", which is a different claim. Floored at
+         zero because a screen still open when the window closed leaves
+         without its ob_leave. */
+      unaccounted: g
+        ? Math.max(0, g.views - (g.forwards + g.backs + g.skips + g.exits))
+        : null,
+      dwell_s: g ? round1(g.dwell_s) : null,
+      dwell_s_capped: g ? round1(g.dwell_s_capped) : null,
+      median_dwell_s: g ? g.median_dwell_s : null,
+      /* Against the FIRST DECLARED step and the PREVIOUS DECLARED step, not
+         against whatever happened to come back — which is what makes a gap
+         in the middle of the flow visible as a gap. */
+      reach_pct: g ? pct(people, first) : null,
+      dropoff_pct: g && prev ? Math.max(0, pct(prev - people, prev)) : null
+    });
+    if (g) prev = people;
+  }
+
+  /* THE MOST USEFUL SENTENCE THIS PANEL CAN PRINT AT THIS TRAFFIC, and it
+     costs one comparison: a declared step with no rows that has a LATER
+     declared step WITH rows did not lose anybody — it is almost certainly
+     not instrumented, because people cannot be past it without going
+     through it. */
+  const gaps = [];
+  for (const r of out) {
+    if (r.never_fired && r.order < lastFiredOrder) gaps.push(r.step);
+  }
+
+  return {
+    rows: out,
+    meta: {
+      first_people: first,
+      pct_usable: first >= PCT_MIN_PEOPLE,
+      pct_min_people: PCT_MIN_PEOPLE,
+      declared_steps: OB_STEPS.length,
+      steps_fired: everFired,
+      /* Steps with no row that have traffic BELOW them. An instrumentation
+         gap, not a drop-off, and the page says which. */
+      steps_missing_midflow: gaps
+    }
+  };
+}
+
+/* The end-to-end ladder, and the comparison the owner asked the question
+   for. One row per person in, two things out: a ladder over the people who
+   saw the quiz, and quiz-against-no-quiz at the rungs where money is.
+
+   THE COHORTS. `quiz` is anybody with an ob_ event in this window; `noquiz`
+   is anybody who reached the paywall or /join in this window with none. They
+   are disjoint by construction and neither is a random assignment — readers
+   are not split by a coin toss, they arrive by different routes on different
+   days — so this is a DESCRIPTION of two groups and not an experiment. At
+   this traffic it is a description of a handful of people. The panel says
+   so, in those words, and does not offer it as a reason to turn the quiz
+   off. */
+function shapeOnboarding(rows) {
+  const truncated = rows.length >= OB_PERSON_ROWS;
+
+  const quiz = [], noquiz = [];
+  for (const r of rows) {
+    if (cnt(r.ob_events) > 0) { quiz.push(r); continue; }
+    /* Somebody who only appears here because they signed in has not
+       "reached the paywall without the quiz" — they have not reached it at
+       all. The comparison group is the people who got to the same place by
+       the other road. */
+    if (cnt(r.paywall_hit) > 0 || cnt(r.join_gate) > 0) noquiz.push(r);
+  }
+
+  function count(cohort, test) {
+    let k = 0;
+    for (const r of cohort) if (test(r)) k++;
+    return k;
+  }
+
+  const out = [];
+  let first = 0, prev = 0;
+  for (const spec of OB_FUNNEL_STEPS) {
+    const people = count(quiz, spec[2]);
+    if (!out.length) first = people;
+    out.push({
+      step: spec[0],
+      label: spec[1],
+      people: people,
+      pct_of_first: pct(people, first),
+      pct_of_previous: out.length ? pct(people, prev) : 100
+    });
+    prev = people;
+  }
+  for (const spec of OB_CONTEXT_STEPS) {
+    const people = count(quiz, spec[2]);
+    out.push({
+      step: spec[0], label: spec[1], people: people,
+      pct_of_first: pct(people, first),
+      pct_of_previous: null
+    });
+  }
+
+  /* THE COMPARISON, as a handful of rungs and nothing more. Not a whole
+     second ladder: the no-quiz cohort has no quiz screens to have a ladder
+     over, and drawing them side by side would put twelve empty rows beside
+     twelve full ones and read as catastrophic drop-off. The same tests, both
+     cohorts, at the places the two roads meet. */
+  function side(cohort) {
+    return {
+      people: cohort.length,
+      reached_paywall: count(cohort, (r) =>
+        cnt(r.paywall_screen) > 0 || cnt(r.paywall_hit) > 0 || cnt(r.join_gate) > 0),
+      signed_any: count(cohort, (r) => cnt(r.signed_any) > 0),
+      stripe: count(cohort, (r) => cnt(r.stripe) > 0),
+      subscribed: count(cohort, (r) => cnt(r.subscribed) > 0),
+      returned_later: count(cohort, (r) => cnt(r.days_active) > 1)
+    };
+  }
+
+  return {
+    rows: out,
+    meta: {
+      first_people: first,
+      pct_usable: first >= PCT_MIN_PEOPLE,
+      pct_min_people: PCT_MIN_PEOPLE,
+      cohort: quiz.length,
+      truncated: truncated,
+      /* Both sides of "how do the both perform". A fixed shape, six numbers
+         each — this is meta because it is an aside about the answer, not a
+         second answer. */
+      compare: { quiz: side(quiz), noquiz: side(noquiz) }
+    }
+  };
+}
+
+/* Which answers, joined to what those people went on to do. The person id is
+   the join key and it does not survive this function; check that again after
+   editing. */
+function shapeOnboardingAnswers(triples, outcomes, limit) {
+  const truncated = triples.length >= ANSWER_ROWS_MAX ||
+                    outcomes.length >= OUTCOME_ROWS_MAX;
+
+  const by = Object.create(null);
+  for (const o of outcomes) {
+    const k = String(o.person || "");
+    if (k) by[k] = o;
+  }
+
+  /* PEOPLE, not events. A reader who went back and changed an answer fired
+     ob_answer twice for one opinion, and counting the taps would make an
+     answer people hesitate over look popular. */
+  const groups = Object.create(null);
+  const order = [];
+  let unjoined = 0;
+
+  for (const t of triples) {
+    const q = String(t.q || "");
+    const a = String(t.answer === null || t.answer === undefined ? "" : t.answer);
+    const person = String(t.person || "");
+    if (!q || !person) continue;
+    const key = q + " " + a;
+    let g = groups[key];
+    if (!g) {
+      g = groups[key] = { q: q, answer: a, people: 0, runs: 0, answers: 0,
+                          finished: 0, accounts: 0, stripe: 0, subscribed: 0 };
+      order.push(g);
+    }
+    g.people++;
+    g.runs += cnt(t.runs);
+    g.answers += cnt(t.answers);
+    const o = by[person];
+    if (!o) { unjoined++; continue; }
+    if (cnt(o.finished) > 0) g.finished++;
+    if (cnt(o.account) > 0) g.accounts++;
+    if (cnt(o.stripe) > 0) g.stripe++;
+    if (cnt(o.subscribed) > 0) g.subscribed++;
+  }
+
+  for (const g of order) {
+    g.finished_pct = pct(g.finished, g.people);
+    g.subscribed_pct = pct(g.subscribed, g.people);
+  }
+
+  /* Question first, then the most-chosen answer, so the rows read as a
+     questionnaire rather than as a leaderboard of unrelated keys. */
+  order.sort((x, y) => {
+    if (x.q !== y.q) return x.q < y.q ? -1 : 1;
+    return y.people - x.people;
+  });
+
+  const cut = order.length > limit;
+  return {
+    rows: cut ? order.slice(0, limit) : order,
+    meta: {
+      truncated: truncated || cut,
+      answer_rows: order.length,
+      /* People whose answers came back but whose outcomes did not, because
+         the outcome roster hit its own cap. Their answers are counted and
+         their conversion is not, so every pct column is a floor for them —
+         which is a thing to say rather than to average away. */
+      outcomes_missing: unjoined
+    }
+  };
+}
+
+/* Runs: how they ended, and on which build they ran.
+
+   THE BUCKETS ARE ABOUT RUNS AND THE PEOPLE COLUMN IS ABOUT PEOPLE, and they
+   do not add up to each other on purpose: one person with three abandoned
+   runs is three runs and one person. */
+function shapeOnboardingRuns(rows) {
+  const truncated = rows.length >= RUN_ROWS_MAX;
+
+  /* How many runs each person has in this window. It is what separates
+     "gave up" from "gave up and came back for another go", and it cannot be
+     known from one run's row. */
+  const runsPer = Object.create(null);
+  for (const r of rows) {
+    const p = String(r.person || "");
+    if (p) runsPer[p] = (runsPer[p] || 0) + 1;
+  }
+
+  const BUCKETS = [
+    ["finished_first_run",      "Finished, first go"],
+    ["finished_after_resume",   "Finished after picking it back up"],
+    ["abandoned_once",          "Stopped, and did not come back"],
+    ["abandoned_and_restarted", "Stopped, and started again"]
+  ];
+
+  const acc = Object.create(null);
+  for (const b of BUCKETS) {
+    acc[b[0]] = { bucket: b[0], label: b[1], runs: 0,
+                  people: Object.create(null),
+                  screens: [], furthest: [], total: [] };
+  }
+
+  const builds = Object.create(null);
+  const buildOrder = [];
+
+  for (const r of rows) {
+    const person = String(r.person || "");
+    const finished = cnt(r.finished) > 0;
+    const resumed = cnt(r.resumed) > 0;
+    const again = person ? (runsPer[person] || 1) > 1 : false;
+    const key = finished
+      ? (resumed ? "finished_after_resume" : "finished_first_run")
+      : (again ? "abandoned_and_restarted" : "abandoned_once");
+
+    const b = acc[key];
+    b.runs++;
+    if (person) b.people[person] = 1;
+    if (r.screens !== null && r.screens !== undefined) b.screens.push(cnt(r.screens));
+    if (r.furthest_n !== null && r.furthest_n !== undefined) b.furthest.push(cnt(r.furthest_n));
+    if (r.total_s !== null && r.total_s !== undefined) b.total.push(cnt(r.total_s));
+
+    /* THE BUILD SLICE, and it is the whole answer to "he may revert the
+       motion". `release` is js/analytics.js's RELEASE constant, put on
+       ob_step — an already-registered property name, so it costs none of
+       the remaining GA4 registrations — and a deploy changes it. A run
+       carries the build it started on. Runs whose ob_step predates the
+       property are grouped under null and labelled, never silently merged
+       into the newest build. */
+    const rel = r.release === null || r.release === undefined ? "" : String(r.release);
+    let g = builds[rel];
+    if (!g) {
+      g = builds[rel] = { release: rel || null, runs: 0, finished: 0,
+                          people: Object.create(null),
+                          first_day: String(r.first_day || ""),
+                          last_day: String(r.last_day || "") };
+      buildOrder.push(g);
+    }
+    g.runs++;
+    if (finished) g.finished++;
+    if (person) g.people[person] = 1;
+    const fd = String(r.first_day || ""), ld = String(r.last_day || "");
+    if (fd && (!g.first_day || fd < g.first_day)) g.first_day = fd;
+    if (ld && ld > g.last_day) g.last_day = ld;
+  }
+
+  const out = [];
+  let allRuns = 0;
+  const allPeople = Object.create(null);
+  for (const spec of BUCKETS) {
+    const b = acc[spec[0]];
+    allRuns += b.runs;
+    let people = 0;
+    for (const k in b.people) { people++; allPeople[k] = 1; }
+    out.push({
+      bucket: b.bucket,
+      label: b.label,
+      runs: b.runs,
+      people: people,
+      /* Medians, never means. One run left open in a background tab owns a
+         mean of four runs and says nothing true about any of them. */
+      median_screens: medianOf(b.screens),
+      median_furthest_n: medianOf(b.furthest),
+      median_total_s: medianOf(b.total)
+    });
+  }
+
+  let peopleTotal = 0;
+  for (const k in allPeople) peopleTotal++;
+
+  /* Newest build first, and bounded: this is a slice of a window that is at
+     most ninety days, and a site that deploys daily would otherwise put
+     ninety rows in an aside. */
+  buildOrder.sort((a, b) => {
+    const x = String(a.last_day || ""), y = String(b.last_day || "");
+    if (x !== y) return x < y ? 1 : -1;
+    return b.runs - a.runs;
+  });
+  const builds_out = [];
+  for (let i = 0; i < buildOrder.length && i < 12; i++) {
+    const g = buildOrder[i];
+    let people = 0;
+    for (const k in g.people) people++;
+    builds_out.push({
+      release: g.release,
+      runs: g.runs,
+      people: people,
+      finished: g.finished,
+      finished_pct: pct(g.finished, g.runs),
+      first_day: g.first_day || null,
+      last_day: g.last_day || null
+    });
+  }
+
+  return {
+    rows: out,
+    meta: {
+      truncated: truncated,
+      runs: allRuns,
+      people: peopleTotal,
+      builds: builds_out,
+      builds_seen: buildOrder.length
+    }
+  };
+}
 
 /* ==========================================================================
    READERS — the fold, the join, and the ordinal
@@ -2823,7 +3693,13 @@ exports.insights = onRequest(
 
     /* --- 3. What it costs. ----------------------------------------------
        Counted in upstream queries, because person_timeline makes two. */
-    const upstreamCost = spec.firestore ? 0 : (spec.twoStep ? 2 : 1);
+    /* `twoUpstream` is onboarding_answers: two bounded queries and a join in
+       JS, for the same reason reader_dwell makes two — one HogQL query
+       cannot both group by (q, answer) and carry a per-person outcome
+       without a construct this file has never run. It is not `twoStep`,
+       which means something narrower: a roster and an ordinal. */
+    const upstreamCost = spec.firestore ? 0
+      : (spec.twoStep || spec.twoUpstream ? 2 : 1);
 
     const localWait = throttledLocally(who.uid);
     if (localWait) return fail(res, "rate_limited", { retry_after_s: localWait });
@@ -3033,6 +3909,36 @@ exports.insights = onRequest(
       const folded = shapeGeo(rows);
       rows = folded.rows;
       for (const k in folded.meta) meta[k] = folded.meta[k];
+
+    /* --- The quiz funnel ------------------------------------------------
+       Four folds rather than four cases in shape(), for the reason the
+       three above are folds: each carries a caveat about its own answer —
+       whether a percentage may be printed at all, which declared screens
+       never fired, whether a row bound was hit — and a caveat that does not
+       travel with the answer is a caveat nobody reads. Two of them also
+       carry a person id in what PostHog returned, and it must be dropped
+       before anything is sent. */
+    } else if (name === "onboarding_steps") {
+      const folded = shapeOnboardingSteps(rows);
+      rows = folded.rows;
+      for (const k in folded.meta) meta[k] = folded.meta[k];
+    } else if (name === "onboarding_conversion") {
+      const folded = shapeOnboarding(rows);
+      rows = folded.rows;
+      for (const k in folded.meta) meta[k] = folded.meta[k];
+    } else if (name === "onboarding_runs") {
+      const folded = shapeOnboardingRuns(rows);
+      rows = folded.rows;
+      for (const k in folded.meta) meta[k] = folded.meta[k];
+    } else if (name === "onboarding_answers") {
+      /* The second call is budgeted for above whether or not it is reached,
+         which is the honest direction to round: an admin who asked for this
+         is charged for what it costs, not for how far it got. */
+      const outcomes = await run(spec.buildOutcomes(parsed.p));
+      if (outcomes === null) return;
+      const folded = shapeOnboardingAnswers(rows, outcomes, parsed.p.limit);
+      rows = folded.rows;
+      for (const k in folded.meta) meta[k] = folded.meta[k];
     } else {
       rows = shape(name, rows);
     }
@@ -3091,6 +3997,12 @@ exports._shapeReaderDwell = shapeReaderDwell;
 exports._rosterIndex = rosterIndex;
 exports._shapeTimeline = shapeTimeline;
 exports._shapeGeo = shapeGeo;
+exports._shapeOnboardingSteps = shapeOnboardingSteps;
+exports._shapeOnboarding = shapeOnboarding;
+exports._shapeOnboardingAnswers = shapeOnboardingAnswers;
+exports._shapeOnboardingRuns = shapeOnboardingRuns;
+exports._OB_STEPS = OB_STEPS;
+exports._PCT_MIN_PEOPLE = PCT_MIN_PEOPLE;
 exports._timelineDetail = timelineDetail;
 /* alerts.js needs the SAME admin list this file uses, not a second copy of
    the logic. A divergence here does not fail loudly — it fails by the

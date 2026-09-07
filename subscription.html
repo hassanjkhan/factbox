@@ -28,9 +28,9 @@
      --display must add the family to its own link, because a custom property
      cannot fetch a font. One request, both families. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
-<link rel="stylesheet" href="/css/app.css">
-<script src="/js/loader.js"></script>
-<link rel="stylesheet" href="/css/subscription.css">
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<script src="/js/loader.js?v=1b02aa41"></script>
+<link rel="stylesheet" href="/css/subscription.css?v=fa1ddfcf">
 
 <!--
   THE ANTI-FLIP, and the reason the static panel exists.
@@ -411,18 +411,18 @@
      because gate.js's claim() strips the query string at parse time and
      progress.js needs Stripe's session_id out of it first. access.js is FBX,
      account.js is FBA — this page reads both and writes to neither. -->
-<script src="/js/progress.js"></script>
-<script src="/js/access.js"></script>
-<script src="/js/gate.js"></script>
-<script src="/js/account.js"></script>
+<script src="/js/progress.js?v=5eaa11d5"></script>
+<script src="/js/access.js?v=d02b9aff"></script>
+<script src="/js/gate.js?v=c49b9c50"></script>
+<script src="/js/account.js?v=381c71cc"></script>
 <!-- js/auth.js is a module, so the browser defers it: it runs after the
      document is parsed and BEFORE DOMContentLoaded, whatever position this
      tag is in. js/subscription.js is ES5 and cannot read window.FBU at the
      moment it runs, and does not — it uses the whenFBU() bridge. -->
-<script type="module" src="/js/auth.js"></script>
-<script src="/js/subscription.js"></script>
+<script type="module" src="/js/auth.js?v=35b20584"></script>
+<script src="/js/subscription.js?v=e609da5d"></script>
 
-<script src="/js/analytics.js"></script>
-<script src="/js/acct.js"></script>
+<script src="/js/analytics.js?v=a72ffef9"></script>
+<script src="/js/acct.js?v=9427c787"></script>
 </body>
 </html>

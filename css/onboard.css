@@ -68,6 +68,49 @@
 }
 
 /* ==========================================================================
+   WIDE SCREENS: the funnel is a phone-shaped column, not a stretched page.
+
+   Every offset in this file comes from the mockup's 390x844 frame — the hero
+   art is 600 tall, the loader's cover card sits at top:474, the buttons are
+   pinned 26-30px off the bottom. Those are absolute positions inside a box
+   that box was 390x844.
+
+   Let that box become the browser window and all of it comes apart: on a
+   2000px monitor the two story tiles were a thousand pixels wide with their
+   paintings cropped to letterbox strips, "Yes / Not sure" stretched into a
+   pair of runways, and every screen ended in a third of a page of empty
+   cream, because content anchored to top:474 of an 844 frame has nowhere to
+   go in a 1200px one.
+
+   So the frame stays a frame. `margin:auto` with all four offsets at 0 and a
+   definite size centres it on both axes — no transform, deliberately, because
+   a transformed ancestor would become the containing block for the plate
+   morph's own transforms and that is a debugging session nobody needs.
+
+   Below 520px nothing here applies and the funnel is edge to edge, which is
+   where it is actually read.
+   ========================================================================== */
+@media (min-width:520px){
+  .fbg.is-quiz .fbg-sheet.fbg-quiz{
+    background:var(--night, #0F1420);   /* the surround, so the column reads as a device */
+    padding:0;
+  }
+  .fbob{
+    width:100%;  max-width:440px;
+    height:100%; max-height:880px;
+    margin:auto;                        /* with top/right/bottom/left all 0 */
+    border-radius:22px;
+    overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.45);
+  }
+}
+/* A short window is not a phone: let it use the height it has rather than
+   clipping the button off the bottom of a laptop in landscape. */
+@media (min-width:520px) and (max-height:900px){
+  .fbob{max-height:100%; border-radius:0}
+}
+
+/* ==========================================================================
    THE MOTION SYSTEM.
 
    THE ONE RULE EVERYTHING BELOW OBEYS: transform and opacity, and nothing

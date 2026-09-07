@@ -1243,6 +1243,18 @@
 
   window.FBQ = {
     capture: capture,
+    /* THE BUILD, READABLE BY ANOTHER FILE.
+
+       RELEASE has been on client_error since it was written, which is what
+       makes it an already-registered GA4 parameter name rather than one of
+       the twenty-two remaining registrations. js/onboard.js puts it on
+       ob_step so the quiz funnel can be sliced by the build it ran on: the
+       onboarding changed twice this month and may be reverted, and without
+       this the dashboard can only slice by date and hope the two line up.
+
+       Exported rather than copied. A second literal in another file is a
+       release id that is right until somebody bumps one of them. */
+    RELEASE: RELEASE,
     optedOut: function () { return ls(OPTOUT_KEY) === "1"; },
     optOut: function () {
       ls(OPTOUT_KEY, "1");

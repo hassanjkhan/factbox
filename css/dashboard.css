@@ -205,6 +205,18 @@
 
 .dsh-sec .sechead h2{font-size:var(--fs-h3)}
 
+/* A sub-heading INSIDE a section. Only one section has needed one so far:
+   the opening questions answer four different questions from four different
+   queries — how far people get, whether they pay, what they answered, and
+   how their runs ended — and four state lines with no headings between them
+   read as one panel that keeps changing its mind. Deliberately quieter than
+   an h2: it divides a section, it does not start one. */
+.dsh-h3{
+  margin:26px 2px 10px; font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--ink); letter-spacing:.01em;
+}
+.dsh-h3:first-of-type{margin-top:14px}
+
 /* The line that says what the section answers. It is not decoration: half of
    these numbers are ambiguous without the question they answer. */
 .dsh-q{
