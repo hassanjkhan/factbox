@@ -450,6 +450,325 @@ var FBOB = (function () {
   var affirmTimer = 0;
   var pickTimer = 0;
 
+  /* ---- motion state. Presentation only; nothing below decides a screen. --
+     tappedKey     the option key tapped in THIS synchronous render, so the row
+                   that is about to be rebuilt can spring rather than snap.
+     pickShown     which loader genre rows have already ticked, so a tick pops
+                   the once it lights and not on every 320ms repaint.
+     phasePrev     the phase percentages the last chrome drew, so the new one
+                   can start there and travel rather than appear finished.
+     loadMode      "run" or "ask", so the loader morphs its plate when it
+                   swaps between the cover card and an interruption and NOT
+                   on every cover cycle.
+     ------------------------------------------------------------------- */
+  var tappedKey = "";
+  var pickShown = {};
+  var phasePrev = null;
+  var loadMode = "";
+  var loadPctPrev = 0;
+
+  /* ======================================================================
+     THE MOTION SYSTEM.
+
+     One rule decides whether any of it runs: prefers-reduced-motion. When it
+     is set, motionOff() is true, every helper below returns the element it
+     was handed untouched, and css/onboard.css kills the keyframes as well —
+     so the reduced screen is not "the animation, faster", it is the final
+     frame and nothing else.
+
+     Two more rules, and they are the reason the code is shaped like this:
+
+       · TRANSFORM AND OPACITY ONLY, with one exception the design asks for:
+         the 6px blur a headline word resolves out of. The bars that used to
+         transition `width` are scaleX() now. The audience is Instagram and
+         TikTok webviews on mid-range phones and a paint-triggering funnel is
+         a stuttering funnel.
+
+       · NOTHING MAY STICK. Every keyframe ends at the resting state with
+         fill-mode both, so an animation that is interrupted leaves a visible
+         element; every transition that has cleanup hanging off transitionend
+         ALSO has a timeout, because transitionend does not fire for a node
+         that was detached mid-flight and a plate stuck at scale(8) is a blank
+         screen to the reader.
+
+     Nothing here is on the tap path. Options are rendered with their final
+     hit area from the first frame; an element mid-fade is still tappable.
+     ====================================================================== */
+
+  var MORPH_MS = 520;
+  var EASE = "cubic-bezier(.2,.75,.25,1)";
+
+  function motionOff() {
+    try {
+      if (!window.matchMedia) return false;
+      return !!window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) { return false; }
+  }
+
+  /* Marks an element for its entry animation, and ONLY on the render that
+     first puts it on screen. enterNow is false for every repaint — a tick
+     being ticked must not re-run the whole screen, and the loader repaints
+     itself three times a second. The class is what CSS keys off; the delay is
+     the stagger. */
+  function enter(node, cls, delay) {
+    if (!node) return node;
+    if (!enterNow || motionOff()) return node;
+    node.className = node.className ? node.className + " " + cls : cls;
+    if (delay) { try { node.style.animationDelay = delay + "ms"; } catch (e) {} }
+    return node;
+  }
+
+  /* A · THE WORD-BY-WORD HEADLINE.
+
+     One heading element, one string, word spans inside it. The whitespace
+     stays as real text nodes between the spans, so the line still wraps where
+     the browser would have wrapped it and a word can never be broken across
+     a line; the spans are inline-block, which is what stops the split from
+     becoming a place to break. To a screen reader the heading's text is the
+     same one string it was before — this restructures nothing above the word.
+
+     When the screen is a repaint rather than an arrival the spans are still
+     built, with no animation class, so the two renders lay out identically
+     and a tap cannot shift the headline by a hair. */
+  function headWords(tag, cls, text) {
+    var h = el(tag, cls ? cls + " ob-words" : "ob-words");
+    var t = str(text);
+    if (!t) return h;
+    var parts = t.split(/(\s+)/);
+    var anim = enterNow && !motionOff();
+    var n = 0, i, w;
+    for (i = 0; i < parts.length; i++) {
+      if (!parts[i]) continue;
+      if (/^\s+$/.test(parts[i])) {
+        h.appendChild(D().createTextNode(parts[i]));
+        continue;
+      }
+      w = el("span", anim ? "ob-w is-in" : "ob-w");
+      w.appendChild(D().createTextNode(parts[i]));
+      if (anim) { try { w.style.animationDelay = (n * 55) + "ms"; } catch (e) {} }
+      h.appendChild(w);
+      n++;
+    }
+    return h;
+  }
+
+  /* B · THE PERSISTING PLATE.
+
+     The painting is the only thing on these eleven screens that is on more
+     than one of them, so it is the thing that carries the reader between
+     them: it does not cross-dissolve with a second plate, it TRAVELS.
+
+     FLIP, and nothing cleverer. Measure the outgoing plate before the screen
+     is torn down, render the new screen, measure the incoming plate, put the
+     incoming one back where the outgoing one was with a transform, force the
+     reflow that makes that start state real, and then release it to identity.
+     One element moves. There is never a second plate on screen.
+
+     WHAT TRAVELS IS THE CARD, NOT THE PICTURE INSIDE IT. This is the whole
+     difference between a morph and a picture sliding around behind a hole
+     that was already the right size: the thing carrying the reader's eye is
+     the FRAME — the rounded, clipped box the painting sits in — so that is
+     the element the transform goes on. The first version of this moved the
+     image layer inside a card that was already at rest, and it read exactly
+     as wrong as that sounds.
+
+     THE CONTENT CORRECTION, which is the difference between a morph and a
+     squash. A cover on the pick screen is 3:4.4 and the loader's card is
+     nearly 3:2, so a plain FLIP would stretch the painting sideways for half
+     a second on the way over. So the FRAME takes the full non-uniform scale —
+     it is the window, and a window is what changes shape — while the plate
+     inside it takes back the inverse of only the ASPECT half, leaving the
+     painting scaled uniformly by max(sx,sy). Uniform means undistorted; the
+     max means it always covers the window rather than letting the plate's
+     dark ground show at an edge. What you see is a frame reshaping over a
+     picture that only ever grows and shrinks, which is what a card opening
+     looks like.
+
+     The old painting rides along as a ghost <img> inside the same plate,
+     under the same correction, fading out — so the artwork cross-fades while
+     the frame travels. Everything ELSE the frame holds — the scrim, the
+     headline over it, the tick — fades up over the trip rather than being
+     dragged through the scale, because a caption stretched to half its width
+     and back is the one part of this a reader would notice as a wobble.
+
+     It falls back to nothing at all — the screen just arrives — when either
+     plate is missing, either rect is empty, or the scale is far enough out of
+     range that the morph would be a smear rather than a move. */
+
+  var morphTimer = 0;
+  var morphState = null;
+
+  function morphDone() {
+    try { if (morphTimer) { clearTimeout(morphTimer); morphTimer = 0; } } catch (e) {}
+    var m = morphState;
+    morphState = null;
+    if (!m) return;
+    try {
+      if (m.plate && m.plate.removeEventListener) {
+        m.plate.removeEventListener("transitionend", m.end, false);
+      }
+    } catch (e1) {}
+    var i, n;
+    for (i = 0; i < m.nodes.length; i++) {
+      n = m.nodes[i];
+      try {
+        n.style.transition = "";
+        n.style.transform = "";
+        n.style.transformOrigin = "";
+        n.style.willChange = "";
+        /* the overlays were the only thing this ever set opacity on, and
+           clearing it is what guarantees nothing is left invisible */
+        n.style.opacity = "";
+      } catch (e2) {}
+    }
+    try { if (m.ghost && m.ghost.parentNode) m.ghost.parentNode.removeChild(m.ghost); } catch (e3) {}
+  }
+
+  /* The one CARD on a screen that is the through-line, in priority order —
+     the clipped, rounded box, not the image inside it. A selected cover beats
+     an unselected one because the reader has just told us which picture they
+     meant; the big art blocks beat the small tiles because a screen holding
+     both is a screen whose subject is the big one. */
+  var HERO = [".ob-cover.is-on",
+              ".ob-w-art",
+              ".ob-i-art",
+              ".ob-demo",
+              ".ob-covercard",
+              ".ob-card",
+              ".ob-cover",
+              ".ob-tile"];
+
+  function heroFrame(root) {
+    if (!root || !root.querySelector) return null;
+    var i, n;
+    for (i = 0; i < HERO.length; i++) {
+      try { n = root.querySelector(HERO[i]); } catch (e) { n = null; }
+      if (n && n.querySelector && n.querySelector(".ob-plate img")) return n;
+    }
+    return null;
+  }
+
+  function grabHero(root) {
+    if (motionOff()) return null;
+    var f = heroFrame(root);
+    if (!f) return null;
+    var r = null;
+    try { r = f.getBoundingClientRect(); } catch (e) { return null; }
+    if (!r || !(r.width > 1) || !(r.height > 1)) return null;
+    var im = null;
+    try { im = f.querySelector(".ob-plate img"); } catch (e2) {}
+    return { x: r.left, y: r.top, w: r.width, h: r.height,
+             src: (im && im.src) ? im.src : "" };
+  }
+
+  function runMorph(from, root) {
+    morphDone();
+    if (!from || motionOff() || !host) return false;
+    var p = heroFrame(root);
+    if (!p) return false;
+    var r = null;
+    try { r = p.getBoundingClientRect(); } catch (e) { return false; }
+    if (!r || !(r.width > 1) || !(r.height > 1)) return false;
+
+    var sx = from.w / r.width, sy = from.h / r.height;
+    var dx = from.x - r.left, dy = from.y - r.top;
+    if (!isFinite(sx) || !isFinite(sy) || !isFinite(dx) || !isFinite(dy)) return false;
+    if (!(sx > 0.03) || !(sy > 0.03) || sx > 24 || sy > 24) return false;
+    if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5 &&
+        Math.abs(sx - 1) < 0.02 && Math.abs(sy - 1) < 0.02) return false;
+
+    /* The travelling plate must be OPAQUE for the whole trip. Anything above
+       it that was going to fade or deal itself in stands down — the first
+       results card is the card that arrived by morphing, and the two under it
+       still deal in behind it. The screen's own arrival fade goes too. */
+    var a = p, cn;
+    while (a && a !== host && a.nodeType === 1) {
+      cn = a.className ? String(a.className) : "";
+      if (cn.indexOf("ob-in") > -1) {
+        a.className = cn.replace(/ob-in[a-z-]*/g, "");
+        try { a.style.animation = "none"; a.style.opacity = "1"; } catch (e2) {}
+      }
+      if (cn.indexOf("ob-screen") > -1 && cn.indexOf("is-morph") < 0) {
+        a.className = a.className + " is-morph";
+      }
+      a = a.parentNode;
+    }
+
+    /* the plate is the picture layer; everything else the frame holds is an
+       overlay that fades up rather than being dragged through the scale */
+    var plate = null;
+    try { plate = p.querySelector(".ob-plate"); } catch (ep) {}
+    var nodes = [p], over = [], i, k, kn = p.childNodes;
+    for (i = 0; i < kn.length; i++) {
+      if (kn[i].nodeType === 1 && kn[i] !== plate) over.push(kn[i]);
+    }
+
+    var ghost = null;
+    if (from.src && plate) {
+      ghost = D().createElement("img");
+      ghost.className = "ob-ghostplate";
+      ghost.alt = "";
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.src = from.src;
+      plate.appendChild(ghost);
+    }
+
+    /* the aspect-only inverse: uniform max(sx,sy) on the picture */
+    var kmax = sx > sy ? sx : sy;
+    var cx = kmax / sx, cy = kmax / sy;
+
+    p.style.transformOrigin = "0 0";
+    p.style.willChange = "transform";
+    p.style.transition = "none";
+    p.style.transform = "translate(" + dx + "px," + dy + "px) scale(" + sx + "," + sy + ")";
+    if (plate) {
+      nodes.push(plate);
+      plate.style.transformOrigin = "50% 50%";
+      plate.style.willChange = "transform";
+      plate.style.transition = "none";
+      plate.style.transform = "scale(" + cx + "," + cy + ")";
+    }
+    for (i = 0; i < over.length; i++) {
+      k = over[i];
+      nodes.push(k);
+      k.style.willChange = "opacity";
+      k.style.transition = "none";
+      k.style.opacity = "0";
+    }
+    if (ghost) ghost.style.opacity = "1";
+
+    /* the reflow that makes the start state a real frame rather than a value
+       the browser is free to coalesce away */
+    var flush = 0;
+    try { flush = p.offsetWidth; } catch (e3) {}
+    if (flush < 0) return false;
+
+    var tr = "transform " + MORPH_MS + "ms " + EASE;
+    var op = "opacity " + MORPH_MS + "ms " + EASE;
+    p.style.transition = tr;
+    p.style.transform = "translate(0px,0px) scale(1,1)";
+    if (plate) {
+      plate.style.transition = tr;
+      plate.style.transform = "scale(1,1)";
+    }
+    for (i = 0; i < over.length; i++) {
+      over[i].style.transition = op;
+      over[i].style.opacity = "1";
+    }
+    if (ghost) {
+      ghost.style.transition = op;
+      ghost.style.opacity = "0";
+    }
+
+    var end = function () { morphDone(); };
+    morphState = { plate: p, nodes: nodes, ghost: ghost, end: end };
+    try { p.addEventListener("transitionend", end, false); } catch (e4) {}
+    /* the fallback that matters: a node torn down mid-flight never fires
+       transitionend, and the cleanup must still run */
+    try { morphTimer = setTimeout(end, MORPH_MS + 180); } catch (e5) {}
+    return true;
+  }
+
   /* ======================================================================
      DOM.
      ====================================================================== */
@@ -709,6 +1028,7 @@ var FBOB = (function () {
      ====================================================================== */
 
   function clearTimers() {
+    morphDone();
     try { if (loadTimer) { clearInterval(loadTimer); loadTimer = 0; } } catch (e) {}
     try { if (affirmTimer) { clearTimeout(affirmTimer); affirmTimer = 0; } } catch (e2) {}
     try { if (pickTimer) { clearTimeout(pickTimer); pickTimer = 0; } } catch (e2b) {}
@@ -822,6 +1142,9 @@ var FBOB = (function () {
   function show(i, push) {
     if (!host) return;
     clearTimers();
+    /* B · the outgoing plate, measured while it is still on the display.
+       After render() there is nothing left to measure. */
+    var came = grabHero(host);
     idx = i;
     committed = false;
     leftThisScreen = false;
@@ -831,8 +1154,12 @@ var FBOB = (function () {
     interruptAt = -1;
     interruptsDone = 0;
     entering = true;
+    pickShown = {};
+    loadMode = "";
+    loadPctPrev = 0;
 
     render();
+    runMorph(came, host);
     stampRun(null);
     markHistory(!push);
 
@@ -1035,6 +1362,7 @@ var FBOB = (function () {
 
   function render() {
     var id = FLOW[idx], scr = null;
+    morphDone();
     enterNow = entering;
     entering = false;
     while (host.firstChild) host.removeChild(host.firstChild);
@@ -1058,9 +1386,12 @@ var FBOB = (function () {
 
     if (scr) root.appendChild(scr);
     host.appendChild(root);
-    enterNow = false;
 
+    /* The loader paints its own body, and its first paint is an ARRIVAL —
+       so enterNow is still standing here and goes down after it, not before.
+       Every later repaint runs with it false and animates nothing. */
     if (id === "building") paintLoader();
+    enterNow = false;
   }
 
   /* ---- chrome ------------------------------------------------------------
@@ -1095,7 +1426,8 @@ var FBOB = (function () {
     top.appendChild(row);
 
     var bar = el("div", "ob-phases");
-    var p, q, ph, lo, hi, span, pct, on, seg, track, fill;
+    var p, q, ph, lo, hi, span, pct, on, seg, track, fill, was;
+    var now = [];
     for (p = 0; p < PHASES.length; p++) {
       ph = PHASES[p];
       lo = QSTEPS.length; hi = -1;
@@ -1108,14 +1440,48 @@ var FBOB = (function () {
       seg = el("div", "ob-phase" + (on ? " is-on" : ""));
       track = el("div", "ob-track");
       fill = el("i", "ob-fill");
-      fill.style.width = pct + "%";
+      /* D · the bar ADVANCES rather than arriving finished. The chrome is
+         rebuilt for every screen, so a fresh element has nothing to
+         transition from — it is started at the percentage the last screen
+         left it on and released to this one over 420ms. scaleX, not width:
+         a width transition repaints the bar every frame. */
+      now[p] = pct;
+      was = (phasePrev && typeof phasePrev[p] === "number") ? phasePrev[p] : pct;
+      if (enterNow && !motionOff() && was !== pct) {
+        fill.style.transform = "scaleX(" + (was / 100) + ")";
+        travel(fill, pct);
+      } else {
+        fill.style.transform = "scaleX(" + (pct / 100) + ")";
+      }
       track.appendChild(fill);
       seg.appendChild(track);
       seg.appendChild(el("p", "ob-plabel", ph.label));
       bar.appendChild(seg);
     }
+    phasePrev = now;
     top.appendChild(bar);
     return top;
+  }
+
+  /* Two frames, then the transition — one frame is not reliably enough for a
+     node that was appended in the same task. The timeout is not a nicety: if
+     rAF never runs (a backgrounded tab), the bar would otherwise stay at the
+     percentage it started from. go() is idempotent. */
+  function travel(node, pct) {
+    var go = function () {
+      try {
+        node.style.transition = "transform 420ms " + EASE;
+        node.style.transform = "scaleX(" + (pct / 100) + ")";
+      } catch (e) {}
+    };
+    try {
+      if (window.requestAnimationFrame) {
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(go);
+        });
+      }
+    } catch (e2) {}
+    try { setTimeout(go, 140); } catch (e3) {}
   }
 
   /* ---- 1 · welcome. The mockup's is1. ----------------------------------- */
@@ -1138,20 +1504,20 @@ var FBOB = (function () {
     var art = el("div", "ob-w-art");
     art.appendChild(plate(null, "/img/cards/c01-05.webp", "/img/stacks/s01.webp"));
     art.appendChild(scrim("ob-w-artscrim"));
-    s.appendChild(art);
-    s.appendChild(scrim("ob-w-floor"));
+    s.appendChild(enter(art, "ob-in-art", 0));
+    s.appendChild(enter(scrim("ob-w-floor"), "ob-in-art", 0));
 
     var t = el("div", "ob-w-text");
     var mark = el("p", "ob-w-mark");
     mark.appendChild(logoImg());
     mark.appendChild(D().createTextNode("FACTBOX"));
-    t.appendChild(mark);
-    t.appendChild(el("h1", "ob-w-head", "Know the stories everyone should know."));
-    t.appendChild(el("p", "ob-w-lede",
-      "Trade five minutes of scrolling for history you’ll actually remember."));
+    t.appendChild(enter(mark, "ob-in", 40));
+    t.appendChild(headWords("h1", "ob-w-head", "Know the stories everyone should know."));
+    t.appendChild(enter(el("p", "ob-w-lede",
+      "Trade five minutes of scrolling for history you’ll actually remember."), "ob-in", 260));
     s.appendChild(t);
 
-    var f = el("div", "ob-w-foot");
+    var f = enter(el("div", "ob-w-foot"), "ob-in", 340);
     f.appendChild(cta("Continue", true, function () { advance("forward"); }));
     var fine = el("p", "ob-terms");
     fine.appendChild(D().createTextNode("By continuing you agree to our "));
@@ -1170,8 +1536,15 @@ var FBOB = (function () {
      at all, and it is what lets a reader change their mind before committing.
      --------------------------------------------------------------------- */
 
-  function optRow(o, on, multi, onTap) {
-    var b = btn("ob-opt" + (on ? " is-on" : ""), null, onTap);
+  function optRow(o, on, multi, onTap, at) {
+    /* D · the row that was just tapped springs, and its tick lands. The tap
+       rebuilds the screen, so the row that took it no longer exists by the
+       time anything could be animated on it — the key is carried across the
+       rebuild instead and the NEW row is born acknowledging. */
+    var b = btn("ob-opt" + (on ? " is-on" : "") +
+                (tappedKey && tappedKey === o.k ? " is-tap" : ""), null, onTap);
+    /* C · and the whole set staggers in on arrival. */
+    enter(b, "ob-in-row", 120 + (at || 0) * 40);
     b.setAttribute("data-k", o.k);
     b.setAttribute("role", multi ? "checkbox" : "radio");
     b.setAttribute("aria-checked", on ? "true" : "false");
@@ -1192,8 +1565,8 @@ var FBOB = (function () {
     d.appendChild(scrim("ob-demoscrim"));
     var t = titleOf(id);
     if (t) d.appendChild(el("p", "ob-demotitle", t));
-    f.appendChild(d);
-    if (tail) f.appendChild(el("p", "ob-demotail", tail));
+    f.appendChild(enter(d, "ob-in-art", 110));
+    if (tail) f.appendChild(enter(el("p", "ob-demotail", tail), "ob-in", 200));
     return f;
   }
 
@@ -1203,28 +1576,30 @@ var FBOB = (function () {
     var s = el("div", screenCls());
     var sc = el("div", "ob-scroll ob-qscroll" + (spec.bare ? " is-bare" : ""));
 
-    sc.appendChild(el("h1", "ob-qhead", spec.head));
-    if (spec.hint) sc.appendChild(el("p", "ob-qhint", spec.hint));
+    sc.appendChild(headWords("h1", "ob-qhead", spec.head));
+    if (spec.hint) sc.appendChild(enter(el("p", "ob-qhint", spec.hint), "ob-in", 110));
     if (spec.demo) sc.appendChild(demoCard(spec.demo.id, spec.demo.tail));
 
     var wrap = el("div", "ob-optwrap");
     var opts = el("div", "ob-opts" + (spec.pair ? " ob-yn" : ""));
     var i;
     for (i = 0; i < spec.opts.length; i++) {
-      (function (o) {
+      (function (o, at) {
         opts.appendChild(optRow(o, !!spec.isOn(o), !!spec.multi, function () {
-          spec.tap(o);
-        }));
-      })(spec.opts[i]);
+          tappedKey = o.k;
+          try { spec.tap(o); } catch (e) {}
+          tappedKey = "";
+        }, at));
+      })(spec.opts[i], i);
     }
     wrap.appendChild(opts);
     sc.appendChild(wrap);
 
-    if (spec.fine) sc.appendChild(el("p", "ob-fine", spec.fine));
+    if (spec.fine) sc.appendChild(enter(el("p", "ob-fine", spec.fine), "ob-in", 240));
     s.appendChild(sc);
 
     if (spec.next) {
-      var f = el("div", "ob-ctawrap");
+      var f = enter(el("div", "ob-ctawrap"), "ob-in", 180);
       f.appendChild(cta(spec.ctaLabel || "Continue", !!spec.ready, spec.next));
       s.appendChild(f);
     }
@@ -1302,14 +1677,16 @@ var FBOB = (function () {
 
     var a = el("div", "ob-i-art");
     a.appendChild(bigPlate(p[2] || "20"));
-    s.appendChild(a);
+    s.appendChild(enter(a, "ob-in-art", 0));
 
     var t = el("div", "ob-i-text");
-    t.appendChild(el("h1", "ob-i-head", p[0]));
-    t.appendChild(el("p", "ob-i-body", p[1]));
+    t.appendChild(headWords("h1", "ob-i-head", p[0]));
+    t.appendChild(enter(el("p", "ob-i-body", p[1]), "ob-in", 170));
     s.appendChild(t);
 
-    var f = el("div", "ob-i-foot");
+    /* This screen releases itself after 1500ms, so its Continue cannot be
+       three quarters of a second into arriving when it does. */
+    var f = enter(el("div", "ob-i-foot"), "ob-in", 210);
     f.appendChild(cta("Continue", true, function () { advance("forward"); }));
     s.appendChild(f);
     return s;
@@ -1394,17 +1771,20 @@ var FBOB = (function () {
     var cur = getStory();
     var s = el("div", screenCls());
     var sc = el("div", "ob-scroll ob-pickscroll");
-    sc.appendChild(el("h1", "ob-qhead", "Which one would you click first?"));
+    sc.appendChild(headWords("h1", "ob-qhead", "Which one would you click first?"));
 
     var g = el("div", "ob-covers");
     var i;
     for (i = 0; i < COVERS.length; i++) {
-      (function (c) {
+      (function (c, at) {
         var on = cur === c.id;
-        var b = btn("ob-cover" + (on ? " is-on" : ""), null, function () {
+        var b = btn("ob-cover" + (on ? " is-on" : "") +
+                    (tappedKey === c.id ? " is-tap" : ""), null, function () {
+          tappedKey = c.id;
           setStory(c.id);
           emitAnswer(screenAt(idx), "story", c.id);
           render();
+          tappedKey = "";
           try {
             pickTimer = setTimeout(function () {
               pickTimer = 0;
@@ -1421,8 +1801,9 @@ var FBOB = (function () {
         cap.appendChild(el("span", "ob-who", c.who));
         b.appendChild(cap);
         b.appendChild(glyph("ob-mark2"));
-        g.appendChild(b);
-      })(COVERS[i]);
+        /* F's language, one screen early: the four covers deal in. */
+        g.appendChild(enter(b, "ob-in-deal", 120 + at * 70));
+      })(COVERS[i], i);
     }
     sc.appendChild(g);
     sc.appendChild(el("div", "ob-pickpad"));
@@ -1511,7 +1892,23 @@ var FBOB = (function () {
 
   function screenBuilding() {
     var s = el("div", screenCls());
-    s.setAttribute("data-ob-load", "1");
+
+    /* G · the ghost word. Newsreader, enormous, five per cent of the ink,
+       drifting through the empty band between the percentage and the cover
+       card and passing behind the card. It is the wordmark and no new copy,
+       it is aria-hidden, and it is built HERE rather than in paintLoader
+       because paintLoader empties itself three times a second and a drift
+       that restarts every 320ms is a flicker. */
+    var g = el("div", "ob-ghostword");
+    g.setAttribute("aria-hidden", "true");
+    g.appendChild(el("span", null, "FACTBOX"));
+    s.appendChild(g);
+
+    /* The body the loader repaints. A plain static box, so everything inside
+       it still resolves its absolute offsets against the screen. */
+    var w = el("div", "ob-loadbody");
+    w.setAttribute("data-ob-load", "1");
+    s.appendChild(w);
     return s;
   }
 
@@ -1521,36 +1918,79 @@ var FBOB = (function () {
     if (FLOW[idx] !== "building" || !host) return;
     var wrap = host.querySelector("[data-ob-load]");
     if (!wrap) return;
+
+    /* B, inside one screen. The loader swaps its cover card for an
+       interruption and back, and that swap is a plate arriving somewhere
+       else — so it morphs, exactly as a screen change does. It morphs on the
+       SWAP and never on a cover cycle, which happens three times a second. */
+    var mode = interruptAt > -1 ? "ask" : "run";
+
+    /* AND A PLATE THAT IS STILL TRAVELLING IS NOT REPAINTED OVER.
+
+       This function empties the loader's body and rebuilds it, three times a
+       second, from four callers. A plate arriving here from the pick screen
+       is mid-flight for 520ms of that, and a repaint would tear it out of the
+       DOM and drop the new one in at rest — the swap the morph exists to
+       abolish, visible as a snap a third of the way over. So a repaint that
+       is NOT itself a swap stands down while one is running; the swap itself
+       still goes through, because runMorph() retires the old one first.
+
+       This can hold for at most one morph: morphDone() runs on transitionend
+       or, for a node torn down before it fires, on its timeout. */
+    if (morphState && mode === loadMode) return;
+
+    var came = (loadMode && loadMode !== mode) ? grabHero(wrap) : null;
+    loadMode = mode;
+
+    var ghost = null;
+    try { ghost = wrap.parentNode.querySelector(".ob-ghostword"); } catch (eg) {}
+    if (ghost) ghost.style.display = (mode === "ask") ? "none" : "";
+
     while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
 
     if (interruptAt > -1) {
       wrap.appendChild(loaderAsk(INTERRUPTS[interruptAt]));
+      if (came) runMorph(came, wrap);
       return;
     }
 
     var picks = getGenres();
     var top = el("div", "ob-l-top");
-    top.appendChild(el("h1", "ob-l-head", "Building your history feed"));
-    top.appendChild(el("p", "ob-l-sub",
-      "Based on what you picked, we’ll prioritize:"));
+    top.appendChild(headWords("h1", "ob-l-head", "Building your history feed"));
+    top.appendChild(enter(el("p", "ob-l-sub",
+      "Based on what you picked, we’ll prioritize:"), "ob-in", 120));
 
     var rows = el("div", "ob-picks");
-    var i, shown, row;
+    var i, shown, row, tick;
     for (i = 0; i < picks.length; i++) {
       shown = loadPct >= (i + 1) * (100 / (picks.length + 1));
-      row = el("p", "ob-pick" + (shown ? " is-on" : ""));
-      row.appendChild(glyph("ob-ptick"));
+      /* E · a tick pops the once it lights. pickShown is what makes it once:
+         the rows are rebuilt on every repaint and a class alone would pop
+         them again three times a second. */
+      row = el("p", "ob-pick" + (shown ? " is-on" : "") +
+                    (shown && !pickShown[i] && !motionOff() ? " is-pop" : ""));
+      if (shown) pickShown[i] = 1;
+      tick = glyph("ob-ptick");
+      row.appendChild(tick);
       row.appendChild(el("span", "ob-b", labelOf(picks[i])));
       rows.appendChild(row);
     }
-    top.appendChild(rows);
+    top.appendChild(enter(rows, "ob-in", 180));
 
-    var track = el("div", "ob-loadtrack");
+    var track = enter(el("div", "ob-loadtrack"), "ob-in", 230);
     var fill = el("i", "ob-loadfill");
-    fill.style.width = loadPct + "%";
+    /* scaleX rather than width, and started from where the last paint left
+       it so the bar slides its seven per cent rather than jumping it. */
+    if (!motionOff() && loadPctPrev !== loadPct) {
+      fill.style.transform = "scaleX(" + (loadPctPrev / 100) + ")";
+      creep(fill, loadPct);
+    } else {
+      fill.style.transform = "scaleX(" + (loadPct / 100) + ")";
+    }
+    loadPctPrev = loadPct;
     track.appendChild(fill);
     top.appendChild(track);
-    var pct = el("p", "ob-pct", loadPct + "%");
+    var pct = enter(el("p", "ob-pct", loadPct + "%"), "ob-in", 270);
     pct.setAttribute("role", "status");
     top.appendChild(pct);
     wrap.appendChild(top);
@@ -1570,15 +2010,36 @@ var FBOB = (function () {
         dots.appendChild(el("i", "ob-dot" + (j === ci ? " is-on" : "")));
       }
       cover.appendChild(dots);
-      wrap.appendChild(cover);
+      wrap.appendChild(enter(cover, "ob-in-art", 140));
     }
 
     var done = loadPct >= 100;
-    var f = el("div", "ob-l-foot");
+    var f = enter(el("div", "ob-l-foot"), "ob-in", 320);
     f.appendChild(cta(done ? "See my stories" : "Building…", done, function () {
       advance("forward");
     }));
     wrap.appendChild(f);
+    if (came) runMorph(came, wrap);
+  }
+
+  /* The loader bar's own two-frame release. Same shape and same reason as
+     travel(): the element is new every paint, so it is started at the last
+     percentage and let go to this one. */
+  function creep(node, pct) {
+    var go = function () {
+      try {
+        node.style.transition = "transform 300ms linear";
+        node.style.transform = "scaleX(" + (pct / 100) + ")";
+      } catch (e) {}
+    };
+    try {
+      if (window.requestAnimationFrame) {
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(go);
+        });
+      }
+    } catch (e2) {}
+    try { setTimeout(go, 120); } catch (e3) {}
   }
 
   function loaderAsk(q) {
@@ -1646,9 +2107,10 @@ var FBOB = (function () {
     var sc = el("div", "ob-scroll ob-res");
     var inn = el("div", "ob-resin");
 
-    inn.appendChild(el("h1", "ob-r-head", "Your first stories are ready."));
+    inn.appendChild(headWords("h1", "ob-r-head", "Your first stories are ready."));
     if (copy && copy.labels) {
-      inn.appendChild(el("p", "ob-r-note", "Picked from " + copy.labels + "."));
+      inn.appendChild(enter(el("p", "ob-r-note", "Picked from " + copy.labels + "."),
+                            "ob-in", 120));
     }
 
     var rows = firstThree();
@@ -1662,23 +2124,29 @@ var FBOB = (function () {
       li.appendChild(el("p", "ob-cardhead", str(st.title)));
       li.appendChild(el("p", "ob-meta",
         (st.cards ? st.cards.length : 0) + " cards · " + mins(st.secs)));
-      ul.appendChild(li);
+      /* F · the three deal in. The first one is usually the plate that
+         morphed here from the loader, and runMorph() stands its deal down so
+         it does not fade underneath its own arrival. */
+      ul.appendChild(enter(li, "ob-in-deal", 160 + i * 90));
     }
     if (rows.length) inn.appendChild(ul);
     else {
       /* The catalogue has not landed. loadStacks() repaints this screen the
          moment it does; until then the screen says so rather than showing a
          card with an id where its headline goes. */
-      inn.appendChild(el("p", "ob-r-note", "Your shelf is coming up now…"));
+      inn.appendChild(enter(el("p", "ob-r-note", "Your shelf is coming up now…"),
+                            "ob-in", 120));
     }
 
     /* Again, and for the same reason as on the genre grid. */
-    if (copy && copy.disclosure) inn.appendChild(el("p", "ob-fine", copy.disclosure));
+    if (copy && copy.disclosure) {
+      inn.appendChild(enter(el("p", "ob-fine", copy.disclosure), "ob-in", 300));
+    }
 
     sc.appendChild(inn);
     s.appendChild(sc);
 
-    var f = el("div", "ob-r-foot");
+    var f = enter(el("div", "ob-r-foot"), "ob-in", 260);
     f.appendChild(cta("Start reading", true, function () { advance("forward"); }));
     s.appendChild(f);
     return s;
@@ -1783,6 +2251,8 @@ var FBOB = (function () {
     answered = {};
     slots = {};
     doneSent = false;
+    phasePrev = null;
+    tappedKey = "";
 
     var rec = { v: 1, r: run, i: at, t: Date.now(), c: old && old.c ? old.c : "" };
     writeRun(rec);

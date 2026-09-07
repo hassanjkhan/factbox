@@ -67,15 +67,91 @@
   -webkit-font-smoothing:antialiased;
 }
 
-/* Every screen fades in the way the mockup's `qfade` does — on ARRIVAL only.
-   Ticking a tick repaints the screen, and repainting it through the entry
-   animation flashes the whole phone on every tap. js/onboard.js sets is-enter
-   for the first render of a screen and for no other. */
+/* ==========================================================================
+   THE MOTION SYSTEM.
+
+   THE ONE RULE EVERYTHING BELOW OBEYS: transform and opacity, and nothing
+   else. The two bars used to transition `width` and are scaleX() now. The one
+   exception is the 6px blur a headline word resolves out of, which is the
+   whole of the reference's typographic language and is short. Everything is
+   composited; nothing in this funnel triggers layout on a mid-range phone in
+   an in-app browser, which is where all of it is actually seen.
+
+   THE SECOND RULE: NOTHING STICKS. Every keyframe below both starts and ENDS
+   at the resting state and every one runs with fill-mode both, so an element
+   whose animation is interrupted — a fast tapper is four screens away before
+   the first stagger finished — is left visible rather than at opacity 0.
+   There is no keyframe here that ends anywhere but at rest.
+
+   WHERE THE CLASSES COME FROM. js/onboard.js marks an element for entry ONLY
+   on the render that first puts it on screen: `ob-in`, `ob-in-row`,
+   `ob-in-deal`, `ob-in-art`, and `is-in` on a headline word. A repaint — a
+   tick being ticked, the loader redrawing itself three times a second — gets
+   no class and therefore no animation, which is why tapping an option does
+   not flash the phone.
+   ========================================================================== */
+
+/* the whole-screen arrival. It stands down when a plate is MORPHING across
+   the join: the point of a morph is that one element is continuous, and a
+   parent fading 0→1 underneath it makes it a dissolve again. */
 @keyframes ob-fade{ from{opacity:0} to{opacity:1} }
 .fbob .ob-screen{
   position:absolute; top:0; right:0; bottom:0; left:0;
 }
-.fbob .ob-screen.is-enter{animation:ob-fade .3s ease}
+.fbob .ob-screen.is-enter{animation:ob-fade .26s ease both}
+.fbob .ob-screen.is-enter.is-morph{animation:none}
+
+/* the four entry moves */
+@keyframes ob-rise{
+  from{opacity:0; transform:translate3d(0,12px,0)}
+  to{opacity:1; transform:none}
+}
+@keyframes ob-row{
+  from{opacity:0; transform:translate3d(0,18px,0) scale(.98)}
+  to{opacity:1; transform:none}
+}
+@keyframes ob-deal{
+  from{opacity:0; transform:translate3d(0,26px,0) rotate(-1.2deg)}
+  to{opacity:1; transform:none}
+}
+@keyframes ob-art{
+  from{opacity:0; transform:scale(1.035)}
+  to{opacity:1; transform:none}
+}
+.fbob .ob-in     {animation:ob-rise .42s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-in-row {animation:ob-row  .38s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-in-deal{animation:ob-deal .46s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-in-art {animation:ob-art  .52s cubic-bezier(.2,.75,.25,1) both}
+
+/* ---- A · the word-by-word headline -------------------------------------
+   The spans are inline-block so a word can never break across a line, and
+   the whitespace between them is real text nodes so the line still wraps
+   where the browser would have wrapped it. The heading's text is unchanged
+   and a screen reader reads one string. */
+.fbob .ob-w{display:inline-block}
+@keyframes ob-word{
+  from{opacity:0; transform:translate3d(0,14px,0); filter:blur(6px)}
+  to  {opacity:1; transform:none;                  filter:blur(0)}
+}
+/* will-change ONLY while it is animating. A headline is up to a dozen words
+   and a dozen permanent composited layers on a phone is a cost with no
+   payment; the class is removed from the markup on the next render anyway. */
+.fbob .ob-w.is-in{
+  animation:ob-word .46s cubic-bezier(.2,.75,.25,1) both;
+  will-change:opacity, transform, filter;
+}
+
+/* ---- B · the plate that travels -----------------------------------------
+   The outgoing painting, riding inside the incoming plate under the same
+   aspect correction, fading out as the frame arrives. js/onboard.js owns
+   every transform on it; this rule only says where it sits and that it is
+   above the picture it is dissolving into. */
+.fbob .ob-ghostplate{
+  position:absolute; top:0; right:0; bottom:0; left:0;
+  display:block; width:100%; height:100%;
+  object-fit:cover; object-position:center 26%;
+  pointer-events:none;
+}
 
 /* the mockup's .fbscroll: it scrolls, it shows no bar */
 .fbob .ob-scroll{
@@ -147,10 +223,14 @@
   height:4px; border-radius:999px; overflow:hidden;
   background:var(--hair);
 }
+/* D · scaleX, not width. js/onboard.js sets the transform and, on arrival,
+   the 420ms transition that carries it from the last screen's percentage to
+   this one's — so the bar is seen to advance rather than to be already
+   advanced. A width transition would relayout the bar on every frame. */
 .fbob .ob-fill{
-  display:block; height:100%; width:0;
+  display:block; height:100%; width:100%;
+  transform:scaleX(0); transform-origin:0 50%;
   border-radius:999px; background:var(--coral);
-  transition:width .3s ease;
 }
 .fbob .ob-plabel{
   margin:7px 0 0; text-align:center;
@@ -270,6 +350,16 @@
   text-align:left; cursor:pointer;
   transition:border-color .16s ease, background-color .16s ease;
 }
+/* D · the acknowledgement. The tap rebuilds the screen, so the row that
+   springs is the NEW row: js/onboard.js carries the tapped key across the
+   rebuild and the replacement is born mid-spring. Down, past, settle. */
+@keyframes ob-spring{
+  0%  {transform:scale(.97)}
+  42% {transform:scale(1.02)}
+  100%{transform:scale(1)}
+}
+.fbob .ob-opt.is-tap{animation:ob-spring .34s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-cover.is-tap{animation:ob-spring .34s cubic-bezier(.2,.75,.25,1) both}
 .fbob .ob-opt.is-on{
   background:var(--accent-wash);
   border-color:var(--accent-edge);
@@ -298,6 +388,23 @@
 .fbob .ob-tick.is-sq{border-radius:7px}
 .fbob .ob-opt.is-on .ob-tick{
   background:var(--coral); border-color:var(--coral); color:var(--on-accent);
+}
+/* the tick landing. It is a glyph rather than a stroke, so it lands rather
+   than draws: the ring pops and the check drops into it. */
+@keyframes ob-tickpop{
+  0%  {transform:scale(.6)}
+  55% {transform:scale(1.12)}
+  100%{transform:scale(1)}
+}
+@keyframes ob-checkin{
+  from{opacity:0; transform:scale(.4) rotate(-20deg)}
+  to  {opacity:1; transform:none}
+}
+.fbob .ob-opt.is-tap.is-on .ob-tick{
+  animation:ob-tickpop .38s cubic-bezier(.2,.75,.25,1) both;
+}
+.fbob .ob-cover.is-tap.is-on .ob-mark2{
+  animation:ob-tickpop .38s cubic-bezier(.2,.75,.25,1) both;
 }
 
 .fbob .ob-ctawrap{
@@ -453,15 +560,31 @@
   transition:background-color .2s ease, color .2s ease;
 }
 .fbob .ob-pick.is-on .ob-ptick{background:var(--coral); color:var(--on-accent)}
+/* E · a genre ticking off. It pops the once it lights — js/onboard.js
+   remembers which rows have already lit, because the rows themselves are
+   rebuilt three times a second and a class alone would pop them every time. */
+@keyframes ob-labelslide{
+  from{opacity:.55; transform:translate3d(6px,0,0)}
+  to  {opacity:1;   transform:none}
+}
+.fbob .ob-pick.is-pop .ob-ptick{
+  animation:ob-tickpop .38s cubic-bezier(.2,.75,.25,1) both;
+}
+.fbob .ob-pick.is-pop .ob-b{
+  animation:ob-labelslide .38s cubic-bezier(.2,.75,.25,1) both;
+}
 
 .fbob .ob-loadtrack{
   height:5px; margin:26px 0 0;
   border-radius:999px; background:var(--hair); overflow:hidden;
 }
+/* Same reason as the phase bars, and the same trick: the element is new on
+   every paint, so js/onboard.js starts it at the last percentage and lets it
+   run to this one. Before this the bar jumped its seven per cent. */
 .fbob .ob-loadfill{
-  display:block; height:100%; width:0;
+  display:block; height:100%; width:100%;
+  transform:scaleX(0); transform-origin:0 50%;
   border-radius:999px; background:var(--coral);
-  transition:width .32s linear;
 }
 .fbob .ob-pct{
   margin:10px 0 0;
@@ -491,6 +614,30 @@
   transition:width .2s ease, background-color .2s ease;
 }
 .fbob .ob-dot.is-on{width:18px; background:var(--coral)}
+
+/* ---- G · the ghost word -------------------------------------------------
+   Newsreader at 132px and five per cent of the ink, drifting through the
+   empty band the mockup leaves between the percentage and the cover card and
+   passing BEHIND the card — it is first in the DOM, so the card paints over
+   it without either of them needing a z-index. It is the wordmark, so it is
+   no new copy, and it is aria-hidden, so it is no new sentence either. */
+.fbob .ob-ghostword{
+  position:absolute; left:0; right:0; top:330px; height:210px;
+  z-index:0; pointer-events:none; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.fbob .ob-ghostword span{
+  display:block; white-space:nowrap;
+  font-family:var(--display); font-size:66px; font-weight:500;
+  letter-spacing:.02em; line-height:1;
+  color:var(--ink); opacity:.06;
+  animation:ob-drift 26s ease-in-out infinite both;
+}
+@keyframes ob-drift{
+  0%  {transform:translate3d(-5%,5px,0) scale(1)}
+  50% {transform:translate3d(5%,-7px,0) scale(1.035)}
+  100%{transform:translate3d(-5%,5px,0) scale(1)}
+}
 
 .fbob .ob-l-foot{
   position:absolute; left:22px; right:22px;
@@ -584,6 +731,8 @@
   .fbob .ob-i-text{top:410px}
   .fbob .ob-i-head{font-size:34px}
   .fbob .ob-l-top{top:70px}
+  .fbob .ob-ghostword{top:296px; height:190px}
+  .fbob .ob-ghostword span{font-size:58px}
   .fbob .ob-l-cover{top:436px}
   .fbob .ob-covercard{height:200px}
   .fbob .ob-resin{padding-top:56px}
@@ -599,6 +748,8 @@
   .fbob .ob-i-head{font-size:29px}
   .fbob .ob-i-body{font-size:15px}
   .fbob .ob-l-top{top:52px}
+  .fbob .ob-ghostword{top:246px; height:160px}
+  .fbob .ob-ghostword span{font-size:50px}
   .fbob .ob-l-head{font-size:26px}
   .fbob .ob-l-cover{top:372px}
   .fbob .ob-covercard{height:168px}
@@ -610,13 +761,28 @@
 .fbob .ob-qhead{font-size:21px}
 }
 
+/* ==========================================================================
+   REDUCED MOTION. Not "the same thing, faster" — OFF.
+
+   One rule, and it is deliberately the blunt one: every animation and every
+   transition inside the funnel, including any this file gains later and any
+   js/onboard.js sets inline. The keyframes above all END at the resting
+   state, and a cancelled animation applies none of its frames, so switching
+   them off leaves every element exactly where it is supposed to finish:
+   opacity 1, no transform, no blur. Nothing here needs a second declaration
+   to un-hide it, and that is the property that makes this safe.
+
+   js/onboard.js reads the same query and does not START the plate morph, the
+   word split's animation classes, or either bar's two-frame release — an
+   inline transform mid-transition would otherwise be left standing when the
+   transition it was waiting on never runs.
+   ========================================================================== */
 @media (prefers-reduced-motion:reduce){
-  .fbob .ob-screen.is-enter{animation:none}
-  .fbob .ob-fill,
-  .fbob .ob-loadfill,
-  .fbob .ob-opt,
-  .fbob .ob-tick,
-  .fbob .ob-ptick,
-  .fbob .ob-dot,
-  .fbob .ob-cover{transition:none}
+  .fbob *,
+  .fbob *::before,
+  .fbob *::after{
+    animation:none !important;
+    transition:none !important;
+  }
+  .fbob .ob-w{filter:none; opacity:1; transform:none}
 }
