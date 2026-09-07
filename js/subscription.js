@@ -649,8 +649,8 @@
     },
     free: {
       h: "You don’t have a subscription",
-      p: "There is nothing here to cancel. Factbox is fifty-one history " +
-         "stories, one free every day, and a subscription opens all of them.",
+      p: "There is nothing here to cancel. Factbox is history told as " +
+         "short stories, one free every day, and a subscription opens all of them.",
       go: "/join", goText: "See the plans"
     }
   };

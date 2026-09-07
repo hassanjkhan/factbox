@@ -605,8 +605,11 @@ var FBFIT = (function () {
     return {
       picked: p,
       labels: joinLabels(p),
-      loaderHead: n ? "Ordering 51 stories around " + joinLabels(p) + "."
-                    : "Ordering 51 stories for you.",
+      /* No story count in reader-facing copy. The number is small enough
+         that printing it argues against the purchase, and it moves every
+         time a story is added — a figure in copy is a figure to maintain. */
+      loaderHead: n ? "Ordering your stories around " + joinLabels(p) + "."
+                    : "Putting your stories in order.",
       loaderSub: "Nothing is locked away by this. It changes what you meet first.",
       disclosure: disclosure()
     };

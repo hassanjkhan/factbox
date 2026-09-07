@@ -1233,7 +1233,7 @@ var FBOB = (function () {
     }
 
     body.appendChild(el("p", "ob-eyebrow", "Building your feed"));
-    heads(body, copy ? copy.loaderHead : "Ordering 51 stories for you.",
+    heads(body, copy ? copy.loaderHead : "Putting your stories in order.",
           copy ? copy.loaderSub : "");
 
     var track = el("div", "ob-loadtrack");

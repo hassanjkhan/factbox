@@ -52,6 +52,17 @@
   text-align:left;
 }
 
+/* When the host is the whole screen rather than a bottom sheet, fill it.
+   .ob-body is already flex:1 and .ob-foot flex:0, so the only thing standing
+   between this column and a full-height layout is the 94vh cap it needed
+   while it lived in a sheet. Lift the cap, take the height, and the footer
+   button lands where a full-screen page puts it instead of halfway up. */
+.fbg.is-quiz .fbg-quiz .fbob{
+  max-height:none;
+  height:100%;
+  flex:1 1 auto;
+}
+
 /* ---- chrome ------------------------------------------------------------- */
 
 .fbob .ob-top{

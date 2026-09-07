@@ -240,8 +240,11 @@
     if (!OWNS) return "";
     var n = stacks.length;
     if (!n) return "";
-    return '<p class="libmember">Member · all ' + n +
-           ' ' + (n === 1 ? "story" : "stories") + ' unlocked</p>';
+    /* No count. It was 'all 51 stories unlocked'; the number is small
+       enough that printing it argues against the thing they just bought,
+       and it changes every time a story lands. `n` is still computed
+       above because the empty-shelf guard needs it. */
+    return '<p class="libmember">Member · every story unlocked</p>';
   }
 
   /* --- continue reading ----------------------------------------------------

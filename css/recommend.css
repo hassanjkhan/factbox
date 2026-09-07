@@ -550,6 +550,51 @@ a.ec-go{
 }
 .fbg .fbg-quiz:focus{outline:none}
 
+/* --------------------------------------------------------------------------
+   THE QUIZ IS FULL SCREEN. The other two sheets are not.
+
+   .fbg-sheet is a bottom sheet on purpose: an auth form and a price are
+   interruptions, and the sentence the reader stopped on is the argument for
+   answering them, so the story stays visible and dimmed behind.
+
+   Onboarding is not an interruption. It is eleven screens and about a minute
+   of somebody's attention, and it is the mockup's own shape — full phone
+   frames, not a card over a story. Half a painting sliding around behind a
+   questionnaire reads as an advert that would not close; it also costs the
+   quiz the vertical room it needs, which is how the loader ended up with the
+   Back button, a headline, a progress bar and a disabled button competing for
+   the bottom third of a 390x844 phone.
+
+   So: same host, same state machine, same teardown protection. Only the box
+   changes shape. Written as `.fbg.is-quiz .fbg-sheet.fbg-quiz` — TWO classes
+   on the subject, not one — because .fbg-sheet's own bottom/max-height/radius
+   are set at (0,1,0) and a single class here would tie, and a tie is decided
+   by source order, which is not a thing to depend on across an edit.
+   -------------------------------------------------------------------------- */
+.fbg.is-quiz .fbg-sheet.fbg-quiz{
+  top:0;
+  max-width:none;
+  max-height:none;
+  padding:14px 20px calc(var(--bottom-safe) + 10px);
+  border-radius:0;
+  box-shadow:none;
+  transform:none;              /* it does not slide up; it IS the screen */
+  overflow-y:auto;             /* full height, so the inner scroller is gone */
+  overscroll-behavior:contain;
+  /* A column, so the engine's own column can be told to fill it. Without
+     this the quiz keeps its sheet-sized height and sits in the top half of
+     the phone with the Continue button floating in the middle of nowhere. */
+  display:flex; flex-direction:column;
+}
+/* Nothing to dim when nothing shows through. Keeping the veil painted would
+   also darken the quiz itself on the frame where visibility flips. */
+.fbg.is-quiz .fbg-veil{
+  background:var(--menu);
+}
+@media (prefers-reduced-motion: reduce){
+  .fbg.is-quiz .fbg-sheet.fbg-quiz{transition:none}
+}
+
 /* ---- the words ----------------------------------------------------------- */
 .fbg .fbg-eyebrow{
   margin:0 0 10px;
