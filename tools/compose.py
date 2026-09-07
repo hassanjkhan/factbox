@@ -213,7 +213,12 @@ _HEAD = """<!-- ================================================================
 # the alias handed to someone who has never read anything here, so the end of
 # the story is the one moment to ask. /story and /cleopatra are shared links
 # to a story, and their end card keeps pointing at the next story.
-END_CTA = "Sign up to read more"
+# The label has to be true of what the tap DOES. It used to read "Sign up to
+# read more", and the tap opens the onboarding — six questions, no account, no
+# card. The owner looked at that button, did not believe it led anywhere new,
+# and reported the funnel as not shipped three times running. A promise of a
+# sign-up form that delivers a quiz is a worse lie than a vague label.
+END_CTA = "Get started"
 
 # The ask. ES5, guarded, and it changes nothing until the end card is really
 # on the page — a story that failed to load must not be followed by a pitch.

@@ -1406,7 +1406,33 @@ var FBR = (function () {
       if (!/[?&]ob=reset(?:&|$)/.test(String(location.search || ""))) return;
       obResetDone = true;
       var A = acct();
-      if (A && typeof A.clearOnboarding === "function") A.clearOnboarding();
+      if (A && typeof A.clearOnboarding === "function") {
+        A.clearOnboarding();
+      } else {
+        /* FALLBACK, and the only place this file touches FBA's storage.
+           clearOnboarding() is new. A browser holding a cached js/account.js
+           from before it existed would run the branch above, find nothing,
+           and silently clear nothing — which looks exactly like the reset not
+           working, which is the bug this whole affordance exists to solve.
+           GitHub Pages sends max-age=600, so that window is ten minutes wide
+           and it is precisely the ten minutes after a deploy, when somebody
+           is standing there refreshing.
+
+           Deliberately narrow: it removes ONE key from ONE record and only on
+           an explicit ?ob=reset. If FBA is loaded, the branch above runs and
+           this never does. */
+        try {
+          var K = "fb_acct_v1";
+          var raw = window.localStorage.getItem(K);
+          if (raw) {
+            var r = JSON.parse(raw);
+            if (r && typeof r === "object") {
+              delete r.o;
+              window.localStorage.setItem(K, JSON.stringify(r));
+            }
+          }
+        } catch (e2) {}
+      }
       var E = obe();
       if (E && typeof E.reset === "function") E.reset();
     } catch (e) {}
