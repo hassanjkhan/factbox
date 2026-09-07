@@ -1367,8 +1367,32 @@ var FBR = (function () {
     try { if (window.FBOB && typeof FBOB.mount === "function") return FBOB; } catch (e) {}
     return null;
   }
+  /* ?ob=1 shows the quiz to somebody who has already answered it.
+
+     This exists because "you only see onboarding once" and "let me look at
+     the onboarding" are in direct conflict, and the owner hit that within an
+     hour of it shipping: the flow was live and working, his own browser had
+     been through it, and from the outside that is indistinguishable from a
+     deploy that never landed.
+
+     A query parameter rather than a build flag, because the people who need
+     it are holding phones, not terminals. It cannot grant access to anything
+     — the quiz is questions — and `owns()` is untouched, so it cannot be used
+     to read a story.
+
+     It FORCES the quiz rather than clearing the stored answer. Clearing would
+     mean writing to js/account.js's record from here, and this file does not
+     own that record; FBA exposes onboarded() and finishOnboarding() and no
+     way to unset, deliberately. Forcing gets the same look at the flow
+     without a second file learning the shape of somebody else's storage. */
+  function obForced() {
+    try { return /[?&]ob=1(?:&|$)/.test(String(location.search || "")); }
+    catch (e) { return false; }
+  }
+
   function onboardDone() {
     if (!obe()) return true;
+    if (obForced()) return false;
     try {
       var A = acct();
       if (A && typeof A.onboarded === "function") return !!A.onboarded();
