@@ -1390,8 +1390,31 @@ var FBR = (function () {
     catch (e) { return false; }
   }
 
+  /* ?ob=reset forgets the answered flag, so the next visit — with no
+     parameter at all — behaves exactly like a stranger's. ?ob=1 was not
+     enough on its own: it proves the screens exist, but it cannot show you
+     the thing you actually want to check, which is what a NEW READER meets
+     when they arrive with a clean browser and no query string.
+
+     FBA owns the record and now exposes clearOnboarding() for this. Reaching
+     into fb_acct_v1 from here would put a second file's hands on somebody
+     else's storage shape, which is how the two halves drift apart. */
+  var obResetDone = false;
+  function obReset() {
+    if (obResetDone) return;
+    try {
+      if (!/[?&]ob=reset(?:&|$)/.test(String(location.search || ""))) return;
+      obResetDone = true;
+      var A = acct();
+      if (A && typeof A.clearOnboarding === "function") A.clearOnboarding();
+      var E = obe();
+      if (E && typeof E.reset === "function") E.reset();
+    } catch (e) {}
+  }
+
   function onboardDone() {
     if (!obe()) return true;
+    obReset();
     if (obForced()) return false;
     try {
       var A = acct();
@@ -2620,6 +2643,24 @@ var FBR = (function () {
     }
   }
 
+  /* ?ob=reset has to act AT LOAD, not when the sheet opens.
+
+     Two bugs deep, both mine, both worth leaving written down.
+
+     First version called obReset() only from inside onboardDone(), which runs
+     when somebody TAPS the end card — so loading /firststory?ob=reset and
+     then visiting normally cleared nothing, because the reset never ran.
+
+     Second version put the call after this module's `return`, which is dead
+     code in an IIFE. It parsed, it shipped, and it did exactly nothing. The
+     test said FBA.onboarded() was still true both times, which is the only
+     reason either was caught: "it parses" and "it runs" are different claims.
+
+     js/account.js is above this file in read.html's script order, so FBA is
+     defined by now. Wrapped anyway — a testing affordance must never throw on
+     a page a reader is trying to use. */
+  try { obReset(); } catch (e) {}
+
   return {
     version: 2,
     next: next,
@@ -2648,6 +2689,9 @@ var FBR = (function () {
     forgetPending: gateClear,
     reasonFor: function (cur, s) {
       try { return reason(cur, s, progress(s), !unlocked()).text; } catch (e) { return "Next up"; }
-    }
+    },
+    /* Exposed so the reset can be reached without opening a sheet first. */
+    resetOnboarding: obReset
   };
+
 })();

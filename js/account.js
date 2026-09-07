@@ -1018,6 +1018,24 @@ var FBA = (function () {
     try { var r = rec(); r.o = 1; save(); return true; } catch (e) { return false; }
   }
 
+  /* The inverse, and the only reason it exists is testing.
+
+     "You see onboarding once" and "let me look at the onboarding" are in
+     direct conflict, and the owner hit it within an hour of the funnel
+     shipping: it was live and working, his own browser had been through it,
+     and from the outside that is indistinguishable from a deploy that never
+     landed. He then checked a second device that had also already been
+     through it and reached the same conclusion twice.
+
+     It clears ONLY the answered flag. The answers themselves stay, so a
+     reader who walks the flow again is not silently re-profiled from
+     nothing, and nothing here touches access: `premium` is written by the
+     Stripe webhook and read through FBX, and no field in this record has
+     ever been able to unlock a story. */
+  function clearOnboarding() {
+    try { var r = rec(); delete r.o; save(); return true; } catch (e) { return false; }
+  }
+
   function forget() {
     try {
       _rec = blank();
@@ -1070,6 +1088,7 @@ var FBA = (function () {
     interests: interests, setInterests: setInterests,
     frequency: frequency, setFrequency: setFrequency,
     onboarded: onboarded, finishOnboarding: finishOnboarding,
+    clearOnboarding: clearOnboarding,
     /* money */
     /* the offer: only plans a new reader may pick */
     plans: plans, planByKey: planByKey,
