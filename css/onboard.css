@@ -1,0 +1,426 @@
+/* ==========================================================================
+   Factbox — the quiz onboarding engine. The stylesheet for js/onboard.js.
+
+   SCOPE. Everything here is under .fbob, which is the single element the
+   engine builds inside whatever node it was handed. Nothing here styles a
+   bare tag, so loading this file on a page cannot change anything the page
+   already draws.
+
+   WHERE IT LIVES. Inside the bottom sheet whose host is .fbg-sheet in
+   css/recommend.css: max-width 520px, 22px of padding, and max-height 94vh
+   with its own overflow-y. That is the constraint the layout below is bent
+   around. .fbob is a flex column that fits inside that box and .ob-body is
+   the only thing that scrolls, so the sheet never grows the page behind it
+   and the Continue button never walks off the bottom of the screen. On a
+   390px phone the whole flow is one thumb's reach.
+
+   COLOUR. Every value is a token from css/app.css. There is not one colour
+   literal in this file, on purpose: the palette inverted once already and the
+   rules that carried their own rgba() are exactly the ones that broke. The
+   ones used here and what they are for:
+
+     --raise / --menu   an option's ground, a card lifted off the page
+     --ink / --dim      the words, and the quieter words
+     --dimmer           metadata and the fine print
+     --coral            a FILL, never type: the chosen state and the button
+     --on-accent        the only thing you may write on --coral
+     --accent-ink       the blue you may WRITE in: eyebrows, the phase label
+     --accent-wash      a chosen option's ground
+     --accent-edge      its hairline
+     --hair             every other hairline
+     --tint-3           an unfilled track
+     --night            the backstop behind a plate, for the milliseconds
+                        before the painting decodes — a cream flash there is
+                        the one thing worse than a dark one
+     --display          the serif, for a headline and nothing else
+
+   TYPE. --display for the four headlines that carry the flow. Everything else
+   is --ui at one of the four real weights. No size that is not on app.css's
+   ladder.
+   ========================================================================== */
+
+.fbob{
+  display:flex; flex-direction:column;
+  gap:14px;
+  width:100%;
+  /* The sheet is 94vh and carries its own padding; this keeps the column
+     inside it rather than pushing it taller. 44px is the top row. */
+  max-height:calc(94vh - 44px);
+  min-height:0;
+  color:var(--ink);
+  font-family:var(--ui);
+  text-align:left;
+}
+
+/* ---- chrome ------------------------------------------------------------- */
+
+.fbob .ob-top{
+  flex:0 0 auto;
+  display:flex; align-items:center; gap:12px;
+  min-height:var(--tap);
+}
+
+.fbob .ob-back{
+  -webkit-appearance:none; appearance:none;
+  flex:0 0 auto;
+  display:inline-flex; align-items:center; gap:6px;
+  min-height:var(--tap); padding:0 12px 0 8px;
+  border:0; border-radius:var(--pill);
+  background:none; color:var(--dim);
+  font-family:inherit; font-size:var(--fs-note); font-weight:var(--w-label);
+  cursor:pointer;
+}
+.fbob .ob-back::before{
+  content:""; width:9px; height:9px;
+  border-left:2px solid currentColor; border-bottom:2px solid currentColor;
+  transform:rotate(45deg);
+}
+.fbob .ob-back:hover{color:var(--ink)}
+
+.fbob .ob-phases{
+  flex:1 1 auto;
+  display:flex; gap:8px; min-width:0;
+}
+.fbob .ob-phases.is-off{visibility:hidden}
+.fbob .ob-phase{flex:1 1 0; min-width:0}
+.fbob .ob-track{
+  height:4px; border-radius:var(--pill);
+  background:var(--tint-3); overflow:hidden;
+}
+.fbob .ob-fill{
+  display:block; height:100%; width:0;
+  border-radius:var(--pill); background:var(--coral);
+  transition:width .3s ease;
+}
+.fbob .ob-plabel{
+  margin:7px 0 0; text-align:center;
+  font-size:var(--fs-micro); font-weight:var(--w-strong);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--dimmer);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.fbob .ob-phase.is-on .ob-plabel{color:var(--accent-ink)}
+
+/* ---- the scrolling middle -----------------------------------------------
+   THE ONLY SCROLLER. overscroll-behavior:contain stops a flick at the end of
+   the list from scrolling the story underneath the sheet, which on iOS is how
+   a bottom sheet ends up dismissing itself mid-question. */
+.fbob .ob-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+.fbob .ob-eyebrow{
+  margin:0 0 10px;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+  color:var(--accent-ink);
+}
+
+.fbob .ob-head{
+  margin:0;
+  font-family:var(--display); font-weight:var(--w-display);
+  font-size:var(--fs-h1); line-height:var(--lh-head);
+  letter-spacing:var(--ls-head);
+  color:var(--ink);
+  text-wrap:balance;
+}
+
+.fbob .ob-sub{
+  margin:10px 0 0; max-width:34ch;
+  color:var(--dim);
+  font-size:var(--fs-body); font-weight:var(--w-body); line-height:var(--lh-body);
+  text-wrap:pretty;
+}
+
+/* The disclosure line. It is not garnish — js/personalize.js calls it the
+   sentence that makes the personalization honest rather than a cheque the
+   catalogue cannot cash. It is quiet, it is not hidden. */
+.fbob .ob-fine{
+  margin:14px 0 0; max-width:40ch;
+  color:var(--dimmer);
+  font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.5;
+}
+
+.fbob .ob-note{
+  margin:12px 0 0;
+  color:var(--dim);
+  font-size:var(--fs-note); font-weight:var(--w-label);
+}
+
+.fbob .ob-hero{
+  position:relative; margin:0 0 16px;
+  height:150px; border-radius:18px; overflow:hidden;
+  background:var(--night);
+}
+.fbob .ob-hero img{
+  display:block; width:100%; height:100%;
+  object-fit:cover; object-position:center 24%;
+}
+
+/* ---- options ------------------------------------------------------------ */
+
+.fbob .ob-opts{
+  display:flex; flex-direction:column; gap:10px;
+  margin:18px 0 0;
+}
+
+.fbob .ob-opt{
+  -webkit-appearance:none; appearance:none;
+  display:flex; align-items:center; gap:12px;
+  width:100%; min-height:60px; padding:11px 14px;
+  border:1.5px solid var(--hair); border-radius:14px;
+  background:var(--raise); color:var(--ink);
+  font-family:inherit; font-size:var(--fs-body); font-weight:var(--w-strong);
+  line-height:var(--lh-tight); text-align:left;
+  cursor:pointer;
+  transition:border-color .16s ease, background-color .16s ease;
+}
+.fbob .ob-opt.is-on{
+  background:var(--accent-wash);
+  border-color:var(--accent-edge);
+}
+.fbob .ob-b{flex:1 1 auto; min-width:0}
+.fbob .ob-btext{flex:1 1 auto; min-width:0; display:block}
+.fbob .ob-blurb{
+  display:block; margin:3px 0 0;
+  color:var(--dimmer);
+  font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.4;
+}
+
+.fbob .ob-tile{
+  flex:0 0 auto; position:relative;
+  width:46px; height:46px; border-radius:10px; overflow:hidden;
+  background:var(--night);
+}
+.fbob .ob-tile img{
+  display:block; width:100%; height:100%;
+  object-fit:cover; object-position:center 26%;
+}
+
+/* The tick. Unchecked is an empty ring, checked is a filled one with the only
+   mark this file draws. Two borders rather than a glyph, so a webview with no
+   emoji font still shows a tick. */
+.fbob .ob-tick{
+  flex:0 0 auto; position:relative;
+  width:24px; height:24px; border-radius:var(--pill);
+  border:1.5px solid var(--tint-3);
+  background:none;
+  transition:background-color .16s ease, border-color .16s ease;
+}
+.fbob .ob-tick.is-sq{border-radius:7px}
+.fbob .ob-opt.is-on .ob-tick{
+  background:var(--coral); border-color:var(--coral);
+}
+.fbob .ob-opt.is-on .ob-tick::after,
+.fbob .ob-cover.is-on .ob-tick::after,
+.fbob .ob-tickrow.is-on .ob-tick::after{
+  content:""; position:absolute; left:7px; top:5px;
+  width:5px; height:10px;
+  border-right:2px solid var(--on-accent);
+  border-bottom:2px solid var(--on-accent);
+  transform:rotate(42deg);
+}
+
+/* the genre grid: same rows, one per line at 390px, two up when there is room */
+@media (min-width:460px){
+  .fbob .ob-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  }
+  .fbob .ob-grid .ob-opt{min-height:76px}
+}
+
+/* ---- the four covers ---------------------------------------------------- */
+
+.fbob .ob-covers{
+  display:grid; grid-template-columns:1fr 1fr; gap:12px;
+  margin:18px 0 0;
+}
+
+.fbob .ob-cover{
+  -webkit-appearance:none; appearance:none;
+  position:relative; display:block; width:100%;
+  padding:0 0 132%;              /* 3:4-ish, by padding rather than
+                                    aspect-ratio, which is iOS 15+ and a real
+                                    share of this traffic is older */
+  overflow:hidden;
+  border:1px solid var(--hair); border-radius:18px;
+  background:var(--night);
+  cursor:pointer;
+  transition:border-color .16s ease;
+}
+.fbob .ob-cover.is-on{border:2.5px solid var(--coral)}
+
+.fbob .ob-covart{position:absolute; top:0; right:0; bottom:0; left:0}
+.fbob .ob-covart img{
+  display:block; width:100%; height:100%;
+  object-fit:cover; object-position:center 26%;
+}
+
+.fbob .ob-cap{
+  position:absolute; left:0; right:0; bottom:0;
+  padding:26px 12px 12px;
+  text-align:left;
+  background:linear-gradient(to top, var(--glass-deep), var(--glass-0));
+}
+.fbob .ob-who{
+  display:block;
+  color:var(--on-glass-soft);
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase;
+}
+.fbob .ob-chead{
+  display:block; margin:4px 0 0;
+  color:var(--on-glass);
+  font-size:var(--fs-meta); font-weight:var(--w-head); line-height:1.25;
+}
+.fbob .ob-cover .ob-tick{
+  position:absolute; right:10px; top:10px;
+  width:26px; height:26px;
+  border-color:var(--on-glass-soft);
+  background:var(--glass);
+}
+.fbob .ob-cover.is-on .ob-tick{background:var(--coral); border-color:var(--coral)}
+
+/* ---- the loader ---------------------------------------------------------- */
+
+.fbob .ob-loadtrack{
+  margin:20px 0 0; height:8px;
+  border-radius:var(--pill); background:var(--tint-3);
+  overflow:hidden;
+}
+.fbob .ob-loadfill{
+  display:block; height:100%; width:0;
+  border-radius:var(--pill); background:var(--coral);
+  box-shadow:var(--glow-accent);
+  transition:width .32s linear;
+}
+.fbob .ob-pct{
+  margin:8px 0 0;
+  color:var(--dimmer);
+  font-size:var(--fs-meta); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
+
+.fbob .ob-ticks{
+  list-style:none; margin:16px 0 0; padding:0;
+  display:flex; flex-direction:column; gap:10px;
+}
+.fbob .ob-tickrow{
+  display:flex; align-items:center; gap:10px;
+  color:var(--dimmer);
+  font-size:var(--fs-note); font-weight:var(--w-label);
+  transition:color .2s ease;
+}
+.fbob .ob-tickrow.is-on{color:var(--ink)}
+.fbob .ob-tickrow .ob-tick{width:22px; height:22px}
+.fbob .ob-tickrow.is-on .ob-tick{background:var(--coral); border-color:var(--coral)}
+.fbob .ob-tickrow.is-on .ob-tick::after{left:6px; top:4px}
+
+/* the interruption: two buttons side by side, so the pause reads as a
+   question and not as the loader having failed */
+.fbob .ob-yn{
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  margin:20px 0 0;
+}
+.fbob .ob-ynb{justify-content:center; text-align:center; min-height:56px}
+
+/* ---- the payoff ---------------------------------------------------------- */
+
+.fbob .ob-cards{
+  list-style:none; margin:18px 0 0; padding:0;
+  display:flex; flex-direction:column; gap:12px;
+}
+.fbob .ob-card{
+  display:flex; align-items:center; gap:12px;
+  padding:10px; border-radius:14px;
+  background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.fbob .ob-cardart{
+  flex:0 0 auto; position:relative;
+  width:56px; height:74px; border-radius:10px; overflow:hidden;
+  background:var(--night);
+}
+.fbob .ob-cardart img{
+  display:block; width:100%; height:100%;
+  object-fit:cover; object-position:center 24%;
+}
+.fbob .ob-cardtext{flex:1 1 auto; min-width:0}
+.fbob .ob-cardhead{
+  margin:0; color:var(--ink);
+  font-size:var(--fs-sub); font-weight:var(--w-head);
+  line-height:var(--lh-tight); letter-spacing:var(--ls-title);
+}
+.fbob .ob-meta{
+  margin:5px 0 0; color:var(--dimmer);
+  font-size:var(--fs-meta); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ---- the foot ------------------------------------------------------------
+   Sticky rather than scrolling away, because the whole flow is one decision
+   per screen and the decision must never be below the fold. */
+.fbob .ob-foot{
+  flex:0 0 auto;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding-top:12px;
+  background:var(--menu);
+  box-shadow:0 -12px 16px -12px var(--hair);
+}
+
+.fbob .ob-cta{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; min-height:52px; padding:16px 20px;
+  border:0; border-radius:12px;
+  background:var(--coral); color:var(--on-accent);
+  box-shadow:var(--shadow-go);
+  font-family:inherit; font-size:var(--fs-lead); font-weight:var(--w-head);
+  letter-spacing:var(--ls-badge); text-transform:uppercase;
+  line-height:1.2;
+  cursor:pointer;
+}
+/* Off, not hidden: a button that vanishes when unanswered leaves the screen
+   looking finished. This one says it is waiting. */
+.fbob .ob-cta.is-off{
+  background:var(--tint-2); color:var(--dimmer);
+  box-shadow:none; cursor:default;
+}
+
+.fbob .ob-skip{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:0 14px;
+  border:0; border-radius:var(--pill);
+  background:none; color:var(--dimmer);
+  font-family:inherit; font-size:var(--fs-note); font-weight:var(--w-label);
+  text-decoration:underline; text-underline-offset:3px;
+  cursor:pointer;
+}
+.fbob .ob-skip:hover{color:var(--ink)}
+
+/* ---- focus, and the one ring ------------------------------------------- */
+.fbob button:focus-visible{
+  outline:2px solid var(--ring);
+  outline-offset:2px;
+  border-radius:12px;
+}
+
+/* ---- smaller phones ----------------------------------------------------- */
+@media (max-height:680px){
+  .fbob{gap:10px}
+  .fbob .ob-hero{height:110px}
+  .fbob .ob-opt{min-height:54px}
+  .fbob .ob-cta{min-height:48px; padding:14px 20px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .fbob .ob-fill,
+  .fbob .ob-loadfill,
+  .fbob .ob-opt,
+  .fbob .ob-tick,
+  .fbob .ob-cover,
+  .fbob .ob-tickrow{transition:none}
+}

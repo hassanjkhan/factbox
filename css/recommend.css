@@ -452,20 +452,29 @@ a.ec-go{
    reader can see: the next card's opening line, dimmed, under a hairline and
    a padlock. Trying to keep reading is what opens the sheet.
 
-   TWO SHEETS, ONE HOST, AND BOTH ARE ALWAYS IN THE DOM.
+   THREE SHEETS, ONE HOST, AND ALL THREE ARE ALWAYS IN THE DOM.
+     .fbg-quiz  the eleven questions   js/onboard.js, mounted into this box
      .fbg-auth  "Keep reading."   an account, so the progress is theirs
      .fbg-buy   "Finish …"        the amount, the terms, one button
 
-   .is-auth / .is-buy on .fbg say which. The hidden one is visibility:hidden,
-   which takes it out of the tab order and out of the accessibility tree while
-   leaving its words where a checker reading the page can find them.
-   display:none would do the first two and is animatable by nothing, so the
-   crossfade would have to be a second mechanism.
+   .is-quiz / .is-auth / .is-buy on .fbg say which. The hidden ones are
+   visibility:hidden, which takes them out of the tab order and out of the
+   accessibility tree while leaving their words where a checker reading the
+   page can find them. display:none would do the first two and is animatable
+   by nothing, so the crossfade would have to be a second mechanism.
 
-   THE SHEETS ARE POSITIONED, NOT FLOWED. Two siblings in a flex column would
-   reserve space for the hidden one and push the visible one up the screen by
-   its height. Both are absolutely positioned against the host's floor, so the
-   one on screen is the only one that has a place on it.
+   THE SHEETS ARE POSITIONED, NOT FLOWED. Siblings in a flex column would
+   reserve space for the hidden ones and push the visible one up the screen by
+   their height. All three are absolutely positioned against the host's floor,
+   so the one on screen is the only one that has a place on it.
+
+   .fbg-quiz CARRIES NO LOOK OF ITS OWN. Everything inside it is css/onboard.css,
+   which is scoped entirely under .fbob and was written against this box —
+   520px, 22px of padding, 94vh with its own overflow. The only thing added
+   below is the two lines that let it be the sheet on screen, and the padding
+   trim that keeps the engine's own 44px top row from sitting under a second
+   one. Styling its contents from here would be two files with an opinion
+   about one element.
 
    THE FLOOR IS --bottom-safe. The Instagram and TikTok in-app browsers draw
    their own toolbar over the bottom of the viewport and that is essentially
@@ -494,6 +503,7 @@ a.ec-go{
   opacity:0; visibility:hidden; pointer-events:none;
   transition:opacity .3s ease, visibility 0s linear .3s;
 }
+.fbg.is-quiz .fbg-veil,
 .fbg.is-auth .fbg-veil,
 .fbg.is-buy .fbg-veil{
   opacity:1; visibility:visible; pointer-events:auto;
@@ -515,6 +525,7 @@ a.ec-go{
   transition:opacity .32s ease, transform .32s cubic-bezier(.2,.75,.25,1),
              visibility 0s linear .32s;
 }
+.fbg.is-quiz .fbg-quiz,
 .fbg.is-auth .fbg-auth,
 .fbg.is-buy .fbg-buy{
   opacity:1; visibility:visible; pointer-events:auto;
@@ -522,6 +533,22 @@ a.ec-go{
   transition:opacity .32s ease, transform .32s cubic-bezier(.2,.75,.25,1),
              visibility 0s linear 0s;
 }
+
+/* The quiz is the tallest of the three and the only one that scrolls inside
+   itself. .fbob is a flex column with its own max-height and .ob-body is what
+   scrolls, so the sheet must NOT be a second scroller around it — two nested
+   overflows on a phone is the fight where the inner one loses and the footer
+   button walks off the bottom. Top padding comes down because the engine
+   draws its own 44px top row.
+
+   It is focusable (tabindex="-1", set in js/recommend.js) so the dialog can
+   take focus without the pane itself joining the tab order; nothing may draw
+   a focus ring on the box for that. */
+.fbg .fbg-quiz{
+  padding-top:14px;
+  overflow-y:visible;
+}
+.fbg .fbg-quiz:focus{outline:none}
 
 /* ---- the words ----------------------------------------------------------- */
 .fbg .fbg-eyebrow{

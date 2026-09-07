@@ -1229,11 +1229,29 @@ var FBR = (function () {
      has — and the run simply stops. Trying to keep reading is what asks for
      an account:
 
-         1  the story, running                     (read.html)
+            the story, running                     (read.html)
+         1  .fbg-quiz   the eleven questions       js/onboard.js, in here
          2  .fbg-auth   "Keep reading."            an account to save it
          3  .fbg-buy    "Finish <the subject>."    the price, and the button
-         4  Stripe                                 not ours
-         5  the story, unlocked                    (read.html)
+            Stripe                                 not ours
+            the story, unlocked                    (read.html)
+
+     THE THREE NUMBERED ROWS ARE THE THREE SHEETS, and the number is the
+     step written on fb_gate_v1, so a reader who leaves in the middle of one
+     comes back to it rather than to the top of the story. The unnumbered
+     rows are not sheets: nothing is written down for them because nothing
+     on them can be half-answered.
+
+     THE QUESTIONS COME FIRST, which is the owner's order — "onboard
+     questions, log in / sign in, pay". Asked afterwards they are a chore
+     standing between a person and the thing they have already bought, and
+     the readers who skip them are exactly the ones whose answers the shelf
+     needed. Asked first they are the two minutes that earn the ask. It is
+     also the only arrangement in which onboarding cannot be skipped: every
+     sign-up on this site now goes through this sheet, and this sheet opens
+     on the quiz for as long as FBA says the reader has not finished one.
+
+     A READER WHO HAS PAID SEES NONE OF IT — see ownsNow() and open().
 
      THE GESTURE IS THE INTENT SIGNAL. There is no unlock button to hunt for
      at the foot of the page: one more scroll past the boundary opens the
@@ -1241,7 +1259,7 @@ var FBR = (function () {
      owns what the gesture opens. What it must never be is a hair trigger —
      see "the boundary" in read.html for the arming rule.
 
-     BOTH SHEETS ARE IN THE DOM FROM THE FIRST FRAME, hidden with
+     ALL THREE SHEETS ARE IN THE DOM FROM THE FIRST FRAME, hidden with
      visibility:hidden rather than display:none. That keeps them out of the
      tab order and out of the accessibility tree while leaving their words
      where a checker reading the page can find them, which is what the
@@ -1288,6 +1306,74 @@ var FBR = (function () {
       if (U.ok && !U.ok() && U.known && U.known()) return true;
     } catch (e) { return true; }
     return false;
+  }
+
+  /* ---- DID THIS READER BUY, ASKED AT THE LEVEL OF THE ACCOUNT ------------
+
+     The only question that may stand between a reader and the quiz, and the
+     one it would have been easy to get wrong.
+
+     NOT canRead(). js/access.js answers two different questions and the
+     difference is the whole point here. canRead(id) is "may this person open
+     THIS story", and it is true for a signed-out stranger on today's Factbox
+     and on /firststory, because both of those really are free. This sheet
+     opens over exactly those stories — the ask at the end of the free story
+     is the front door of the funnel — so asking canRead() would skip
+     onboarding for every stranger the funnel exists to onboard, which is all
+     of them.
+
+     FBX.can() is the account-level door: subscriber, legacy, admin, owner. An
+     admin and an owner being spared the quiz is right — neither is a lead —
+     and FBX.owns() is asked after it only so that a future narrowing of can()
+     can never quietly put a paying subscriber back in front of a sign-up
+     form. That is the bug just fixed on the end card and it is not coming
+     back through this door.
+
+     unlocked() is the synchronous local flag and it is the last word, so a
+     page whose FBX never arrived still errs toward not selling to somebody
+     who has already paid. Every failure answers with what we know rather than
+     throwing: this runs while a story is on screen. */
+  function ownsNow() {
+    try {
+      if (window.FBX) {
+        if (FBX.can && FBX.can()) return true;
+        if (FBX.owns && FBX.owns()) return true;
+      }
+    } catch (e) {}
+    return unlocked();
+  }
+
+  /* ---- THE ONBOARDING ENGINE, AND WHETHER IT IS STILL OWED ---------------
+
+     js/onboard.js is the eleven screens. This file renders none of them and
+     knows none of their names: it hands over an element and takes back
+     onDone. FBOB.resumeAt() is the ONLY thing that may answer "which screen",
+     because js/onboard.js persists that in fb_ob_run_v1 under its own resume
+     window. A second opinion stored here would be a second answer, and one of
+     two answers is always the wrong one.
+
+     onboardDone() is asked of FBA and not of FBOB.progress(). progress()
+     describes the run that is mounted right now, and this question is asked
+     before anything is mounted. FBA.onboarded() is the durable flag —
+     finishOnboarding() writes it at the end of the eleventh screen and
+     js/profile-sync.js mirrors it to the account.
+
+     EVERY FAILURE ANSWERS "DONE", DELIBERATELY. A missing FBOB, a missing
+     FBA, a read that throws: none of those is a reader who needs onboarding,
+     they are a page that cannot run one. Answering "not done" there would put
+     an empty pane that will never render in front of the account and the
+     price — the whole funnel held shut by a script that did not load. */
+  function obe() {
+    try { if (window.FBOB && typeof FBOB.mount === "function") return FBOB; } catch (e) {}
+    return null;
+  }
+  function onboardDone() {
+    if (!obe()) return true;
+    try {
+      var A = acct();
+      if (A && typeof A.onboarded === "function") return !!A.onboarded();
+    } catch (e) {}
+    return true;
   }
 
   /* THE THIRD STATE. Signed in, signed out, and NOT YET ANSWERED — and the
@@ -1359,6 +1445,17 @@ var FBR = (function () {
   var GATE_TTL = 30 * 60 * 1000;
   var GATE_ID  = /^[A-Za-z0-9_-]{1,24}$/;   /* the shape read.html accepts */
 
+  /* THE QUIZ'S OWN STEP NUMBER. Steps 2 and 3 — the account and the offer —
+     were the only two that ever existed, because the trip that had to survive
+     a navigation began at the account. The quiz begins earlier than that and
+     can be walked away from in the middle of a question, so it needs a number
+     of its own on the same record, and a branch of its own in gateRead().
+
+     It is 1 and not 4 because the number IS the order: a reader on step 1 is
+     further from the money than a reader on step 2, and anything that ever
+     compares two of these should get that answer for free. */
+  var GATE_STEP_QUIZ = 1;
+
   function gateClear() { try { localStorage.removeItem(GATE_KEY); } catch (e) {} }
 
   function gateWrite(sid, step) {
@@ -1387,7 +1484,28 @@ var FBR = (function () {
     var step = Math.floor(Number(o.step)) || 0;
     var at = Number(o.at);
     if (sid && !GATE_ID.test(sid)) { gateClear(); return null; }
-    if (step < 2) { gateClear(); return null; }
+    /* ---- THE QUIZ IS ADMITTED BY NAME, NOT BY LOOSENING THE RANGE --------
+       The rule under this one is UNCHANGED and was deliberately not relaxed
+       from `< 2` to `< 1`. That test is what keeps a zero, a NaN floored to
+       zero by the Math.floor above, a half-written record and a record from
+       an older shape of this key out of the restore path — four different
+       kinds of nothing, all of which come out as 0. Widening it by one to
+       let the quiz through would let all four of them through with it, and
+       what they would open is a sheet nobody asked for on a page load.
+
+       So the quiz gets a branch instead: exactly the one value, tested BEFORE
+       the range test rather than by weakening it. A step of 0 is still
+       nothing and a step of 4 is still nothing.
+
+       There is nothing further to check on a quiz record. Which SCREEN the
+       reader stopped on is not on it and must never be: js/onboard.js keeps
+       that in fb_ob_run_v1, with its own seven-day window, and FBOB.resumeAt()
+       is the single answer. This record answers the narrower question — which
+       STAGE of the wall was on screen when they left — so a quiz record that
+       outlives the run record correctly reopens the quiz and lets the engine
+       decide for itself that it is a fresh one. */
+    if (step === GATE_STEP_QUIZ) { /* valid; see above */ }
+    else if (step < 2) { gateClear(); return null; }
     if (!isFinite(at) || at <= 0) { gateClear(); return null; }
     if (Date.now() - at > GATE_TTL) { gateClear(); return null; }
     /* A clock set backwards, or a record written in the future. Neither is a
@@ -1712,6 +1830,34 @@ var FBR = (function () {
       veil.setAttribute("aria-hidden", "true");
       host.appendChild(veil);
 
+      /* ---- step 1 · the questions -----------------------------------------
+         THIS FILE RENDERS NONE OF THEM. js/onboard.js owns the eleven
+         screens, their four ob_* events, their answers and their resume;
+         this is the element it is handed, and the only things on it are the
+         three attributes that make it a dialog. FBOB.mount() empties the node
+         on every screen, so anything appended here would be swept away on the
+         first advance — which is why there is nothing to append.
+
+         NO WRAPPER between the sheet and the engine. css/onboard.css was
+         written to live inside a .fbg-sheet — its own header says so, and its
+         `max-height:calc(94vh - 44px)` is measured against this box's 94vh
+         and 22px of padding. A div in between would be one more box for that
+         arithmetic to be wrong about.
+
+         IT IS A SHEET LIKE THE OTHER TWO: in the DOM from the first frame,
+         switched by a class on the host, hidden at visibility:hidden. Nothing
+         about the quiz is built lazily except the engine inside it, which is
+         mounted on the first open because mount() mints a run and emits an
+         ob_step and neither of those may happen to a reader who never sees
+         the sheet. */
+      var quiz = el("section", "fbg-sheet fbg-quiz");
+      quiz.setAttribute("role", "dialog");
+      quiz.setAttribute("aria-modal", "true");
+      quiz.setAttribute("aria-label", "A few questions");
+      /* Focusable, not tabbable — see focusQuiz(). */
+      quiz.setAttribute("tabindex", "-1");
+      host.appendChild(quiz);
+
       /* ---- step 2 · the account ------------------------------------------
          WHY AN ACCOUNT COMES BEFORE THE PRICE. It is not a toll on the way
          to checkout. STRIPE.md §1: client_reference_id is the entire link
@@ -1875,6 +2021,17 @@ var FBR = (function () {
 
       function openAuth() { paint("is-auth"); remember(2); report(); focusIn(auth); }
       function openBuy()  { paint("is-buy");  remember(3); report(); focusIn(buy); }
+      /* Same shape as the two above and one difference: the engine has to be
+         running before the pane is shown, or the reader is looking at an
+         empty sheet for a frame. mountQuiz() is the guard on that and is
+         idempotent, so open() calls it and this does not.
+
+         report() fires here too. It is the same paywall_view the other two
+         send — the wall was seen — and NOT a second name for the same moment.
+         js/onboard.js sends ob_step for the screen inside it, which is the
+         event that says which question is on the display. Two names for "the
+         wall opened" would split every funnel that counts it. */
+      function openQuiz() { paint("is-quiz"); remember(GATE_STEP_QUIZ); report(); focusQuiz(); }
       /* Shutting is not leaving. The reader is still in the story, the
          boundary is one scroll behind them, and read.html re-arms the gesture
          through onShut so the sheet can be asked for again.
@@ -1900,12 +2057,128 @@ var FBR = (function () {
         } catch (e) {}
       }
 
-      function open() {
-        if (signedIn()) { openBuy(); return; }
-        openAuth();
+      /* The quiz focuses the PANE and not its first control, which is the one
+         place this sheet differs from the other two. focusIn() takes the
+         first button, and on the account and offer sheets that is the right
+         thing — Continue with Google, and the price button. The quiz's first
+         button is Back, and Back on the first screen exits the entire flow.
+         Handing the keyboard a control that means "leave" the moment the
+         reader arrives is the opposite of what the other two sheets do.
+
+         tabindex="-1" makes the section focusable without putting it in the
+         tab order, so the reader's first Tab still lands on Back exactly as
+         it would have, and a screen reader is told a dialog opened and reads
+         its label. */
+      function focusQuiz() {
+        try { if (quiz.focus) quiz.focus(); } catch (e) {}
       }
 
-      /* ---- STEP 2 -> STEP 3, ACROSS A PAGE LOAD ---------------------------
+      /* ---- THE ENGINE, MOUNTED ONCE PER RUN --------------------------------
+
+         mount() mints a run id and commits an ob_step, so it is called once
+         per opening of the quiz and never once per paint. `quizUp` is that
+         guard, and it comes down only when the flow ends — finished, or
+         backed out of the first screen — so a reader who shuts the sheet with
+         the veil and asks for it again lands on the question they were on,
+         with the same run still under it, rather than on a fresh welcome
+         screen and a second run in the data.
+
+         startAt IS FBOB.resumeAt() AND NOTHING ELSE. That is what makes a
+         reload in the middle of a question come back to that question: the
+         engine reads its own fb_ob_run_v1, and this file stores no screen
+         number of its own precisely so there cannot be two answers to that.
+         It is passed explicitly rather than left to default so the line that
+         decides it is readable here, where the flow is assembled.
+
+         `from` is "story", which is one of js/onboard.js's four accepted
+         values and the true one: every reader who reaches this sheet reached
+         it from inside a story. This file's own `from` ("paywall", "endcard")
+         is a different vocabulary and passing it would land the engine in its
+         fallback, reporting "direct" for readers who were nothing of the
+         kind. `page` is left to default, which reads the pathname, so
+         /firststory and /story stay distinguishable in the funnel.
+
+         `stacks` is not passed. The one screen that would use it — the story
+         pick — carries its own covers and only consults the index for a
+         better image, so a null costs nothing here; the alternative is
+         plumbing the story index through two callers, one of which does not
+         have it. If the covers ever need it, it arrives as an opt.
+
+         Returns whether there is a live quiz to show. FALSE MEANS DO NOT
+         PAINT: an engine that would not mount must never leave an empty sheet
+         on the screen with the account and the price behind it. open() falls
+         through to the next stage instead, which is the funnel working with
+         one screen missing rather than the funnel stopped. */
+      var quizUp = false;
+      function mountQuiz() {
+        if (quizUp) return true;
+        var E = obe();
+        if (!E) return false;
+        var ok = false;
+        try {
+          ok = !!E.mount(quiz, {
+            from: "story",
+            startAt: E.resumeAt(),
+            onDone: function () { quizUp = false; afterQuiz(); },
+            onExit: function () { quizUp = false; shut(); }
+          });
+        } catch (e) { ok = false; }
+        quizUp = ok;
+        return ok;
+      }
+
+      /* The eleventh screen is done. THE SHEET DOES NOT CLOSE: the next stage
+         is painted over the top of it, because the reader has just spent two
+         minutes answering and a sheet that vanished at the end of that would
+         put them back in the story with nothing to show for it and the ask
+         one more scroll away.
+
+         The order is open()'s order, minus the stage that has just been
+         answered. ownsNow() is asked again rather than trusted from a minute
+         ago: FBX can settle, or a restore can land, while the quiz is on
+         screen, and the one thing that must not happen at the end of this is
+         a price shown to somebody who already pays. */
+      function afterQuiz() {
+        if (ownsNow()) { shut(); return; }
+        if (!signedIn()) { openAuth(); return; }
+        openBuy();
+      }
+
+      /* ---- WHICH SHEET, IN THE OWNER'S ORDER -------------------------------
+         Questions, then the account, then the price — and each stage is
+         skipped only when it is already answered, so a reader who comes back
+         part of the way through lands on the first thing still owed rather
+         than at the start.
+
+           onboarding not finished  ->  the quiz, resumed where they stopped
+           not signed in            ->  the account
+           otherwise                ->  the offer
+
+         ownsNow() outranks all three. It is asked here, at the top of the
+         quiz test, and not only where the sheet is decided to open at all,
+         because this sheet opens over free stories too: /firststory and
+         today's Factbox are both readable by a stranger, so the per-story
+         answer says yes to people who have bought nothing. A subscriber who
+         somehow reaches this sheet gets the offer sheet's shape, which is a
+         wasted screen; a subscriber shown the quiz is asked to fill in a form
+         to reach a story they own, which is the bug that was just fixed on
+         the end card. */
+      function open() {
+        if (!onboardDone() && !ownsNow() && mountQuiz()) { openQuiz(); return; }
+        if (!signedIn()) { openAuth(); return; }
+        openBuy();
+      }
+
+      /* ---- BACK ACROSS A PAGE LOAD, WHICHEVER STEP THEY WERE ON -----------
+
+         Two journeys share this function because they are the same journey.
+         Step 1 is the quiz, interrupted by FBX.correct()'s reload; steps 2
+         and 3 are the account and the offer, interrupted by a sign-in that
+         really navigates. The step-1 branch is inside restore() below, before
+         this one, and it is short because the engine remembers its own place.
+         What follows is the older half, unchanged.
+
+         ---- STEP 2 -> STEP 3, ACROSS A PAGE LOAD ---------------------------
 
          The reader scrolled to the boundary, opened the sheet, signed in, and
          the sign-in took them off this page. They come back to a fresh load.
@@ -1933,7 +2206,57 @@ var FBR = (function () {
       var restoring = false;
       function restore() {
         if (restoring) return false;
-        if (!remembered()) return false;
+        var step = remembered();
+        if (!step) return false;
+
+        /* ---- STEP 1 · THE QUIZ COMES BACK, IT DOES NOT START AGAIN --------
+
+           WHY A RELOAD HAPPENS HERE AT ALL. FBX.correct() reloads the page
+           when the access answer disagrees with what read.html drew, and
+           signing in is exactly what makes it disagree — so the reload is not
+           a rare accident, it is on the normal path. A quiz that started over
+           on the other side of it would be a reader answering the same six
+           questions twice, and the second time they do not.
+
+           It survives because nothing about WHERE they were is stored here.
+           js/onboard.js writes fb_ob_run_v1 after every answer; this record
+           says only that the quiz was the sheet on screen. mountQuiz() asks
+           FBOB.resumeAt() for the screen, and the two records answer the two
+           halves of the question without either of them guessing.
+
+           WHY THIS BRANCH DOES NOT WAIT FOR AN ACCOUNT THE WAY STEP 3 DOES.
+           The branch below drops the record when the trip ended signed out,
+           because a step-3 record means "they went to sign in" and coming
+           back without an account means it failed. A step-1 record means
+           nothing of the kind: the quiz is asked BEFORE the account, so a
+           signed-out reader is the ordinary case and the only case. What it
+           does wait for is whether they have PAID — whenAuthKnown() first,
+           then ownsNow() — because a subscriber must never be handed a
+           sign-up form, and asking before FBU has settled is asking a
+           question that has no answer yet.
+
+           THE RECORD IS NOT DROPPED when the quiz reopens. openQuiz() writes
+           it again, with a fresh timestamp, so a second reload resumes too.
+           It is dropped only when the quiz is no longer the answer. */
+        if (step === GATE_STEP_QUIZ) {
+          restoring = true;
+          whenAuthKnown(function () {
+            restoring = false;
+            /* They pay. Nothing on this sheet is for them. */
+            if (ownsNow()) { forget(); shut(); return; }
+            if (!onboardDone() && mountQuiz()) { openQuiz(); return; }
+            /* They finished the questions between the write and the reload,
+               or the engine is not on this page. Either way the quiz is not
+               what is owed any more, and the reader still asked for the wall
+               before they left — so they get the stage that IS owed rather
+               than an empty pane or nothing at all. */
+            forget();
+            if (!signedIn()) { openAuth(); return; }
+            openBuy();
+          });
+          return true;
+        }
+
         restoring = true;
         whenAuthKnown(function () {
           if (!signedIn()) { forget(); restoring = false; return; }
@@ -1993,6 +2316,12 @@ var FBR = (function () {
                 if (signedIn()) openBuy();
                 return;
               }
+              /* Any other sheet already on screen is left alone, and the quiz
+                 is the case that now matters most: an account arriving mid
+                 question — a popup that resolved, a late FBU — must not tear
+                 a reader off the question they are answering. It is asked for
+                 again by afterQuiz() the moment the eleventh screen is done,
+                 which is the right moment for it. */
               if (host.className.indexOf("is-") > -1) return;
               if (signedIn() && remembered()) restore();
             } catch (e) {}
@@ -2197,6 +2526,7 @@ var FBR = (function () {
 
       host.onShut = null;
       host.open = open;
+      host.openQuiz = openQuiz;
       host.openAuth = openAuth;
       host.openBuy = openBuy;
       host.shut = shut;
@@ -2230,7 +2560,8 @@ var FBR = (function () {
         b.href = "/explore";
         f.appendChild(b);
         f.open = function () {};
-        f.openAuth = f.open; f.openBuy = f.open; f.shut = f.open;
+        f.openQuiz = f.open; f.openAuth = f.open; f.openBuy = f.open;
+        f.shut = f.open;
         f.onShut = null;
         f.restore = function () { return false; };
         f.reveal = function () {};

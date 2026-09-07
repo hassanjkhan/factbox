@@ -422,15 +422,32 @@ var FBA = (function () {
        It falls back to the local id, and that fallback is the reason
        `customers/fba0c2kqadg5iwjme09b8d4n` exists in production. It is kept,
        deliberately and narrowly: the callers refuse to start a checkout
-       without a Firebase uid unless auth is genuinely UNAVAILABLE, and in
-       that one case a traceable local id is better than an anonymous payment,
-       because profile-sync writes the same id into the reader's own document
-       the moment they do sign in. What has changed is the other end — the
-       webhook no longer believes it. A ref that is not an account id is filed
-       in `stripe_unattributed` and no junk `customers/` row is created. */
+       without a Firebase uid. There is no longer any exception.
+
+       There used to be one: if auth was unavailable we sent a local id, on the
+       reasoning that a traceable payment beats an anonymous one. That was
+       wrong, and the way it was wrong is the point. The webhook correctly
+       refused the local id — it is 24 characters and `looksLikeUid` wants 28 —
+       so the payment was filed in `stripe_unattributed` and no `customers/`
+       row was made. But Stripe still bounced the buyer to
+       `/stories?unlocked=1`, `js/gate.js` still minted the unlock flag from
+       that parameter, and `FBX` still answered `owns() === true`. So the
+       purchase LOOKED successful and was not: it lived in one browser, never
+       followed them to a phone, and died with the cache. A payment that fails
+       loudly is a support ticket; one that fails like this is a refund and a
+       lost reader who thinks we stole from them.
+
+       The flow now is onboarding, then sign in, then pay — so by the time
+       anything here runs there is always a uid. If there somehow is not, we
+       return no ref and the caller refuses to start checkout, which is the
+       honest outcome: it is better to be unable to sell than to take money we
+       cannot attach to an account.
+
+       This does NOT replace the webhook's own `looksLikeUid` check. STRIPE.md
+       §11 is right that a one-sided defence on a money path is one bug away
+       from being no defence. */
     var ref = "";
     try { if (window.FBU && FBU.uid && FBU.uid()) ref = FBU.uid(); } catch (e) {}
-    if (!ref) ref = accountId();
 
     var mail = "";
     try { if (window.FBU && FBU.email && FBU.email()) mail = FBU.email(); } catch (e) {}

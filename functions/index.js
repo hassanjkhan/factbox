@@ -71,6 +71,20 @@ function looksLikeUid(v) {
   return UID_SHAPE.test(v.trim());
 }
 
+/* FOUNDING MEMBERS — the offer is "the first 1000 people to subscribe", and
+   the only way that sentence stays true is if a server counts it.
+
+   `meta/founding` is one document holding `{ claimed, cap }`. It is world
+   READABLE (firestore.rules `match /meta/{doc}` allows it) so a signed-out
+   browser can show the real number with a plain XHR — no SDK, no auth, no
+   second function. It is world UNWRITABLE for the obvious reason.
+
+   The cap lives in the document, not only here, so it can be raised without a
+   deploy. This constant is the value used the first time the document is
+   written, and the fallback if the field is ever missing. */
+const FOUNDING_CAP = 1000;
+const FOUNDING_REF = db.doc("meta/founding");
+
 /* One place, so every branch files the same shape. Keyed on a Stripe id, so
    a retry of the same event overwrites its own row instead of adding one. */
 async function fileUnattributed(key, why, fields) {
@@ -140,6 +154,12 @@ async function writeSubscription(uid, sub, event) {
       return { stale: true, have: had.eventCreated, got: stamp, status: had.status || null };
     }
     const all = await t.get(subsCol);
+    /* Read unconditionally rather than only when we expect to assign. A read
+       that depends on a value computed further down is still legal, but it
+       makes the reads-before-writes rule something a future edit has to
+       rediscover. This costs one document. */
+    const custPrev = await t.get(custRef);
+    const foundPrev = await t.get(FOUNDING_REF);
 
     /* The flag the site reads. Derived from every subscription this person
        has, not just the one that changed — somebody who cancels a monthly
@@ -149,6 +169,52 @@ async function writeSubscription(uid, sub, event) {
       const v = d.data();
       if (d.id !== sub.id && v && v.active) anyActive = true;
     });
+
+    /* THE FOUNDING NUMBER.
+       Counted here and nowhere else, because this transaction is the only
+       place in the system that learns "this account is now paying" from
+       Stripe rather than from a browser. A number minted in a client could
+       be minted a thousand times by one person with the devtools open.
+
+       Assigned once and never reassigned: the guard is the absence of a
+       number on the customer document, not the subscription status. So a
+       renewal does not consume a second place, and neither does resubscribing
+       after a cancellation — a founding member who leaves and comes back is
+       still the same member, holding the same number.
+
+       A cancelled member does NOT release their place. "The first 1000 people
+       to subscribe" is a claim about who arrived, and it stays true whatever
+       they do afterwards. Releasing places would also make the counter go
+       backwards in public, which reads as a lie even when it isn't.
+
+       The counter can exceed the cap. A reader whose tab was open when the
+       last place went will still be sold the founding price by a Payment Link
+       that was already on their screen, and honouring that is cheaper than
+       breaking a checkout mid-flow. Those arrivals are visible as a
+       foundingNumber above the cap rather than hidden. */
+    const hadNumber =
+      custPrev.exists && typeof custPrev.data().foundingNumber === "number"
+        ? custPrev.data().foundingNumber
+        : 0;
+    const fdata = foundPrev.exists ? foundPrev.data() : null;
+    const cap =
+      fdata && typeof fdata.cap === "number" ? fdata.cap : FOUNDING_CAP;
+    const claimed =
+      fdata && typeof fdata.claimed === "number" ? fdata.claimed : 0;
+
+    let foundingNumber = hadNumber;
+    if (anyActive && !hadNumber) {
+      foundingNumber = claimed + 1;
+      t.set(
+        FOUNDING_REF,
+        {
+          claimed: foundingNumber,
+          cap,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    }
 
     t.set(subRef, {
       id: sub.id,
@@ -174,14 +240,18 @@ async function writeSubscription(uid, sub, event) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    t.set(custRef, {
+    const custPatch = {
       uid,
       premium: anyActive,
       stripeCustomerId: typeof sub.customer === "string" ? sub.customer : null,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    };
+    /* Written only when there is one. A merge carrying `foundingNumber: null`
+       would erase the number of anybody whose subscription later lapses. */
+    if (foundingNumber) custPatch.foundingNumber = foundingNumber;
+    t.set(custRef, custPatch, { merge: true });
 
-    return { stale: false, premium: anyActive };
+    return { stale: false, premium: anyActive, founding: foundingNumber, newFounding: !hadNumber && !!foundingNumber };
   });
 
   if (out.stale) {
@@ -244,22 +314,57 @@ async function uidForCustomer(customerId) {
     .limit(5)
     .get();
   if (q.empty) return null;
+
+  /* Every match, not the first one Firestore happened to return.
+     The query has no orderBy, so "the first doc" is whatever the index felt
+     like today. Returning it meant that when one Stripe customer mapped to
+     two real accounts — which requiring an account before payment makes MORE
+     likely, because the same person can arrive by email/password and by
+     Google — every later renewal and cancellation landed on an arbitrary one
+     of them, silently, and could land on a different one next time.
+
+     Now the choice is total and stable: earliest founding number first (the
+     account that actually bought), then lexicographic uid as a tie-break that
+     can never itself tie. And two valid accounts is an ERROR, because it
+     means a human being has two doors to the same subscription. */
+  const good = [];
   const bad = [];
-  for (const d of q.docs) {
+  q.docs.forEach((d) => {
     if (looksLikeUid(d.id)) {
-      if (bad.length) {
-        logger.error("a Stripe customer is also mapped to a non-account id", {
-          customer: customerId, ref: bad, used: d.id
-        });
-      }
-      return d.id;
+      const v = d.data() || {};
+      good.push({
+        id: d.id,
+        n: typeof v.foundingNumber === "number" ? v.foundingNumber : Infinity
+      });
+    } else {
+      bad.push(d.id);
     }
-    bad.push(d.id);
-  }
-  logger.error("a Stripe customer maps only to non-account ids", {
-    customer: customerId, ref: bad
   });
-  return null;
+
+  if (!good.length) {
+    logger.error("a Stripe customer maps only to non-account ids", {
+      customer: customerId, ref: bad
+    });
+    return null;
+  }
+
+  good.sort(function (a, b) {
+    if (a.n !== b.n) return a.n - b.n;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+
+  if (good.length > 1) {
+    logger.error("a Stripe customer maps to more than one account", {
+      customer: customerId,
+      accounts: good.map((g) => g.id),
+      used: good[0].id
+    });
+  } else if (bad.length) {
+    logger.error("a Stripe customer is also mapped to a non-account id", {
+      customer: customerId, ref: bad, used: good[0].id
+    });
+  }
+  return good[0].id;
 }
 
 exports.stripeWebhook = onRequest(

@@ -291,6 +291,67 @@ async function partWebhook() {
   line(!!fake.db.__get("stripe_unattributed/cus_GHOST"),
        "a subscription for an unknown customer is filed, not silently dropped");
 
+  /* --- FOUNDING MEMBERS ---------------------------------------------------
+     The offer on the paywall is "the first 1000 people to subscribe". That is
+     a promise about a count, so the count is the thing to test: a number that
+     drifts turns the promise into the same lie as a countdown timer that
+     resets when you reload it.
+
+     The account above has already been through active / cancelled / restored
+     / customer-deleted / restored, which is exactly the history that would
+     expose a counter incremented per event rather than per person. */
+  const meta = () => fake.db.__get("meta/founding") || {};
+  line(cust().foundingNumber === 1 && meta().claimed === 1,
+       "the first subscriber is founding member 1, and the counter says 1",
+       "number=" + cust().foundingNumber + "  claimed=" + meta().claimed +
+       "  after " + n + " events including two cancellations");
+  line(meta().cap === 1000, "the cap is stored in the document, not only in code");
+
+  /* A renewal is not a new member. */
+  t += 60;
+  await post(ev("customer.subscription.updated", sub("active"), t, "evt_renewal"));
+  line(cust().foundingNumber === 1 && meta().claimed === 1,
+       "a renewal does not consume a second place");
+
+  /* A second human does take the next number. */
+  const UID2 = "aB3xY7zQ1wE5rT9yU2iO4pA6sD8f";
+  const CUS2 = "cus_SECOND";
+  await fake.db.doc("customers/" + UID2).set(
+    { uid: UID2, stripeCustomerId: CUS2 }, { merge: true });
+  t += 60;
+  await post(ev("customer.subscription.created",
+    sub("active", { customer: CUS2, id: "sub_SECOND" }), t, "evt_second"));
+  line((fake.db.__get("customers/" + UID2) || {}).foundingNumber === 2 && meta().claimed === 2,
+       "the second subscriber is 2, and one counter serves both accounts");
+
+  /* Cancelling does not release the place, and coming back does not take a
+     new one. Both halves matter: a counter that goes backwards in public
+     reads as a lie even when it is arithmetically honest. */
+  t += 60;
+  await post(ev("customer.subscription.deleted",
+    sub("canceled", { customer: CUS2, id: "sub_SECOND" }), t, "evt_second_gone"));
+  line(meta().claimed === 2 && (fake.db.__get("customers/" + UID2) || {}).foundingNumber === 2,
+       "a member who leaves keeps their number and does NOT free the place");
+  t += 60;
+  await post(ev("customer.subscription.updated",
+    sub("active", { customer: CUS2, id: "sub_SECOND" }), t, "evt_second_back"));
+  line(meta().claimed === 2 && (fake.db.__get("customers/" + UID2) || {}).foundingNumber === 2,
+       "and coming back does not take a third place");
+
+  /* Past the cap. The last place going while somebody's tab is open is a
+     certainty, not an edge case, and breaking a checkout mid-flow to save
+     $35 is a worse outcome than honouring it. They are counted, visibly. */
+  await fake.db.doc("meta/founding").set({ claimed: 1000, cap: 1000 }, { merge: true });
+  const UID3 = "zX9cV2bN5mK8jH4gF7dS1aQ3wE6r";
+  const CUS3 = "cus_LATE";
+  await fake.db.doc("customers/" + UID3).set(
+    { uid: UID3, stripeCustomerId: CUS3 }, { merge: true });
+  t += 60;
+  await post(ev("customer.subscription.created",
+    sub("active", { customer: CUS3, id: "sub_LATE" }), t, "evt_late"));
+  line((fake.db.__get("customers/" + UID3) || {}).foundingNumber === 1001 && meta().claimed === 1001,
+       "arriving after the cap still completes, and is visible as number 1001",
+       "not silently dropped, and not silently sold as founding #1000");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -398,10 +459,26 @@ async function partCheckout() {
       line(ref === wantRef && names.some((e) => e[0] === "checkout_start" && e[1].attributed === "1"),
            "signed in: the Firebase uid rides on the URL, attributed 1");
     } else {
-      line(ref.indexOf("fba") === 0 && ref.length < 28 &&
-           names.some((e) => e[0] === "checkout_start" && e[1].attributed === "0"),
-           "auth unavailable: the sale is allowed through on the LOCAL id, attributed 0",
-           "and part 1 proves the webhook refuses to make a customers/ row out of it");
+      /* This assertion used to be its own opposite: it required that a reader
+         whose auth never loaded was sold to anyway, on a local id, and leaned
+         on the webhook refusing that id at the other end.
+
+         The webhook did refuse it — correctly — but refusing it was not the
+         end of the story. Stripe still returned the buyer to
+         `/stories?unlocked=1`, `js/gate.js` still minted the unlock flag from
+         that parameter, and `FBX.owns()` still answered true. So the money was
+         taken, filed in `stripe_unattributed`, and the reader was shown a
+         working product that existed only in one browser and died with its
+         cache. A sale nobody can honour is worse than a sale that never
+         happened, which is why the flow is now onboarding, then sign in, then
+         pay — and why no ref means no checkout.
+
+         Kept as a test rather than deleted, because "we can always sell" is
+         exactly the kind of helpfulness that gets re-added by someone reading
+         a funnel dashboard. */
+      line(!ref && names.some((e) => e[0] === "checkout_blocked"),
+           "auth unavailable: NO sale is started, because it could not be attached to an account",
+           "no client_reference_id was minted and checkout_blocked was counted");
     }
     if (label === "signed in") {
       line(/US\$35\.88 a year/.test(terms) && /US\$2\.99 a month/.test(terms),
@@ -432,6 +509,32 @@ async function partRevocation() {
   line(errors.some((e) => /navigation to another Document/.test(e)),
        "AND THE PAGE REDRAWS: FBX.correct(true) reloads it",
        "jsdom cannot navigate, so the reload surfaces as " + JSON.stringify(errors));
+
+  /* --- the end card must know who is reading it ---------------------------
+     /firststory is free, so a subscriber reaches its end card like anybody
+     else. The composed ask block used to rewrite that card's button to
+     "Sign up to read more" for EVERY reader, and the tap opened the purchase
+     sheet — to a person who had already bought. Any onboarding hung off that
+     CTA would have inherited it and started interrogating paying customers. */
+  const sub2 = stubFBU({ known: true, signedIn: true, premium: true,
+                         uid: "woJ4di0ze9XkQ2rTb8mNpLcVaH3f", email: "hassan@example.com" });
+  const paid = await load(BASE + "/firststory", (w2) => { w2.FBU = sub2; }, 5200);
+  const pd = paid.dom.window.document;
+  const joinCTA = [].slice.call(pd.querySelectorAll("a.ec-go"))
+    .filter((a) => (a.getAttribute("href") || "").indexOf("/join") === 0);
+  line(joinCTA.length === 0 && pd.querySelectorAll(".ec-signin").length === 0,
+       "a SUBSCRIBER finishing /firststory is not asked to sign up or shown a price",
+       "join CTAs=" + joinCTA.length + "  sign-in lines=" +
+       pd.querySelectorAll(".ec-signin").length + "  (paint=" + paid.dom.window.FBX.why() + ")");
+
+  const outr = stubFBU({ known: true, signedIn: false, premium: false });
+  const anon = await load(BASE + "/firststory", (w2) => { w2.FBU = outr; }, 5200);
+  const ad = anon.dom.window.document;
+  line(ad.querySelectorAll(".ec-signin").length > 0 ||
+       [].slice.call(ad.querySelectorAll("a.ec-go"))
+         .some((a) => (a.getAttribute("href") || "").indexOf("/join") === 0),
+       "and a SIGNED-OUT reader still gets the sign-up card",
+       "the gate above must not have silenced the pitch for everybody");
 
   const out = stubFBU({ known: true, signedIn: false, premium: false });
   const free = await load(BASE + "/read?s=01", (w2) => { w2.FBU = out; }, 4500);

@@ -239,6 +239,16 @@
       </button>
     </div>
 
+    <!-- The founding-member line. It ships HIDDEN and stays hidden unless
+         js/founding.js comes back with a real count from the server, so a
+         reader who is offline, blocked or behind a changed security rule sees
+         the price with no scarcity claim and no empty gap where one would
+         have been. It is never populated from markup: there is no honest
+         number to type here, because the honest number is whatever the till
+         says at the moment this page is open. -->
+    <p class="jn-found" id="jn-found" hidden
+       style="margin:12px 0 0;font-size:var(--fs-note);font-weight:var(--w-label);color:var(--dim);line-height:var(--lh-body)"></p>
+
     <button class="go" id="jn-buy" type="button" style="margin-top:18px">Start 3 days free</button>
     <p class="jn-terms" id="jn-terms"><b class="jn-trial">Three days free</b>. If you do not cancel
     before the trial ends, the plan you picked starts and renews at that price
@@ -321,6 +331,11 @@
 <script src="/js/access.js"></script>
 <script src="/js/gate.js"></script>
 <script src="/js/account.js"></script>
+<!-- The live founding-member count. One unauthenticated XHR against the world
+     readable meta/founding document the Stripe webhook maintains; it blocks
+     nothing, and when it cannot be read the plan screen simply shows the price
+     with no founding line at all. See the header of js/founding.js. -->
+<script src="/js/founding.js"></script>
 <!-- The onboarding answers reach customers/{uid}/profile/onboarding through
      this file. /join did not load it before, because /join was not where the
      questions were asked; it is now, so it loads it. Every write it makes is
@@ -871,32 +886,157 @@
   }
 
   /* --- 6 · plans ----------------------------------------------------------
-     Every figure on this screen comes out of FBA.plans(): the per-month price,
-     the amount actually billed, the cycle, and the saving against the monthly
-     rate. Nothing is typed twice, so nothing can disagree with itself. */
+     Every figure on this screen comes out of FBA.plans(): the amount actually
+     billed, the cycle, the saving against the monthly rate, and — derived
+     below, from the billed amount and nothing else — the per-day figure the
+     card leads with. Nothing is typed twice, so nothing can disagree with
+     itself, and the one figure the reader authorises is printed in full on
+     every card. */
 
   var picked = "annual";
   var blockedSaid = false;   /* checkout_blocked is reported once per page */
+
+  function esc(s2) {
+    try {
+      return String(s2).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    } catch (e) { return ""; }
+  }
+
+  /* THE PER-DAY FIGURE. Derived here, in code, from the amount Stripe
+     actually charges. It is not typed anywhere, and it is deliberately NOT
+     derived from the per-month figure, which is itself already a rounded
+     derivation — dividing a rounding by thirty is how a price drifts.
+
+     DAYS IN A PERIOD come from the plan's own `months`, at the calendar's own
+     rate of 365/12 days a month. A yearly plan is therefore 365 days exactly
+     and a monthly one 30.42. One rule, no table of month lengths, and it
+     keeps working for whatever intervals PRICING grows later.
+
+     THE ROUNDING IS UP, TO THE CENT, AND THE DIRECTION IS THE WHOLE POINT.
+     US$35.88 over 365 days is 9.8301 cents a day. Rounded DOWN that prints a
+     daily rate of nine cents — a rate nobody is charged, which multiplies
+     back out to US$32.85 and flatters the plan by three dollars. Rounded UP
+     it prints ten cents, a hair MORE than the true daily rate: it understates
+     the value of the plan rather than overstating it, so a reader who
+     multiplies it back out lands slightly ABOVE the real bill and can never
+     be surprised at the till. The exact annual charge is printed in full
+     directly beneath it, so the rounded figure is never the only number on
+     the card and never the number anybody authorises. */
+  var DAYS_PER_MONTH = 365 / 12;
+
+  function perDayCents(p) {
+    try {
+      var days = (Number(p.months) || 1) * DAYS_PER_MONTH;
+      if (!(days > 0)) return 0;
+      var c = Math.ceil(Number(p.amountCents) / days);
+      return isFinite(c) && c > 0 ? c : 0;
+    } catch (e) { return 0; }
+  }
+
+  /* Ten cents as the two pieces the treatment sets at two sizes: the whole
+     dollars very large, the cents small and raised beside them. Purely
+     typographic — the accessible name on the container puts them back
+     together into the one price they are. */
+  function dayParts(c) {
+    var v = Math.round(Number(c) || 0);
+    if (!(v > 0)) v = 0;
+    var w = Math.floor(v / 100), r = v % 100;
+    return { big: String(w), sup: (r < 10 ? "0" : "") + String(r) };
+  }
+
+  /* The price treatment's own styles. They are inline attributes rather than
+     a stylesheet because join.html has no <style> block, and because
+     css/join.css states as a rule that it touches no .jn- selector — the plan
+     card belongs to css/account.css. Every value below is a var() token from
+     css/app.css: there is not one colour or size literal here. If these are
+     later moved into css/account.css the class names are already on the
+     elements, and this map is deleted whole. */
+  var DS = {
+    day:  "display:flex;flex-direction:row;align-items:flex-start;gap:6px;margin:2px 0 0",
+    was:  "align-self:center;margin-right:2px;font-size:var(--fs-meta);" +
+          "font-weight:var(--w-label);color:var(--dimmer)",
+    cur:  "align-self:flex-start;margin-top:.5em;font-size:var(--fs-note);" +
+          "font-weight:var(--w-head)",
+    big:  "font-size:var(--fs-hero);font-weight:var(--w-head);line-height:.92;" +
+          "letter-spacing:var(--ls-hero)",
+    tail: "display:flex;flex-direction:column;align-items:flex-start;" +
+          "align-self:flex-start;margin-top:.12em",
+    sup:  "font-size:var(--fs-sub);font-weight:var(--w-head);line-height:1",
+    unit: "margin-top:2px;font-size:var(--fs-micro);font-weight:var(--w-label);" +
+          "letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--dim)"
+  };
 
   function renderPlans() {
     try {
       var wrap = el("jn-plan-opts");
       if (!wrap || !A) { syncBuy(); return; }
       var list = A.plans(), html = "", i;
+      var sym = "";
+      try { sym = (A.pricing() || {}).symbol || ""; } catch (e0) { sym = ""; }
+
+      /* The struck-through figure is the SAME arithmetic run on PRICING.base
+         — the plan savePct is already measured against — and it is printed
+         with that plan's own cycle word beside it. A bare struck number next
+         to a price reads as "this used to cost that", and it never did; the
+         cheaper plan is a choice on this screen, not a discount off a former
+         price, and saying so is one word. Nothing is struck on the base plan
+         itself, and nothing is struck if the arithmetic does not actually
+         come out cheaper. */
+      var base = null;
+      try { base = A.planByKeyAny((A.pricing() || {}).base); } catch (e1) { base = null; }
+      var baseDay = base ? perDayCents(base) : 0;
+      var baseWord = base ? String(base.cycleShort || base.cycle || "") : "";
+
       for (i = 0; i < list.length; i++) {
         var p = list[i];
+        var day = perDayCents(p);
+        var parts = dayParts(day);
+        var beats = !!(base && baseDay > 0 && p.key !== base.key && day > 0 && day < baseDay);
+
+        /* ONE accessible name for the whole cluster. Without it a screen
+           reader announces the split as "zero" then "ten" — two numbers,
+           neither of them the price. role="img" is what makes aria-label on a
+           generic element actually reach the accessibility tree, and every
+           piece inside is aria-hidden so none of them is read twice. */
+        var label = A.moneyCents(day) + " a day" +
+                    (beats ? ", down from " + A.moneyCents(baseDay) + " a day on the " +
+                             baseWord + " plan" : "");
+
         html += '<button class="jn-plan' + (p.best ? " is-best" : "") + '" type="button"' +
                 ' role="radio" data-k="' + p.key + '"' +
                 ' aria-checked="' + (p.key === picked ? "true" : "false") + '">' +
                 (p.best ? '<span class="jn-badge">BEST VALUE</span>' : "") +
-                '<span class="jn-per">' + p.perMonthAbout + ' <i>a month</i></span>' +
-                '<span class="jn-billed">' + p.billedLine + '</span>' +
+                '<span class="jn-rate" role="img" aria-label="' + esc(label) + '"' +
+                ' style="' + DS.day + '">' +
+                  (beats
+                    ? '<span class="jn-rate-was" aria-hidden="true" style="' + DS.was + '">' +
+                        esc(baseWord) + ' <s>' + esc(A.moneyCents(baseDay)) + '</s></span>'
+                    : "") +
+                  '<span class="jn-rate-cur" aria-hidden="true" style="' + DS.cur + '">' +
+                    esc(sym) + '</span>' +
+                  '<span class="jn-rate-big" aria-hidden="true" style="' + DS.big + '">' +
+                    esc(parts.big) + '</span>' +
+                  '<span class="jn-rate-tail" aria-hidden="true" style="' + DS.tail + '">' +
+                    '<span class="jn-rate-sup" style="' + DS.sup + '">' + esc(parts.sup) + '</span>' +
+                    '<span class="jn-rate-unit" style="' + DS.unit + '">per day</span>' +
+                  '</span>' +
+                '</span>' +
+                /* The amount Stripe will actually take, in full, immediately
+                   under the rounded daily figure. This is the number the
+                   reader authorises; it is never abbreviated and never
+                   dropped, because a daily rate on a plan billed in a lump is
+                   the half of the truth that gets a refund request. */
+                '<span class="jn-billed">' + esc(p.billedText) + ' billed ' +
+                  esc(p.cycleShort) + '</span>' +
                 (p.savePct > 0
-                  ? '<span class="jn-save">Save ' + p.savePct + '% on the monthly price</span>'
+                  ? '<span class="jn-save">Save ' + p.savePct + '% on the ' +
+                    esc(baseWord || "monthly") + ' price</span>'
                   : '<span class="jn-save">Billed monthly, cancel any time</span>') +
                 '</button>';
       }
       wrap.innerHTML = html;
+      paintFounding();
       wireRadios("jn-plan-opts", function (k) {
         picked = k || picked;
         /* The one step of the money path that said nothing. join_step reports
@@ -911,6 +1051,42 @@
       });
       syncBuy();
     } catch (e) { syncBuy(); }
+  }
+
+  /* THE FOUNDING LINE. "The first 1000 subscribers get this price" is a claim
+     about the world, so it is printed only when a server that counts has
+     handed over the count. js/founding.js reads meta/founding — the document
+     the Stripe webhook writes inside the same transaction that grants
+     premium — and paints twice: once immediately, with nothing, and again if
+     and only if a real number arrives.
+
+     WHAT REPLACED WHAT. This is where a countdown timer used to be argued
+     for. A timer that restarts on reload is a lie a reader catches with one
+     gesture, on the one screen where being caught costs the sale, and on a
+     product whose entire pitch is that its numbers are real. A counter that
+     only moves when somebody actually pays cannot be caught out.
+
+     AND WHEN THE NUMBER IS NOT KNOWN, THERE IS NO CLAIM. Not a rounded one,
+     not the last one we saw, not "limited places", not "1000 left". The
+     element keeps its `hidden` attribute, the price stands on its own, and
+     the card above it does not leave a gap where a sentence nearly was. */
+  function paintFounding() {
+    var box = el("jn-found");
+    if (!box) return;
+    if (typeof FBFOUND === "undefined" || !FBFOUND || !FBFOUND.paint) {
+      show(box, false);
+      return;
+    }
+    try {
+      FBFOUND.paint(function (known, claimed, cap) {
+        if (!known) { show(box, false); return; }
+        /* All taken is also no claim. "1000 of 1000 places taken" printed
+           beside a buy button is an offer that has closed still being sold. */
+        if (claimed >= cap) { show(box, false); return; }
+        text(box, "Founding member — " + claimed + " of " + cap + " places taken");
+        show(box, true);
+      });
+    } catch (e) { show(box, false); }
   }
 
   /* The plan, in the reader's own answers, immediately above the prices. It

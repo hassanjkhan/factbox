@@ -569,7 +569,14 @@
 
       return rr.then(function (res) {
         ssDel(RKEY);
-        if (res && res.user) { /* onAuthStateChanged will fire with it */ }
+        if (res && res.user) {
+          /* onAuthStateChanged will fire with the user — but it fires with a
+             USER, and "was this account just created" lives on the CREDENTIAL,
+             which exists here and nowhere else. This is the majority path for
+             this site (in-app webviews cannot do popups), so dropping the flag
+             here meant dropping it for most sign-ups. */
+          noteCred(sdk, res);
+        }
         else if (pending) {
           /* We sent them to Google and came back with nobody. Almost always
              a webview that dropped the session between the two pages. */
@@ -620,6 +627,71 @@
     catch (e) { return ""; }
   }
 
+  /* ======================================================================
+     Is this account NEW?
+
+     The funnel needs this: a brand-new account goes to onboarding, a
+     returning reader goes back to what they were reading. Nothing else can
+     answer it. `js/account.js`'s `onboarded()` is per-browser, wiped by
+     private mode, and is not even loaded on /login or /explore.
+
+     Two sources, because neither alone covers every path:
+
+     1. `getAdditionalUserInfo(cred).isNewUser` — authoritative, but only
+        exists where we hold a credential. That includes the REDIRECT leg,
+        which is the path most of this site's readers actually take: Instagram
+        and TikTok webviews cannot do popups. The old code threw the whole
+        credential away there with a comment saying onAuthStateChanged would
+        fire — true, but onAuthStateChanged carries a user, not a credential,
+        so the flag died exactly where it was needed most.
+
+     2. `metadata.creationTime === lastSignInTime` — a fallback for the paths
+        with no credential at all (a session restored from storage on the next
+        page load). Second-resolution strings, so it is compared with a
+        tolerance, and it is only ever consulted when source 1 said nothing.
+
+     Held against a uid, not a boolean, so it cannot leak across an account
+     switch: signing out of a new account and into an old one must not make
+     the old one look new. */
+  var newUid = "";
+
+  function markNew(u) { if (u && u.uid) newUid = u.uid; }
+
+  function noteCred(s, cred) {
+    try {
+      var info = s && s.getAdditionalUserInfo ? s.getAdditionalUserInfo(cred) : null;
+      if (info && info.isNewUser) markNew(cred && cred.user);
+    } catch (e) {}
+  }
+
+  /* Within five seconds of creation. Firebase reports both stamps as date
+     strings with one-second resolution, so they are frequently not identical
+     even for an account made moments ago. */
+  function looksBrandNew(u) {
+    try {
+      var m = u && u.metadata;
+      if (!m) return false;
+      var c = Date.parse(m.creationTime || "");
+      var l = Date.parse(m.lastSignInTime || "");
+      if (!c || !l) return false;
+      return (l - c) < 5000;
+    } catch (e) { return false; }
+  }
+
+  function isNewUser() {
+    var u = curUser;
+    if (!u || !u.uid) return false;
+    if (newUid && newUid === u.uid) return true;
+    return looksBrandNew(u);
+  }
+
+  function creationTime() {
+    try {
+      var m = curUser && curUser.metadata;
+      return (m && m.creationTime) || "";
+    } catch (e) { return ""; }
+  }
+
   function signUpEmail(mail, pass) {
     var e = cleanEmail(mail);
     if (!e) return Promise.reject(fail("auth/missing-email"));
@@ -629,6 +701,8 @@
       return s.createUserWithEmailAndPassword(auth, e, String(pass));
     }).then(function (cred) {
       var u = cred && cred.user ? cred.user : null;
+      /* createUserWithEmailAndPassword only ever creates. No need to ask. */
+      markNew(u);
       /* The verification email is part of signing up, not a second step the
          reader has to discover. It is sent, and its failure is swallowed:
          an account that exists with no email sent is recoverable from the
@@ -756,6 +830,7 @@
       var p = googleProvider(s);
       if (!popupUsable()) return goRedirect(s, p);
       return Promise.resolve(s.signInWithPopup(auth, p)).then(function (cred) {
+        noteCred(s, cred);
         return { redirecting: false, user: (cred && cred.user) || null };
       }, function (err) {
         var c = codeOf(err);
@@ -961,6 +1036,11 @@
     /* lifecycle */
     ready: ready, onReady: onReady, known: function () { return authKnown; },
     billingReady: billingReady,
+    /* "Did this account come into existence in this sign-in?" — the question
+       the funnel routes on. See the block above signUpEmail for why it cannot
+       be answered from onAuthStateChanged alone. */
+    isNewUser: isNewUser,
+    creationTime: creationTime,
     ok: function () { return !!sdk && !!auth; },
     unavailable: function () { return !!loadErr || (authKnown && !sdk); },
     timedOut: function () { return timedOut; },

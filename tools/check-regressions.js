@@ -398,6 +398,63 @@ const CHECKS = [
     },
   },
   {
+    name: "nothing claims every card is sourced unless every card is",
+    why: "The meta description on story/cleopatra/firststory told Google and " +
+         "every link preview 'every card sourced'. Story 01 — the story those " +
+         "three pages actually serve — has ten cards and zero with a src. " +
+         "Across the catalogue it is 20 of 450. The artwork credit (cr) IS on " +
+         "all 450, so 'every painting credited' is the true version of the " +
+         "same trust signal. This check reads the data rather than trusting a " +
+         "memory of it, because the claim becomes true the day somebody fills " +
+         "the field in and should not need a code change then.",
+    pass: () => {
+      const CLAIM = /every card sourced|sources on every card|each card carries its source/i;
+      const files = ["story.html", "cleopatra.html", "firststory.html",
+                     "scenes/shell.html", "tools/compose.py", "join.html", "read.html"];
+      const claiming = files.filter((f) => CLAIM.test(read(f) || ""));
+      if (!claiming.length) return true;
+
+      let total = 0, sourced = 0;
+      try {
+        const d = JSON.parse(read("data/stacks.json") || "{}");
+        const st = d.stacks || d;
+        const list = Array.isArray(st) ? st : Object.keys(st).map((k) => st[k]);
+        list.forEach((s) => (s.cards || []).forEach((c) => {
+          total++;
+          if (String(c.src || "").trim()) sourced++;
+        }));
+      } catch (e) { return "could not read data/stacks.json to check: " + e.message; }
+
+      if (total && sourced === total) return true;   /* the claim came true */
+      return claiming.join(", ") + " claim every card is sourced, but only " +
+             sourced + " of " + total + " cards carry a src";
+    },
+  },
+  {
+    name: "the per-day price cluster does not reuse .jn-day",
+    why: "`.jn-day` is the streak badge in css/account.css: a 46x46 tinted " +
+         "tile with flex-direction:column. The per-day price was first built " +
+         "on that same class name and silently inherited all of it — the " +
+         "figures stacked vertically and overlapped the line below. Every " +
+         "content assertion passed while it looked like that, because the " +
+         "strings were all present and correctly labelled. Only a screenshot " +
+         "caught it. Same family as the FBP global collision.",
+    pass: () => {
+      const s = read("join.html");
+      if (!s) return true;
+      if (/class="jn-day(-|")/.test(s)) {
+        return 'join.html builds a "jn-day" element again';
+      }
+      /* And the axis must be stated, not inherited. The inline style set
+         display:flex but not flex-direction, so the stylesheet won that one
+         property — which is the whole mechanism of the bug. */
+      if (/jn-rate/.test(s) && !/flex-direction:row/.test(s)) {
+        return "the price cluster no longer pins flex-direction:row";
+      }
+      return true;
+    },
+  },
+  {
     name: "the story pages still carry the sign-up ask",
     why: "Those three URLs are the marketing funnel. Retiring the illustrated " +
          "deck must not take its call to action with it.",

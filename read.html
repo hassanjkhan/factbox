@@ -87,6 +87,12 @@
 <link rel="stylesheet" href="/css/app.css">
 <script src="/js/loader.js"></script>
 <link rel="stylesheet" href="/css/recommend.css">
+<!-- The eleven onboarding screens. Everything in it is scoped under .fbob and
+     it is written to live INSIDE .fbg-sheet, which css/recommend.css above
+     defines — so it is loaded after that file for the same reason it is
+     loaded after css/app.css: every colour and size in it is a token one of
+     those two declares. -->
+<link rel="stylesheet" href="/css/onboard.css">
 <link rel="stylesheet" href="/css/scenes.css">
 <link rel="stylesheet" href="/css/audio-reader.css">
 <link rel="stylesheet" href="/css/reader-rail.css">
@@ -133,6 +139,43 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      it js/recommend.js draws both screens with no amounts on them rather than
      with invented ones. -->
 <script src="/js/account.js"></script>
+<!-- The onboarding engine, and the ranker it reads. THE ORDER IS THE
+     DEPENDENCY ORDER and is not incidental: js/onboard.js writes every answer
+     through FBA, so js/account.js has to be above it, and it ranks the
+     results screen through FBFIT, so js/personalize.js has to be above it too.
+
+     js/recommend.js mounts FBOB into the first of its three sheets. It reads
+     the global at the moment the sheet opens rather than at load, so it does
+     not care whether it is loaded before or after this pair — but a reader
+     who reaches the boundary in the first second does, so these are ordinary
+     blocking scripts like every other one on this page.
+
+     js/profile-sync.js IS here, and the reasoning that kept it off this page
+     stopped being true when the quiz moved onto it.
+
+     It used to be loaded on /join alone, on the basis that answers recorded
+     anywhere would reach the account the next time the reader passed through
+     /join. In the old flow they always did — /join WAS the paywall. In this
+     one the sheet goes from the quiz to sign-in to checkout without ever
+     loading that page: js/recommend.js builds the Stripe URL itself. So a
+     reader who answered eleven screens here and paid would have had every
+     answer end its life in localStorage on one device, and "we saved your
+     answers" would have been false in the only case that matters.
+
+     No firestore.rules change came with this, and that is worth stating
+     because the opposite would be easy to assume. profile-sync writes
+     customers/{uid}/profile/onboarding, whose rule is `hasOnly` over
+     fourteen named keys — one unlisted key denies the WHOLE document, which
+     is why four already-collected answers (motivation, barrier, scrolling,
+     future) still do not sync. Every answer the quiz records goes through an
+     FBA setter that is already on that list: draw, relates, goalMinutes,
+     streakDays, planAnswers, interests (the genre picks) and
+     onboardingComplete. Adding a twelfth question that needs a new key means
+     editing firestore.rules and privacy.html in the same commit, or it will
+     silently stop mirroring the eleven that work today. -->
+<script src="/js/personalize.js"></script>
+<script src="/js/onboard.js"></script>
+<script src="/js/profile-sync.js"></script>
 <script src="/js/saves.js"></script>
 <script src="/js/recommend.js"></script>
 <script src="/js/scenes.js" defer></script>
@@ -966,8 +1009,8 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
            access answer changing is exactly the case where a wall may no
            longer be the right thing to be sitting under. */
         function dropWall() {
-          /* TWO SHEETS ARE NEVER STALE, and both of them used to be taken off
-             the screen here.
+          /* THREE SHEETS ARE NEVER STALE, and all of them used to be taken
+             off the screen here.
 
              One the reader is looking at. The card underneath it is being
              rebuilt because the access answer or the reader's own record
@@ -983,7 +1026,18 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
              dropping it here is the restore failing silently. It removes
              itself if the answer turns out to be "they can read it".
 
-             THE TWO CLASSES ARE NAMED, not matched by their "is-" prefix.
+             AND ONE THE READER IS IN THE MIDDLE OF ANSWERING AT LENGTH.
+             `is-quiz` is the onboarding engine — eleven screens, six of them
+             questions, a minute or two of somebody's attention. It is the
+             worst of the three to remove and the likeliest to be removed,
+             because it is the only sheet that is on screen for long enough
+             for a rebuild to land underneath it. It is also the only one whose
+             loss costs the reader work they have already done rather than a
+             tap they can repeat. js/onboard.js persists every answer as it is
+             given, so the answers would survive; the screen would not, and a
+             flow that vanishes mid-question is a flow nobody finishes.
+
+             THE THREE CLASSES ARE NAMED, not matched by their "is-" prefix.
              js/recommend.js's own last-resort pane — the one it returns when
              building the sheet threw — is `pane paywall pw is-offer`, and a
              prefix test holds THAT on the screen for ever: it is not a sheet,
@@ -991,10 +1045,17 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
              restore() answers false precisely so it gets taken back off. A
              prefix test made this function a no-op for it, which is a wall
              nobody asked for left standing on the body, and a subscriber left
-             sitting under one when the access answer finally arrives. */
+             sitting under one when the access answer finally arrives.
+
+             So this list grows by NAME every time a sheet is added, and the
+             cost of forgetting is a sheet that disappears under its own
+             reader rather than a wall that will not go away. That is the
+             trade, stated: a missing name here is a bug you can see and a
+             prefix test is a bug you cannot. */
           try {
             var open = payPane ? String(payPane.className || "") : "";
-            if (open.indexOf("is-auth") > -1 || open.indexOf("is-buy") > -1) return;
+            if (open.indexOf("is-quiz") > -1 ||
+                open.indexOf("is-auth") > -1 || open.indexOf("is-buy") > -1) return;
             if (payPane && payPane.restoring && payPane.restoring()) return;
           } catch (e) {}
           try { if (payPane && payPane.parentNode) payPane.parentNode.removeChild(payPane); } catch (e) {}

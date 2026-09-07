@@ -150,7 +150,7 @@ STORY_ID = "01"
 TITLE = "How did Cleopatra die? — Factbox"
 OGTITLE = "How did Cleopatra die?"
 OGDESC = ("The snake is in every painting of her, and nobody has ever found it. "
-          "A three-minute history story, every card sourced.")
+          "A three-minute history story, researched, sourced and checked.")
 OGALT = ("An old-master painting of Cleopatra with an asp, beside the words "
          "“How did Cleopatra die?”")
 
@@ -266,6 +266,37 @@ _ASK = """
   var CTA = "";
   try { CTA = window.FB_ENDCTA ? String(window.FB_ENDCTA) : ""; } catch (e) {}
 
+  /* Whether this reader is already entitled.
+
+     This block used to run unconditionally, and the result was that a PAYING
+     SUBSCRIBER finishing the free story was shown "Sign up to read more" and,
+     on tapping it, the purchase sheet. recommend.js suppresses the price line
+     for them (js/recommend.js, `if (!open)`), but the CTA label and the
+     "Already have an account?" line were outside that branch, so the two
+     halves of the same card disagreed about who was reading it.
+
+     It waits rather than guesses. FBX.ready() is documented to always settle
+     and to cap itself at 7s; the poller below runs for 18s, so there is room.
+     The backstop exists because "documented to always settle" and "settles"
+     are different claims, and the cost of being wrong is an end card that
+     never gets its button. */
+  var accessKnown = false, accessAllows = false;
+
+  function accessSaid() {
+    accessKnown = true;
+    try { accessAllows = !!(window.FBX && FBX.can && FBX.can()); } catch (e) {}
+    try { place(); } catch (e) {}
+  }
+
+  try {
+    if (window.FBX && FBX.ready) { FBX.ready().then(accessSaid, accessSaid); }
+    else { accessKnown = true; }
+  } catch (e) { accessKnown = true; }
+  /* If access never answers, fall through to the signed-out card. That is the
+     right default: showing a stranger a sign-up button is a wasted pixel,
+     showing nobody any button is a dead end. */
+  setTimeout(function () { if (!accessKnown) accessSaid(); }, 4000);
+
   function ask(card) {
     var old = card.querySelector(".ec-go");
     if (!old) return;
@@ -309,6 +340,8 @@ _ASK = """
   function place() {
     try {
       if (!CTA) return;
+      if (!accessKnown) return;                   /* ask nobody until we know */
+      if (accessAllows) return;                   /* a subscriber is not a lead */
       if (!deck.querySelector(".beat")) return;   /* no story, no pitch */
       var card = deck.querySelector(".pane.rec");
       if (!card || card.getAttribute("data-ask") === "1") return;
