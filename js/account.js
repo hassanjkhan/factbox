@@ -113,7 +113,7 @@ var FBA = (function () {
      free", and both of those read as an offer. So trialShort()/trialWords()
      answer "" at zero, and every sentence that used to name the trial has a
      no-trial half written beside it below. */
-  var TRIAL_DAYS = 3;
+  var TRIAL_DAYS = 0;
 
   /* WHAT REPLACES THE TRIAL WHEN THERE IS NO TRIAL.
 
@@ -175,9 +175,12 @@ var FBA = (function () {
     plans: [
       {
         key:           "monthly",
-        link:          "https://buy.stripe.com/6oUcN41yFgeLbPF5c63F602",
-        priceId:       "price_1UBG2BAhj1M3E8TlTgdYJ6Xf",
-        amountCents:   499,             /* USD 4.99 */
+        link:          "https://buy.stripe.com/8x2eVc5OV1jRdXN4823F607",
+        /* Filled from the dashboard when somebody has a reason to. planName()
+           in js/subscription.js falls back to the interval when it does not
+           match, so an empty one costs a precise label and nothing else. */
+        priceId:       "",
+        amountCents:   456,             /* USD 4.56 -> 15c a day */
         intervalUnit:  "month",
         intervalCount: 1,
         cycle:         "every month",
@@ -206,16 +209,13 @@ var FBA = (function () {
         best:          false
       },
       {
-        /* NOT $35. Stripe charges 3588. The owner wants a $35/year price;
-           until that price and its Payment Link exist in the dashboard,
-           this must keep saying 35.88, because 35.88 is what the reader
-           would authorise. When Hassan has made it (STRIPE.md §7), this
-           becomes amountCents: 3500 and the new buy.stripe.com URL — two
-           values, one edit, and the whole site follows. */
+        /* 3650, and the reason is the per-day figure. 3650/365 is EXACTLY ten
+           cents — not 9.83 rounded up, which is what 3588 was. The one number
+           the plan screen leads with is now true rather than nearly true. */
         key:           "annual",
-        link:          "https://buy.stripe.com/28E7sKa5b8Mj8DtgUO3F604",
-        priceId:       "price_1UBG4pAhj1M3E8Tl1x4YFAzB",
-        amountCents:   3588,            /* USD 35.88 */
+        link:          "https://buy.stripe.com/00w14m7X34w306XdIC3F609",
+        priceId:       "",
+        amountCents:   3650,            /* USD 36.50 -> 10c a day, exactly */
         intervalUnit:  "year",
         intervalCount: 1,
         cycle:         "a year",
@@ -307,8 +307,8 @@ var FBA = (function () {
        exists — promoReady() is what keeps the promo copy off the screen
        while these are empty. */
     links: {
-      monthly: "",
-      annual:  ""
+      monthly: "https://buy.stripe.com/dRm7sKelrbYv5rhdIC3F606",
+      annual:  "https://buy.stripe.com/3cI9ASa5b8MjcTJ8oi3F608"
     }
   };
 

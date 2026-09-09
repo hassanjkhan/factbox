@@ -10,9 +10,9 @@
 2026-09-07  76829aae2f5e  /explore
 2026-09-07  ea1d510ccfaa  /stories
 2026-09-07  16aefc8738fa  /library
-2026-09-09  e776fef47335  /story
-2026-09-09  1a00316a8276  /cleopatra
-2026-09-09  6674206c6ebe  /firststory
+2026-09-09  3c4f3c44dc99  /story
+2026-09-09  25dad3816120  /cleopatra
+2026-09-09  5de3dc7fb83d  /firststory
 2026-09-07  45383546a521  /history/how-did-cleopatra-die-the-snake
 2026-09-07  1a0674d14b50  /history/cleopatra-the-seductress
 2026-09-07  665b242c44c0  /history/cleopatra-s-body-has-never-been-found

@@ -534,8 +534,13 @@ async function partCheckout() {
            "no client_reference_id was minted and checkout_blocked was counted");
     }
     if (label === "signed in") {
-      line(/US\$35\.88 a year/.test(terms) && /US\$2\.99 a month/.test(terms),
-           "the terms line quotes Stripe's own 3588, from FBA and nothing else",
+      /* 3650 now, not 3588: the annual moved to $36.50 so that the per-day
+         figure the plan screen leads with is EXACTLY ten cents rather than
+         9.83 rounded up. This assertion is the point of the guard — it fired
+         the moment the price changed, which is what it is for. Whoever moves
+         the price next moves this line in the same commit, or finds out here. */
+      line(/US\$36\.50 a year/.test(terms) && /US\$3\.04 a month/.test(terms),
+           "the terms line quotes Stripe's own 3650, from FBA and nothing else",
            terms.slice(0, 130));
     }
   }
