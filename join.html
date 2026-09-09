@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Join</title>
-<meta name="description" content="Five minutes a day, one story, and you actually remember it. Pick a plan and pick up where you left off. A free trial before anything is charged.">
+<meta name="description" content="Five minutes a day, one story, and you actually remember it. Pick a plan and pick up where you left off. Two stories are free to read first.">
 <meta name="theme-color" content="#E7E0D3">
 <!-- Icons. /favicon.ico is requested by browsers with no link tag at all, so
      it is the one that must exist; the rest are the better versions for the
@@ -18,7 +18,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Join">
-<meta property="og:description" content="Five minutes a day, one story, and you actually remember it. A free trial before anything is charged.">
+<meta property="og:description" content="Five minutes a day, one story, and you actually remember it. Two stories are free to read first.">
 <meta property="og:image" content="https://factbox.app/img/share-home.jpg">
 <meta property="og:url" content="https://factbox.app/join">
 <meta name="twitter:card" content="summary_large_image">
@@ -102,9 +102,17 @@
       <a href="/library">Library</a>
       <span class="acct" id="fb-acct"></span></nav>
     <h1 id="jn-title">Five minutes a day, and you actually remember it</h1>
+    <!-- THE HALF THAT IS TRUE EITHER WAY. This sentence used to carry the
+         trial inside a <b class="jn-trial"> that a script rewrote, which
+         works while the only variable is how LONG the trial is and stops
+         working when the variable is whether there is one: "first, and
+         nothing is charged until the trial ends" is about the trial too.
+         So the markup keeps only what is true with or without one, and
+         paintOfferCopy() replaces the whole sentence with FBA.joinBlurb()
+         on load. A reader with no JavaScript is told LESS than the offer,
+         never something other than it. -->
     <p id="jn-blurb">Two stories are free. The rest of the stories unlock with a
-    plan — <b class="jn-trial">three days free</b> first, and nothing is charged
-    until the trial ends.</p>
+    plan.</p>
   </header>
 
   <p class="jn-haveacct" id="jn-signin-always">Already have an account?
@@ -221,8 +229,10 @@
        ================================================================== -->
   <section class="jn-panel" id="jn-plan" aria-labelledby="jn-plan-h">
     <h2 id="jn-plan-h">Pick a plan</h2>
+    <!-- Same rule as #jn-blurb: FBA.planBlurb() adds either the trial
+         sentence or the money-back guarantee. -->
     <p id="jn-plan-blurb">Every story in Factbox, and the ones added through the
-    season. Every plan starts with <b class="jn-trial">three days free</b>.</p>
+    season.</p>
 
     <p class="jn-reinf" id="jn-plan-recap" hidden>Your plan: 5 minutes a day,
     aiming for 7 days in a row.</p>
@@ -249,9 +259,13 @@
     <p class="jn-found" id="jn-found" hidden
        style="margin:12px 0 0;font-size:var(--fs-note);font-weight:var(--w-label);color:var(--dim);line-height:var(--lh-body)"></p>
 
-    <button class="go" id="jn-buy" type="button" style="margin-top:18px">Start 3 days free</button>
-    <p class="jn-terms" id="jn-terms"><b class="jn-trial">Three days free</b>. If you do not cancel
-    before the trial ends, the plan you picked starts and renews at that price
+    <!-- Both of these are replaced the moment a plan resolves — the label by
+         FBA.ctaLabel(), the sentence by FBA.termsFor(plan), which is where
+         the trial-versus-no-trial fork is written. What is typed here is the
+         version that is honest in both states and names no price, because a
+         price typed into markup is the bug PRICING exists to prevent. -->
+    <button class="go" id="jn-buy" type="button" style="margin-top:18px">Subscribe and start reading</button>
+    <p class="jn-terms" id="jn-terms">The plan you pick renews at that price
     until you cancel. Cancel any time. Prices are in US dollars; if your card is
     in another currency, Stripe converts at checkout and shows you that amount
     first.</p>
@@ -330,7 +344,7 @@
 <script src="/js/progress.js?v=44e9d717"></script>
 <script src="/js/access.js?v=253a4e0f"></script>
 <script src="/js/gate.js?v=bfce3033"></script>
-<script src="/js/account.js?v=984b3c35"></script>
+<script src="/js/account.js?v=4a04c8e2"></script>
 <!-- The live founding-member count. One unauthenticated XHR against the world
      readable meta/founding document the Stripe webhook maintains; it blocks
      nothing, and when it cannot be read the plan screen simply shows the price
@@ -1118,17 +1132,19 @@
       if (!buy) return;
       var p = A ? A.planByKey(picked) : null;
 
-      if (p) {
-        text(terms,
-          capFirst(A.trialWords()) + ", then " + p.billedText + " " + p.cycle +
-          " (" + p.perMonthAbout + " a month). Cancel before the trial ends and " +
-          "you are not charged. After that it renews at that price until you cancel. " +
-          /* Measured on the live Payment Links: Stripe presents the buyer their
-             own currency and adds a conversion fee, so a Canadian meets CA$51.63
-             where this screen says US$35.88. Stripe shows them that figure before
-             they authorise anything; this is here so it is not a surprise. */
-          ((A.pricing() || {}).currencyNote || ""));
-      }
+      /* ONE CALL, and the fork inside it. With a trial this is word for word
+         the sentence this file used to build inline: the trial, then the
+         price, then how to stop it. With no trial FBA.termsFor() says the
+         charge happens today and gives the money-back guarantee instead,
+         because "cancel before the trial ends and you are not charged" is
+         not merely wrong then — it describes a trial nobody is getting.
+
+         Both versions end in the currency note. Measured on the live Payment
+         Links: Stripe presents the buyer their own currency and adds a
+         conversion fee, so a Canadian meets CA$51.63 where this screen says
+         US$35.88. Stripe shows them that figure before they authorise
+         anything; this is here so it is not a surprise. */
+      if (p) text(terms, A.termsFor(p));
 
       /* If a link has not been created yet, say so on the button, before the
          tap — the same precedent as FB.checkout, moved earlier so the reader
@@ -1151,12 +1167,15 @@
         return;
       }
       buy.disabled = false;
-      /* trialShort(), not TRIAL_DAYS. The constant is the STANDARD length; a
-         reader who arrived with a validated promo code is getting a different
-         one, and the button is the last thing they read before they tap. One
-         call, so the button cannot disagree with the three sentences above it
-         — see the PROMO block in js/account.js. */
-      buy.textContent = "Start " + (A ? A.trialShort() : "3 days free");
+      /* ctaLabel(), which reads trialShort(), which reads trialDays() — not
+         TRIAL_DAYS. The constant is the STANDARD length; a reader who arrived
+         with a validated promo code is getting a different one, and the
+         button is the last thing they read before they tap. One call, so the
+         button cannot disagree with the sentences above it — see the PROMO
+         block in js/account.js. And it is a whole label rather than
+         "Start " + a phrase, because at TRIAL_DAYS = 0 that phrase is the
+         empty string and the button would read "Start". */
+      buy.textContent = A && A.ctaLabel ? A.ctaLabel() : "Subscribe and start reading";
       show(note, false);
     } catch (e) {}
   }
@@ -1284,7 +1303,7 @@
         if (promoLive && A && A.promoOn && !A.promoOn()) {
           promoLive = false;
           track("promo_seen", { state: "dropped", plan: String(picked) });
-          paintTrialCopy();
+          paintOfferCopy();
           syncBuy();
         }
       } catch (e9) {}
@@ -1309,32 +1328,24 @@
      subscriber branch of the router below uses it: a reader who already pays
      is shown #jn-done and nothing else. */
 
-  /* "three days free" -> "Three days free". js/account.js hands the phrase
-     back in lower case on purpose, because most of its uses are mid-sentence. */
-  function capFirst(s2) {
-    try { return String(s2).charAt(0).toUpperCase() + String(s2).slice(1); }
-    catch (e) { return String(s2); }
-  }
+  /* THE OFFER, IN ONE PLACE. Four sentences on this page describe it — the
+     blurb, the plan blurb, the button and the terms line — and every one of
+     them is written in js/account.js, where trialDays() is. This page types
+     none of them.
 
-  /* THE TRIAL, IN ONE PLACE. Three sentences on this page name the length of
-     the free trial, and all three used to spell it out. TRIAL_DAYS is a
-     constant in js/account.js so the 3-vs-7 test is one edit; a page that
-     hard-codes "three" defeats that silently, which is the same class of bug
-     as a hard-coded price. The markup keeps the prose so a script-less reader
-     is not left with a gap, and this overwrites it from the constant. */
-  function paintTrialCopy() {
+     It used to swap a PHRASE inside each sentence, through
+     <b class="jn-trial">. That was right while the only variable was how
+     long the trial is; it cannot survive TRIAL_DAYS = 0, because then the
+     rest of the sentence goes too — there is no trial to be charged after,
+     and nothing to cancel before. So the whole sentence is replaced.
+
+     The button and the terms line belong to syncBuy(), which needs the
+     picked plan to name a price; every caller here runs the two together. */
+  function paintOfferCopy() {
     try {
-      if (!A || !A.trialWords) return;
-      var w = A.trialWords();
-      var n = document.getElementsByClassName("jn-trial"), i;
-      for (i = 0; i < n.length; i++) {
-        /* Capitalised where it starts the sentence, which is exactly where
-           the markup already has a capital. */
-        var cur = n[i].textContent || "";
-        n[i].textContent = (cur.charAt(0) === cur.charAt(0).toUpperCase() &&
-                            cur.charAt(0) !== cur.charAt(0).toLowerCase())
-                           ? capFirst(w) : w;
-      }
+      if (!A) return;
+      if (A.joinBlurb) text(el("jn-blurb"), A.joinBlurb());
+      if (A.planBlurb) text(el("jn-plan-blurb"), A.planBlurb());
     } catch (e) {}
   }
 
@@ -1353,9 +1364,9 @@
 
      Nothing here reads a trial length out of the query string, and nothing
      here writes a sentence. The page renders the STANDARD wording from the
-     markup and from paintTrialCopy() on load — before any of this runs — and
+     markup and from paintOfferCopy() on load — before any of this runs — and
      the only thing a validated code does is call FBA.applyPromo(), after
-     which the SAME paintTrialCopy() and the SAME syncBuy() run again and say
+     which the SAME paintOfferCopy() and the SAME syncBuy() run again and say
      something different because trialDays() now answers differently. There is
      no second copy of the trial sentence anywhere on this page, so there is
      nowhere for a "week" to be written that a code has not paid for.
@@ -1485,7 +1496,7 @@
                                  days: String(r.trialDays || 0) });
         /* The same two functions that drew the standard copy, run again. No
            promo-specific sentence exists anywhere on this page. */
-        paintTrialCopy();
+        paintOfferCopy();
         syncBuy();
       });
     });
@@ -1509,7 +1520,7 @@
         track("promo_redeem", { state: String(r.state || "lost") });
         promoLive = false;
         try { if (A && A.clearPromo) A.clearPromo(); } catch (e) {}
-        paintTrialCopy();
+        paintOfferCopy();
         syncBuy();
       } else if (!r) {
         track("promo_redeem", { state: "unconfirmed" });
@@ -1529,7 +1540,7 @@
      it, so they stayed on screen above it:
 
        #jn-title          "Five minutes a day, and you actually remember it"
-       #jn-blurb          "Two stories are free. The rest … three days free"
+       #jn-blurb          "Two stories are free. The rest … unlock with a plan"
        #jn-signin-always  "Already have an account? Sign in"
 
      A paying reader was being pitched a trial they are past and offered a
@@ -1627,8 +1638,8 @@
       show(el("jn-nostore"), true);
     }
 
-    paintTrialCopy();
-    /* AFTER paintTrialCopy(), always. The standard wording is drawn first and
+    paintOfferCopy();
+    /* AFTER paintOfferCopy(), always. The standard wording is drawn first and
        is correct for everybody; promoBoot() only ever UPGRADES it, and only
        after functions/promo.js has said the code in the URL is real. A reader
        with no code, a bad code or a dead network never sees it change. */

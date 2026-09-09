@@ -14,8 +14,10 @@
                      subscriber never sees it.
      FBR.paywall()   the wall itself, reached by tapping "Keep learning" with
                      nothing left this reader may open, or by opening a locked
-                     story. Three days free, then the real annual price, on
-                     two dated rows. Not a pricing table.
+                     story. The trial if the Payment Link grants one, then
+                     the real annual price; and if it grants none, the price
+                     charged today plus the money-back guarantee. Not a
+                     pricing table.
 
    A reader meets a complete story, then a moment of having finished it, then
    curiosity about the next one, and only then a price. Read RECOMMEND.md for
@@ -354,10 +356,22 @@ var FBR = (function () {
     return 0;
   }
   /* "3 days free", account.js's own wording, so the length is written down
-     in exactly one place. */
+     in exactly one place. THE EMPTY STRING WHEN THERE IS NO TRIAL — that is
+     account.js's answer at TRIAL_DAYS = 0, not a failure, and every caller
+     below branches on trialDays() rather than concatenating this. */
   function trialShort() {
     var A = acct();
     try { if (A && A.trialShort) return str(A.trialShort()); } catch (e) {}
+    return "";
+  }
+
+  /* The money-back guarantee, again in account.js's words: the reassurance
+     that replaces "cancel before you are charged" when the charge is
+     immediate. "" if account.js is not on the page, and the caller then
+     prints nothing rather than inventing a promise. */
+  function guarantee() {
+    var A = acct();
+    try { if (A && A.guarantee) return str(A.guarantee()); } catch (e) {}
     return "";
   }
 
@@ -841,10 +855,18 @@ var FBR = (function () {
      access — an existing subscriber must never be sold to. */
   function offerLine() {
     var p = leadPlan(), d = trialDays();
-    if (!p || !p.billedLine || !d) return null;
+    if (!p || !p.billedLine) return null;
+    /* WITH a trial, the trial leads. WITHOUT one there is nothing free to
+       lead with, so the price does — the line still has to exist, because
+       the alternative is an end card that asks for a subscription without
+       ever saying what it costs. */
+    if (d) {
+      return el("p", "fine ec-offer",
+        "Unlock Factbox free for " + d + (d === 1 ? " day" : " days") +
+        " · Then " + str(p.billedLine) + " · Cancel anytime");
+    }
     return el("p", "fine ec-offer",
-      "Unlock Factbox free for " + d + (d === 1 ? " day" : " days") +
-      " · Then " + str(p.billedLine) + " · Cancel anytime");
+      "Unlock Factbox · " + str(p.billedLine) + " · Cancel anytime");
   }
 
   /* endPanel(current, stacks, opts) -> a .pane element for the end of a story.
@@ -2027,16 +2049,31 @@ var FBR = (function () {
       go.setAttribute("data-fbt", "-");          /* sends trial_cta_clicked */
       buy.appendChild(go);
 
-      /* The terms, under the button: the trial, what it costs today, and
-         that it can be stopped. All three are account.js's own answers, and
-         the trial is stated because the three live Payment Links really do
-         grant one. See RECOMMEND.md if the design ever stops saying so —
-         the links have to change first, not this screen. */
+      /* The terms, under the button: what happens when they tap, what it
+         costs today, and that it can be stopped. All of it is account.js's
+         own answer, and the fork is whether the Payment Link grants a trial.
+
+         WITH a trial: the trial, and nothing charged today. That is stated
+         because the live Payment Links really do grant one — see
+         RECOMMEND.md if the design ever stops saying so; the links have to
+         change first, not this screen.
+
+         WITHOUT one: the card is charged today, said plainly, and the
+         reassurance becomes the money-back guarantee. It is printed only
+         when there is a price above it to be charged — "charged today" over
+         a sheet with no figure on it is worse than silence. */
       var fine = null;
       if (d) {
         fine = el("p", "fine fbg-fine",
           trialShort() + " · " + zero() + " today · Cancel anytime");
         buy.appendChild(fine);
+      } else if (priceP) {
+        fine = el("p", "fine fbg-fine", "Charged today · Cancel anytime");
+        buy.appendChild(fine);
+        var guar = guarantee();
+        if (guar) buy.appendChild(el("p", "fine fbg-fine fbg-guar", guar));
+      }
+      if (fine) {
         try {
           var cn = acct() && FBA.pricing ? (FBA.pricing() || {}).currencyNote : "";
           if (cn) buy.appendChild(el("p", "fine fbg-fine fbg-cur", cn));

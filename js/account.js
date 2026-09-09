@@ -103,8 +103,33 @@ var FBA = (function () {
      file can grant, extend or end a trial. It is a constant rather than a
      literal so the 3-vs-7 test is one edit here plus one edit in each of
      the three Stripe links, and so no page has to spell "three" by hand.
-     If you change it, change it in Stripe FIRST. */
+     If you change it, change it in Stripe FIRST.
+
+     ZERO IS A REAL VALUE HERE, and it is where the offer is going: four
+     Payment Links, two with no trial at all (what everybody sees) and two
+     with a seven-day trial (reachable only with a promo code). Setting this
+     to 0 must make every trial sentence on the site DISAPPEAR, not degrade:
+     a phrase built by concatenation gives "0 days free" and "zero days
+     free", and both of those read as an offer. So trialShort()/trialWords()
+     answer "" at zero, and every sentence that used to name the trial has a
+     no-trial half written beside it below. */
   var TRIAL_DAYS = 3;
+
+  /* WHAT REPLACES THE TRIAL WHEN THERE IS NO TRIAL.
+
+     With no trial, the reassurance cannot be "cancel before you are
+     charged" — the charge happens immediately — so it becomes the refund
+     promise. Written once, here, and read by every screen that needs it: a
+     second paraphrase somewhere else is how the window ends up being a month
+     on one screen and thirty days on another.
+
+     THIS IS A PROMISE THE TILL CANNOT KEEP BY ITSELF. Stripe has no setting
+     for it; it is honoured by a person reading hello@factbox.app and issuing
+     the refund, and terms.html 04 carries the same promise conditionally so
+     the plan screen and the Terms cannot disagree the day TRIAL_DAYS
+     becomes 0. */
+  var GUARANTEE = "Read the whole thing for a month. If it is not for you, " +
+                  "write to us and we refund it.";
 
   /* Said once, wherever a price is shown to someone who has not bought
      yet. Stripe does the conversion at checkout and shows the buyer the
@@ -262,7 +287,25 @@ var FBA = (function () {
     campaign: "history-reel",
 
     /* Keyed by PRICING.plans[].key. Empty string means "no link yet", which
-       means no promo, which means the standard copy. */
+       means no promo, which means the standard copy.
+
+       THE FOUR-LINK LAYOUT, which is what the restructure in Stripe produces:
+
+         PRICING.plans[monthly].link   monthly, NO trial     — everybody
+         PRICING.plans[annual].link    annual,  NO trial     — everybody
+         PROMO.links.monthly           monthly, 7-day trial  — promo code only
+         PROMO.links.annual            annual,  7-day trial  — promo code only
+
+       Four, because a Payment Link is a price AND a trial and neither axis
+       can be a query parameter. THE TRIAL CONFIGURED ON EACH LINK MUST EQUAL
+       THE NUMBER THIS FILE STATES BESIDE IT: `trial_period_days` on the two
+       PRICING links must equal TRIAL_DAYS, and on the two PROMO links must
+       equal PROMO.trialDays. A link whose trial disagrees with its constant
+       is the copy-versus-till discrepancy in its purest form; the way to
+       check is to load the link and read what Stripe renders, as STRIPE.md
+       §2 did for the three-day figure. Paste nothing here until the link
+       exists — promoReady() is what keeps the promo copy off the screen
+       while these are empty. */
     links: {
       monthly: "",
       annual:  ""
@@ -445,10 +488,101 @@ var FBA = (function () {
 
   /* THE ONE ANSWER. Everything below and everything in join.html reads this. */
   function trialDays() { return PROMO_ON ? PROMO.trialDays : TRIAL_DAYS; }
+  /* THE TWO TRIAL PHRASES — AND THE EMPTY STRING.
+
+     Both answer "" when there is no trial, and every caller has to treat ""
+     as "there is nothing to say here" rather than as a fragment to
+     concatenate. That is the whole no-trial mechanism, and it fails in the
+     safe direction: a caller that forgets leaves a visible gap in a
+     sentence, which somebody catches by eye, where "0 days free" would read
+     as a perfectly plausible offer nobody is being given. */
   /* "3 days free" — for buttons, where the numeral reads faster. */
-  function trialShort() { return trialDays() + " days free"; }
+  function trialShort() { return trialDays() ? trialDays() + " days free" : ""; }
   /* "three days free" — for sentences. Capitalise at the call site. */
-  function trialWords() { return words(trialDays()) + " days free"; }
+  function trialWords() { return trialDays() ? words(trialDays()) + " days free" : ""; }
+
+  /* The refund promise, verbatim, from the one place it is written down. */
+  function guarantee() { return GUARANTEE; }
+
+  /* join.html has its own copy of this for the same reason: a phrase handed
+     back in lower case, because most of its uses are mid-sentence. */
+  function capFirst(s2) {
+    try { return String(s2).charAt(0).toUpperCase() + String(s2).slice(1); }
+    catch (e) { return String(s2); }
+  }
+
+  /* ======================================================================
+     THE SENTENCES THAT DESCRIBE THE OFFER.
+
+     Four of them, and each has to be true in BOTH states, which is why they
+     live here as pairs instead of being assembled out of fragments in the
+     markup. Swapping one phrase inside a sentence works while the only
+     variable is the LENGTH of the trial; it cannot work when the variable is
+     whether there is one, because the rest of the sentence — "first, and
+     nothing is charged until the trial ends" — is about the trial too.
+
+     The trial halves are word-for-word what the page said when every plan
+     had a trial, so nothing moves until TRIAL_DAYS does. The no-trial halves
+     say what actually happens: the card is charged today, and the
+     reassurance is the guarantee.
+
+     The static markup on /join keeps only the half that is true either way,
+     so a reader with no JavaScript is told LESS than the offer, never
+     something other than it.
+     ====================================================================== */
+
+  /* The line under the headline on /join. With no trial it simply stops:
+     the guarantee is said once, on the plan screen, where the money is. */
+  function joinBlurb() {
+    var t = trialWords();
+    return t
+      ? "Two stories are free. The rest of the stories unlock with a plan — " +
+        t + " first, and nothing is charged until the trial ends."
+      : "Two stories are free. The rest of the stories unlock with a plan.";
+  }
+
+  /* The line under "Pick a plan". */
+  function planBlurb() {
+    var base = "Every story in Factbox, and the ones added through the season.";
+    var t = trialWords();
+    return t ? base + " Every plan starts with " + t + "."
+             : base + " " + GUARANTEE;
+  }
+
+  /* The buy button. Never "Start " + "" — a button reading "Start" with
+     nothing after it is exactly the gap this guards against. */
+  function ctaLabel() {
+    var t = trialShort();
+    return t ? "Start " + t : "Subscribe and start reading";
+  }
+
+  /* The terms line under the buy button, for the plan the reader picked.
+
+     WITH a trial it explains the trial: when the charge comes and how to
+     stop it. WITHOUT one it says the charge happens today — because it
+     does — and then the refund policy, which is the only honest
+     replacement for "cancel before you are charged". Both end in the
+     currency note, because Stripe converts for a non-US card either way.
+
+     "" when there is no plan yet, which is what the old inline version
+     painted in that case. */
+  function termsFor(p) {
+    try {
+      if (!p) return "";
+      var note = "";
+      try { note = (pricing() || {}).currencyNote || ""; } catch (e1) { note = ""; }
+      var t = trialWords();
+      if (t) {
+        return capFirst(t) + ", then " + p.billedText + " " + p.cycle +
+               " (" + p.perMonthAbout + " a month). Cancel before the trial ends and " +
+               "you are not charged. After that it renews at that price until you cancel. " +
+               note;
+      }
+      return p.billedText + " " + p.cycle + " (" + p.perMonthAbout + " a month), " +
+             "charged today, then renewing at that price until you cancel. Cancel " +
+             "any time. " + GUARANTEE + " " + note;
+    } catch (e) { return ""; }
+  }
 
   /* shape() — one raw record into everything a screen could want to say
      about it. It never throws; the worst case is the charged figure with no
@@ -1309,6 +1443,12 @@ var FBA = (function () {
        and trialDays() is the live answer, promo included. */
     TRIAL_DAYS: TRIAL_DAYS, trialDays: trialDays,
     trialShort: trialShort, trialWords: trialWords, words: words,
+    /* the sentences. Every screen that describes the offer reads one of
+       these rather than assembling its own, because at TRIAL_DAYS = 0 the
+       whole sentence changes and not just the phrase inside it. */
+    GUARANTEE: GUARANTEE, guarantee: guarantee,
+    joinBlurb: joinBlurb, planBlurb: planBlurb, ctaLabel: ctaLabel,
+    termsFor: termsFor,
     /* the promo. applyPromo() is the only switch, and it is only ever called
        with an answer from functions/promo.js — never with anything read out
        of the URL. See the PROMO block at the top of this file. */

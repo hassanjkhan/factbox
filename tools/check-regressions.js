@@ -676,23 +676,40 @@ const CHECKS = [
         }
       }
 
-      /* 2 · the static markup on /join must say the STANDARD length. The
-         three <b class="jn-trial"> strings are what a script-less reader
-         sees and what the page shows before promoBoot() has heard anything
-         back, so they must be the trial nobody has to earn. */
+      /* 2 · the static markup on /join must not name a trial AT ALL.
+
+         This used to require the opposite: three <b class="jn-trial">
+         strings spelling out the standard length, because that is what a
+         script-less reader sees and what the page shows before promoBoot()
+         has heard anything back. It guarded the right thing in a shape that
+         can only ever be right for one value of the constant — at
+         TRIAL_DAYS = 0 it would have demanded the words "zero days free" be
+         typed into the page.
+
+         So the markup now carries only the half of each sentence that is
+         true with or without a trial, and js/account.js writes every
+         sentence that mentions one. A script-less reader is told LESS than
+         the offer, never something other than it, in both states. */
       const acct = read("js/account.js");
       const td = /var TRIAL_DAYS = (\d+);/.exec(acct);
       if (!td) return "js/account.js no longer declares TRIAL_DAYS";
-      const WORDS = ["zero", "one", "two", "three", "four", "five", "six",
-                     "seven", "eight", "nine", "ten"];
-      const expect = (WORDS[Number(td[1])] || td[1]) + " days free";
-      const jn = read("join.html").match(/<b class="jn-trial">([^<]*)<\/b>/g) || [];
-      if (!jn.length) return "join.html has no <b class=\"jn-trial\"> strings left";
-      for (const tag of jn) {
-        const inner = /<b class="jn-trial">([^<]*)<\/b>/.exec(tag)[1].trim();
-        if (inner.toLowerCase() !== expect) {
-          return 'join.html static markup says "' + inner + '" where TRIAL_DAYS = ' +
-                 td[1] + ' means it must say "' + expect + '"';
+      const joinSrc = read("join.html");
+      const joinMarkup = joinSrc
+        .replace(/<!--[\s\S]*?-->/g, " ")
+        .replace(/<script[\s\S]*?<\/script>/g, " ");
+      const typedTrial =
+        /\b(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten)[- ]days? free\b|\bfree trial\b|\buntil the trial ends\b/i
+          .exec(joinMarkup);
+      if (typedTrial) {
+        return 'join.html markup types "' + typedTrial[0] + '" — the trial is ' +
+               'described by js/account.js (joinBlurb, planBlurb, ctaLabel, ' +
+               'termsFor), never typed into the page, because at TRIAL_DAYS = 0 ' +
+               'the whole sentence changes and typed prose cannot follow';
+      }
+      for (const fn of ["joinBlurb", "planBlurb", "ctaLabel", "termsFor"]) {
+        if (!new RegExp("A\\." + fn + "\\(").test(joinSrc)) {
+          return "join.html no longer paints its offer copy from FBA." + fn +
+                 "() — that is the only place the no-trial wording exists";
         }
       }
 
@@ -706,9 +723,11 @@ const CHECKS = [
         return "js/account.js trialDays() no longer resolves the promo — it is " +
                "the single answer every trial sentence is drawn from";
       }
-      if (!/function trialShort\(\)\s*\{\s*return trialDays\(\)/.test(a) ||
-          !/function trialWords\(\)\s*\{\s*return words\(trialDays\(\)\)/.test(a)) {
-        return "js/account.js trialShort()/trialWords() no longer read trialDays()";
+      if (!/function trialShort\(\)\s*\{\s*return trialDays\(\) \?/.test(a) ||
+          !/function trialWords\(\)\s*\{\s*return trialDays\(\) \? words\(trialDays\(\)\)/.test(a)) {
+        return "js/account.js trialShort()/trialWords() no longer read trialDays() " +
+               "through the zero test — both must answer \"\" when there is no " +
+               "trial, or the site says \"0 days free\"";
       }
 
       /* 4 · the ONLY switch, and it is gated on a real Payment Link. */
@@ -810,6 +829,147 @@ const CHECKS = [
       if (fnA[1].length < 24 || Number(fnL[1]) < 10) {
         return "the code space has shrunk below 24^10 — a sequential or short " +
                "code means one person with a for-loop drains the campaign";
+      }
+      return true;
+    },
+  },
+  {
+    name: "no trial sentence can render while trialDays() is 0",
+    why: "The offer is being restructured into four Payment Links: monthly " +
+         "and annual with NO trial, which is what everybody sees, and monthly " +
+         "and annual with a 7-day trial behind a promo code. The day that " +
+         "lands, TRIAL_DAYS becomes 0 — and every sentence built by sticking " +
+         "a number in front of \" days free\" then renders \"0 days free\", " +
+         "every sentence that ends \"cancel before the trial ends and you are " +
+         "not charged\" describes a trial nobody is being given, and the site " +
+         "promises something the till will not honour. That is the same defect " +
+         "class as a price the checkout does not charge, arrived at from the " +
+         "copy side. So this does not grep: it EVALUATES js/account.js with " +
+         "TRIAL_DAYS forced to 0 and reads the sentences it produces. It also " +
+         "checks 3 and 7, because the fix must be invisible until the constant " +
+         "moves — a no-trial site is only correct if the trial site is intact.",
+    pass: () => {
+      const vm = require("vm");
+      const src = read("js/account.js");
+      if (!/var TRIAL_DAYS = \d+;/.test(src)) {
+        return "js/account.js no longer declares TRIAL_DAYS as a plain number, " +
+               "so this check cannot set it to 0";
+      }
+      /* account.js is an IIFE assigning to a var, with every browser API it
+         touches behind a try/catch, so it evaluates in a bare context. That
+         is what makes a behavioural check possible here at all. */
+      const load = (days) => {
+        const ctx = { console: { log() {}, warn() {}, error() {} } };
+        vm.createContext(ctx);
+        vm.runInContext(
+          src.replace(/var TRIAL_DAYS = \d+;/, "var TRIAL_DAYS = " + days + ";") +
+          "\n;FBA;", ctx, { timeout: 5000 });
+        return ctx.FBA;
+      };
+
+      let A0;
+      try { A0 = load(0); }
+      catch (e) { return "js/account.js does not evaluate with TRIAL_DAYS = 0: " + e.message; }
+      const plan = A0.planByKey("annual") || A0.plans()[0];
+      if (!plan) return "no offered plan to price the sentences with";
+
+      const said = [
+        ["trialShort()", A0.trialShort()],
+        ["trialWords()", A0.trialWords()],
+        ["ctaLabel()", A0.ctaLabel()],
+        ["joinBlurb()", A0.joinBlurb()],
+        ["planBlurb()", A0.planBlurb()],
+        ["termsFor(plan)", A0.termsFor(plan)],
+      ];
+
+      /* Every way a trial can be spelled. "free" on its own is NOT here:
+         "Two stories are free" is true whatever the plans do, and banning
+         the word would push somebody into rewording a sentence that was
+         already right. What is banned is a free PERIOD, and the promise
+         that hangs off one. */
+      const TRIALISH =
+        /\btrial\b|\d+ *days? free|\b(zero|one|two|three|four|five|six|seven|eight|nine|ten)[- ]days? free|\bfree for\b|\bnothing is charged\b|\bnot charged\b|cancel before/i;
+      /* On the plan screen and its terms line there is no free anything, so
+         the word itself must not appear there either. */
+      const PLAN_SCREEN = { "ctaLabel()": 1, "planBlurb()": 1, "termsFor(plan)": 1 };
+
+      for (const [what, line] of said) {
+        const hit = TRIALISH.exec(line);
+        if (hit) {
+          return "at TRIAL_DAYS = 0, FBA." + what + ' says "' + line + '" — it ' +
+                 'names a trial ("' + hit[0] + '") that no Payment Link grants';
+        }
+        if (PLAN_SCREEN[what] && /\bfree\b/i.test(line)) {
+          return "at TRIAL_DAYS = 0, FBA." + what + ' says "' + line +
+                 '" — nothing on the plan screen is free';
+        }
+        /* A phrase that answered "" and was concatenated anyway. */
+        if (/ {2,}/.test(line) || /(^|[^.])\bStart\s*$/.test(line) ||
+            /,\s*$|\bthen\s*$|\bwith\s*$/.test(line.trim())) {
+          return "at TRIAL_DAYS = 0, FBA." + what + ' says "' + line +
+                 '" — a caller concatenated the empty trial phrase instead of ' +
+                 'branching on it';
+        }
+      }
+
+      /* The reassurance has to MOVE, not vanish: with nothing to cancel
+         before, the guarantee is the only thing left saying what happens if
+         they do not want it. One wording, from one constant. */
+      const G = String(A0.GUARANTEE || "");
+      if (!G || !/refund/i.test(G)) {
+        return "js/account.js no longer states the money-back guarantee";
+      }
+      for (const what of ["planBlurb()", "termsFor(plan)"]) {
+        const line = said.find((x) => x[0] === what)[1];
+        if (line.indexOf(G) === -1) {
+          return "at TRIAL_DAYS = 0, FBA." + what + " no longer carries the " +
+                 "guarantee — the trial went and nothing replaced it";
+        }
+      }
+      if (!/money-back guarantee/i.test(read("terms.html"))) {
+        return "terms.html no longer says a plan may be sold with a money-back " +
+               "guarantee — the plan screen would promise a refund the Terms deny";
+      }
+
+      /* And the other direction: with a trial, the trial is still named,
+         in exactly the words it was named in before any of this. */
+      const A3 = load(3);
+      const A7 = load(7);
+      const want = [
+        [A3.trialShort(), "3 days free"],
+        [A3.trialWords(), "three days free"],
+        [A3.ctaLabel(), "Start 3 days free"],
+        [A7.trialShort(), "7 days free"],
+        [A7.ctaLabel(), "Start 7 days free"],
+      ];
+      for (const [got, expect] of want) {
+        if (got !== expect) {
+          return 'with a trial the wording moved: got "' + got + '", expected "' +
+                 expect + '"';
+        }
+      }
+      const t3 = A3.termsFor(A3.planByKey("annual"));
+      if (t3.indexOf("Three days free, then ") !== 0 ||
+          t3.indexOf("Cancel before the trial ends and you are not charged.") === -1) {
+        return "the WITH-a-trial terms sentence has changed: " + t3;
+      }
+      if (!/blurb|jn-blurb/.test(read("join.html"))) return "join.html lost #jn-blurb";
+
+      /* js/recommend.js paints the same offer on the paywall and the end
+         card and has its own trialDays()/trialShort(). It must read the
+         guarantee from account.js too, and its end-card offer line must not
+         disappear when the trial does — a sheet that asks for a subscription
+         without naming the price is worse than one with no trial in it. */
+      const rec = read("js/recommend.js");
+      if (!/function guarantee\(\)[\s\S]{0,200}A\.guarantee\(\)/.test(rec)) {
+        return "js/recommend.js does not read the guarantee from FBA — two " +
+               "wordings of one promise is how the refund window ends up " +
+               "being a month on one screen and thirty days on another";
+      }
+      if (!/if \(!p \|\| !p\.billedLine\) return null;/.test(rec)) {
+        return "js/recommend.js offerLine() still bails when there is no trial, " +
+               "so the end card at TRIAL_DAYS = 0 offers a subscription and " +
+               "never says what it costs";
       }
       return true;
     },
