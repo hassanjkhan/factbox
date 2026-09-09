@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Admin · Factbox</title>
+<meta name="description" content="The two admin surfaces for factbox.app. Admin accounts only.">
+<!-- The paper ground, matching what body actually paints: --ground is
+     #E7E0D3 and this must not drift from it, or a bar of the wrong cream
+     appears above the page on iOS. -->
+<meta name="theme-color" content="#E7E0D3">
+<!-- Same reasoning as /admin/dashboard: an admin surface in a search index is
+     a map of the business drawn for anyone who asks Google for it. nofollow
+     as well, because every link out of here names an internal route. -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Newsreader is here because --display names it and a token cannot fetch a
+     font: the headline and the two door titles are set in it. DM Sans is
+     everything else. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
+<!-- Root-absolute, every one of them. GitHub Pages serves this file at BOTH
+     /admin and /admin/index.html, and a relative href resolves differently
+     under the two. Only the absolute form is the same URL at both addresses. -->
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<link rel="stylesheet" href="/css/admin.css?v=9e297505">
+</head>
+<body>
+
+<main class="adm">
+
+  <header class="mast">
+    <p class="mark"><a href="/explore" aria-label="Factbox" data-fbt="-"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
+    <h1>Admin</h1>
+    <p class="adm-sub">Two surfaces, both for admin accounts only. The numbers
+    are read live from the <code>insights</code> function; the tasks are read
+    live from Firestore. Neither is cached and neither is shared.</p>
+  </header>
+
+  <!-- ====================================================================
+       The gate.
+
+       Four panels, exactly one of them ever visible, and the page begins on
+       the first of them rather than on nothing. js/auth.js is a module, so
+       it has not run when this markup is parsed; "Checking" is therefore the
+       honest state at that moment and not a spinner standing in for one.
+
+       This is a CONVENIENCE. It decides what to draw and it is not what
+       keeps anything safe — this is a public repo and a variable in a console
+       can flip any flag it reads. What a non-admin must not get is DATA, and
+       they do not: firestore.rules and the insights function each check the
+       admin claim themselves, server-side, on every request. A page that has
+       drawn every panel it likes still has nothing in them.
+       ==================================================================== -->
+  <div class="adm-gate" id="adm-gate">
+
+    <section class="adm-panel" id="adm-p-wait" aria-live="polite">
+      <h2>Checking your access</h2>
+      <p class="adm-say">One moment — asking who you are signed in as.</p>
+    </section>
+
+    <!-- js/auth.js or js/admin-tasks.js never arrived: blocked, 404, or a
+         browser that ignores type="module". A state to render, not to hide
+         behind. -->
+    <section class="adm-panel" id="adm-p-noauth" hidden>
+      <h2>We could not check who you are.</h2>
+      <p class="adm-say">The sign-in service did not load, so this page cannot
+      tell whether you are an admin — and it will not open a door until it
+      can. This is usually a blocked script or a dead connection.</p>
+      <p class="adm-say">Reload the page. If it keeps happening, the rest of
+      the site is probably affected too.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/admin" data-fbt="-">Try again</a>
+        <a class="adm-btn" href="/explore" data-fbt="-">Back to Explore</a>
+      </p>
+    </section>
+
+    <!-- Signed out. -->
+    <section class="adm-panel" id="adm-p-out" hidden>
+      <h2>Sign in to see this.</h2>
+      <p class="adm-say">This page is for admin accounts only. Sign in with
+      the account that has admin on it and you will land back here.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/login?next=/admin" data-fbt="-">Sign in</a>
+        <a class="adm-btn" href="/explore" data-fbt="-">Back to Explore</a>
+      </p>
+    </section>
+
+    <!-- Signed in, not an admin. Says so plainly. Being coy would only get
+         this reported as a bug. -->
+    <section class="adm-panel" id="adm-p-no" hidden>
+      <h2>This is not your account.</h2>
+      <p class="adm-say" id="adm-no-say">You are signed in, but this page is
+      limited to admin accounts and yours is not one of them. Nothing is
+      missing and nothing is broken — there is simply nothing here for this
+      account.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/explore" data-fbt="-">Back to Explore</a>
+        <button class="adm-btn" type="button" id="adm-signout-no" data-fbt="-">Sign out</button>
+      </p>
+    </section>
+
+  </div>
+
+  <!-- ====================================================================
+       The portal itself: who you are, and two doors.
+       ==================================================================== -->
+  <div class="adm-main" id="adm-main" hidden>
+
+    <div class="adm-who">
+      <p class="adm-who-t" id="adm-who-t">Signed in.</p>
+      <button class="adm-btn adm-mini" type="button" id="adm-signout" data-fbt="-">Sign out</button>
+    </div>
+
+    <nav class="adm-doors" aria-label="Admin surfaces">
+      <a class="adm-door" href="/admin/dashboard" data-fbt="-">
+        <span class="adm-door-k">Numbers</span>
+        <span class="adm-door-h">Dashboard</span>
+        <span class="adm-door-p">Readers, sign-ups, subscriptions, funnels and
+        errors for a date range you choose. Read-only: nothing on it changes
+        anything.</span>
+      </a>
+      <a class="adm-door" href="/admin/tasks" data-fbt="-">
+        <span class="adm-door-k">Work</span>
+        <span class="adm-door-h">Tasks</span>
+        <span class="adm-door-p">The shared board — what is open, who has it,
+        what got finished and on which day, and the goals we are aiming at.
+        Both of you edit it and it updates live for the other.</span>
+      </a>
+    </nav>
+
+    <p class="adm-foot">
+      <a href="/explore" data-fbt="-">Explore</a> ·
+      <a href="/account" data-fbt="-">Account</a> ·
+      <a href="/settings" data-fbt="-">Settings</a>
+    </p>
+
+  </div>
+
+</main>
+
+<noscript>
+  <p class="adm-say" style="max-width:560px;margin:22px auto;padding:0 18px">
+  This page checks who you are in the browser, so it needs JavaScript switched
+  on. There is no version of it that works without.</p>
+</noscript>
+
+<!-- js/auth.js is a module: the browser defers it, so it runs after this
+     document is parsed and before DOMContentLoaded, whatever position this
+     tag is in. js/admin-tasks.js is a classic script and runs at ITS line —
+     it publishes window.FBT, and FBT.ready() is what actually answers the
+     admin question, server-side, against firestore.rules.
+
+     js/analytics.js is deliberately NOT loaded here, matching
+     /admin/dashboard: it sends page_open on load and a ui_click for every
+     tap on any control, which on an admin surface means the founders' own
+     use of their own tools landing in the very numbers the dashboard next
+     door reports. Every control here still carries data-fbt="-" so that if
+     that decision is ever reversed, nothing on this page is double-counted
+     by the generic handler. -->
+<script type="module" src="/js/auth.js?v=35b20584"></script>
+<script src="/js/admin-tasks.js?v=8e125268"></script>
+<script>
+/* ==========================================================================
+   /admin — the portal
+
+   ES5 only: no arrow functions, no let/const, no template literals, no
+   spread, no classes. Most readers of this site arrive in the Instagram and
+   TikTok in-app browsers, js/auth.js is the site's one module, and this is
+   not it.
+
+   ESCAPING: this file NEVER assigns innerHTML. The one value that comes from
+   outside the repo — the signed-in account's name and email — is written
+   with textContent, into a node created by document.createElement. There is
+   no markup-building path here for anything a human typed, so there is
+   nothing to escape and nothing that can be got wrong later.
+   ========================================================================== */
+(function () {
+  "use strict";
+
+  var PANELS = ["adm-p-wait", "adm-p-noauth", "adm-p-out", "adm-p-no"];
+
+  function $(id) { return document.getElementById(id); }
+  function show(id) { var n = $(id); if (n) n.hidden = false; }
+  function hide(id) { var n = $(id); if (n) n.hidden = true; }
+
+  function panel(id) {
+    for (var i = 0; i < PANELS.length; i++) {
+      if (PANELS[i] === id) show(PANELS[i]); else hide(PANELS[i]);
+    }
+    show("adm-gate");
+    hide("adm-main");
+  }
+
+  /* Every panel gets its own hidden attribute back, not just the wrapper.
+     Hiding only the container leaves `adm-p-wait` claiming, in the DOM, to be
+     on screen — true of nothing a user can see, but the first thing anyone
+     debugging this page reads, and the kind of small lie that sends someone
+     down a wrong path for an hour. */
+  function opened() {
+    for (var i = 0; i < PANELS.length; i++) { hide(PANELS[i]); }
+    hide("adm-gate");
+    show("adm-main");
+  }
+
+  /* ------------------------------------------------------------------ *
+     The whenFBT bridge.
+
+     js/admin-tasks.js is a classic script at the tag above, so window.FBT
+     normally exists by the time this line runs. Normally is not always: a
+     404, a parse error, or a browser that refused the file all leave it
+     undefined, and that is a state this page RENDERS rather than hides
+     behind. Polling rather than an event, because the contract does not
+     define one — and a poll that gives up after six seconds cannot become a
+     spinner that never stops.
+     ------------------------------------------------------------------ */
+  function whenFBT(cb) {
+    if (window.FBT) { cb(window.FBT); return; }
+    var waited = 0;
+    var t = setInterval(function () {
+      waited += 80;
+      if (window.FBT) { clearInterval(t); cb(window.FBT); return; }
+      if (waited >= 6000) { clearInterval(t); cb(null); }
+    }, 80);
+  }
+
+  /* Sign-out is js/auth.js's job, not the data layer's: FBT has no signOut in
+     its contract and inventing one here would be a second door onto the same
+     session. If FBU is missing we still move the page to the signed-out
+     panel, because leaving a screen of internal routes up on a shared laptop
+     after someone pressed "Sign out" is the failure that matters. */
+  function wireSignOut(id) {
+    var b = $(id);
+    if (!b) return;
+    b.onclick = function () {
+      try {
+        if (window.FBU && typeof window.FBU.signOut === "function") window.FBU.signOut();
+      } catch (e) {}
+      panel("adm-p-out");
+    };
+  }
+
+  function greet(me) {
+    var n = $("adm-who-t");
+    if (!n) return;
+    while (n.firstChild) { n.removeChild(n.firstChild); }
+
+    /* name, then email, then uid — the first one that is actually there. A
+       missing field must never print the word "undefined" at someone. */
+    var who = "";
+    if (me) { who = me.name || me.email || me.uid || ""; }
+    who = String(who || "").replace(/^\s+|\s+$/g, "");
+
+    n.appendChild(document.createTextNode("Signed in as "));
+    var b = document.createElement("b");
+    b.textContent = who || "this account";       /* textContent, never innerHTML */
+    n.appendChild(b);
+
+    if (me && me.email && me.name && me.email !== me.name) {
+      n.appendChild(document.createTextNode(" · " + String(me.email)));
+    }
+    n.appendChild(document.createTextNode(". This account has admin."));
+  }
+
+  function boot(FBT) {
+    wireSignOut("adm-signout");
+    wireSignOut("adm-signout-no");
+
+    if (!FBT || typeof FBT.ready !== "function") { panel("adm-p-noauth"); return; }
+
+    /* Signing out with the page open sends it back to the gate rather than
+       leaving the doors on a shared laptop. FBT has no onChange in its
+       contract; js/auth.js does, and it is loaded here anyway. */
+    try {
+      if (window.FBU && typeof window.FBU.onChange === "function") {
+        window.FBU.onChange(function (u) { if (!u) panel("adm-p-out"); });
+      }
+    } catch (e) {}
+
+    var settled = false;
+    function decide(r) {
+      if (settled) return;
+      settled = true;
+      if (r && r.ok) {
+        var me = null;
+        try { me = typeof FBT.me === "function" ? FBT.me() : null; } catch (e) {}
+        greet(me);
+        opened();
+        return;
+      }
+      var why = r && r.why ? String(r.why) : "sdk_failed";
+      if (why === "signed_out") { panel("adm-p-out"); return; }
+      if (why === "not_admin")  { panel("adm-p-no");  return; }
+      panel("adm-p-noauth");
+    }
+
+    try {
+      var p = FBT.ready();
+      if (p && typeof p.then === "function") {
+        p.then(decide, function () { decide({ ok: false, why: "sdk_failed" }); });
+      } else {
+        decide({ ok: false, why: "sdk_failed" });
+      }
+    } catch (e) {
+      decide({ ok: false, why: "sdk_failed" });
+    }
+
+    /* ready() is contracted to always settle. A contract is not a guarantee,
+       and a promise that never settles must not become a spinner that never
+       stops. */
+    setTimeout(function () { decide({ ok: false, why: "sdk_failed" }); }, 12000);
+  }
+
+  whenFBT(boot);
+})();
+</script>
+
+</body>
+</html>

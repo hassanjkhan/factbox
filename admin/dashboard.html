@@ -32,7 +32,7 @@
      /css/app.css; from /admin/dashboard.html it means /admin/css/app.css.
      Only the absolute form is the same URL at both addresses. -->
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/dashboard.css?v=9cbd78e1">
+<link rel="stylesheet" href="/css/dashboard.css?v=ab748506">
 </head>
 <body>
 
@@ -117,6 +117,24 @@
        The dashboard itself.
        ==================================================================== -->
   <div class="dsh-main" id="dsh-main" hidden>
+
+    <!-- ---- Where you are, and the way out of it ------------------------
+         The dashboard predates the portal, so its only link was "Back to
+         Explore" — an admin could reach the numbers and then had no way to
+         reach the task board except by typing the URL. Two surfaces that
+         cannot see each other are two surfaces somebody stops opening.
+
+         Admin home carries the profile and the choice; the sibling link is
+         here so the common move — read the numbers, go update the board —
+         is one tap rather than a round trip. Matches the board's own header
+         so the two read as one product. -->
+    <nav class="dsh-bar dsh-nav" aria-label="Admin">
+      <span class="dsh-who" id="dsh-who">Signed in.</span>
+      <a class="dsh-btn" href="/admin" data-fbt="-">Admin home</a>
+      <a class="dsh-btn" href="/admin/tasks" data-fbt="-">Tasks</a>
+      <button class="dsh-btn" type="button" id="dsh-out2" data-fbt="-">Sign out</button>
+    </nav>
+
 
     <!-- ---- The date range, shared by every section below ----------------
          Two real dates, which is what a date picker actually has, sent as
@@ -606,5 +624,37 @@
 <script src="/js/dashboard.js?v=32344b3b"></script>
 <script type="module" src="/js/auth.js?v=35b20584"></script>
 
+<script>
+/* The nav's own two behaviours. Kept out of js/dashboard.js because that
+   file is about querying insights, not about who is looking at it. */
+(function () {
+  function ready(fn) {
+    if (document.readyState !== "loading") { fn(); return; }
+    document.addEventListener("DOMContentLoaded", fn, false);
+  }
+  ready(function () {
+    var who = document.getElementById("dsh-who");
+    var out = document.getElementById("dsh-out2");
+    try {
+      if (window.FBU && FBU.onChange) {
+        FBU.onChange(function (u) {
+          if (!who) return;
+          var mail = "";
+          try { mail = (u && u.email) || (FBU.email && FBU.email()) || ""; } catch (e) {}
+          /* textContent, never innerHTML — this is an address from an
+             identity provider and it is going onto a page. */
+          who.textContent = mail ? ("Signed in as " + mail + ".") : "Signed in.";
+        });
+      }
+    } catch (e) {}
+    if (out) {
+      out.addEventListener("click", function () {
+        try { if (window.FBU && FBU.signOut) FBU.signOut(); } catch (e) {}
+        try { location.href = "/explore"; } catch (e) {}
+      }, false);
+    }
+  });
+})();
+</script>
 </body>
 </html>

@@ -1,0 +1,1403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tasks · Factbox</title>
+<meta name="description" content="The shared task board for factbox.app. Admin accounts only.">
+<meta name="theme-color" content="#E7E0D3">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<link rel="stylesheet" href="/css/admin.css?v=9e297505">
+</head>
+<body>
+
+<main class="adm adm-wide">
+
+  <header class="mast">
+    <p class="mark"><a href="/explore" aria-label="Factbox" data-fbt="-"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
+    <h1>Tasks</h1>
+    <p class="adm-sub">The shared board. Both of you edit it and every change
+    lands on the other person's screen without a reload. Finished work drops
+    into the history below with the day it was done.</p>
+  </header>
+
+  <!-- ====================================================================
+       The gate — the same four panels as /admin, for the same reasons.
+       A convenience, not a lock: firestore.rules is what actually refuses a
+       non-admin, on every read and every write.
+       ==================================================================== -->
+  <div class="adm-gate" id="adm-gate">
+
+    <section class="adm-panel" id="adm-p-wait" aria-live="polite">
+      <h2>Checking your access</h2>
+      <p class="adm-say">One moment — asking who you are signed in as.</p>
+    </section>
+
+    <section class="adm-panel" id="adm-p-noauth" hidden>
+      <h2>We could not load the board.</h2>
+      <p class="adm-say">The sign-in service did not load, so this page cannot
+      tell whether you are an admin — and it will not show a task until it
+      can. This is usually a blocked script or a dead connection.</p>
+      <p class="adm-say">Reload the page. If it keeps happening, the rest of
+      the site is probably affected too.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/admin/tasks" data-fbt="-">Try again</a>
+        <a class="adm-btn" href="/explore" data-fbt="-">Back to Explore</a>
+      </p>
+    </section>
+
+    <section class="adm-panel" id="adm-p-out" hidden>
+      <h2>Sign in to see the board.</h2>
+      <p class="adm-say">This board is for admin accounts only. Sign in with
+      the account that has admin on it and you will land back here.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/login?next=/admin/tasks" data-fbt="-">Sign in</a>
+        <a class="adm-btn" href="/explore" data-fbt="-">Back to Explore</a>
+      </p>
+    </section>
+
+    <section class="adm-panel" id="adm-p-no" hidden>
+      <h2>This is not your account.</h2>
+      <p class="adm-say">You are signed in, but this board is limited to admin
+      accounts and yours is not one of them. Nothing is missing and nothing is
+      broken — there is simply nothing here for this account.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/explore" data-fbt="-">Back to Explore</a>
+        <button class="adm-btn" type="button" id="adm-signout-no" data-fbt="-">Sign out</button>
+      </p>
+    </section>
+
+  </div>
+
+  <!-- ====================================================================
+       The board.
+       ==================================================================== -->
+  <div class="adm-main" id="adm-main" hidden>
+
+    <div class="adm-who">
+      <p class="adm-who-t" id="adm-who-t">Signed in.</p>
+      <a class="adm-btn adm-mini" href="/admin" data-fbt="-">Admin home</a>
+      <a class="adm-btn adm-mini" href="/admin/dashboard" data-fbt="-">Dashboard</a>
+      <button class="adm-btn adm-mini" type="button" id="adm-signout" data-fbt="-">Sign out</button>
+    </div>
+
+    <!-- ---- The control bar ------------------------------------------------
+         GROUPING. Hassan asked for three readings of the same list: high
+         versus low, everything for Kathryn versus everything for me, and
+         what is expected this week. They are not three boards — they are one
+         set of tasks read three ways, so this is a grouping toggle plus a
+         filter that works in every grouping, and never a separate page.
+
+         The DEFAULT is priority, because it is the only grouping where the
+         first row on the page is literally the next thing to do. Owner and
+         status are one tap away, and the owner filter narrows any of them.
+         "This week" is answered by the summary line under the bar plus the
+         history below: with no due-date field in the data contract, the
+         honest reading of "expected this week" is "everything still open,
+         highest priority first", which is exactly the default view.
+         ------------------------------------------------------------------ -->
+    <form class="adm-bar" id="adm-bar" onsubmit="return false">
+
+      <div class="adm-field">
+        <span class="adm-legend" id="adm-lg-group">Group by</span>
+        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-group">
+          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-priority" value="priority" checked>
+          <label class="adm-seg-l" for="adm-g-priority">Priority</label>
+          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-owner" value="owner">
+          <label class="adm-seg-l" for="adm-g-owner">Owner</label>
+          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-status" value="status">
+          <label class="adm-seg-l" for="adm-g-status">Status</label>
+        </div>
+      </div>
+
+      <div class="adm-field">
+        <span class="adm-legend" id="adm-lg-who">Show</span>
+        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-who">
+          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-all" value="all" checked>
+          <label class="adm-seg-l" for="adm-w-all">Everyone</label>
+          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-hassan" value="hassan">
+          <label class="adm-seg-l" for="adm-w-hassan">Hassan</label>
+          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-kathryn" value="kathryn">
+          <label class="adm-seg-l" for="adm-w-kathryn">Kathryn</label>
+          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-either" value="either">
+          <label class="adm-seg-l" for="adm-w-either">Either</label>
+        </div>
+      </div>
+
+      <div class="adm-field adm-grow" style="align-items:flex-end">
+        <span class="adm-legend">&nbsp;</span>
+        <button class="adm-btn adm-btn-go" type="button" id="adm-add-open" data-fbt="-">Add a task</button>
+      </div>
+
+    </form>
+
+    <!-- The one-line answer to "what is expected this week". Written by the
+         script; it never says "undefined" because it is built from counts. -->
+    <p class="adm-q" id="adm-summary">Counting…</p>
+
+    <!-- The add form. Same fields as the in-row editor, deliberately: one
+         shape to learn, and a task added is a task you can immediately fix. -->
+    <div class="adm-form" id="adm-add-form" hidden></div>
+
+    <!-- ---- Open work --------------------------------------------------- -->
+    <section class="adm-sec" id="adm-sec-board">
+      <div class="adm-sechead">
+        <h2>Open</h2>
+        <span id="adm-board-sub">everything not finished</span>
+      </div>
+      <!-- Loading, empty, filtered-to-nothing and write-failed all render
+           here, and exactly one of them does whenever the list is not shown. -->
+      <div class="adm-state" id="adm-board-state" role="status">Loading the board — reading tasks and goals from Firestore.</div>
+      <div id="adm-board" hidden></div>
+    </section>
+
+    <!-- ---- Goals ------------------------------------------------------- -->
+    <section class="adm-sec" id="adm-sec-goals">
+      <div class="adm-sechead">
+        <h2>Goals</h2>
+        <span>what the tasks are for</span>
+        <span class="adm-spacer"></span>
+        <button class="adm-btn adm-mini" type="button" id="adm-goal-open" data-fbt="-">Add a goal</button>
+      </div>
+      <p class="adm-q">A goal is a number or an outcome with a date on it, not
+      a job. Tasks are how a goal gets hit; this is the thing being aimed at.</p>
+      <div class="adm-form" id="adm-goal-form" hidden></div>
+      <div class="adm-state" id="adm-goals-state" role="status">Loading the goals…</div>
+      <div class="adm-goals" id="adm-goals" hidden></div>
+    </section>
+
+    <!-- ---- History ------------------------------------------------------
+         Seeded from git commits, so it is long by construction: a wall of it
+         above today's work would bury the thing this page is for. It is a
+         <details> that is SHUT on load, and inside it a page of rows at a
+         time — the first stops the wall, the second stops a thousand rows
+         being built into the DOM on a phone.
+         ------------------------------------------------------------------ -->
+    <section class="adm-sec" id="adm-sec-hist">
+      <div class="adm-sechead">
+        <h2>Done</h2>
+        <span>the record, newest first</span>
+      </div>
+      <details class="adm-hist" id="adm-hist">
+        <summary id="adm-hist-sum"><span class="adm-caret" aria-hidden="true"></span><span id="adm-hist-label">History</span></summary>
+        <div class="adm-hist-body">
+          <div class="adm-state" id="adm-hist-state" role="status" hidden>Nothing has been finished yet.</div>
+          <div id="adm-hist-days"></div>
+          <p class="adm-actions" id="adm-hist-more-wrap" hidden>
+            <button class="adm-btn adm-mini" type="button" id="adm-hist-more" data-fbt="-">Show more</button>
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <p class="adm-foot">
+      <a href="/admin" data-fbt="-">Admin</a> ·
+      <a href="/admin/dashboard" data-fbt="-">Dashboard</a> ·
+      <a href="/explore" data-fbt="-">Explore</a>
+    </p>
+
+  </div>
+
+  <!-- Announced, not seen: a change made by the other person, or by a button
+       whose effect is further down the page. -->
+  <p class="adm-sr" id="adm-live" role="status" aria-live="polite"></p>
+
+</main>
+
+<noscript>
+  <p class="adm-say" style="max-width:560px;margin:22px auto;padding:0 18px">
+  This board is built in the browser from live Firestore listeners, so it needs
+  JavaScript switched on. There is no version of it that works without.</p>
+</noscript>
+
+<script type="module" src="/js/auth.js?v=35b20584"></script>
+<script src="/js/admin-tasks.js?v=8e125268"></script>
+<script>
+/* ==========================================================================
+   /admin/tasks — the board
+
+   ES5 only: no arrow functions, no let/const, no template literals, no
+   spread, no classes. tools/check-account-cache.js scans for that family and
+   the site's one module is js/auth.js, which this is not.
+
+   ---------------------------------------------------------------------------
+   ESCAPING — the decision, stated once.
+
+   TWO PEOPLE TYPE INTO THIS AND IT RENDERS FOR THE OTHER ONE. A task title is
+   attacker-controlled text as far as this file is concerned, and the fact
+   that the attacker is a cofounder does not change what a <script> tag does.
+
+   The choice is textContent, everywhere, with NO escaping function anywhere
+   in this file — because there is no markup-building path for it to guard.
+   This file never assigns innerHTML, never assigns outerHTML, never calls
+   insertAdjacentHTML and never calls document.write. Every node is made with
+   document.createElement and every string from Firestore is set with
+   .textContent or .value. An escaper is a thing you can forget to call at one
+   of forty call sites; a rule of "there is no innerHTML in this file" is one
+   you can check with grep: `grep -n innerHTML admin/tasks.html` returns this
+   comment and nothing else.
+
+   The one place a value from the database reaches an attribute is the select
+   elements, where it goes through .value on an <option> whose text is a
+   LITERAL from the table below — a value that is not one of the known keys
+   simply matches no option, which is a select that shows its first entry, not
+   an injection.
+   ---------------------------------------------------------------------------
+   ========================================================================== */
+(function () {
+  "use strict";
+
+  /* ==========================================================================
+     Vocabulary
+
+     Taken from FBT when it publishes it, with these as the fallback — the
+     page must render sensibly against a data layer that is a version behind,
+     and it must render at all against one that never loaded.
+     ========================================================================== */
+
+  var OWNERS     = ["hassan", "kathryn", "either"];
+  var PRIORITIES = ["high", "low"];
+  var STATUSES   = ["todo", "doing", "done"];
+
+  var OWNER_LABEL = { hassan: "Hassan", kathryn: "Kathryn", either: "Either" };
+  var PRI_LABEL   = { high: "High", low: "Low" };
+  var ST_LABEL    = { todo: "To do", doing: "Doing", done: "Done" };
+
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var DAYS   = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  /* How many finished rows the history opens with, and how many more each
+     press of "Show more" adds. Small first page because it is seeded from
+     git and can be hundreds long; a bigger step after that because someone
+     pressing "show more" is looking for something. */
+  var HIST_FIRST = 12;
+  var HIST_STEP  = 25;
+
+  /* ==========================================================================
+     Tiny DOM helpers. Everything below builds nodes; nothing builds markup.
+     ========================================================================== */
+
+  function $(id) { return document.getElementById(id); }
+  function show(id) { var n = $(id); if (n) n.hidden = false; }
+  function hide(id) { var n = $(id); if (n) n.hidden = true; }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = String(text);
+    return n;
+  }
+
+  function clear(n) {
+    if (!n) return;
+    while (n.firstChild) { n.removeChild(n.firstChild); }
+  }
+
+  function setText(id, s) {
+    var n = $(id);
+    if (n) n.textContent = String(s);
+  }
+
+  /* Every button on this page is made here, so every button carries
+     data-fbt="-" and nothing has to remember to. js/analytics.js is not
+     loaded on the admin surfaces (see the comment at the script tags), but
+     if that is ever reversed the generic ui_click handler must not
+     double-count a control that already does its own thing. */
+  function btn(label, cls, fn) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "adm-btn adm-mini" + (cls ? " " + cls : "");
+    b.setAttribute("data-fbt", "-");
+    b.textContent = label;
+    b.onclick = fn;
+    return b;
+  }
+
+  function say(msg) {
+    var n = $("adm-live");
+    if (n) n.textContent = String(msg);
+  }
+
+  /* ==========================================================================
+     Values out of the database, made safe to READ
+
+     Not safe to render — textContent already did that — but safe to reason
+     about: a missing field must never reach the page as the word "undefined",
+     a Firestore Timestamp must never reach it as "[object Object]", and a
+     number that is not a number must never reach it as "NaN". Every value
+     below goes through one of these four.
+     ========================================================================== */
+
+  function str(v) {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "number") { return isFinite(v) ? String(v) : ""; }
+    if (typeof v === "boolean") return v ? "yes" : "no";
+    return "";                      /* an object is never printed as itself */
+  }
+
+  function key(v, allowed, fallback) {
+    var s = str(v);
+    for (var i = 0; i < allowed.length; i++) { if (allowed[i] === s) return s; }
+    return fallback;
+  }
+
+  function num(v, fallback) {
+    var n = typeof v === "number" ? v : parseFloat(str(v));
+    return (typeof n === "number" && isFinite(n)) ? n : fallback;
+  }
+
+  /* Firestore hands timestamps back in four different shapes depending on
+     which SDK wrote them and whether the write has landed on the server yet.
+     All four, plus a plain millisecond number and an ISO string, plus the
+     null a pending serverTimestamp() shows for one frame. */
+  function toMs(v) {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === "number") {
+      if (!isFinite(v)) return 0;
+      /* seconds or milliseconds — anything below this is not a date anyone
+         on this project is recording. */
+      return v > 1e11 ? v : v * 1000;
+    }
+    if (typeof v === "string") {
+      var p = Date.parse(v);
+      return isFinite(p) ? p : 0;
+    }
+    if (typeof v === "object") {
+      try {
+        if (typeof v.toMillis === "function") {
+          var m = v.toMillis();
+          if (typeof m === "number" && isFinite(m)) return m;
+        }
+      } catch (e) {}
+      try {
+        if (typeof v.toDate === "function") {
+          var d = v.toDate();
+          if (d && typeof d.getTime === "function" && isFinite(d.getTime())) return d.getTime();
+        }
+      } catch (e2) {}
+      if (typeof v.seconds === "number" && isFinite(v.seconds)) return v.seconds * 1000;
+      if (typeof v._seconds === "number" && isFinite(v._seconds)) return v._seconds * 1000;
+    }
+    return 0;
+  }
+
+  /* "Thu 4 Sep 2026". Built by hand rather than with toLocaleDateString,
+     because that returns "Invalid Date" for a bad input on some engines and
+     the whole point of this section is that nothing broken reaches the page. */
+  function fmtDay(ms) {
+    if (!ms) return "date not recorded";
+    var d = new Date(ms);
+    if (!isFinite(d.getTime())) return "date not recorded";
+    return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] +
+           " " + d.getFullYear();
+  }
+
+  /* "4 Sep" — the short form, for a line inside a row. */
+  function fmtShort(ms) {
+    if (!ms) return "";
+    var d = new Date(ms);
+    if (!isFinite(d.getTime())) return "";
+    return d.getDate() + " " + MONTHS[d.getMonth()];
+  }
+
+  /* The local day a timestamp fell on, as a sortable key. Local, not UTC:
+     work finished at 9pm in London belongs to that evening, not to the next
+     morning. */
+  function dayKey(ms) {
+    if (!ms) return "0000-00-00";
+    var d = new Date(ms);
+    if (!isFinite(d.getTime())) return "0000-00-00";
+    var mo = d.getMonth() + 1, da = d.getDate();
+    return d.getFullYear() + "-" + (mo < 10 ? "0" : "") + mo + "-" + (da < 10 ? "0" : "") + da;
+  }
+
+  function daysAgo(n) {
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() - n * 86400000;
+  }
+
+  function plural(n, one, many) {
+    return String(n) + " " + (n === 1 ? one : many);
+  }
+
+  /* ==========================================================================
+     State
+     ========================================================================== */
+
+  var FBT = null;
+  var TASKS = [], GOALS = [];
+  var tasksSeen = false, goalsSeen = false;
+  var groupBy = "priority", ownerFilter = "all";
+  var editing = null;                 /* task id whose row is an open editor */
+  var editingGoal = null;
+  var addOpen = false, goalOpen = false;
+  var histShown = HIST_FIRST;
+  var deferred = false;               /* a change arrived while an editor was open */
+
+  /* A re-render pulls the DOM out from under a half-typed sentence, and the
+     whole point of this page is that the other person is typing into it at
+     the same time. So while any editor is open the incoming data is kept but
+     not painted, and the board says so. */
+  function editorOpen() {
+    return editing !== null || editingGoal !== null || addOpen || goalOpen;
+  }
+
+  function normTask(t) {
+    var o = {};
+    o.id       = str(t && t.id);
+    o.title    = str(t && t.title);
+    o.detail   = str(t && t.detail);
+    o.owner    = key(t && t.owner, OWNERS, "either");
+    o.priority = key(t && t.priority, PRIORITIES, "low");
+    o.status   = key(t && t.status, STATUSES, "todo");
+    o.area     = str(t && t.area);
+    o.order    = num(t && t.order, 0);
+    o.createdAt = toMs(t && t.createdAt);
+    o.updatedAt = toMs(t && t.updatedAt);
+    o.doneAt    = toMs(t && t.doneAt);
+    o.updatedBy = str(t && t.updatedBy);
+    return o;
+  }
+
+  function normGoal(g) {
+    var o = {};
+    o.id     = str(g && g.id);
+    o.title  = str(g && g.title);
+    o.detail = str(g && g.detail);
+    o.target = str(g && g.target);
+    o.status = key(g && g.status, ["open", "hit", "missed"], "open");
+    o.order  = num(g && g.order, 0);
+    return o;
+  }
+
+  /* ==========================================================================
+     Sorting
+
+     One comparator, aware of which grouping is on screen, because "the next
+     thing to do" is a different sentence in each of them:
+
+       grouped by priority — the group already says how urgent it is, so
+                             inside it the live question is what is already
+                             moving: Doing before To do.
+       grouped by owner    — inside one person's pile, urgency is the whole
+                             question: High before Low, then Doing before To do.
+       grouped by status   — inside "Doing" or "To do", High before Low.
+
+     Then `order`, which is what a future drag-to-reorder would write, then
+     the oldest first, so a task cannot drift about between renders.
+     ========================================================================== */
+
+  function statusRank(s) { return s === "doing" ? 0 : (s === "todo" ? 1 : 2); }
+  function priRank(p)    { return p === "high" ? 0 : 1; }
+
+  function cmp(a, b) {
+    var d;
+    if (groupBy === "priority") {
+      d = statusRank(a.status) - statusRank(b.status); if (d) return d;
+      d = priRank(a.priority) - priRank(b.priority);   if (d) return d;
+    } else if (groupBy === "status") {
+      d = priRank(a.priority) - priRank(b.priority);   if (d) return d;
+    } else {
+      d = priRank(a.priority) - priRank(b.priority);   if (d) return d;
+      d = statusRank(a.status) - statusRank(b.status); if (d) return d;
+    }
+    d = a.order - b.order; if (d) return d;
+    d = (a.createdAt || 0) - (b.createdAt || 0); if (d) return d;
+    return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
+  }
+
+  /* ==========================================================================
+     The chips
+
+     Each of them writes its value out IN WORDS and carries a second, non-hue
+     signal in its shape. See the long note at the top of css/admin.css.
+     ========================================================================== */
+
+  function ownerChip(owner) {
+    var wrap = el("span", "adm-chip");
+    var mono = el("span", "adm-mono adm-mono-" + owner,
+                  owner === "hassan" ? "H" : (owner === "kathryn" ? "K" : "HK"));
+    mono.setAttribute("aria-hidden", "true");
+    wrap.appendChild(mono);
+    wrap.appendChild(document.createTextNode(OWNER_LABEL[owner] || owner));
+    return wrap;
+  }
+
+  function priChip(p) {
+    var n = el("span", "adm-pri adm-pri-" + p, PRI_LABEL[p] || p);
+    n.setAttribute("title", p === "high" ? "High priority" : "Low priority");
+    return n;
+  }
+
+  function statusChip(s) {
+    var wrap = el("span", "adm-st");
+    var dot = el("span", "adm-dot adm-dot-" + s);
+    dot.setAttribute("aria-hidden", "true");
+    wrap.appendChild(dot);
+    wrap.appendChild(document.createTextNode(ST_LABEL[s] || s));
+    return wrap;
+  }
+
+  /* ==========================================================================
+     The add / edit form — one shape, three places
+     ========================================================================== */
+
+  function field(labelText, control, wide) {
+    var f = el("div", "adm-field" + (wide ? " adm-form-wide" : ""));
+    var id = control.id;
+    var lab = el("label", null, labelText);
+    if (id) lab.setAttribute("for", id);
+    f.appendChild(lab);
+    f.appendChild(control);
+    return f;
+  }
+
+  function input(id, value, placeholder) {
+    var n = document.createElement("input");
+    n.type = "text";
+    n.className = "adm-input";
+    n.id = id;
+    n.value = str(value);
+    if (placeholder) n.placeholder = placeholder;
+    return n;
+  }
+
+  function textarea(id, value, placeholder) {
+    var n = document.createElement("textarea");
+    n.className = "adm-area";
+    n.id = id;
+    n.value = str(value);
+    if (placeholder) n.placeholder = placeholder;
+    return n;
+  }
+
+  /* The option TEXT is a literal from the label tables above; the option
+     VALUE is one of the known keys. Nothing a person typed reaches either. */
+  function select(id, keys, labels, value) {
+    var n = document.createElement("select");
+    n.className = "adm-select";
+    n.id = id;
+    for (var i = 0; i < keys.length; i++) {
+      var o = document.createElement("option");
+      o.value = keys[i];
+      o.textContent = labels[keys[i]] || keys[i];
+      if (keys[i] === value) o.selected = true;
+      n.appendChild(o);
+    }
+    return n;
+  }
+
+  /* Builds the six controls, returns the node plus a read() that hands back a
+     patch. `pre` namespaces the ids so the add form and an open row editor
+     can be on screen at the same time without two elements sharing an id. */
+  function taskForm(pre, t, opts) {
+    var box = el("div", "adm-form-grid");
+
+    var fTitle  = input(pre + "-title", t.title, "What needs doing");
+    var fDetail = textarea(pre + "-detail", t.detail, "Anything the other person needs to know (optional)");
+    var fOwner  = select(pre + "-owner", OWNERS, OWNER_LABEL, t.owner);
+    var fPri    = select(pre + "-pri", PRIORITIES, PRI_LABEL, t.priority);
+    var fStat   = select(pre + "-status", STATUSES, ST_LABEL, t.status);
+    var fArea   = input(pre + "-area", t.area, "e.g. content, stripe, social");
+
+    box.appendChild(field("Task", fTitle, true));
+    box.appendChild(field("Owner", fOwner));
+    box.appendChild(field("Priority", fPri));
+    box.appendChild(field("Status", fStat));
+    box.appendChild(field("Area", fArea));
+    box.appendChild(field("Detail", fDetail, true));
+
+    var wrap = el("div", opts && opts.inRow ? "adm-form adm-form-in" : null);
+    wrap.appendChild(box);
+
+    return {
+      node: wrap,
+      focus: function () { try { fTitle.focus(); } catch (e) {} },
+      read: function () {
+        return {
+          title:    fTitle.value.replace(/^\s+|\s+$/g, ""),
+          detail:   fDetail.value.replace(/\s+$/g, ""),
+          owner:    fOwner.value,
+          priority: fPri.value,
+          status:   fStat.value,
+          area:     fArea.value.replace(/^\s+|\s+$/g, "")
+        };
+      }
+    };
+  }
+
+  function acts() { return el("div", "adm-form-acts"); }
+
+  /* ==========================================================================
+     Writes
+
+     Every one of them goes through here so that a rejected write — the rules
+     refusing a non-admin, a dropped connection — lands as a sentence in the
+     board's own state line instead of vanishing into a console nobody has
+     open. Firestore's own listener is what repaints on success; this never
+     mutates TASKS itself, so the screen can never disagree with the server.
+     ========================================================================== */
+
+  function fail(what, e) {
+    var n = $("adm-board-state");
+    if (!n) return;
+    n.className = "adm-state adm-bad";
+    clear(n);
+    n.appendChild(document.createTextNode("Could not " + what + ". "));
+    var m = "";
+    try { m = str(e && (e.message || e.code)); } catch (e2) {}
+    n.appendChild(document.createTextNode(
+      m ? "The database said: " + m + ". Nothing was changed."
+        : "Nothing was changed. Check your connection and try again."));
+    n.hidden = false;
+    say("Could not " + what + ".");
+  }
+
+  function call(name, a, b, what, then) {
+    if (!FBT || typeof FBT[name] !== "function") {
+      fail(what, { message: "the data layer is not loaded" });
+      return;
+    }
+    var p;
+    try { p = b === undefined ? FBT[name](a) : FBT[name](a, b); }
+    catch (e) { fail(what, e); return; }
+    if (p && typeof p.then === "function") {
+      p.then(function (r) { if (then) then(r); }, function (e) { fail(what, e); });
+    } else if (then) { then(p); }
+  }
+
+  /* ==========================================================================
+     A task row
+     ========================================================================== */
+
+  /* `updatedBy` is a UID — firestore.rules requires it to match the uid on
+     the request's own ID token, so it cannot be a display name — and a UID
+     printed at a person is a line of noise, not information. Two people use
+     this board and the owner chip already says whose it is, so the line
+     carries the DATE, which is the part a human reads. */
+  function whenLine(t) {
+    if (t.status === "done" && t.doneAt) return "Done " + fmtShort(t.doneAt);
+    var ms = t.updatedAt || t.createdAt;
+    if (!ms) return "";
+    return (t.updatedAt ? "Updated " : "Added ") + fmtShort(ms);
+  }
+
+  function openEditor(row, t) {
+    clear(row);
+
+    var f = taskForm("adm-e", t, { inRow: true });
+    row.appendChild(f.node);
+
+    var a = acts();
+
+    a.appendChild(btn("Save", "adm-btn-go", function () {
+      var v = f.read();
+      if (!v.title) { f.focus(); say("A task needs a title."); return; }
+      var patch = {
+        title: v.title, detail: v.detail, owner: v.owner,
+        priority: v.priority, status: v.status, area: v.area
+      };
+      editing = null;
+      call("updateTask", t.id, patch, "save that task", function () {
+        say("Saved.");
+        render();
+      });
+      render();
+    }));
+
+    a.appendChild(btn("Cancel", null, function () {
+      editing = null;
+      render();
+    }));
+
+    /* Two-step delete rather than a confirm() dialog: a native dialog on a
+       phone covers the row you are trying to identify, and this is a list
+       where every row looks like its neighbours. The button says what the
+       next press will do. */
+    var armed = false, timer = null;
+    var del = btn("Delete", "adm-btn-bad", function () {
+      if (!armed) {
+        armed = true;
+        del.textContent = "Press again to delete";
+        say("Press delete again to remove this task.");
+        timer = setTimeout(function () {
+          armed = false;
+          del.textContent = "Delete";
+        }, 5000);
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      editing = null;
+      call("deleteTask", t.id, undefined, "delete that task", function () {
+        say("Deleted.");
+        render();
+      });
+      render();
+    });
+    a.appendChild(del);
+
+    f.node.appendChild(a);
+    f.focus();
+  }
+
+  function taskRow(t) {
+    var li = el("li", "adm-task adm-task-" + t.priority +
+                      (t.status === "done" ? " adm-task-done" : ""));
+
+    var rail = el("div", "adm-task-rail");
+    rail.appendChild(ownerChip(t.owner));
+    rail.appendChild(priChip(t.priority));
+    rail.appendChild(statusChip(t.status));
+    if (t.area) rail.appendChild(el("span", "adm-area-chip", t.area));
+    li.appendChild(rail);
+
+    var body = el("div", "adm-task-body");
+    li.appendChild(body);
+
+    if (editing === t.id) { openEditor(body, t); return li; }
+
+    body.appendChild(el("p", "adm-title", t.title || "Untitled task"));
+    if (t.detail) body.appendChild(el("p", "adm-detail", t.detail));
+    var w = whenLine(t);
+    if (w) body.appendChild(el("p", "adm-when", w));
+
+    var a = el("div", "adm-rowacts");
+
+    if (t.status !== "done") {
+      a.appendChild(btn("Mark done", "adm-btn-go", function () {
+        call("updateTask", t.id, { status: "done" }, "mark that task done", function () {
+          say("Marked done: " + t.title);
+        });
+      }));
+      if (t.status === "todo") {
+        a.appendChild(btn("Start", null, function () {
+          call("updateTask", t.id, { status: "doing" }, "start that task", function () {
+            say("Started: " + t.title);
+          });
+        }));
+      } else {
+        a.appendChild(btn("Back to to-do", null, function () {
+          call("updateTask", t.id, { status: "todo" }, "move that task back", function () {
+            say("Moved back to to-do: " + t.title);
+          });
+        }));
+      }
+    } else {
+      a.appendChild(btn("Reopen", null, function () {
+        call("updateTask", t.id, { status: "todo" }, "reopen that task", function () {
+          say("Reopened: " + t.title);
+        });
+      }));
+    }
+
+    a.appendChild(btn("Edit", null, function () {
+      editing = t.id;
+      render();
+    }));
+
+    body.appendChild(a);
+    return li;
+  }
+
+  /* ==========================================================================
+     The board
+     ========================================================================== */
+
+  function groupsFor(open) {
+    var out = [], i;
+    if (groupBy === "owner") {
+      for (i = 0; i < OWNERS.length; i++) {
+        out.push({ k: OWNERS[i], label: OWNER_LABEL[OWNERS[i]], items: [] });
+      }
+    } else if (groupBy === "status") {
+      out.push({ k: "doing", label: "Doing", items: [] });
+      out.push({ k: "todo",  label: "To do", items: [] });
+    } else {
+      out.push({ k: "high", label: "High priority", items: [] });
+      out.push({ k: "low",  label: "Low priority",  items: [] });
+    }
+    for (i = 0; i < open.length; i++) {
+      var t = open[i];
+      var k = groupBy === "owner" ? t.owner : (groupBy === "status" ? t.status : t.priority);
+      for (var j = 0; j < out.length; j++) {
+        if (out[j].k === k) { out[j].items.push(t); break; }
+      }
+    }
+    for (i = 0; i < out.length; i++) { out[i].items.sort(cmp); }
+    return out;
+  }
+
+  function summary(open, done) {
+    var high = 0, doing = 0, mine = { hassan: 0, kathryn: 0, either: 0 }, i;
+    for (i = 0; i < open.length; i++) {
+      if (open[i].priority === "high") high++;
+      if (open[i].status === "doing") doing++;
+      mine[open[i].owner] = (mine[open[i].owner] || 0) + 1;
+    }
+    var week = 0, cut = daysAgo(6);
+    for (i = 0; i < done.length; i++) { if (done[i].doneAt >= cut) week++; }
+
+    /* Deliberately a sentence, not a row of numbers: it is read once on the
+       way past. "Open" is the week's plan — the data contract has no due
+       date, so the honest reading of "what is expected this week" is
+       "everything still open, highest first", which is what the board below
+       is showing. */
+    return plural(open.length, "task", "tasks") + " open — " +
+           high + " high priority, " + doing + " already moving. " +
+           "Hassan " + mine.hassan + ", Kathryn " + mine.kathryn +
+           ", either of you " + mine.either + ". " +
+           plural(week, "task", "tasks") + " finished in the last 7 days.";
+  }
+
+  function renderBoard() {
+    var box = $("adm-board");
+    var state = $("adm-board-state");
+    if (!box || !state) return;
+
+    state.className = "adm-state";
+
+    if (!tasksSeen) {
+      box.hidden = true;
+      clear(box);
+      state.hidden = false;
+      state.textContent = "Loading the board — reading tasks and goals from Firestore.";
+      setText("adm-summary", "Counting…");
+      return;
+    }
+
+    var open = [], done = [], i;
+    for (i = 0; i < TASKS.length; i++) {
+      if (TASKS[i].status === "done") done.push(TASKS[i]); else open.push(TASKS[i]);
+    }
+
+    setText("adm-summary", summary(open, done));
+
+    /* THE EMPTY BOARD. Nothing has ever been added — a different sentence
+       from "your filter matches nothing", because they need different next
+       actions and running them together is how an empty state gets read as a
+       bug. */
+    if (!TASKS.length) {
+      box.hidden = true;
+      clear(box);
+      state.hidden = false;
+      clear(state);
+      var b = el("b", null, "The board is empty.");
+      state.appendChild(b);
+      state.appendChild(document.createTextNode(
+        " Nothing has been added yet — not by you and not by the other one of " +
+        "you. Press “Add a task” above and the first thing you type " +
+        "will be on both your screens."));
+      return;
+    }
+
+    var shown = [];
+    for (i = 0; i < open.length; i++) {
+      if (ownerFilter === "all" || open[i].owner === ownerFilter) shown.push(open[i]);
+    }
+
+    if (!shown.length) {
+      box.hidden = true;
+      clear(box);
+      state.hidden = false;
+      clear(state);
+      state.appendChild(el("b", null, "Nothing open here."));
+      state.appendChild(document.createTextNode(
+        ownerFilter === "all"
+          ? " Everything on the board is finished. The record is in Done, below."
+          : " Nothing open is assigned to " + (OWNER_LABEL[ownerFilter] || ownerFilter) +
+            ". Switch Show to Everyone to see the rest of the board."));
+      return;
+    }
+
+    state.hidden = true;
+    box.hidden = false;
+    clear(box);
+
+    var groups = groupsFor(shown);
+    for (i = 0; i < groups.length; i++) {
+      var g = groups[i];
+      if (!g.items.length) continue;         /* an empty group is noise */
+      var sec = el("div", "adm-group");
+      var h = el("div", "adm-group-h");
+      h.appendChild(document.createTextNode(g.label));
+      h.appendChild(el("span", "adm-count", plural(g.items.length, "task", "tasks")));
+      sec.appendChild(h);
+      var ul = el("ul", "adm-list");
+      for (var j = 0; j < g.items.length; j++) { ul.appendChild(taskRow(g.items[j])); }
+      sec.appendChild(ul);
+      box.appendChild(sec);
+    }
+
+    setText("adm-board-sub",
+      groupBy === "owner" ? "grouped by who has it"
+      : (groupBy === "status" ? "grouped by what is moving" : "grouped by priority"));
+  }
+
+  /* ==========================================================================
+     Goals
+     ========================================================================== */
+
+  var GOAL_STATUSES = ["open", "hit", "missed"];
+  var GOAL_LABEL = { open: "Open", hit: "Hit", missed: "Missed" };
+
+  function goalForm(pre, g) {
+    var box = el("div", "adm-form-grid");
+    var fTitle  = input(pre + "-title", g.title, "What are we aiming at");
+    var fTarget = input(pre + "-target", g.target, "e.g. 200 subscribers by 31 Oct");
+    var fStat   = select(pre + "-status", GOAL_STATUSES, GOAL_LABEL, g.status);
+    var fDetail = textarea(pre + "-detail", g.detail, "How we would know (optional)");
+
+    box.appendChild(field("Goal", fTitle, true));
+    box.appendChild(field("Target", fTarget, true));
+    box.appendChild(field("Outcome", fStat));
+    box.appendChild(field("Detail", fDetail, true));
+
+    var wrap = el("div");
+    wrap.appendChild(box);
+    return {
+      node: wrap,
+      focus: function () { try { fTitle.focus(); } catch (e) {} },
+      read: function () {
+        return {
+          title:  fTitle.value.replace(/^\s+|\s+$/g, ""),
+          target: fTarget.value.replace(/^\s+|\s+$/g, ""),
+          status: fStat.value,
+          detail: fDetail.value.replace(/\s+$/g, "")
+        };
+      }
+    };
+  }
+
+  function goalCard(g) {
+    var card = el("div", "adm-goal");
+
+    if (editingGoal === g.id) {
+      var f = goalForm("adm-eg", g);
+      card.appendChild(f.node);
+      var a = acts();
+      a.appendChild(btn("Save", "adm-btn-go", function () {
+        var v = f.read();
+        if (!v.title) { f.focus(); say("A goal needs a title."); return; }
+        editingGoal = null;
+        call("updateGoal", g.id, v, "save that goal", function () { say("Goal saved."); render(); });
+        render();
+      }));
+      a.appendChild(btn("Cancel", null, function () { editingGoal = null; render(); }));
+      var armed = false, timer = null;
+      var del = btn("Delete", "adm-btn-bad", function () {
+        if (!armed) {
+          armed = true;
+          del.textContent = "Press again to delete";
+          timer = setTimeout(function () { armed = false; del.textContent = "Delete"; }, 5000);
+          return;
+        }
+        if (timer) clearTimeout(timer);
+        editingGoal = null;
+        call("deleteGoal", g.id, undefined, "delete that goal", function () { say("Goal deleted."); render(); });
+        render();
+      });
+      a.appendChild(del);
+      f.node.appendChild(a);
+      f.focus();
+      return card;
+    }
+
+    card.appendChild(el("span", "adm-goal-s adm-goal-s-" + g.status, GOAL_LABEL[g.status] || g.status));
+    card.appendChild(el("span", "adm-goal-t", g.title || "Untitled goal"));
+    if (g.target) {
+      card.appendChild(el("span", "adm-goal-k", "Target"));
+      card.appendChild(el("span", "adm-goal-target", g.target));
+    }
+    if (g.detail) card.appendChild(el("span", "adm-goal-d", g.detail));
+
+    var acts2 = el("div", "adm-rowacts");
+    acts2.appendChild(btn("Edit", null, function () { editingGoal = g.id; render(); }));
+    if (g.status !== "hit") {
+      acts2.appendChild(btn("Mark hit", null, function () {
+        call("updateGoal", g.id, { status: "hit" }, "mark that goal hit", function () { say("Goal hit."); });
+      }));
+    } else {
+      acts2.appendChild(btn("Reopen", null, function () {
+        call("updateGoal", g.id, { status: "open" }, "reopen that goal", function () { say("Goal reopened."); });
+      }));
+    }
+    card.appendChild(acts2);
+    return card;
+  }
+
+  function renderGoals() {
+    var box = $("adm-goals"), state = $("adm-goals-state");
+    if (!box || !state) return;
+    state.className = "adm-state";
+
+    if (!goalsSeen) {
+      box.hidden = true; clear(box);
+      state.hidden = false;
+      state.textContent = "Loading the goals…";
+      return;
+    }
+    if (!GOALS.length) {
+      box.hidden = true; clear(box);
+      state.hidden = false;
+      clear(state);
+      state.appendChild(el("b", null, "No goals set."));
+      state.appendChild(document.createTextNode(
+        " The board can run without one, but a list of tasks with nothing " +
+        "above it is a list of tasks. Press “Add a goal” to name " +
+        "the number you are aiming at."));
+      return;
+    }
+
+    state.hidden = true;
+    box.hidden = false;
+    clear(box);
+
+    var sorted = GOALS.slice(0);
+    sorted.sort(function (a, b) {
+      var ra = a.status === "open" ? 0 : 1, rb = b.status === "open" ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      if (a.order !== b.order) return a.order - b.order;
+      return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
+    });
+    for (var i = 0; i < sorted.length; i++) { box.appendChild(goalCard(sorted[i])); }
+  }
+
+  /* ==========================================================================
+     History — long by construction, so shut and paged by default
+     ========================================================================== */
+
+  function renderHistory() {
+    var days = $("adm-hist-days"), state = $("adm-hist-state");
+    if (!days || !state) return;
+
+    var done = [], i;
+    for (i = 0; i < TASKS.length; i++) { if (TASKS[i].status === "done") done.push(TASKS[i]); }
+    done.sort(function (a, b) {
+      var d = (b.doneAt || b.updatedAt || 0) - (a.doneAt || a.updatedAt || 0);
+      if (d) return d;
+      return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
+    });
+
+    setText("adm-hist-label",
+      !tasksSeen ? "History"
+      : (done.length ? "History · " + plural(done.length, "task", "tasks") + " done"
+                     : "History · nothing finished yet"));
+
+    clear(days);
+
+    if (!done.length) {
+      state.hidden = false;
+      state.textContent = tasksSeen
+        ? "Nothing has been marked done yet. When something is, it lands here with the day it was finished."
+        : "Loading the history…";
+      hide("adm-hist-more-wrap");
+      return;
+    }
+    state.hidden = true;
+
+    if (histShown > done.length) histShown = done.length;
+    var page = done.slice(0, histShown);
+
+    /* Grouped by the day it was finished. The date is the point of this
+       section — "a history of work done, with the date it was done" — so it
+       is a heading, not a column someone has to scan for. */
+    var curKey = null, curBox = null;
+    for (i = 0; i < page.length; i++) {
+      var t = page[i];
+      var ms = t.doneAt || t.updatedAt || 0;
+      var k = dayKey(ms);
+      if (k !== curKey) {
+        curKey = k;
+        var d = el("div", "adm-day");
+        d.appendChild(el("div", "adm-day-h", fmtDay(ms)));
+        curBox = el("div");
+        d.appendChild(curBox);
+        days.appendChild(d);
+      }
+      var row = el("div", "adm-done-row");
+      row.appendChild(el("span", "adm-done-t", t.title || "Untitled task"));
+      var meta = OWNER_LABEL[t.owner] || t.owner;
+      if (t.area) meta += " · " + t.area;
+      row.appendChild(el("span", "adm-done-m", meta));
+      curBox.appendChild(row);
+    }
+
+    var wrap = $("adm-hist-more-wrap"), more = $("adm-hist-more");
+    if (done.length > page.length) {
+      var left = done.length - page.length;
+      if (more) more.textContent = "Show " + Math.min(left, HIST_STEP) + " more of " + left;
+      if (wrap) wrap.hidden = false;
+    } else if (wrap) {
+      wrap.hidden = true;
+    }
+  }
+
+  /* ==========================================================================
+     Render
+     ========================================================================== */
+
+  function render() {
+    renderBoard();
+    renderGoals();
+    renderHistory();
+  }
+
+  function incoming() {
+    if (editorOpen()) {
+      deferred = true;
+      var n = $("adm-board-state");
+      if (n && n.hidden) {
+        /* Do not steal the board to say it: the row being typed into is the
+           thing on screen. The live region says it, and the render happens
+           the moment the editor closes. */
+        say("The board changed. It will refresh when you finish editing.");
+      }
+      return;
+    }
+    deferred = false;
+    render();
+  }
+
+  /* ==========================================================================
+     Controls
+     ========================================================================== */
+
+  function radios(name, fn) {
+    var list = document.getElementsByName(name);
+    for (var i = 0; i < list.length; i++) {
+      list[i].onchange = (function (v) {
+        return function () { fn(v); };
+      })(list[i].value);
+    }
+  }
+
+  function openAdd() {
+    var host = $("adm-add-form");
+    if (!host) return;
+    addOpen = true;
+    clear(host);
+    host.hidden = false;
+
+    var f = taskForm("adm-a", normTask({ owner: "either", priority: "high", status: "todo" }));
+    host.appendChild(f.node);
+
+    var a = acts();
+    a.appendChild(btn("Add task", "adm-btn-go", function () {
+      var v = f.read();
+      if (!v.title) { f.focus(); say("A task needs a title."); return; }
+      addOpen = false;
+      host.hidden = true;
+      clear(host);
+      call("addTask", v, undefined, "add that task", function () {
+        say("Added: " + v.title);
+        render();
+      });
+      render();
+    }));
+    a.appendChild(btn("Cancel", null, function () {
+      addOpen = false;
+      host.hidden = true;
+      clear(host);
+      render();
+    }));
+    f.node.appendChild(a);
+    f.focus();
+  }
+
+  function openGoal() {
+    var host = $("adm-goal-form");
+    if (!host) return;
+    goalOpen = true;
+    clear(host);
+    host.hidden = false;
+
+    var f = goalForm("adm-ag", normGoal({ status: "open" }));
+    host.appendChild(f.node);
+
+    var a = acts();
+    a.appendChild(btn("Add goal", "adm-btn-go", function () {
+      var v = f.read();
+      if (!v.title) { f.focus(); say("A goal needs a title."); return; }
+      goalOpen = false;
+      host.hidden = true;
+      clear(host);
+      call("addGoal", v, undefined, "add that goal", function () {
+        say("Goal added: " + v.title);
+        render();
+      });
+      render();
+    }));
+    a.appendChild(btn("Cancel", null, function () {
+      goalOpen = false; host.hidden = true; clear(host); render();
+    }));
+    f.node.appendChild(a);
+    f.focus();
+  }
+
+  /* ==========================================================================
+     The gate — identical in shape to /admin
+     ========================================================================== */
+
+  var PANELS = ["adm-p-wait", "adm-p-noauth", "adm-p-out", "adm-p-no"];
+
+  function panel(id) {
+    for (var i = 0; i < PANELS.length; i++) {
+      if (PANELS[i] === id) show(PANELS[i]); else hide(PANELS[i]);
+    }
+    show("adm-gate");
+    hide("adm-main");
+  }
+
+  /* Every panel gets its own hidden attribute back, not just the wrapper —
+     see the note on the same function in admin/index.html. */
+  function opened() {
+    for (var i = 0; i < PANELS.length; i++) { hide(PANELS[i]); }
+    hide("adm-gate");
+    show("adm-main");
+  }
+
+  function whenFBT(cb) {
+    if (window.FBT) { cb(window.FBT); return; }
+    var waited = 0;
+    var t = setInterval(function () {
+      waited += 80;
+      if (window.FBT) { clearInterval(t); cb(window.FBT); return; }
+      if (waited >= 6000) { clearInterval(t); cb(null); }
+    }, 80);
+  }
+
+  function wireSignOut(id) {
+    var b = $(id);
+    if (!b) return;
+    b.onclick = function () {
+      try { if (window.FBU && typeof window.FBU.signOut === "function") window.FBU.signOut(); }
+      catch (e) {}
+      panel("adm-p-out");
+    };
+  }
+
+  function greet(me) {
+    var n = $("adm-who-t");
+    if (!n) return;
+    clear(n);
+    var who = "";
+    if (me) { who = me.name || me.email || me.uid || ""; }
+    who = String(who || "").replace(/^\s+|\s+$/g, "");
+    n.appendChild(document.createTextNode("Signed in as "));
+    var b = el("b", null, who || "this account");   /* textContent, never innerHTML */
+    n.appendChild(b);
+    n.appendChild(document.createTextNode(". Everything you change here appears on the other screen straight away."));
+  }
+
+  function start() {
+    opened();
+
+    radios("adm-group", function (v) { groupBy = v; render(); });
+    radios("adm-who", function (v) { ownerFilter = v; render(); });
+
+    var add = $("adm-add-open");
+    if (add) add.onclick = function () { if (addOpen) return; openAdd(); };
+    var g = $("adm-goal-open");
+    if (g) g.onclick = function () { if (goalOpen) return; openGoal(); };
+
+    var more = $("adm-hist-more");
+    if (more) more.onclick = function () { histShown += HIST_STEP; renderHistory(); };
+
+    render();
+
+    try {
+      if (typeof FBT.watchTasks === "function") {
+        FBT.watchTasks(function (list) {
+          var out = [], i;
+          list = list || [];
+          for (i = 0; i < list.length; i++) { out.push(normTask(list[i])); }
+          TASKS = out;
+          tasksSeen = true;
+          incoming();
+        });
+      } else { tasksSeen = true; render(); }
+    } catch (e) { tasksSeen = true; fail("read the tasks", e); }
+
+    try {
+      if (typeof FBT.watchGoals === "function") {
+        FBT.watchGoals(function (list) {
+          var out = [], i;
+          list = list || [];
+          for (i = 0; i < list.length; i++) { out.push(normGoal(list[i])); }
+          GOALS = out;
+          goalsSeen = true;
+          incoming();
+        });
+      } else { goalsSeen = true; render(); }
+    } catch (e2) { goalsSeen = true; render(); }
+  }
+
+  function boot(fbt) {
+    FBT = fbt;
+    wireSignOut("adm-signout");
+    wireSignOut("adm-signout-no");
+
+    if (!FBT || typeof FBT.ready !== "function") { panel("adm-p-noauth"); return; }
+
+    /* The vocabulary, if the data layer publishes its own. */
+    try {
+      if (FBT.OWNERS && FBT.OWNERS.length) OWNERS = FBT.OWNERS;
+      if (FBT.PRIORITIES && FBT.PRIORITIES.length) PRIORITIES = FBT.PRIORITIES;
+      if (FBT.STATUSES && FBT.STATUSES.length) STATUSES = FBT.STATUSES;
+    } catch (e) {}
+
+    try {
+      if (window.FBU && typeof window.FBU.onChange === "function") {
+        window.FBU.onChange(function (u) {
+          /* Signing out with the board open takes the board away rather than
+             leaving both of your task lists on a shared laptop. */
+          if (!u) { TASKS = []; GOALS = []; panel("adm-p-out"); }
+        });
+      }
+    } catch (e3) {}
+
+    var settled = false;
+    function decide(r) {
+      if (settled) return;
+      settled = true;
+      if (r && r.ok) {
+        var me = null;
+        try { me = typeof FBT.me === "function" ? FBT.me() : null; } catch (e4) {}
+        greet(me);
+        start();
+        return;
+      }
+      var why = r && r.why ? String(r.why) : "sdk_failed";
+      if (why === "signed_out") { panel("adm-p-out"); return; }
+      if (why === "not_admin")  { panel("adm-p-no");  return; }
+      panel("adm-p-noauth");
+    }
+
+    try {
+      var p = FBT.ready();
+      if (p && typeof p.then === "function") {
+        p.then(decide, function () { decide({ ok: false, why: "sdk_failed" }); });
+      } else { decide({ ok: false, why: "sdk_failed" }); }
+    } catch (e5) { decide({ ok: false, why: "sdk_failed" }); }
+
+    setTimeout(function () { decide({ ok: false, why: "sdk_failed" }); }, 12000);
+  }
+
+  whenFBT(boot);
+})();
+</script>
+
+</body>
+</html>

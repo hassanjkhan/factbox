@@ -656,3 +656,23 @@
 @media (prefers-reduced-motion: reduce){
   .dsh-more > summary::after{ transition:none }
 }
+
+
+/* --------------------------------------------------------------------------
+   The admin nav. Reuses .dsh-bar's shell so it sits in the same rhythm as the
+   date range beneath it; only the alignment differs, because this row is
+   labels and links rather than fields.
+   -------------------------------------------------------------------------- */
+.dsh-nav{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.dsh-nav .dsh-who{
+  flex:1 1 auto; min-width:0;
+  font-size:var(--fs-note); color:var(--dim);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+@media (max-width:520px){
+  /* On a phone the address is the first thing to give up its line, not the
+     buttons — the buttons are why anybody opened this row. */
+  .dsh-nav .dsh-who{flex:1 1 100%; white-space:normal}
+}

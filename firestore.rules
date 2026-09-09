@@ -22,6 +22,35 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // --- The two of us -----------------------------------------------------
+    // An admin is a `customers/{uid}` document carrying `admin == true` OR
+    // `role == "admin"`. Both flags, because that is what js/auth.js accepts
+    // (adminFlag, in the customer snapshot it already has open) and what
+    // functions/insights.js filters on in adminUids() — a rule that honoured
+    // only one of them would let somebody through the analytics door and not
+    // the task board, or the other way round, and nobody would find out until
+    // Kathryn's writes started failing.
+    //
+    // This is a document READ per request, which is why it is used on two
+    // collections and not on the reader's hot path. `customers/{uid}` is
+    // written by the Stripe webhook and by the console, and by no browser at
+    // all (`allow write: if false` above), so the flag cannot be granted from
+    // the client side: a client that could set `admin: true` on itself would
+    // own everything below.
+    //
+    // exists() first: get() on a document that is not there returns null and
+    // reading .data off null is an evaluation error, which denies — the same
+    // answer, but by accident rather than on purpose.
+    function adminData() {
+      return get(/databases/$(database)/documents/customers/$(request.auth.uid)).data;
+    }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/customers/$(request.auth.uid))
+        && (adminData().get("admin", false) == true
+            || adminData().get("role", "") == "admin");
+    }
+
     // --- Shape helpers for the one client-written document ---------------
     // Each is "absent, or the right type and small enough". Absent is legal
     // because a question the reader skipped must produce no field at all.
@@ -38,6 +67,14 @@ service cloud.firestore {
         || (request.resource.data[k] is int
             && request.resource.data[k] >= 0
             && request.resource.data[k] <= n);
+    }
+    // "present, a string, not empty, and small enough" — the opposite of
+    // shortStr, for the fields a row cannot exist without.
+    function reqStr(k, n) {
+      return k in request.resource.data
+        && request.resource.data[k] is string
+        && request.resource.data[k].size() > 0
+        && request.resource.data[k].size() <= n;
     }
 
     // --- The reader's own record -----------------------------------------
@@ -404,6 +441,114 @@ service cloud.firestore {
     // the Stripe webhook and by nothing else.
     match /promo_codes/{code} {
       allow read, write: if false;
+    }
+
+    // --- The board the two of us run on (js/admin-tasks.js, admin/tasks.html) -
+    //
+    // `admin_tasks/{id}` is one thing to do; `admin_goals/{id}` is one thing to
+    // hit by a human deadline ("this week"). Hassan and Kathryn both edit both,
+    // live, from the browser — which makes these the only client-WRITTEN
+    // collections on the site outside a reader's own subdocuments, and the only
+    // ones where the client doing the writing is trusted with more than its own
+    // row.
+    //
+    // ADMINS ONLY, BOTH WAYS, NO EXCEPTIONS. Not "read if signed in" — a
+    // stranger with an account must get nothing, not a partial list, because
+    // the board says out loud what is unfinished about the money path, which
+    // Stripe keys are still test, and what we know is broken. Read is therefore
+    // the same isAdmin() as write. There is no query-shaped escape hatch either:
+    // a `where` clause cannot widen a rule, so a non-admin listing this
+    // collection is denied outright rather than handed the documents that
+    // happen to match.
+    //
+    // THE SHAPE IS CHECKED HERE, not in the client. js/admin-tasks.js coerces
+    // every value before it sends it, and that is a convenience for whoever is
+    // typing, not a boundary: the site is static, its JavaScript is public, and
+    // anybody holding an admin account could open a console and write whatever
+    // shape they liked. So the enums are listed again below, in full. If the
+    // two lists ever disagree, this one is the one that decides.
+    //
+    // ONE UNLISTED KEY DENIES THE WHOLE WRITE, exactly as the onboarding rule
+    // above works, and note what hasOnly() means on an UPDATE:
+    // request.resource.data is the document as it will be AFTER the merge, not
+    // the patch. So a field written by hand in the console, or by an older
+    // version of the seeder, does not sit there harmlessly — it makes every
+    // later edit from the browser fail. That is the intended direction (a
+    // surprise is refused, not absorbed), and it is why tools/seed-tasks.js
+    // writes these eleven keys and nothing else, keeping its idempotency key in
+    // the DOCUMENT ID rather than in a twelfth field.
+    //
+    // TIMESTAMPS COME OFF THE SERVER CLOCK. `updatedAt` must equal request.time
+    // on every write, which means the client has to send serverTimestamp() and
+    // cannot forge "I edited this first". On create, `createdAt` must equal
+    // request.time as well; on update it must equal what is already stored, so
+    // an edit cannot rewrite when a task appeared. `doneAt` is the one
+    // timestamp a client may set freely-ish — timestamp or null — because the
+    // seeder backdates it to the real commit date and the board has to be able
+    // to show that history.
+    //
+    // `updatedBy` must be the writer's own uid, off their ID token. Two people
+    // share this board and "who moved this" is the only thing either of them
+    // can ask about a change; a field the client could put any string in would
+    // answer that question wrongly and confidently.
+    function taskShape() {
+      return request.resource.data.keys().hasOnly([
+               "title", "detail", "owner", "priority", "status", "area",
+               "order", "createdAt", "updatedAt", "doneAt", "updatedBy"
+             ])
+        && reqStr("title", 120)
+        && shortStr("detail", 600)
+        && shortStr("area", 40)
+        && request.resource.data.owner in ["hassan", "kathryn", "either"]
+        && request.resource.data.priority in ["high", "low"]
+        && request.resource.data.status in ["todo", "doing", "done"]
+        && request.resource.data.order is number
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && (!("doneAt" in request.resource.data)
+            || request.resource.data.doneAt == null
+            || request.resource.data.doneAt is timestamp)
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+    function goalShape() {
+      return request.resource.data.keys().hasOnly([
+               "title", "detail", "target", "status",
+               "order", "createdAt", "updatedAt", "updatedBy"
+             ])
+        && reqStr("title", 120)
+        && shortStr("detail", 600)
+        && shortStr("target", 40)
+        && request.resource.data.status in ["open", "hit", "missed"]
+        && request.resource.data.order is number
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
+    match /admin_tasks/{id} {
+      allow read: if isAdmin();
+      allow delete: if isAdmin();
+      allow create: if isAdmin()
+        && taskShape()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin()
+        && taskShape()
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /admin_goals/{id} {
+      allow read: if isAdmin();
+      allow delete: if isAdmin();
+      allow create: if isAdmin()
+        && goalShape()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin()
+        && goalShape()
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.createdAt == resource.data.createdAt;
     }
 
     // --- Everything else --------------------------------------------------

@@ -75,6 +75,8 @@ PAGES = [
     "subscription.html", "unlock.html", "start.html", "support.html",
     "credits.html", "terms.html", "privacy.html",
     "admin/dashboard.html",
+    "admin/index.html",
+    "admin/tasks.html",
 ]
 
 # src="/js/x.js" or href="/css/x.css", with or without a stamp already on it.
