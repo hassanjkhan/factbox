@@ -495,6 +495,7 @@ const KNOWN_EVENTS = [
   "rec_click", "rec_view", "resume_used", "second_story_shown",
   "signin_email", "signin_google", "signout", "signup_email",
   "ob_answer", "ob_done", "ob_leave", "ob_step",
+  "promo_applied", "promo_redeem", "promo_seen",
   "stack_complete", "stack_dropoff", "stack_open", "story_time",
   "subscribe_click", "trial_cta_clicked", "ui_click"
 ];

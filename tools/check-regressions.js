@@ -632,6 +632,188 @@ const CHECKS = [
       return true;
     },
   },
+  {
+    name: "the longer trial cannot be promised without a validated code",
+    why: "The campaign is 'comment HISTORY and I'll DM you a week free'. The " +
+         "site must never say a week unless the reader is actually getting a " +
+         "week. There are exactly two states — no valid code means the " +
+         "standard wording, a valid code means the longer wording AND a " +
+         "checkout that grants it — and the worst outcome available is the " +
+         "third one: week-free copy with a three-day checkout behind it. That " +
+         "promises something the till will not honour, which is the class of " +
+         "defect STRIPE.md and this file exist to prevent. The way it comes " +
+         "back is somebody typing the campaign's promise into markup, or " +
+         "adding a second trial sentence that FBA.trialDays() does not feed.",
+    pass: () => {
+      /* Comments quote the campaign line on purpose — that is how the next
+         person knows what this is for — so they come out before the search,
+         the same rule tools/check-account-cache.js uses. HTML comments and
+         block comments go entirely; only lines that START with // are treated
+         as line comments, so a URL is never mistaken for one. */
+      const strip = (t) => t
+        .replace(/<!--[\s\S]*?-->/g, " ")
+        .replace(/\/\*[\s\S]*?\*\//g, " ")
+        .replace(/^\s*\/\/.*$/gm, " ");
+
+      /* Every way a longer trial can be spelled in reader-facing copy. The
+         standard trial is 3 days, so none of these can be true today for a
+         reader who has not been validated. */
+      const PROMISE = /\b(a |one )?week(s)? free\b|\b7[- ]days? free\b|\bseven[- ]days? free\b|\bfree (for )?(a |one )?week\b/i;
+
+      const files = fs.readdirSync(ROOT).filter((f) => f.endsWith(".html"))
+        .concat(fs.readdirSync(path.join(ROOT, "js"))
+          .filter((f) => f.endsWith(".js")).map((f) => "js/" + f));
+
+      for (const f of files) {
+        const src = strip(read(f));
+        const m = PROMISE.exec(src);
+        if (m) {
+          const at = src.slice(Math.max(0, m.index - 60), m.index + 60)
+            .replace(/\s+/g, " ").trim();
+          return f + ' contains the literal "' + m[0] + '" outside a comment: ' +
+                 '…' + at + '… — the trial sentence must come from ' +
+                 'FBA.trialWords()/trialShort(), never from typed copy';
+        }
+      }
+
+      /* 2 · the static markup on /join must say the STANDARD length. The
+         three <b class="jn-trial"> strings are what a script-less reader
+         sees and what the page shows before promoBoot() has heard anything
+         back, so they must be the trial nobody has to earn. */
+      const acct = read("js/account.js");
+      const td = /var TRIAL_DAYS = (\d+);/.exec(acct);
+      if (!td) return "js/account.js no longer declares TRIAL_DAYS";
+      const WORDS = ["zero", "one", "two", "three", "four", "five", "six",
+                     "seven", "eight", "nine", "ten"];
+      const expect = (WORDS[Number(td[1])] || td[1]) + " days free";
+      const jn = read("join.html").match(/<b class="jn-trial">([^<]*)<\/b>/g) || [];
+      if (!jn.length) return "join.html has no <b class=\"jn-trial\"> strings left";
+      for (const tag of jn) {
+        const inner = /<b class="jn-trial">([^<]*)<\/b>/.exec(tag)[1].trim();
+        if (inner.toLowerCase() !== expect) {
+          return 'join.html static markup says "' + inner + '" where TRIAL_DAYS = ' +
+                 td[1] + ' means it must say "' + expect + '"';
+        }
+      }
+
+      /* 3 · one source for the sentence. trialWords/trialShort must read
+         trialDays(), and trialDays() must be the thing that consults the
+         promo. Point either of them back at the TRIAL_DAYS constant and a
+         validated reader silently gets the standard wording; point the copy
+         somewhere else entirely and the promo can be shown without a link. */
+      const a = acct.replace(/\/\*[\s\S]*?\*\//g, " ");
+      if (!/function trialDays\(\)\s*\{\s*return PROMO_ON \? PROMO\.trialDays : TRIAL_DAYS;/.test(a)) {
+        return "js/account.js trialDays() no longer resolves the promo — it is " +
+               "the single answer every trial sentence is drawn from";
+      }
+      if (!/function trialShort\(\)\s*\{\s*return trialDays\(\)/.test(a) ||
+          !/function trialWords\(\)\s*\{\s*return words\(trialDays\(\)\)/.test(a)) {
+        return "js/account.js trialShort()/trialWords() no longer read trialDays()";
+      }
+
+      /* 4 · the ONLY switch, and it is gated on a real Payment Link. */
+      const setsOn = (a.match(/PROMO_ON = true/g) || []).length;
+      if (setsOn !== 1) {
+        return "js/account.js turns PROMO_ON on in " + setsOn + " places; there " +
+               "must be exactly one, inside applyPromo()";
+      }
+      const applyBody = /function applyPromo\(days\)[\s\S]*?\n  \}/.exec(a);
+      if (!applyBody) return "js/account.js no longer defines applyPromo(days)";
+      if (!/n !== PROMO\.trialDays/.test(applyBody[0]) ||
+          !/if \(!promoReady\(\)\)/.test(applyBody[0])) {
+        return "applyPromo() no longer refuses when the function's trial length " +
+               "disagrees, or when there is no promotional Payment Link — those " +
+               "two refusals are what stop the week-free copy appearing over a " +
+               "three-day checkout";
+      }
+
+      /* 5 · the browser must never learn the trial length from the URL. The
+         code in a link is a claim; only functions/promo.js's answer is a
+         fact. So join.html gets exactly one applyPromo() call, and its
+         argument is the function's reply. */
+      const jsrc = read("join.html").replace(/\/\*[\s\S]*?\*\//g, " ");
+      const calls = jsrc.match(/applyPromo\(([^)]*)\)/g) || [];
+      const real = calls.filter((c) => !/^applyPromo\(\)$/.test(c));
+      if (real.length !== 1 || !/applyPromo\(r\.trialDays\)/.test(real[0])) {
+        return "join.html calls applyPromo as [" + real.join(", ") + "]; it must " +
+               "be called exactly once, with the trial length functions/promo.js " +
+               "returned — never with anything read out of the query string";
+      }
+      if (!/promoCall\("validate"/.test(jsrc) || !/promoCall\("redeem"/.test(jsrc)) {
+        return "join.html no longer validates on load and redeems at checkout";
+      }
+
+      return true;
+    },
+  },
+  {
+    name: "the promo trial length agrees everywhere",
+    why: "Three systems that cannot import from each other hold the same " +
+         "number: js/account.js decides the WORDING and which Payment Link " +
+         "the reader is sent to, functions/promo.js decides whether a code is " +
+         "honoured at all, and tools/mint-promo-codes.js writes it onto every " +
+         "code it mints. Let them drift and the site says one length while the " +
+         "checkout grants another — or, if the function's clamp catches it, a " +
+         "whole campaign of codes validates as `unknown` and every reader who " +
+         "was DM'd a week gets the standard trial with nothing said about it.",
+    pass: () => {
+      const num = (file, re, what) => {
+        const m = re.exec(read(file));
+        return m ? { n: Number(m[1]), where: file + " " + what }
+                 : { n: null, where: file + " " + what };
+      };
+      const seen = [
+        num("js/account.js", /var PROMO = \{[\s\S]{0,2000}?trialDays:\s*(\d+)/, "PROMO.trialDays"),
+        num("functions/promo.js", /const PROMO_TRIAL_DAYS = (\d+);/, "PROMO_TRIAL_DAYS"),
+        num("tools/mint-promo-codes.js", /const TRIAL_DAYS = (\d+);/, "TRIAL_DAYS"),
+      ];
+      const missing = seen.filter((x) => !(x.n > 0));
+      if (missing.length) return "cannot find " + missing.map((x) => x.where).join(", ");
+      const first = seen[0].n;
+      const off = seen.filter((x) => x.n !== first);
+      if (off.length) {
+        return seen.map((x) => x.where + " = " + x.n).join(", ") + " — they must agree";
+      }
+
+      /* And the promo must be LONGER than the standard trial. A promo equal to
+         or shorter than the standard one is a campaign that promises a reader
+         something they already had, and the copy would go backwards. */
+      const std = /var TRIAL_DAYS = (\d+);/.exec(read("js/account.js"));
+      if (std && Number(std[1]) >= first) {
+        return "the promo trial is " + first + " days and the standard trial is " +
+               std[1] + " — a promo must be longer than what everybody gets";
+      }
+
+      /* The alphabet the minter uses and the alphabet the function accepts
+         must be the same string, or every minted code validates as unknown. */
+      const mintA = /const ALPHABET = "([^"]+)";/.exec(read("tools/mint-promo-codes.js"));
+      const fnA = /const ALPHABET = "([^"]+)";/.exec(read("functions/promo.js"));
+      if (!mintA || !fnA) return "the code alphabet is no longer declared in both files";
+      if (mintA[1] !== fnA[1]) {
+        return "the minter's alphabet and the function's alphabet differ — every " +
+               "code minted would validate as `unknown`";
+      }
+      const mintL = /const CODE_LEN = (\d+);/.exec(read("tools/mint-promo-codes.js"));
+      const fnL = /const CODE_LEN = (\d+);/.exec(read("functions/promo.js"));
+      if (!mintL || !fnL || mintL[1] !== fnL[1]) {
+        return "the minter and the function disagree about code length";
+      }
+      /* The alphabet is the campaign's whole defence against a for-loop, and
+         it is also what makes a code survive being read off a DM. Both O/0
+         and I/1/l must be absent, and so must the vowels that let a random
+         string spell a word. */
+      if (/[AEIOUL01]/.test(fnA[1])) {
+        return "the code alphabet contains one of A E I O U L 0 1 — the vowels " +
+               "let a random code spell a word, and O/0 and I/1/l are the pairs " +
+               "that break a code retyped from a DM";
+      }
+      if (fnA[1].length < 24 || Number(fnL[1]) < 10) {
+        return "the code space has shrunk below 24^10 — a sequential or short " +
+               "code means one person with a for-loop drains the campaign";
+      }
+      return true;
+    },
+  },
 ];
 
 /* A check returns `true`, or a STRING saying what it found. It used to be

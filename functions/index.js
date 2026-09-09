@@ -577,3 +577,21 @@ exports.insights = require("./insights").insights;
    -------------------------------------------------------------------------- */
 exports.alertsWatch = require("./alerts").alertsWatch;
 exports.alertsNewAccount = require("./alerts").alertsNewAccount;
+
+/* --------------------------------------------------------------------------
+   The comment→DM campaign's promo codes. Its own file for the same reason as
+   the five above, and the reason applies here as hard as anywhere: the
+   webhook at the top of this file is deployed, working and load-bearing for
+   revenue, and the cheapest way to keep it that way is to not edit it.
+
+   `promo.js` reads `promo_codes/{CODE}` — a collection firestore.rules denies
+   the browser both ends of, exactly as it denies `stories/` — and answers two
+   questions: what is this code (no write, so a DM link can be opened twice),
+   and mark it spent by this uid (one transaction, at the moment checkout
+   starts).
+
+   IT CANNOT GRANT ANYTHING. A promo code changes which Stripe Payment Link a
+   reader is sent to and nothing else. `customers/{uid}.premium` is written by
+   the webhook above and by nothing else in this repository.
+   -------------------------------------------------------------------------- */
+exports.promo = require("./promo").promo;

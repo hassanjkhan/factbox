@@ -746,3 +746,89 @@ because nothing had asked to be told.
 true for the two permanently free stories and for today's, and a signed-out
 reader on one of those has drawn an unlocked page while `can()` is false.
 Registering there would reload a page that is perfectly correct.
+
+
+## 12. Promo codes — the longer trial, and why one cannot grant anything
+
+Built for the comment→DM campaign: Kathryn posts a reel, "comment HISTORY and
+I'll DM you a week free", ManyChat DMs each commenter
+`https://factbox.app/join?code=XXXX-XXXX-XXXX`, and that reader gets a **7-day**
+trial where everybody else gets `TRIAL_DAYS`.
+
+### The rule the whole design is bent around
+
+**The site must never say "a week free" unless the reader is actually getting
+a week.** There are exactly two states and no way to render the third:
+
+| | wording | checkout |
+|---|---|---|
+| no valid code | `FBA.trialWords()` at `TRIAL_DAYS` | the normal Payment Link |
+| valid code | `FBA.trialWords()` at `PROMO.trialDays` | the promo Payment Link |
+
+The third state — week-free copy over a three-day checkout — promises
+something the till will not honour. That is the same class of defect as
+printing $35 for a $35.88 charge (§2), arrived at from a third direction, and
+`tools/check-regressions.js` fails the build on it two ways: no reader-facing
+"week"/"7 days free" string may exist outside a comment in any `.html` or
+`js/*.js`, and the promo trial length must agree across `js/account.js`,
+`functions/promo.js` and `tools/mint-promo-codes.js`.
+
+### A code is not entitlement, and cannot become it
+
+`customers/{uid}.premium` is written by the webhook in §3 and by nothing else.
+All a promo code does is change **which Payment Link `FBA.checkoutURL()`
+returns**. The reader still hands Stripe a card, Stripe still posts the
+webhook, and the webhook still writes the boolean. Minting ten thousand codes
+gives away ten thousand longer *trials*, not ten thousand subscriptions. If a
+change here can make somebody premium without a Stripe event, that change is
+wrong.
+
+### The pieces
+
+- `functions/promo.js` — two ops. `validate` reads and never writes, because a
+  DM link gets opened twice and a validate that spends the code silently
+  demotes the reader on their second visit. `redeem` marks it used against a
+  **verified** Firebase uid, in a transaction, at the moment checkout starts,
+  and is idempotent for the uid that already holds it.
+- `promo_codes/{CODE}` in Firestore, denied to the browser both ways in
+  `firestore.rules`, for the same reason `stories/` is: an open read rule
+  would let any browser holding the SDK enumerate the campaign and drain it.
+  The function is the only door, so the door can be watched.
+- `tools/mint-promo-codes.js` — writes N codes with a service-account key and
+  prints them one per line for ManyChat. Codes are `crypto.randomBytes` with
+  rejection sampling, 12 symbols from a 28-symbol alphabet with no vowels and
+  no `L`, `O`, `0`, `I` or `1`: ~57.7 bits, so a for-loop cannot drain the
+  campaign, and nothing confusable survives being retyped out of a DM.
+- `js/account.js` `PROMO` — the trial length and the Payment Links, in one
+  block, held to the same discipline as `amountCents` and `link`.
+
+### Switching it on — the whole edit
+
+**The promo Payment Links do not exist yet.** Until they do, a valid code
+falls back to the standard link *and* the standard wording, and says so in the
+browser console. To launch:
+
+1. In Stripe, duplicate each offered Payment Link and set its trial to 7 days.
+   Same price, same product, nothing else changed.
+2. Paste the URLs into `PROMO.links` in `js/account.js`:
+
+```js
+    links: {
+      monthly: "https://buy.stripe.com/<the new 7-day monthly link>",
+      annual:  "https://buy.stripe.com/<the new 7-day annual link>"
+    }
+```
+
+3. `python3 tools/stamp-assets.py && python3 tools/compose.py`
+
+One line per **offered** plan, not one for the campaign, because a Payment
+Link is a price *and* a trial: a single promo URL would charge every promo
+reader the same plan whichever rung they tapped. `promoReady()` requires
+*every* offered plan to have one — the wording is gated on the weakest rung,
+so a reader shown the week cannot tap into a three-day checkout.
+
+`PROMO.trialDays`, `PROMO_TRIAL_DAYS` in `functions/promo.js`, and the
+`trial_period_days` on those two links are three copies of one fact. The first
+two are asserted against each other by `tools/check-regressions.js`; Stripe's
+own setting is checked the way §2 checked the three-day figure, by loading the
+link and reading what its checkout says.

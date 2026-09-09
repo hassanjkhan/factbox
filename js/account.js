@@ -205,6 +205,76 @@ var FBA = (function () {
     base: "monthly"
   };
 
+  /* ======================================================================
+     PROMO — THE LONGER TRIAL, AND THE ONE PLACE IT IS CONFIGURED.
+
+     THE CAMPAIGN. Kathryn posts a reel: "comment HISTORY and I'll DM you a
+     week free." ManyChat DMs each commenter /join?code=XXXX-XXXX-XXXX with a
+     code minted for them alone. functions/promo.js validates it. If the
+     answer is `valid`, applyPromo() below switches THIS FILE over — the trial
+     wording and the checkout URL together, from one flag, so they cannot
+     disagree.
+
+     THE ONE RULE. The site must never say "a week free" unless the reader is
+     actually getting a week. So the wording and the link move as a pair, the
+     same discipline `amountCents` and `link` are held to above: a promo that
+     changes the copy without changing the URL is the discrepancy this whole
+     block exists to make impossible.
+
+     ---------------------------------------------------------------------
+     HASSAN: THE PAYMENT LINKS BELOW DO NOT EXIST YET.
+
+     Until they do, a VALID code falls back to the standard link AND the
+     standard copy — never the week-free copy with a three-day checkout
+     behind it. promoReady() is that gate, applyPromo() refuses when it is
+     false, and it says so in the console every time, loudly, because a
+     campaign that silently under-delivers is worse than one that visibly
+     has not launched.
+
+     TO SWITCH THE CAMPAIGN ON, in Stripe first and then here:
+
+       1. In Stripe, duplicate each offered Payment Link and set its trial to
+          7 days. Nothing else changes: same price, same product.
+       2. Paste each new URL into `links` below. That is the whole edit —
+          one line per offered plan, and the whole site follows.
+
+     There is one line per OFFERED plan rather than one line for the whole
+     campaign because a Payment Link is a price AND a trial. One promo URL
+     for both rungs would charge every promo reader the same plan whichever
+     one they tapped. Promising a week and then selling the wrong plan is the
+     same class of defect as promising a week and selling a three-day trial.
+
+     `trialDays` MUST EQUAL the `trial_period_days` on those links, and MUST
+     EQUAL `PROMO_TRIAL_DAYS` in functions/promo.js. Three copies of one fact
+     in three systems that cannot import from each other. The first two are
+     asserted by tools/check-regressions.js; the third is checked the way
+     STRIPE.md §2 checked the three-day figure, by loading the link.
+     ====================================================================== */
+  var PROMO = {
+    /* seven. Written as a number so no page has to spell it, exactly as
+       TRIAL_DAYS is, and so the 7-vs-14 test is one edit here plus one in
+       Stripe plus one in functions/promo.js. */
+    trialDays: 7,
+
+    /* What the codes were minted for. Descriptive only — the campaign a code
+       belongs to is a field on its Firestore document, not something this
+       file gets a vote on. */
+    campaign: "history-reel",
+
+    /* Keyed by PRICING.plans[].key. Empty string means "no link yet", which
+       means no promo, which means the standard copy. */
+    links: {
+      monthly: "",
+      annual:  ""
+    }
+  };
+
+  /* Has a validated code switched the longer trial on for this page view?
+     Set ONLY by applyPromo(), which is called ONLY with an answer from
+     functions/promo.js. Never from the URL: the code in a link is a claim,
+     and only the function's answer is a fact. */
+  var PROMO_ON = false;
+
   /* Stripe's documented Payment Link URL parameters. prefilled_email fills in
      the email field on the payment page (the buyer can still change it);
      client_reference_id is an arbitrary string that comes back on the
@@ -281,11 +351,104 @@ var FBA = (function () {
     } catch (e) { return String(n); }
   }
 
-  function trialDays() { return TRIAL_DAYS; }
+  /* ======================================================================
+     THE TRIAL, AS ONE ANSWER.
+
+     Every sentence on the site that names the length of the free trial is
+     computed from trialDays() below, and trialDays() is the ONLY thing that
+     knows whether a validated promo code is in play. That is the whole design:
+     join.html does not have a promo branch, the copy is not forked, and there
+     is no second place where a "week" could be typed. Turn the promo on or
+     off and all three sentences and the button move together, because they
+     are all the same function call.
+     ====================================================================== */
+
+  /* Is there a real promo Payment Link for this plan? "" means not yet. */
+  function promoLink(key) {
+    try {
+      var v = PROMO.links[key];
+      return (typeof v === "string" && v) ? v : "";
+    } catch (e) { return ""; }
+  }
+
+  /* promoReady() — MAY the longer wording be shown at all?
+
+     True only when EVERY plan a new reader may pick has a promo link. Not
+     "at least one": a reader shown the week-free copy may tap either rung,
+     and a rung with no promo link would send them to a standard-trial
+     checkout under copy promising a week. That is the exact combination this
+     feature is not allowed to produce, so it is gated on the weakest rung
+     rather than the strongest.
+
+     Retired rungs are deliberately not counted. Nobody is OFFERED quarterly,
+     so no promo reader can pick it; checkoutURL() still has a guard for the
+     bookmarked case. */
+  function promoReady() {
+    try {
+      var i, list = PRICING.plans, any = false;
+      for (i = 0; i < list.length; i++) {
+        if (!list[i].offered) continue;
+        any = true;
+        if (!promoLink(list[i].key)) return false;
+      }
+      return any;
+    } catch (e) { return false; }
+  }
+
+  /* applyPromo(days) — the ONLY way the longer trial is ever switched on.
+
+     `days` is what functions/promo.js said, and it is checked rather than
+     believed: if the server's number and this file's number disagree, the
+     copy on screen and the trial on the Payment Link disagree too, and the
+     honest answer is the standard trial. Returns true only if the longer
+     wording is now genuinely backed by a longer checkout.
+
+     Both refusals are LOUD. A campaign that silently degrades to the standard
+     trial looks, in every report and to every reader, exactly like a campaign
+     that is working. */
+  function applyPromo(days) {
+    try {
+      var n = Math.round(Number(days));
+      if (!isFinite(n) || n !== PROMO.trialDays) {
+        try {
+          console.warn("[FBA] promo REFUSED: the function says " + days +
+            " trial days and js/account.js PROMO.trialDays is " + PROMO.trialDays +
+            ". Falling back to the standard trial. These two must agree — see " +
+            "the PROMO block in js/account.js and PROMO_TRIAL_DAYS in " +
+            "functions/promo.js.");
+        } catch (e1) {}
+        PROMO_ON = false;
+        return false;
+      }
+      if (!promoReady()) {
+        try {
+          console.warn("[FBA] promo code is VALID but there is no promotional " +
+            "Payment Link yet: PROMO.links in js/account.js is still empty for " +
+            "at least one offered plan. Falling back to the standard trial and " +
+            "the standard wording, deliberately — the site must never promise a " +
+            "trial the checkout will not honour. Paste the new Stripe URLs into " +
+            "PROMO.links to switch the campaign on.");
+        } catch (e2) {}
+        PROMO_ON = false;
+        return false;
+      }
+      PROMO_ON = true;
+      return true;
+    } catch (e) { PROMO_ON = false; return false; }
+  }
+
+  function clearPromo() { PROMO_ON = false; }
+  function promoOn()    { return !!PROMO_ON; }
+  /* The configured length, whether or not it is switched on. For the guard
+     and for anything that wants to describe the campaign. */
+  function promoDays()  { try { return Number(PROMO.trialDays) || 0; } catch (e) { return 0; } }
+
+  /* THE ONE ANSWER. Everything below and everything in join.html reads this. */
+  function trialDays() { return PROMO_ON ? PROMO.trialDays : TRIAL_DAYS; }
   /* "3 days free" — for buttons, where the numeral reads faster. */
-  function trialShort() { return TRIAL_DAYS + " days free"; }
+  function trialShort() { return trialDays() + " days free"; }
   /* "three days free" — for sentences. Capitalise at the call site. */
-  function trialWords() { return words(TRIAL_DAYS) + " days free"; }
+  function trialWords() { return words(trialDays()) + " days free"; }
 
   /* shape() — one raw record into everything a screen could want to say
      about it. It never throws; the worst case is the charged figure with no
@@ -341,7 +504,9 @@ var FBA = (function () {
       best:     !!raw.best,
       offered:  !!raw.offered,
       priceId:  raw.priceId,
-      trialDays: TRIAL_DAYS,
+      /* the LIVE answer, promo included — a screen rendering a plan card
+         must not be able to show a different trial from the button. */
+      trialDays: trialDays(),
       link:     raw.link || "",
       ready:    !!raw.link
     };
@@ -465,6 +630,35 @@ var FBA = (function () {
        does not exist, so every checkout button threw a ReferenceError and
        went nowhere. One identifier, the entire funnel. */
     var dest = link(key);
+
+    /* THE PROMO FORK, AND THE ONLY ONE. If a validated code switched the
+       longer trial on, the reader goes to the Payment Link whose trial is
+       actually that long. The wording they were shown came from trialDays(),
+       which is true at the same instant and for the same reason — one flag
+       moves both, which is what stops the copy and the till disagreeing.
+
+       The guard below cannot fire for a plan a reader can pick: applyPromo()
+       already refused unless every OFFERED plan has a promo link. It exists
+       for the bookmarked retired rung — somebody arriving on a quarterly URL
+       with a code in it — where honouring the old link at the old price is
+       right and quietly promising them a week is not. So the promo is turned
+       OFF, loudly, and the caller repaints from trialDays() before it
+       navigates. */
+    if (PROMO_ON) {
+      var promo = promoLink(key);
+      if (promo) {
+        dest = promo;
+      } else {
+        try {
+          console.warn("[FBA] promo is on but there is no promotional Payment " +
+            "Link for plan \"" + key + "\" — sending this reader to the standard " +
+            "link at the standard trial rather than promising a trial it will " +
+            "not honour. Repaint the trial copy.");
+        } catch (e) {}
+        PROMO_ON = false;
+      }
+    }
+
     if (!dest) return "";
     return attribute(dest);
   }
@@ -475,7 +669,14 @@ var FBA = (function () {
   function pricing() {
     var out = { currency: PRICING.currency, symbol: PRICING.symbol,
                 currencyNote: CURRENCY_NOTE,
-                base: PRICING.base, trialDays: TRIAL_DAYS, plans: [] }, i, p, c, k;
+                base: PRICING.base, trialDays: trialDays(),
+                /* the standard trial, always, whatever the promo is doing —
+                   for anything that has to describe the OFFER rather than
+                   what this reader happens to be getting */
+                standardTrialDays: TRIAL_DAYS,
+                promoTrialDays: PROMO.trialDays,
+                promoReady: promoReady(), promoOn: PROMO_ON,
+                plans: [] }, i, p, c, k;
     try {
       for (i = 0; i < PRICING.plans.length; i++) {
         p = PRICING.plans[i]; c = {};
@@ -1103,9 +1304,17 @@ var FBA = (function () {
     /* the source record itself, copied */
     pricing: pricing, PRICING: pricing(),
     /* the trial, as configuration rather than a literal in someone's copy.
-       TRIAL_DAYS stays a plain number because join.html already reads it. */
+       TRIAL_DAYS stays a plain number because join.html already reads it —
+       but nothing SHOULD read it any more: it is the standard length only,
+       and trialDays() is the live answer, promo included. */
     TRIAL_DAYS: TRIAL_DAYS, trialDays: trialDays,
     trialShort: trialShort, trialWords: trialWords, words: words,
+    /* the promo. applyPromo() is the only switch, and it is only ever called
+       with an answer from functions/promo.js — never with anything read out
+       of the URL. See the PROMO block at the top of this file. */
+    applyPromo: applyPromo, clearPromo: clearPromo, promoOn: promoOn,
+    promoReady: promoReady, promoDays: promoDays, promoLink: promoLink,
+    PROMO_TRIAL_DAYS: PROMO.trialDays, PROMO_CAMPAIGN: PROMO.campaign,
     /* meta */
     stored: stored, KEY: KEY
   };

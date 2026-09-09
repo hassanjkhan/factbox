@@ -330,7 +330,7 @@
 <script src="/js/progress.js?v=44e9d717"></script>
 <script src="/js/access.js?v=253a4e0f"></script>
 <script src="/js/gate.js?v=bfce3033"></script>
-<script src="/js/account.js?v=381c71cc"></script>
+<script src="/js/account.js?v=984b3c35"></script>
 <!-- The live founding-member count. One unauthenticated XHR against the world
      readable meta/founding document the Stripe webhook maintains; it blocks
      nothing, and when it cannot be read the plan screen simply shows the price
@@ -1151,7 +1151,12 @@
         return;
       }
       buy.disabled = false;
-      buy.textContent = "Start " + (A ? A.TRIAL_DAYS : 3) + " days free";
+      /* trialShort(), not TRIAL_DAYS. The constant is the STANDARD length; a
+         reader who arrived with a validated promo code is getting a different
+         one, and the button is the last thing they read before they tap. One
+         call, so the button cannot disagree with the three sentences above it
+         — see the PROMO block in js/account.js. */
+      buy.textContent = "Start " + (A ? A.trialShort() : "3 days free");
       show(note, false);
     } catch (e) {}
   }
@@ -1256,9 +1261,34 @@
         return;
       }
 
-      track("checkout_start", { plan: picked, attributed: uid ? "1" : "0" });
+      track("checkout_start", { plan: picked, attributed: uid ? "1" : "0",
+                                promo: promoLive ? "1" : "0" });
 
+      /* THE CODE IS SPENT HERE AND NOWHERE ELSE — one operation, at the one
+         moment a checkout genuinely begins. Validating on load must never
+         consume it, or a reader who opens their DM link twice loses the week
+         they were promised on the second tap. */
+      promoRedeemThen(function () { goCheckout(btn); });
+    } catch (e) {}
+  }
+
+  function goCheckout(btn) {
+    try {
       var url = A ? A.checkoutURL(picked) : "";
+
+      /* checkoutURL() turns the promo OFF if the picked plan has no
+         promotional Payment Link — the bookmarked retired rung. It is the
+         last gate between the copy and the till, so the copy is repainted
+         from it before we navigate rather than after. */
+      try {
+        if (promoLive && A && A.promoOn && !A.promoOn()) {
+          promoLive = false;
+          track("promo_seen", { state: "dropped", plan: String(picked) });
+          paintTrialCopy();
+          syncBuy();
+        }
+      } catch (e9) {}
+
       if (!url) {
         /* checkout_start has already fired at this point and the reader is
            going nowhere. Without this the funnel shows a checkout that started
@@ -1306,6 +1336,186 @@
                            ? capFirst(w) : w;
       }
     } catch (e) {}
+  }
+
+
+  /* ======================================================================
+     THE PROMO CODE · /join?code=XXXX-XXXX-XXXX
+
+     THE CAMPAIGN. Kathryn's reel says "comment HISTORY and I'll DM you a week
+     free". ManyChat DMs each commenter this page's URL with a code minted for
+     them alone. That reader must get the longer trial; everybody else gets the
+     standard one.
+
+     THE RULE, and it is the whole reason this is shaped the way it is:
+
+       THE CODE IN THE URL IS A CLAIM. ONLY THE FUNCTION'S ANSWER IS A FACT.
+
+     Nothing here reads a trial length out of the query string, and nothing
+     here writes a sentence. The page renders the STANDARD wording from the
+     markup and from paintTrialCopy() on load — before any of this runs — and
+     the only thing a validated code does is call FBA.applyPromo(), after
+     which the SAME paintTrialCopy() and the SAME syncBuy() run again and say
+     something different because trialDays() now answers differently. There is
+     no second copy of the trial sentence anywhere on this page, so there is
+     nowhere for a "week" to be written that a code has not paid for.
+
+     A code that is expired, already spent, invented, or mistyped changes
+     NOTHING: no error, no message, no flash, no console noise for the reader.
+     They see the standard trial they would have seen without a link. That is
+     deliberate — the alternative is telling somebody who never had a code
+     that theirs did not work.
+
+     WHAT IT CANNOT DO. A promo code never unlocks a story. It changes which
+     Stripe Payment Link this page navigates to and nothing else;
+     `customers/{uid}.premium` is written by the Stripe webhook and by nothing
+     else. STRIPE.md is the contract.
+     ====================================================================== */
+
+  var PROMO_URL = "https://us-central1-factbox-7cb97.cloudfunctions.net/promo";
+
+  /* The raw claim, exactly as typed in the URL. Only ever sent to the
+     function; never parsed, never trusted, never rendered. */
+  function promoCodeFromURL() {
+    try {
+      var q = String(location.search || "");
+      var m = /[?&]code=([^&#]*)/.exec(q);
+      if (!m) return "";
+      var v = decodeURIComponent(m[1].replace(/\+/g, " "));
+      /* Bounded so a pathological URL cannot be posted anywhere. The function
+         normalises and shape-checks it properly; this is only a length cap. */
+      return v.length > 64 ? v.slice(0, 64) : v;
+    } catch (e) { return ""; }
+  }
+
+  var promoCode = "";     /* the claim, if there is one */
+  var promoLive = false;  /* has the function said yes AND has FBA accepted */
+
+  /* One XHR helper for both operations. Sends the Firebase ID token when
+     there is one: validate uses it only so a reader who already redeemed on
+     this device is told `valid` rather than `used`, and redeem REQUIRES it,
+     because "used by whom" is worth nothing if the browser names the whom. */
+  function promoCall(op, done) {
+    var payload = { op: op, code: promoCode };
+    var u = null;
+    try { if (window.FBU && FBU.user) u = FBU.user(); } catch (e0) { u = null; }
+
+    function fire(tok) {
+      var xhr;
+      try { xhr = new XMLHttpRequest(); } catch (e1) { done(null); return; }
+      try {
+        xhr.open("POST", PROMO_URL, true);
+        xhr.timeout = 6000;
+        xhr.setRequestHeader("Content-Type", "application/json");
+        if (tok) xhr.setRequestHeader("Authorization", "Bearer " + tok);
+        xhr.onload = function () {
+          var r = null;
+          try { r = JSON.parse(xhr.responseText || "null"); } catch (e2) { r = null; }
+          done(r);
+        };
+        /* A dead network is NOT a rejected code. The caller keeps whatever it
+           already decided, which on load means the standard copy already on
+           screen, and at checkout means the promo the function validated
+           seconds ago. Either way the reader sees no error. */
+        xhr.onerror = function () { done(null); };
+        xhr.ontimeout = function () { done(null); };
+        xhr.send(JSON.stringify(payload));
+      } catch (e3) { done(null); }
+    }
+
+    if (u && typeof u.getIdToken === "function") {
+      try {
+        u.getIdToken().then(function (t) { fire(t); }, function () { fire(""); });
+        return;
+      } catch (e4) {}
+    }
+    fire("");
+  }
+
+  /* Called once on load, and only when there is a code in the URL.
+
+     It waits for identity the same way the buy button does. The wait is not
+     cosmetic: a reader who already redeemed this code, then bounced through
+     /login and came back, is `used` to an anonymous caller and `valid` to
+     their own uid. Validating before the SDK answers would silently demote
+     them to the standard trial on the second half of their own journey.
+     whenIdentityKnown() is bounded by auth.js's READY_MS and cannot hang. */
+  function promoBoot() {
+    promoCode = promoCodeFromURL();
+    if (!promoCode) return;
+    /* THREE NAMES, NOT EIGHT.
+
+       This started as promo_seen / promo_check_failed / promo_rejected /
+       promo_unavailable / promo_applied / promo_dropped / promo_redeem_lost /
+       promo_redeem_unconfirmed — one name per outcome. GA4 caps distinct
+       event names, ONBOARDING-ANALYTICS.md is built on that constraint, and
+       the onboarding covers eleven screens with four names by putting the
+       screen in a PROPERTY. Eight names for one feature spends a shared
+       budget on a private convenience.
+
+       So: promo_seen carries every validate-time outcome in `state`,
+       promo_redeem carries every redeem-time one, and promo_applied means
+       the longer trial actually switched on — the only one worth its own
+       name, because it is the one a funnel counts.
+
+       Names are the thing that cannot be changed later: a rename splits a
+       series and no query can merge the halves. Properties can be added to
+       for ever. Prefer a property.  */
+    track("promo_seen", { state: "asked" });
+
+    whenIdentityKnown(function () {
+      promoCall("validate", function (r) {
+        if (!r || r.ok !== true) { track("promo_seen", { state: "check_failed" }); return; }
+        if (r.state !== "valid") {
+          /* Silent by design. No message, no error, no repaint — the standard
+             wording is already on screen and it is the truth. */
+          track("promo_seen", { state: String(r.state || "unknown") });
+          return;
+        }
+        /* THE ONLY PLACE THE LONGER TRIAL IS EVER SWITCHED ON, and the number
+           comes from the function, never from the URL. applyPromo() refuses
+           if js/account.js has no promotional Payment Link yet, or if the two
+           trial lengths disagree — and says so loudly in the console. */
+        if (!A || !A.applyPromo || !A.applyPromo(r.trialDays)) {
+          track("promo_seen", { state: "no_link", days: String(r.trialDays || 0) });
+          return;
+        }
+        promoLive = true;
+        track("promo_applied", { campaign: String(r.campaign || ""),
+                                 days: String(r.trialDays || 0) });
+        /* The same two functions that drew the standard copy, run again. No
+           promo-specific sentence exists anywhere on this page. */
+        paintTrialCopy();
+        syncBuy();
+      });
+    });
+  }
+
+  /* Called at the moment checkout actually starts, and never before: opening
+     a DM link twice must not spend the code. If the function says the code is
+     no longer good — spent on another device, or the campaign closed between
+     the page load and the tap — the copy is walked BACK to the standard
+     wording before we navigate, so nobody reaches Stripe having just read a
+     promise this checkout will not keep.
+
+     A network failure does NOT walk it back. The code validated seconds ago;
+     refusing the promo because a request timed out would punish the reader
+     for our connectivity, and the worst case is one code marked unused that
+     was in fact used once. */
+  function promoRedeemThen(go) {
+    if (!promoLive || !promoCode) { go(); return; }
+    promoCall("redeem", function (r) {
+      if (r && r.ok === true && r.state !== "valid") {
+        track("promo_redeem", { state: String(r.state || "lost") });
+        promoLive = false;
+        try { if (A && A.clearPromo) A.clearPromo(); } catch (e) {}
+        paintTrialCopy();
+        syncBuy();
+      } else if (!r) {
+        track("promo_redeem", { state: "unconfirmed" });
+      }
+      go();
+    });
   }
 
   function money(yes) {
@@ -1418,6 +1628,11 @@
     }
 
     paintTrialCopy();
+    /* AFTER paintTrialCopy(), always. The standard wording is drawn first and
+       is correct for everybody; promoBoot() only ever UPGRADES it, and only
+       after functions/promo.js has said the code in the URL is real. A reader
+       with no code, a bad code or a dead network never sees it change. */
+    promoBoot();
     loadFirstStory();
 
     if (unlocked()) {

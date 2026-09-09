@@ -382,6 +382,30 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- The campaign's promo codes (functions/promo.js) --------------------
+    // One document per minted code, id `BCDF...` — the normalised code itself,
+    // which is what makes minting a create() that cannot silently overwrite a
+    // live code, and validate a single get by id rather than a query.
+    //
+    // Deny-all, both ways, and for exactly the reason `stories/` is deny-all:
+    // the only reader is a function running with admin credentials, which does
+    // not pass through these rules at all. A rule like `allow read: if true`
+    // would work for validation and would also let any browser holding the
+    // Firestore SDK ENUMERATE the campaign — every unspent code in one query —
+    // and drain a week of free trials into a for-loop. Making the function the
+    // only door means the door can be watched and rate-limited.
+    //
+    // Write is closed for the obvious reason: a client that could write here
+    // could mint itself a code, or un-spend one. Nothing on the site writes
+    // these; tools/mint-promo-codes.js does, with a service-account key.
+    //
+    // None of this is entitlement. A promo code changes which Stripe Payment
+    // Link a reader is sent to. `customers/{uid}.premium` above is written by
+    // the Stripe webhook and by nothing else.
+    match /promo_codes/{code} {
+      allow read, write: if false;
+    }
+
     // --- Everything else --------------------------------------------------
     match /{document=**} {
       allow read, write: if false;
