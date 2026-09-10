@@ -378,7 +378,15 @@
   .adm-task-rail{grid-column:1; grid-row:1 / span 2}
 }
 
-.adm-task-rail{display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0}
+/* align-content:flex-start is load-bearing, not tidiness. On a desk the rail
+   spans BOTH grid rows (grid-row:1/span 2), so its box is as tall as the whole
+   task; a wrapping flex container with align-content unset stretches its single
+   line to that full height, and align-items:center then centres the chips in
+   the middle of it — the reported bug, a rail floating in space with a gap
+   above and below. Packing the lines to the top puts the first chip level with
+   the title. align-items:center STAYS: it is what keeps the monogram, the
+   priority chip and the status dot aligned with each other inside a line. */
+.adm-task-rail{display:flex; flex-wrap:wrap; align-items:center; align-content:flex-start; gap:6px; min-width:0}
 .adm-task-body{display:block; min-width:0}
 
 .adm-title{
@@ -617,29 +625,101 @@ input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
 .adm-goal-s-missed{border-radius:4px; color:var(--crimson); box-shadow:inset 0 0 0 1px var(--crimson)}
 
 /* ==========================================================================
-   History
+   Every title on this page is a button
 
-   Seeded from git, so it is long by construction. It is a <details> that is
-   SHUT on load, and inside it a page of ten at a time with a "show more"
-   underneath. Neither of those is decoration: the first stops a wall of
-   commits landing on top of today's work, the second stops a thousand rows
-   being built into the DOM on a phone.
+   Tapping a task opens it, so the biggest word in the row IS the control. A
+   real <button> rather than a div with an onclick: reachable with Tab,
+   announced as a button, and it carries aria-haspopup="dialog" in the markup.
+   All this rule does is take the browser's button chrome off and give the
+   inherited type back, so it looks exactly like the heading it replaced.
+   ========================================================================== */
+.adm-open{
+  -webkit-appearance:none; appearance:none;
+  background:none; border:0; margin:0; padding:0;
+  font:inherit; font-family:var(--ui); color:inherit;
+  text-align:left; cursor:pointer; width:auto; max-width:100%;
+}
+.adm-title.adm-open{
+  display:block; width:100%;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); color:var(--ink);
+  letter-spacing:var(--ls-title); line-height:var(--lh-tight);
+}
+.adm-goal-t.adm-open{width:100%}
+.adm-open:hover{text-decoration:underline; text-underline-offset:3px}
+.adm-open:focus-visible{outline:2px solid var(--ring); outline-offset:3px; border-radius:6px}
+
+/* A quiet aside — the sentence under a control that explains what it will do,
+   and the "no notes / no labels" line where a value is absent. */
+.adm-mini-note{
+  display:block; margin:6px 0 0;
+  font-size:var(--fs-fine); color:var(--dimmer); line-height:var(--lh-body);
+}
+.adm-mini-note[hidden]{display:none}
+.adm-note{margin-top:0}
+.adm-note[hidden]{display:none}
+
+/* ==========================================================================
+   The label editor
+
+   `area` was one word per task chosen from nothing; labels are several, and a
+   new one is made by typing it. The chips are the current set with a remove
+   each, the box below adds another, and the <datalist> on it offers what the
+   board already uses — the cheap half of stopping `back-end` and `backend`
+   becoming two tags. The other half is the normaliser in the page.
+   ========================================================================== */
+.adm-labels{display:block; min-width:0}
+.adm-labels[hidden]{display:none}
+.adm-labels-have{display:flex; flex-wrap:wrap; gap:6px; min-height:26px; align-items:center}
+.adm-labels-add{display:flex; flex-wrap:nowrap; align-items:center; gap:8px; margin:8px 0 0; min-width:0}
+.adm-labels-add > .adm-input{flex:1 1 auto; min-width:0}
+.adm-labels-add > .adm-btn{flex:none}
+/* A label chip inside the editor carries its own remove button, so it is the
+   area chip plus room for one. */
+.adm-label-chip{padding-right:3px; gap:2px; max-width:100%}
+.adm-x{
+  min-height:22px; padding:0 7px; margin-left:4px;
+  border-radius:50%; background:transparent; color:var(--dim);
+  font-size:var(--fs-meta); line-height:1;
+}
+.adm-x:hover{background:var(--tint-3); color:var(--ink)}
+
+/* ==========================================================================
+   History — days, not one wall
+
+   The unit is the DAY: each one is a <details> carrying its own count, so how
+   much got done on the 10th against the 9th is answerable with nothing
+   expanded. A shut day builds no rows at all (see dayBlock() in the page), so
+   a hundred days cost a hundred summaries.
    ========================================================================== */
 
-.adm-hist{
-  display:block; margin:14px 0 0; padding:0;
+.adm-hist{display:block; margin:12px 0 0}
+.adm-hist[hidden]{display:none}
+
+.adm-day{
+  display:block; margin:0 0 8px; padding:0;
   border-radius:14px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
 }
-.adm-hist[hidden]{display:none}
-.adm-hist > summary{
+.adm-day[hidden]{display:none}
+.adm-day-sum{
   display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px;
-  padding:14px 16px; cursor:pointer; list-style:none;
-  font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--ink);
+  padding:12px 15px; cursor:pointer; list-style:none;
   border-radius:14px;
 }
-.adm-hist > summary::-webkit-details-marker{display:none}
-.adm-hist > summary:hover{background:var(--tint)}
+.adm-day-sum::-webkit-details-marker{display:none}
+.adm-day-sum:hover{background:var(--tint)}
+.adm-day-sum:focus-visible{outline:2px solid var(--ring); outline-offset:-2px}
+/* The date is the heading and stays DAY-ONLY — the time lives on the rows
+   underneath it, where the fact is. */
+.adm-day-h{
+  display:block; margin:0; padding:0; border:0;
+  font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--ink);
+  letter-spacing:var(--ls-title);
+  font-variant-numeric:tabular-nums;
+}
+.adm-day-body{display:block; padding:0 15px 12px}
+.adm-day-body:empty{display:none}
+
 /* The disclosure caret, drawn rather than typed: a unicode triangle renders
    as an emoji on some Android builds. */
 .adm-caret{
@@ -648,21 +728,11 @@ input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
   border-top:5px solid transparent; border-bottom:5px solid transparent;
   transition:transform .12s ease;
 }
-.adm-hist[open] > summary .adm-caret{transform:rotate(90deg)}
-.adm-hist-body{display:block; padding:0 16px 16px}
+.adm-day[open] > .adm-day-sum .adm-caret{transform:rotate(90deg)}
 
-/* One day of history: a date, then what was finished that day. */
-.adm-day{display:block; margin:14px 0 0}
-.adm-day-h{
-  display:block; margin:0 0 7px; padding-bottom:6px;
-  border-bottom:1px solid var(--hair);
-  font-size:var(--fs-micro); font-weight:var(--w-label);
-  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
-  font-variant-numeric:tabular-nums;
-}
 .adm-done-row{
   display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px;
-  padding:6px 0; border-bottom:1px solid var(--hair);
+  padding:7px 0; border-bottom:1px solid var(--hair);
 }
 .adm-done-row:last-child{border-bottom:0}
 .adm-done-t{
@@ -674,16 +744,145 @@ input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
   flex:none; font-size:var(--fs-fine); color:var(--dimmer); font-weight:var(--w-label);
   font-variant-numeric:tabular-nums;
 }
-/* THE DAY IT WAS CLOSED, on the row and not only in the date heading above it.
-   The heading is the group; this is the fact, and it survives the row being
-   copied out of the page on its own — which is what happens when one of them
-   pastes "did we do this?" into a chat. Set in the ink the titles use, because
-   it is the half of this section that was asked for and it was invisible. */
+/* THE MOMENT IT WAS CLOSED, on the row and not only in the day heading above
+   it — with the time, because "closed 10 Sep" on a board two people edit all
+   day does not answer the question either of them is asking. */
 .adm-done-when{
   flex:none; font-size:var(--fs-fine); color:var(--dim); font-weight:var(--w-strong);
   font-variant-numeric:tabular-nums; white-space:nowrap;
 }
 .adm-done-when[hidden]{display:none}
+
+/* ==========================================================================
+   THE DETAIL VIEW
+
+   A modal, and the layout decisions in here are all the same decision: it is
+   read on a phone at 390px, with a keyboard up, by somebody who got to it
+   from row ninety of a list.
+
+     * The card is the viewport minus a margin, and IT is what scrolls —
+       never the page behind it, which is pinned by .adm-locked. Two scrolls
+       in one direction is how you lose your place on a phone.
+     * The composer is in NORMAL FLOW at the bottom of that scroll, not
+       position:fixed. A fixed bar is what iOS puts underneath the on-screen
+       keyboard; in flow, the browser's own scroll-into-view lifts the caret
+       above the keys.
+     * 100dvh and not 100vh: with a keyboard up, vh is the height the viewport
+       had before it appeared.
+   ========================================================================== */
+
+.adm-modal{
+  position:fixed; inset:0; z-index:80;
+  display:flex; align-items:center; justify-content:center;
+  padding:max(12px,var(--top-safe)) 12px max(12px,var(--bottom-safe));
+}
+.adm-modal[hidden]{display:none}
+.adm-scrim{position:absolute; inset:0; background:rgba(20,16,12,.44)}
+
+.adm-sheet{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column;
+  width:100%; max-width:640px;
+  max-height:100%;
+  border-radius:16px; background:var(--ground);
+  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
+  overflow:hidden;
+}
+.adm-sheet:focus{outline:none}
+.adm-sheet:focus-visible{outline:2px solid var(--ring); outline-offset:2px}
+
+.adm-sheet-head{
+  display:flex; align-items:flex-start; gap:12px; flex:none;
+  padding:14px 15px 12px;
+  border-bottom:1px solid var(--hair); background:var(--raise);
+}
+.adm-sheet-t{
+  flex:1 1 auto; min-width:0; margin:0;
+  font-size:var(--fs-lead); font-weight:var(--w-head); color:var(--ink);
+  letter-spacing:var(--ls-title); line-height:var(--lh-tight);
+  overflow-wrap:anywhere;
+}
+.adm-sheet-head > .adm-btn{flex:none}
+
+/* The one scrolling box. -webkit-overflow-scrolling is for older iOS, where
+   an overflow box without it scrolls without momentum and feels broken. */
+.adm-sheet-body{
+  flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:14px 15px 18px;
+}
+.adm-sheet-rail{margin:0 0 10px}
+.adm-sheet-detail{
+  display:block; margin:5px 0 0; max-width:64ch;
+  font-size:var(--fs-note); color:var(--ink); line-height:var(--lh-body);
+  overflow-wrap:anywhere; white-space:pre-wrap;
+}
+.adm-sheet-h{
+  margin:20px 0 0; padding-top:14px; border-top:1px solid var(--hair);
+  font-size:var(--fs-note); font-weight:var(--w-head); color:var(--ink);
+  letter-spacing:var(--ls-title);
+}
+.adm-sheet-edit,
+.adm-sheet-talk,
+.adm-sheet-rec{display:block}
+
+/* ---- The record: three facts, each with room to say "not recorded" -------
+   The note under a value is not decoration. `createdBy` starts today and 149
+   rows have none, so "who made this" has an honest answer and a blank would
+   read as a bug — or worse, as the last editor's name.
+   ---------------------------------------------------------------------- */
+.adm-facts{display:block; margin:12px 0 0}
+.adm-fact{
+  display:block; padding:9px 0; border-bottom:1px solid var(--hair);
+}
+.adm-fact:last-child{border-bottom:0}
+.adm-fact-k{
+  display:block; margin:0 0 2px;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
+}
+.adm-fact-v{
+  display:block;
+  font-size:var(--fs-meta); color:var(--ink); line-height:var(--lh-body);
+  font-variant-numeric:tabular-nums; overflow-wrap:anywhere;
+}
+.adm-fact-n{
+  display:block; margin:3px 0 0; max-width:60ch;
+  font-size:var(--fs-fine); color:var(--dim); line-height:var(--lh-body);
+}
+
+/* ---- The thread --------------------------------------------------------- */
+.adm-cmt-list{display:block; margin:10px 0 0; padding:0; list-style:none}
+.adm-cmt-list[hidden]{display:none}
+.adm-cmt{
+  display:block; margin:0 0 8px; padding:10px 12px;
+  border-radius:12px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.adm-cmt-head{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px}
+.adm-cmt-who{
+  font-size:var(--fs-meta); font-weight:var(--w-strong); color:var(--ink);
+}
+.adm-cmt-at{
+  font-size:var(--fs-fine); color:var(--dimmer); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
+.adm-cmt-t{
+  display:block; margin:5px 0 0;
+  font-size:var(--fs-note); color:var(--ink); line-height:var(--lh-body);
+  overflow-wrap:anywhere; white-space:pre-wrap;
+}
+.adm-cmt-acts{display:flex; flex-wrap:wrap; gap:7px; margin:8px 0 0}
+.adm-cmt-new{display:block; margin:12px 0 0}
+.adm-cmt-box{min-height:84px}
+/* The notes box in the sheet is the one place the FULL text is meant to be
+   readable, so it is not the 66px the compact add-form uses. A box that shows
+   two lines of a six-line note is how the detail stayed invisible. */
+.adm-sheet-edit .adm-area{min-height:132px}
+
+/* The page behind a modal does not scroll. Without this, a flick that starts
+   on the scrim scrolls the board underneath and the reader loses the row they
+   opened. */
+body.adm-locked{overflow:hidden}
 
 /* ==========================================================================
    The foot

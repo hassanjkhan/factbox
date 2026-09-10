@@ -9,6 +9,14 @@
 
        admin_tasks/{id}    a thing to do, optionally by a day
        admin_goals/{id}    a thing to hit, with a human deadline
+       .../{id}/comments/  what the two of them said about it, one document
+                           each, under either of the two above
+
+   A task carries LABELS — a list, several per task, invented by typing one —
+   which replace the single `area` it used to have; `area` is still read for
+   the rows that have not been migrated and is never written again. It also
+   carries WHO MADE IT and WHO CLOSED IT from today onwards, and honestly
+   admits it does not know for the 149 rows that predate those fields.
 
    It owns the DATA and nothing else. `admin/tasks.html` and whatever script
    paints it own every pixel; this file never touches the DOM, never reads a
@@ -85,6 +93,45 @@
   var TASKS = "admin_tasks";
   var GOALS = "admin_goals";
 
+  /* COMMENTS LIVE UNDER THE TASK, one document each:
+
+         admin_tasks/{id}/comments/{commentId}
+         admin_goals/{id}/comments/{commentId}
+
+     A SUBCOLLECTION AND NOT AN ARRAY FIELD ON THE TASK, for three reasons and
+     the first is the one that decides it:
+
+       1. The conflict rule at the top of this file is a FIELD-LEVEL merge, so
+          the unit that can be lost is one field. An array of comments IS one
+          field: Kathryn posting while Hassan posts means one array overwrites
+          the other and a sentence somebody typed disappears with nothing on
+          screen to say so. Two documents cannot collide.
+       2. firestore.rules pins the task's key set with hasOnly(), and it can
+          check the SHAPE of a document but not of every element of a growing
+          array. A comment per document gets the same per-write validation
+          every other document here gets — length, author, server clock.
+       3. Every board on both screens listens to `admin_tasks`. A comment field
+          on the task would push the whole thread to both browsers on every
+          keystroke-sized write, for 140 tasks nobody has open. The subcollection
+          is listened to only while its task's detail view is open, and torn
+          down when it closes.
+
+     The cost is that Firestore does not cascade a delete: removing a task
+     leaves its comments behind. deleteTask() sweeps them, and the rules let
+     either admin delete a comment whose task is already gone precisely so that
+     sweep cannot half-fail on the other person's comments. */
+  var COMMENTS = "comments";
+
+  /* A thread hangs under a task OR a goal, and everything below is written
+     once over the parent collection rather than twice: one watcher, one
+     writer, one deleter, one set of rules. A goal is the thing most worth
+     arguing about on this board and the argument belongs on the goal. */
+  function parentOf(coll) {
+    var c = "";
+    try { c = String(coll || ""); } catch (e) { c = ""; }
+    return (c === GOALS) ? GOALS : TASKS;
+  }
+
   /* The allowed values, in one place, because firestore.rules holds the same
      three lists and a client that invents a fourth is simply denied. The UI
      builds its dropdowns from these. */
@@ -97,6 +144,36 @@
   var MAX_DETAIL = 600;
   var MAX_AREA   = 40;
   var MAX_TARGET = 40;
+  /* A comment is a remark on a task, not a document. Long enough for a
+     paragraph and a link, short enough that the rules can refuse a megabyte
+     pasted into the box by accident. */
+  var MAX_COMMENT = 1000;
+  /* A display name is a convenience, never the fact. See whoName(). */
+  var MAX_NAME = 60;
+
+  /* LABELS — the tags a task is filed under, several per task.
+
+     They replace `area`, which was the same idea with one value and no way to
+     make a new one from the board. `area` is still READ (149 rows carry one
+     and nothing else) and is never written again; labelsOf() below folds an
+     old row's single area into the list so a board looks the same before and
+     after the migration.
+
+         labels        a list of strings
+         MAX_LABELS    6 per task
+         MAX_LABEL     24 characters each
+         shape         ^[a-z0-9][a-z0-9-]{0,23}$
+
+     THE NORMALISATION, stated once, because a tag system whose members are
+     "Back End", "back end" and "back-end" is three tag systems: lowercase,
+     trim, every run of whitespace, underscore or hyphen collapses to ONE
+     hyphen, everything outside [a-z0-9-] is dropped, leading and trailing
+     hyphens are removed, empties are discarded, duplicates are discarded, and
+     the list is sorted. Sorted rather than kept in typing order so that two
+     browsers that add the same two labels in a different order converge on the
+     same array instead of overwriting each other with equivalent values. */
+  var MAX_LABELS = 6;
+  var MAX_LABEL  = 24;
 
   /* ----------------------------------------------------------------------
      `due` — the day a task is WANTED by. A calendar day, and stored as the
@@ -153,6 +230,54 @@
   function num(v, fallback) {
     var n = Number(v);
     return (typeof n === "number" && isFinite(n)) ? n : fallback;
+  }
+
+  /* One label, normalised, or "". Total: a number, a null, an object, a string
+     of punctuation and "  Back   END " all go in and either a clean tag or the
+     empty string comes out. */
+  function label(v) {
+    var t = "";
+    try { t = (v == null) ? "" : String(v); } catch (e) { return ""; }
+    try {
+      t = t.toLowerCase();
+      t = t.replace(/[\s_-]+/g, "-");        /* spaces, underscores, dashes -> one dash */
+      t = t.replace(/[^a-z0-9-]+/g, "");     /* everything else is dropped */
+      t = t.replace(/-+/g, "-");
+      t = t.replace(/^-+|-+$/g, "");
+    } catch (e2) { return ""; }
+    if (t.length > MAX_LABEL) t = t.slice(0, MAX_LABEL).replace(/-+$/g, "");
+    return t;
+  }
+
+  /* A whole list, normalised, de-duplicated, sorted and capped. Accepts an
+     array, a comma-separated string, or nothing. */
+  function labelList(v) {
+    var raw = [], out = [], seen = {}, i, one;
+    if (v == null) return out;
+    if (typeof v === "string") { raw = v.split(","); }
+    else if (Object.prototype.toString.call(v) === "[object Array]") { raw = v; }
+    else { return out; }
+    for (i = 0; i < raw.length; i++) {
+      one = label(raw[i]);
+      if (!one) continue;
+      if (Object.prototype.hasOwnProperty.call(seen, one)) continue;
+      seen[one] = true;
+      out.push(one);
+      if (out.length >= MAX_LABELS) break;
+    }
+    out.sort();
+    return out;
+  }
+
+  /* What a row is filed under, whichever era it was written in. `labels` when
+     it has them; the old single `area` folded into a one-element list when it
+     does not. One value for the UI to read, so nothing downstream has to know
+     that a migration happened. */
+  function labelsOf(d) {
+    var have = labelList(d && d.labels);
+    if (have.length) return have;
+    var one = label(d && d.area);
+    return one ? [one] : [];
   }
 
   /* A calendar day, or "". Total: undefined, null, a number, a Timestamp, a
@@ -408,7 +533,10 @@
      happens here on a list that is two people's to-do list, not a corpus.
      ====================================================================== */
 
-  var watchers = [];      /* { coll, fn, unsub } */
+  /* { kind, parent, id, fn, unsub }. `kind` is the collection name, or
+     "comments"; `parent` and `id` name the task or goal a thread hangs under
+     and are "" for the other two. */
+  var watchers = [];
 
   function normTask(id, d) {
     d = d || {};
@@ -419,7 +547,10 @@
       owner: oneOf(d.owner, OWNERS, "either"),
       priority: oneOf(d.priority, PRIORITIES, "low"),
       status: oneOf(d.status, STATUSES, "todo"),
+      /* READ, never written again. Kept so a row that has not been migrated
+         yet still shows the tag it was filed under. */
       area: str(d.area, MAX_AREA),
+      labels: labelsOf(d),
       /* "" for the 130 rows written before this field existed, and for every
          row nobody put a date on. Never null, never 0, never a Date. */
       due: isoDay(d.due),
@@ -431,6 +562,42 @@
       updatedAt: toMs(d.updatedAt),
       doneAt: toMs(d.doneAt),
       updatedBy: str(d.updatedBy, 128),
+      /* WHO MADE IT AND WHO CLOSED IT, and the honest part is that for most of
+         this collection the answer is "" and must stay "".
+
+         `updatedBy` is the LAST writer and nothing more. On ~125 of these rows
+         it is literally the string "seed", because tools/seed-tasks.js wrote
+         them from git commits; on the rest it is whoever touched the row most
+         recently, which is not the same person as whoever typed it. There is
+         no field anywhere in this collection that says who created a task
+         before today, and there is no way to recover one. So these four are
+         written from now on and are "" for every row that predates them, and
+         the UI is required to say "not recorded" rather than fall back to
+         `updatedBy` — a board that guesses at authorship on a shared record is
+         worse than a board that admits it does not know.
+
+         The uid is the FACT: firestore.rules pins createdBy and doneBy to the
+         uid on the writer's own ID token, so neither can be forged. The name
+         beside it is what that account called itself at the time, is supplied
+         by the client, and is a convenience for printing — never evidence. */
+      createdBy: str(d.createdBy, 128),
+      createdByName: str(d.createdByName, MAX_NAME),
+      doneBy: str(d.doneBy, 128),
+      doneByName: str(d.doneByName, MAX_NAME),
+      raw: d
+    };
+  }
+
+  /* One remark on one task. `at` is the server's clock, `by` is the uid the
+     rules checked, `byName` is what that account called itself. */
+  function normComment(id, d) {
+    d = d || {};
+    return {
+      id: String(id || ""),
+      text: str(d.text, MAX_COMMENT),
+      by: str(d.by, 128),
+      byName: str(d.byName, MAX_NAME),
+      at: toMs(d.at),
       raw: d
     };
   }
@@ -465,31 +632,63 @@
     return rows;
   }
 
-  function readSnap(qs, coll) {
+  /* Oldest first, which is the order a conversation happened in. A comment
+     whose serverTimestamp() has not landed yet reads back as 0 for one frame;
+     0 sorts it LAST rather than to the top of the thread, which is where the
+     person who just typed it expects to see it. */
+  function sortComments(rows) {
+    rows.sort(function (a, b) {
+      var aa = a.at || Infinity, bb = b.at || Infinity;
+      if (aa !== bb) return aa - bb;
+      return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+    });
+    return rows;
+  }
+
+  function normFor(kind, id, d) {
+    if (kind === TASKS) return normTask(id, d);
+    if (kind === GOALS) return normGoal(id, d);
+    return normComment(id, d);
+  }
+
+  function readSnap(qs, kind) {
     var rows = [];
     try {
       if (qs && isFn(qs.forEach)) {
         qs.forEach(function (doc) {
           var d = null;
           try { d = doc.data ? doc.data() : null; } catch (e) { d = null; }
-          rows.push(coll === TASKS ? normTask(doc.id, d) : normGoal(doc.id, d));
+          rows.push(normFor(kind, doc.id, d));
         });
       } else if (qs && qs.docs) {
         for (var i = 0; i < qs.docs.length; i++) {
           var doc2 = qs.docs[i];
-          rows.push(coll === TASKS ? normTask(doc2.id, doc2.data()) : normGoal(doc2.id, doc2.data()));
+          rows.push(normFor(kind, doc2.id, doc2.data()));
         }
       }
     } catch (e2) {}
-    return sortRows(rows);
+    return kind === COMMENTS ? sortComments(rows) : sortRows(rows);
+  }
+
+  /* The collection a watcher is watching. A comments watcher is the only one
+     with a parent, and it is addressed by path segments rather than by a
+     string join so an id with a slash in it cannot escape its task. */
+  function colFor(w) {
+    if (w.kind === COMMENTS) {
+      if (!w.id || !w.parent) return null;
+      return sdk.collection(db, w.parent, w.id, COMMENTS);
+    }
+    return sdk.collection(db, w.kind);
   }
 
   function attach(w) {
     if (w.unsub || !db || !sdk) return;
     try {
+      var col = colFor(w);
+      if (!col) { call(w.fn, []); return; }
       w.unsub = sdk.onSnapshot(
-        sdk.collection(db, w.coll),
-        function (qs) { call(w.fn, readSnap(qs, w.coll)); },
+        col,
+        function (qs) { call(w.fn, readSnap(qs, w.kind)); },
         function () {
           /* Denied, offline, or the rules changed under us. An empty board is
              the honest answer; ready() already told the page why. */
@@ -518,9 +717,9 @@
     for (var i = 0; i < watchers.length; i++) call(watchers[i].fn, []);
   }
 
-  function watch(coll, fn) {
+  function watch(kind, parent, id, fn) {
     if (!isFn(fn)) return noop;
-    var w = { coll: coll, fn: fn, unsub: null };
+    var w = { kind: kind, parent: parent || "", id: str(id, 200), fn: fn, unsub: null };
     watchers.push(w);
     var remove = drop(watchers, w);
 
@@ -536,8 +735,18 @@
     };
   }
 
-  function watchTasks(fn) { return watch(TASKS, fn); }
-  function watchGoals(fn) { return watch(GOALS, fn); }
+  function watchTasks(fn) { return watch(TASKS, "", "", fn); }
+  function watchGoals(fn) { return watch(GOALS, "", "", fn); }
+
+  /* The thread on ONE task, live, for exactly as long as somebody has that
+     task open. Returns its own unsubscribe; the detail view calls it when it
+     closes, and detachAll() catches it too if the account changes underneath.
+     Nothing subscribes to a thread nobody is reading. */
+  function watchComments(coll, id, fn) {
+    var i = str(id, 200);
+    if (!i) { if (isFn(fn)) later(function () { call(fn, []); }); return noop; }
+    return watch(COMMENTS, parentOf(coll), i, fn);
+  }
 
   /* ======================================================================
      Who is writing. Every write stamps this itself, so no caller can forget
@@ -563,6 +772,19 @@
     payload.updatedAt = sdk.serverTimestamp();
     payload.updatedBy = m.uid;
     return payload;
+  }
+
+  /* The display half of an authorship stamp. The uid beside it is the fact —
+     the rules check it against the ID token and it cannot be forged — and this
+     is only what the account calls itself, so that a detail view can print
+     "Kathryn" instead of a 28-character uid nobody can read. It is written
+     ONCE, at the moment the thing happens, and firestore.rules refuses to let
+     a later edit change it: an authorship line that could be rewritten
+     afterwards is not a record of anything. */
+  function whoName() {
+    var m = me();
+    if (!m) return "";
+    return str(m.name || m.email || "", MAX_NAME);
   }
 
   function guard() {
@@ -601,7 +823,13 @@
     if (forCreate || has("owner"))    out.owner    = oneOf(o.owner, OWNERS, "either");
     if (forCreate || has("priority")) out.priority = oneOf(o.priority, PRIORITIES, "low");
     if (forCreate || has("status"))   out.status   = oneOf(o.status, STATUSES, "todo");
-    if (forCreate || has("area"))     out.area     = str(o.area, MAX_AREA);
+    /* `area` is never written by this file again — not on create, not on
+       update, not even as "". The board sends `labels`; a caller that still
+       passes an area has it folded into the list rather than stored, so the
+       one-value era ends at the first edit of each row. */
+    if (forCreate || has("labels") || has("area")) {
+      out.labels = labelList(has("labels") ? o.labels : o.area);
+    }
     /* Clearing a due date is `due: ""`, which is a write of the empty string
        rather than a deleteField(): the rules accept both "absent" and "", the
        board reads them identically, and "" needs no extra SDK import on a page
@@ -614,12 +842,41 @@
        stamp. The caller may clear it explicitly with doneAt: null and may not
        set it to anything else — a board that lets you backdate a completion
        is a board that cannot answer "what did we do last week". */
-    if (has("status")) {
-      out.doneAt = (out.status === "done") ? sdk.serverTimestamp() : null;
-    } else if (has("doneAt") && o.doneAt === null) {
+    var m = me();
+
+    function closedBy() {
+      out.doneAt = sdk.serverTimestamp();
+      out.doneBy = m ? m.uid : null;
+      out.doneByName = m ? whoName() : null;
+    }
+    function notClosed() {
       out.doneAt = null;
+      out.doneBy = null;
+      out.doneByName = null;
+    }
+
+    if (has("status")) {
+      if (out.status === "done") closedBy(); else notClosed();
+    } else if (has("doneAt") && o.doneAt === null) {
+      notClosed();
     } else if (forCreate) {
-      out.doneAt = (out.status === "done") ? sdk.serverTimestamp() : null;
+      if (out.status === "done") closedBy(); else notClosed();
+    }
+
+    /* WRITTEN ON CREATE AND NEVER AGAIN. The rules pin these to the ID token
+       on the create and then require every later update to send them back
+       unchanged — which also means an update can never ADD them to one of the
+       140 rows that has none. That is deliberate and it is the whole point:
+       the only way a task gets an author is by being created by somebody
+       holding an account, and a row created before this existed stays
+       honestly authorless rather than acquiring whoever edited it next.
+
+       Omitted rather than written empty when there is somehow no signed-in
+       user: "" is not a uid, and the rules would refuse the write outright
+       rather than let a blank author through. */
+    if (forCreate && m) {
+      out.createdBy = m.uid;
+      out.createdByName = whoName();
     }
     return { ok: out };
   }
@@ -698,8 +955,93 @@
     });
   }
 
+  /* Deleting a task deletes its thread. Firestore does NOT cascade — a
+     subcollection outlives its parent document and would sit there forever,
+     invisible, counting against the bill and readable by anyone who guessed
+     the path. So the task goes first and the comments are swept after:
+
+       - task first, so that if the sweep fails half-way the row is already
+         gone from both boards rather than sitting there with a thread nobody
+         can see the top of;
+       - and the rules let EITHER admin delete a comment whose task no longer
+         exists, precisely so this sweep does not stop at the first comment the
+         other person wrote. While the task is alive, a comment belongs to
+         whoever wrote it.
+
+     The sweep is best-effort by design: a dropped connection between the two
+     writes leaves orphans, and the honest handling is that the task delete —
+     the thing the person asked for — still reports success. */
+  function sweepComments(coll, id) {
+    if (!isFn(sdk.getDocs)) return Promise.resolve(true);
+    var col;
+    try { col = sdk.collection(db, parentOf(coll), id, COMMENTS); } catch (e) { return Promise.resolve(true); }
+    return Promise.resolve(sdk.getDocs(col)).then(function (qs) {
+      var jobs = [];
+      try {
+        qs.forEach(function (d) {
+          jobs.push(Promise.resolve(sdk.deleteDoc(d.ref)).then(noop, noop));
+        });
+      } catch (e2) {}
+      return Promise.all(jobs);
+    }, noop).then(function () { return true; }, function () { return true; });
+  }
+
   function deleteTask(id) {
-    return guard().then(function () { return delIn(TASKS, id); });
+    return guard().then(function () {
+      var i = str(id, 200);
+      if (!i) return reject("no id");
+      return delIn(TASKS, i).then(function () { return sweepComments(TASKS, i); });
+    });
+  }
+
+  /* ======================================================================
+     Comments. One document per remark under the task it is about.
+
+     No update path, and that is a decision rather than an omission: a comment
+     is a record of something one of them said, and a record that can be
+     silently rewritten afterwards is not a record. Wrong comment, delete it
+     and say the next thing — which leaves the fact that something was removed
+     visible in the thread's shape rather than rewriting history in place.
+     ====================================================================== */
+
+  function addComment(coll, id, text) {
+    return guard().then(function () {
+      var c = parentOf(coll);
+      var i = str(id, 200);
+      if (!i) throw new Error("no id");
+      var t = str(text, MAX_COMMENT);
+      if (!t) throw new Error("a comment needs something in it");
+      var m = me();
+      if (!m) throw new Error("not writable: signed-out");
+      var payload = {
+        text: t,
+        by: m.uid,
+        byName: whoName(),
+        /* The server's clock, never the browser's: a comment stamped by a
+           phone with the wrong time would sort into the middle of a
+           conversation it was not part of. */
+        at: sdk.serverTimestamp()
+      };
+      var col = sdk.collection(db, c, i, COMMENTS);
+      if (isFn(sdk.addDoc)) {
+        return Promise.resolve(sdk.addDoc(col, payload)).then(function (ref) {
+          return String(ref && ref.id ? ref.id : "");
+        });
+      }
+      var ref2 = sdk.doc(col);
+      return Promise.resolve(sdk.setDoc(ref2, payload)).then(function () {
+        return String(ref2 && ref2.id ? ref2.id : "");
+      });
+    });
+  }
+
+  function deleteComment(coll, id, commentId) {
+    return guard().then(function () {
+      var p = parentOf(coll), i = str(id, 200), c = str(commentId, 200);
+      if (!i || !c) throw new Error("no id");
+      return Promise.resolve(sdk.deleteDoc(sdk.doc(db, p, i, COMMENTS, c)))
+        .then(function () { return true; });
+    });
   }
 
   function addGoal(o) {
@@ -719,7 +1061,11 @@
   }
 
   function deleteGoal(id) {
-    return guard().then(function () { return delIn(GOALS, id); });
+    return guard().then(function () {
+      var i = str(id, 200);
+      if (!i) return reject("no id");
+      return delIn(GOALS, i).then(function () { return sweepComments(GOALS, i); });
+    });
   }
 
   /* ======================================================================
@@ -736,10 +1082,14 @@
 
     watchTasks: watchTasks,
     watchGoals: watchGoals,
+    watchComments: watchComments,
 
     addTask: addTask,
     updateTask: updateTask,
     deleteTask: deleteTask,
+
+    addComment: addComment,
+    deleteComment: deleteComment,
 
     addGoal: addGoal,
     updateGoal: updateGoal,
@@ -753,6 +1103,13 @@
     isoDay: isoDay,
     DUE_FORMAT: "YYYY-MM-DD",
 
+    /* Published for the same reason isoDay is: the board, the label editor and
+       any future tool must all agree on what "Back End" becomes, rather than
+       each rolling its own and filling the collection with synonyms. */
+    label: label,
+    labelList: labelList,
+    labelsOf: labelsOf,
+
     OWNERS: OWNERS,
     PRIORITIES: PRIORITIES,
     STATUSES: STATUSES,
@@ -762,8 +1119,11 @@
     MAX_DETAIL: MAX_DETAIL,
     MAX_AREA: MAX_AREA,
     MAX_TARGET: MAX_TARGET,
+    MAX_COMMENT: MAX_COMMENT,
+    MAX_LABELS: MAX_LABELS,
+    MAX_LABEL: MAX_LABEL,
 
-    COLLECTIONS: { tasks: TASKS, goals: GOALS },
+    COLLECTIONS: { tasks: TASKS, goals: GOALS, comments: COMMENTS },
     SDK_VERSION: SDK_VERSION
   };
 

@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/admin.css?v=0439ba16">
+<link rel="stylesheet" href="/css/admin.css?v=b0bfbb4c">
 </head>
 <body>
 
@@ -126,6 +126,8 @@
           <label class="adm-seg-l" for="adm-g-status">Status</label>
           <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-due" value="due">
           <label class="adm-seg-l" for="adm-g-due">Due</label>
+          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-label" value="label">
+          <label class="adm-seg-l" for="adm-g-label">Label</label>
         </div>
       </div>
 
@@ -139,8 +141,20 @@
           <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-kathryn" value="kathryn">
           <label class="adm-seg-l" for="adm-w-kathryn">Kathryn</label>
           <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-either" value="either">
-          <label class="adm-seg-l" for="adm-w-either">Either</label>
+          <label class="adm-seg-l" for="adm-w-either">Up for grabs</label>
         </div>
+      </div>
+
+      <!-- The label filter is a SELECT and not a fifth segmented control:
+           the owner and priority vocabularies are closed and three options
+           wide, and this one is open-ended by design — they invent a tag by
+           typing it. A segmented control that grows a button per invented tag
+           is a control that eats the bar at 390px by the end of the month. -->
+      <div class="adm-field">
+        <label for="adm-label-filter">Label</label>
+        <select class="adm-select" id="adm-label-filter" data-fbt="-">
+          <option value="">All labels</option>
+        </select>
       </div>
 
       <div class="adm-field adm-grow" style="align-items:flex-end">
@@ -156,6 +170,11 @@
          "undefined" because it is built from counts, and never says "NaN"
          because a task with no due date is counted as having no due date. -->
     <p class="adm-q" id="adm-summary">Counting…</p>
+
+    <!-- Only ever shown under "Group by label". A task carrying two labels is
+         listed under both of them, which looks exactly like a duplicate unless
+         the page says otherwise before anybody wonders. -->
+    <p class="adm-q adm-note" id="adm-board-note" hidden></p>
 
     <!-- The add form. Same fields as the in-row editor, deliberately: one
          shape to learn, and a task added is a task you can immediately fix. -->
@@ -202,16 +221,12 @@
         <h2>Done</h2>
         <span>the record, newest first</span>
       </div>
-      <details class="adm-hist" id="adm-hist">
-        <summary id="adm-hist-sum"><span class="adm-caret" aria-hidden="true"></span><span id="adm-hist-label">History</span></summary>
-        <div class="adm-hist-body">
-          <div class="adm-state" id="adm-hist-state" role="status" hidden>Nothing has been finished yet.</div>
-          <div id="adm-hist-days"></div>
-          <p class="adm-actions" id="adm-hist-more-wrap" hidden>
-            <button class="adm-btn adm-mini" type="button" id="adm-hist-more" data-fbt="-">Show more</button>
-          </p>
-        </div>
-      </details>
+      <p class="adm-q" id="adm-hist-label">Loading the history…</p>
+      <div class="adm-state" id="adm-hist-state" role="status" hidden>Nothing has been finished yet.</div>
+      <div class="adm-hist" id="adm-hist-days"></div>
+      <p class="adm-actions" id="adm-hist-more-wrap" hidden>
+        <button class="adm-btn adm-mini" type="button" id="adm-hist-more" data-fbt="-">Show more days</button>
+      </p>
     </section>
 
     <p class="adm-foot">
@@ -220,6 +235,44 @@
       <a href="/explore" data-fbt="-">Explore</a>
     </p>
 
+  </div>
+
+  <!-- ====================================================================
+       THE DETAIL VIEW — a modal, and here is why rather than an expander.
+
+       This board is read on a phone at 390px and its longest list is 149 rows
+       deep. An expanding row puts the thing you opened INSIDE that list: the
+       facts, a form and a conversation unfold under your thumb, everything
+       below jumps, and closing it leaves you somewhere else in the scroll than
+       you started. Worse for the case that matters most — a done task, opened
+       out of the history — the expander lives inside a day group inside a
+       section at the very bottom of the page, so the comment box you are
+       typing into is 149 rows down a document.
+
+       A modal is one surface at a known position, identical whether it was
+       opened from the board or from the history, and it can be closed with
+       Escape from a keyboard and with one obvious button on a phone. It also
+       makes the comment box the only text field on screen, which is what makes
+       it usable with the on-screen keyboard: the card scrolls, the composer is
+       in normal flow at the bottom of that scroll (NOT position:fixed, which
+       iOS puts underneath the keyboard), and the browser's own
+       scroll-into-view puts the caret above the keys.
+
+       The accessibility that costs: role="dialog" + aria-modal, focus moved
+       into the card on open, Tab cycled inside it, Escape closes, and focus
+       returned to the exact control that opened it. All of it is below in
+       openDetail()/closeDetail().
+       ==================================================================== -->
+  <div class="adm-modal" id="adm-modal" hidden>
+    <div class="adm-scrim" id="adm-scrim"></div>
+    <div class="adm-sheet" id="adm-sheet" role="dialog" aria-modal="true"
+         aria-labelledby="adm-sheet-t" tabindex="-1">
+      <div class="adm-sheet-head">
+        <h2 class="adm-sheet-t" id="adm-sheet-t">Task</h2>
+        <button class="adm-btn adm-mini" type="button" id="adm-sheet-x" data-fbt="-">Close</button>
+      </div>
+      <div class="adm-sheet-body" id="adm-sheet-body"></div>
+    </div>
   </div>
 
   <!-- Announced, not seen: a change made by the other person, or by a button
@@ -235,7 +288,7 @@
 </noscript>
 
 <script type="module" src="/js/auth.js?v=35b20584"></script>
-<script src="/js/admin-tasks.js?v=31f37646"></script>
+<script src="/js/admin-tasks.js?v=81d49605"></script>
 <script>
 /* ==========================================================================
    /admin/tasks — the board
@@ -283,7 +336,13 @@
   var PRIORITIES = ["high", "low"];
   var STATUSES   = ["todo", "doing", "done"];
 
-  var OWNER_LABEL = { hassan: "Hassan", kathryn: "Kathryn", either: "Either" };
+  /* "either" is the STORED value and it does not change — the enum lives in
+     firestore.rules and 149 rows carry one of these three. This is the word a
+     human reads, and it is the owner's: "Either" reads like a shrug, "Up for
+     grabs" reads like an invitation, and the difference decides whether
+     unclaimed work gets picked up. The relabel is here and nowhere else, so
+     there is exactly one place it can disagree with itself. */
+  var OWNER_LABEL = { hassan: "Hassan", kathryn: "Kathryn", either: "Up for grabs" };
   var PRI_LABEL   = { high: "High", low: "Low" };
   var ST_LABEL    = { todo: "To do", doing: "Doing", done: "Done" };
 
@@ -291,12 +350,30 @@
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var DAYS   = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  /* How many finished rows the history opens with, and how many more each
-     press of "Show more" adds. Small first page because it is seeded from
-     git and can be hundreds long; a bigger step after that because someone
-     pressing "show more" is looking for something. */
-  var HIST_FIRST = 12;
-  var HIST_STEP  = 25;
+  /* THE HISTORY IS PAGED IN DAYS, NOT ROWS.
+
+     "Show it by days so we know what got done which day" is a question about
+     days, so the day is the unit that is listed and the unit that is paged. A
+     day is one <details> carrying its own count, so "seven on the 10th, two on
+     the 9th" is answerable with nothing expanded — which is the whole point,
+     and which a flat list of 149 rows could not answer at any length of
+     scrolling.
+
+     WHICH DAYS OPEN THEMSELVES. The newest, until either three days or twenty
+     rows are showing, whichever comes first, and always at least one. The
+     newest day alone is not enough — on a Monday it can be a single row, and a
+     history that opens looking empty teaches you not to open it — and "all of
+     the last week" is how 400 rows end up in the DOM again by November. The
+     twenty-row ceiling is what keeps the promise: a day with sixty commits in
+     it opens alone, a day with two brings its neighbours.
+
+     A CLOSED DAY BUILDS NOTHING. The rows of a shut day are not in the
+     document at all; they are built on the toggle that opens it and thrown
+     away on the toggle that shuts it. Ten headings cost ten summaries. */
+  var HIST_DAYS_FIRST = 7;    /* days listed before "show more days" */
+  var HIST_DAYS_STEP  = 14;
+  var HIST_AUTO_DAYS  = 3;    /* at most this many open themselves */
+  var HIST_AUTO_ROWS  = 20;   /* and only while they cost less than this */
 
   /* ==========================================================================
      Tiny DOM helpers. Everything below builds nodes; nothing builds markup.
@@ -541,6 +618,63 @@
     return d.getDate() + " " + MONTHS[d.getMonth()];
   }
 
+  /* ==========================================================================
+     THE CLOCK — every recorded instant carries its time, in 24 hours, local
+
+     "If there's an updated copy 'Updated 10 Sep' it should have the time as
+     well." Three decisions come with that sentence:
+
+     24-HOUR, NOT am/pm. One format everywhere, and it is the one with no
+     ambiguity at the two moments people actually get wrong: 12:00am and
+     12:00pm are a coin toss to most readers and 00:12 and 12:12 are not. It is
+     also fixed-width, which matters because these numbers sit in a column of
+     rows set in tabular-nums — a list of "4:12pm" and "11:07am" does not line
+     up and a list of "16:12" and "11:07" does.
+
+     LOCAL, FROM THE DEVICE, AND NEVER STAMPED WITH A ZONE. new Date(ms) is the
+     reader's own calendar and clock. Hassan in London and Kathryn wherever she
+     is each see the moment as it was where THEY are, which is what a person
+     means by "what time did that happen". Writing "16:12 BST" would be worse
+     than useless on the other screen — it would be a time in a zone the reader
+     has to convert, printed with the authority of a fact.
+
+     `due` IS EXEMPT AND STAYS DATE-ONLY. It is not an instant, it is a
+     calendar day held as a string precisely so it cannot drift a day west of
+     Greenwich; attaching a time to it would reintroduce the bug the string was
+     chosen to avoid. Nothing below is ever called with a due date, and the day
+     HEADINGS in the history stay day-only for the same reason — a heading is a
+     day, and the time belongs on the row underneath it.
+
+     TOTAL, like everything else here: 0, null, a Timestamp that never landed
+     and a Date that will not parse all come back "" rather than "Invalid Date"
+     or a time in 1970. */
+  function fmtClock(ms) {
+    if (!ms) return "";
+    var d = new Date(ms);
+    if (!isFinite(d.getTime())) return "";
+    var h = d.getHours(), m = d.getMinutes();
+    if (!isFinite(h) || !isFinite(m)) return "";
+    return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+  }
+
+  /* "10 Sep, 16:12" — a row line. */
+  function fmtShortAt(ms) {
+    var day = fmtShort(ms);
+    if (!day) return "";
+    var t = fmtClock(ms);
+    return t ? day + ", " + t : day;
+  }
+
+  /* "Thu 10 Sep 2026, 16:12" — the detail view, where somebody is
+     reconstructing what happened when and the weekday and year earn their
+     space. */
+  function fmtDayAt(ms) {
+    var day = fmtDay(ms);
+    if (day === "date not recorded") return day;
+    var t = fmtClock(ms);
+    return t ? day + ", " + t : day;
+  }
+
   /* The local day a timestamp fell on, as a sortable key. Local, not UTC:
      work finished at 9pm in London belongs to that evening, not to the next
      morning. */
@@ -563,6 +697,76 @@
   }
 
   /* ==========================================================================
+     LABELS — several per task, invented by typing one
+
+     `area` was this idea with one value and no way to add a new one. A task is
+     both product and code, or both marketing and seo, and being made to pick
+     one is how a board ends up with a tag nobody can find anything under.
+
+     THE NORMALISATION, and it is the whole reason this function exists: a tag
+     system whose members are "Back End", "back end" and "back-end" is three
+     tag systems that look like one. So — lowercase; every run of whitespace,
+     underscore or hyphen becomes ONE hyphen; anything outside [a-z0-9-] is
+     dropped; leading and trailing hyphens go; empty is not a label. All three
+     spellings above converge on `back-end`, and "Code Issue!" on `code-issue`.
+
+     Deliberately the SAME function as label() in js/admin-tasks.js, written
+     out again here for the same reason dueOf() is: this page must coerce a
+     typed value exactly the way a write coerces it, and a page that guessed
+     differently would show a chip that is not what got stored.
+
+     Capped at 6 per task and 24 characters each. firestore.rules can enforce
+     the SIX — a list size is checkable — and cannot enforce anything about the
+     elements, because there is no loop in that language. It says so out loud;
+     see the note above taskShape(). */
+  var MAX_LABELS = 6;
+  var MAX_LABEL  = 24;
+
+  function labelOne(v) {
+    var t = str(v);
+    if (!t) return "";
+    t = t.toLowerCase();
+    t = t.replace(/[\s_-]+/g, "-");
+    t = t.replace(/[^a-z0-9-]+/g, "");
+    t = t.replace(/-+/g, "-");
+    t = t.replace(/^-+|-+$/g, "");
+    if (t.length > MAX_LABEL) t = t.slice(0, MAX_LABEL).replace(/-+$/g, "");
+    return t;
+  }
+
+  /* A whole list: normalised, de-duplicated, sorted, capped. Sorted rather
+     than kept in typing order so two browsers adding the same two labels in a
+     different order converge on the same array instead of writing equivalent
+     values over each other. */
+  function labelMany(v) {
+    var raw = [], out = [], seen = {}, i, one;
+    if (v === null || v === undefined) return out;
+    if (typeof v === "string") raw = v.split(",");
+    else if (Object.prototype.toString.call(v) === "[object Array]") raw = v;
+    else return out;
+    for (i = 0; i < raw.length; i++) {
+      one = labelOne(raw[i]);
+      if (!one || Object.prototype.hasOwnProperty.call(seen, one)) continue;
+      seen[one] = true;
+      out.push(one);
+      if (out.length >= MAX_LABELS) break;
+    }
+    out.sort();
+    return out;
+  }
+
+  /* What a row is filed under, whichever era it was written in: `labels` when
+     it has them, the old single `area` folded into a one-element list when it
+     does not. 149 rows are still on the old field and they must not go blank
+     while the migration runs. */
+  function labelsFrom(t) {
+    var have = labelMany(t && t.labels);
+    if (have.length) return have;
+    var one = labelOne(t && t.area);
+    return one ? [one] : [];
+  }
+
+  /* ==========================================================================
      State
      ========================================================================== */
 
@@ -570,10 +774,30 @@
   var TASKS = [], GOALS = [];
   var tasksSeen = false, goalsSeen = false;
   var groupBy = "priority", ownerFilter = "all";
-  var editing = null;                 /* task id whose row is an open editor */
-  var editingGoal = null;
+  var labelFilter = "";               /* "" is every label, not "no label" */
   var addOpen = false, goalOpen = false;
-  var histShown = HIST_FIRST;
+
+  /* The history, in days. `histOpen` is which days the reader has open, kept
+     across renders so a live edit somewhere else on the board does not shut
+     the day they were reading. It starts null: the defaults are chosen once,
+     the first time there is data to choose from. */
+  var histDays = HIST_DAYS_FIRST;
+  var histOpen = null;
+
+  /* ---- The detail view ---------------------------------------------------
+     One set of state for both collections. `openKind` is "admin_tasks" or
+     "admin_goals" and every function below branches on it rather than there
+     being two of everything — a second comment implementation is a second
+     escaping decision, and the second one is the one that renders raw HTML
+     six months from now. */
+  var openKind = "", openId = "";
+  var openerNode = null;              /* what to give focus back to */
+  var openUnsub = null;               /* the live thread, while it is open */
+  var openForm = null;                /* the editor inside the sheet */
+  var CMTS = [], cmtsSeen = false;
+  var openSeenAt = 0;                 /* updatedAt as the sheet last saw it */
+  var openStale = false;              /* it changed on the other screen */
+  var justSaved = false;              /* ...because of us, so not stale */
   /* Today's day index, recomputed once at the top of each render. Held rather
      than read per row so that a single paint cannot sort half its list against
      one day and half against the next. */
@@ -585,7 +809,7 @@
      the same time. So while any editor is open the incoming data is kept but
      not painted, and the board says so. */
   function editorOpen() {
-    return editing !== null || editingGoal !== null || addOpen || goalOpen;
+    return addOpen || goalOpen || !!openId;
   }
 
   function normTask(t) {
@@ -596,7 +820,10 @@
     o.owner    = key(t && t.owner, OWNERS, "either");
     o.priority = key(t && t.priority, PRIORITIES, "low");
     o.status   = key(t && t.status, STATUSES, "todo");
+    /* Read, never written again: 149 rows are still filed under a single
+       `area` and must not go blank while that migration runs. */
     o.area     = str(t && t.area);
+    o.labels   = labelsFrom(t);
     /* "" for every row written before this field existed. Not null, not 0,
        not undefined — one value for "no date", everywhere below. */
     o.due      = dueOf(t && t.due);
@@ -605,6 +832,13 @@
     o.updatedAt = toMs(t && t.updatedAt);
     o.doneAt    = toMs(t && t.doneAt);
     o.updatedBy = str(t && t.updatedBy);
+    /* "" for every row created before the board recorded this, which is all
+       149 of them. The detail view says so in words and never falls back to
+       `updatedBy` — see whoLine(). */
+    o.createdBy     = str(t && t.createdBy);
+    o.createdByName = str(t && t.createdByName);
+    o.doneBy        = str(t && t.doneBy);
+    o.doneByName    = str(t && t.doneByName);
     return o;
   }
 
@@ -617,6 +851,12 @@
     o.due    = dueOf(g && g.due);
     o.status = key(g && g.status, ["open", "hit", "missed"], "open");
     o.order  = num(g && g.order, 0);
+    /* A goal has no `doneAt` and no authorship fields — its outcome is a
+       status somebody chose, not a moment. It does have the two timestamps,
+       and the detail view prints them with the time like everything else. */
+    o.createdAt = toMs(g && g.createdAt);
+    o.updatedAt = toMs(g && g.updatedAt);
+    o.updatedBy = str(g && g.updatedBy);
     return o;
   }
 
@@ -799,6 +1039,140 @@
     return n;
   }
 
+  /* Every label in use, with how many rows carry it. Read from the board
+     rather than from a fixed list, because the whole point is that a new one
+     is made by typing it. */
+  function labelCounts() {
+    var counts = {}, i, j, ls;
+    for (i = 0; i < TASKS.length; i++) {
+      ls = TASKS[i].labels || [];
+      for (j = 0; j < ls.length; j++) {
+        counts[ls[j]] = (counts[ls[j]] || 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  function allLabels() {
+    var counts = labelCounts(), out = [], k;
+    for (k in counts) {
+      if (Object.prototype.hasOwnProperty.call(counts, k)) out.push(k);
+    }
+    out.sort();
+    return out;
+  }
+
+  /* THE LABEL EDITOR — a list of what this row carries, and one box to add
+     another. No fixed vocabulary: whatever is typed is normalised by
+     labelOne() and becomes a label, which is what "so we can make new labels"
+     asks for. The <datalist> beside the box offers what the board already
+     uses, which is the cheap half of stopping `back-end` and `backend`
+     becoming two tags — the normaliser is the other half.
+
+     The chips carry a remove button each rather than a "clear all", because
+     removing the wrong one of six is the mistake this control can make. */
+  function labelsField(pre, labels) {
+    var have = labelMany(labels);
+    var box = el("div", "adm-labels");
+    box.setAttribute("data-fbt", "-");
+
+    var chips = el("div", "adm-labels-have");
+    var row   = el("div", "adm-labels-add");
+
+    var inp = document.createElement("input");
+    inp.type = "text";
+    inp.className = "adm-input";
+    inp.id = pre + "-label";
+    inp.placeholder = "product, marketing, back end…";
+    inp.setAttribute("autocomplete", "off");
+    try { inp.maxLength = MAX_LABEL; } catch (e) {}
+
+    var listId = pre + "-label-list";
+    var dl = document.createElement("datalist");
+    dl.id = listId;
+    var known = allLabels();
+    for (var i = 0; i < known.length; i++) {
+      var o = document.createElement("option");
+      o.value = known[i];          /* a value, never markup */
+      dl.appendChild(o);
+    }
+    inp.setAttribute("list", listId);
+
+    var note = el("p", "adm-mini-note");
+
+    function paint() {
+      clear(chips);
+      var i;
+      for (i = 0; i < have.length; i++) {
+        (function (name) {
+          var chip = el("span", "adm-area-chip adm-label-chip");
+          chip.appendChild(document.createTextNode(name));
+          var x = btn("\u00d7", "adm-x", function () {
+            for (var j = 0; j < have.length; j++) {
+              if (have[j] === name) { have.splice(j, 1); break; }
+            }
+            paint();
+            say("Removed the label " + name + ". Press Save to keep it.");
+            try { inp.focus(); } catch (e) {}
+          });
+          x.setAttribute("aria-label", "Remove the label " + name);
+          chip.appendChild(x);
+          chips.appendChild(chip);
+        })(have[i]);
+      }
+      if (!have.length) {
+        chips.appendChild(el("span", "adm-mini-note", "No labels yet."));
+      }
+      var full = have.length >= MAX_LABELS;
+      inp.disabled = full;
+      note.textContent = full
+        ? "Six labels is as many as one task carries. Remove one to add another."
+        : "Type a word and press Add. New words become new labels; spaces become hyphens.";
+    }
+
+    function add() {
+      var one = labelOne(inp.value);
+      if (!one) {
+        say("That is not a label. Use letters and numbers.");
+        try { inp.focus(); } catch (e) {}
+        return;
+      }
+      if (have.length >= MAX_LABELS) { say("Six labels is the most."); return; }
+      for (var j = 0; j < have.length; j++) {
+        if (have[j] === one) {
+          inp.value = "";
+          say("This task already carries " + one + ".");
+          return;
+        }
+      }
+      have.push(one);
+      have.sort();
+      inp.value = "";
+      paint();
+      say("Added the label " + one + ". Press Save to keep it.");
+      try { inp.focus(); } catch (e) {}
+    }
+
+    inp.onkeydown = function (e) {
+      var k = e && (e.keyCode || e.which);
+      if (k === 13) { if (e.preventDefault) e.preventDefault(); add(); }
+    };
+
+    row.appendChild(inp);
+    row.appendChild(dl);
+    row.appendChild(btn("Add", null, add));
+
+    box.appendChild(chips);
+    box.appendChild(row);
+    box.appendChild(note);
+    paint();
+
+    return {
+      node: field("Labels", box, true, inp.id),
+      read: function () { return labelMany(have); }
+    };
+  }
+
   /* The option TEXT is a literal from the label tables above; the option
      VALUE is one of the known keys. Nothing a person typed reaches either. */
   function select(id, keys, labels, value) {
@@ -826,15 +1200,15 @@
     var fOwner  = select(pre + "-owner", OWNERS, OWNER_LABEL, t.owner);
     var fPri    = select(pre + "-pri", PRIORITIES, PRI_LABEL, t.priority);
     var fStat   = select(pre + "-status", STATUSES, ST_LABEL, t.status);
-    var fArea   = input(pre + "-area", t.area, "e.g. content, stripe, social");
+    var fLabels = labelsField(pre, t.labels);
     var fDue    = dueField(pre, t.due, "Due by (optional)");
 
     box.appendChild(field("Task", fTitle, true));
     box.appendChild(field("Owner", fOwner));
     box.appendChild(field("Priority", fPri));
     box.appendChild(field("Status", fStat));
-    box.appendChild(field("Area", fArea));
     box.appendChild(fDue.node);
+    box.appendChild(fLabels.node);
     box.appendChild(field("Detail", fDetail, true));
 
     var wrap = el("div", opts && opts.inRow ? "adm-form adm-form-in" : null);
@@ -859,7 +1233,10 @@
           owner:    fOwner.value,
           priority: fPri.value,
           status:   fStat.value,
-          area:     fArea.value.replace(/^\s+|\s+$/g, ""),
+          /* `labels` replaces `area` and nothing writes `area` again. See the
+             note in js/admin-tasks.js: a row's old single area is folded into
+             the list the first time it is saved. */
+          labels:   fLabels.read(),
           /* "" clears it. The rules accept the empty string and the data layer
              writes it as a field rather than deleting one. */
           due:      fDue.read()
@@ -883,8 +1260,21 @@
      mutates TASKS itself, so the screen can never disagree with the server.
      ========================================================================== */
 
+  /* WHERE A REFUSAL LANDS. The board's state line is at the TOP of the page,
+     and when the detail view is open the reader is inside a modal that covers
+     it — a message there would be a failure reported into a place nobody can
+     see. So both of these write into the sheet when the sheet is open and into
+     the board when it is not. */
+  function errHost() {
+    if (openId) {
+      var sn = $("adm-sheet-note");
+      if (sn) return sn;
+    }
+    return $("adm-board-state");
+  }
+
   function fail(what, e) {
-    var n = $("adm-board-state");
+    var n = errHost();
     if (!n) return;
     n.className = "adm-state adm-bad";
     clear(n);
@@ -904,7 +1294,7 @@
      database never saw it and telling somebody their typo was a server error
      sends them to look in the wrong place. */
   function warn(msg) {
-    var n = $("adm-board-state");
+    var n = errHost();
     if (n) {
       n.className = "adm-state adm-bad";
       clear(n);
@@ -914,17 +1304,24 @@
     say(String(msg));
   }
 
-  function call(name, a, b, what, then) {
+  /* The general form: a name, an argument list, the sentence to put in front
+     of a failure, and what to do on success. `call` is the two-argument
+     shorthand every existing site uses; the comment writers need three. */
+  function callN(name, args, what, then) {
     if (!FBT || typeof FBT[name] !== "function") {
       fail(what, { message: "the data layer is not loaded" });
       return;
     }
     var p;
-    try { p = b === undefined ? FBT[name](a) : FBT[name](a, b); }
+    try { p = FBT[name].apply(FBT, args || []); }
     catch (e) { fail(what, e); return; }
     if (p && typeof p.then === "function") {
       p.then(function (r) { if (then) then(r); }, function (e) { fail(what, e); });
     } else if (then) { then(p); }
+  }
+
+  function call(name, a, b, what, then) {
+    return callN(name, b === undefined ? [a] : [a, b], what, then);
   }
 
   /* ==========================================================================
@@ -938,71 +1335,44 @@
      carries the DATE, which is the part a human reads. */
   function whenLine(t) {
     /* The owner's word for this is "closed", and it is the word the history
-       uses two sections down. One vocabulary. */
-    if (t.status === "done" && t.doneAt) return "Closed " + fmtShort(t.doneAt);
-    if (t.status === "done") return "Closed — the date was not recorded";
+       uses two sections down. One vocabulary. And it carries the TIME now, in
+       every one of its four branches: "Updated 10 Sep" was the line the owner
+       pointed at, and a board where two people are both editing needs the
+       hour to be worth anything at all. */
+    if (t.status === "done" && t.doneAt) return "Closed " + fmtShortAt(t.doneAt);
+    if (t.status === "done") return "Closed — the time was not recorded";
     var ms = t.updatedAt || t.createdAt;
     if (!ms) return "";
-    return (t.updatedAt ? "Updated " : "Added ") + fmtShort(ms);
+    return (t.updatedAt ? "Updated " : "Added ") + fmtShortAt(ms);
   }
 
-  function openEditor(row, t) {
-    clear(row);
+  /* The title of any row on this page is a BUTTON, and that is the whole
+     affordance for "tap a task to open it": the biggest word in the row is
+     the thing you press. It is a real <button>, so it is reachable with Tab,
+     announced as a button, and carries aria-haspopup="dialog" — a link would
+     have promised a page that does not exist. */
+  function openTitle(cls, text, kind, id) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = cls + " adm-open";
+    b.setAttribute("data-fbt", "-");
+    b.setAttribute("aria-haspopup", "dialog");
+    /* Which row this button belongs to, so that focus can be put BACK on it
+       after the sheet closes even though the render that follows built a new
+       node for the same task. Not data-fbt: that attribute means one thing on
+       this site and it is not an id. */
+    b.setAttribute("data-row", String(id));
+    b.textContent = String(text);
+    b.onclick = function () { openSheet(kind, id, b); };
+    return b;
+  }
 
-    var f = taskForm("adm-e", t, { inRow: true });
-    row.appendChild(f.node);
-
-    var a = acts();
-
-    a.appendChild(btn("Save", "adm-btn-go", function () {
-      var v = f.read();
-      if (!v.title) { f.focus(); say("A task needs a title."); return; }
-      if (f.badDue()) { f.focusDue(); warn(BAD_DUE); return; }
-      var patch = {
-        title: v.title, detail: v.detail, owner: v.owner,
-        priority: v.priority, status: v.status, area: v.area, due: v.due
-      };
-      editing = null;
-      call("updateTask", t.id, patch, "save that task", function () {
-        say("Saved.");
-        render();
-      });
-      render();
-    }));
-
-    a.appendChild(btn("Cancel", null, function () {
-      editing = null;
-      render();
-    }));
-
-    /* Two-step delete rather than a confirm() dialog: a native dialog on a
-       phone covers the row you are trying to identify, and this is a list
-       where every row looks like its neighbours. The button says what the
-       next press will do. */
-    var armed = false, timer = null;
-    var del = btn("Delete", "adm-btn-bad", function () {
-      if (!armed) {
-        armed = true;
-        del.textContent = "Press again to delete";
-        say("Press delete again to remove this task.");
-        timer = setTimeout(function () {
-          armed = false;
-          del.textContent = "Delete";
-        }, 5000);
-        return;
-      }
-      if (timer) clearTimeout(timer);
-      editing = null;
-      call("deleteTask", t.id, undefined, "delete that task", function () {
-        say("Deleted.");
-        render();
-      });
-      render();
-    });
-    a.appendChild(del);
-
-    f.node.appendChild(a);
-    f.focus();
+  function labelChips(list) {
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < (list || []).length; i++) {
+      frag.appendChild(el("span", "adm-area-chip", list[i]));
+    }
+    return frag;
   }
 
   function taskRow(t) {
@@ -1020,10 +1390,10 @@
     rail.appendChild(ownerChip(t.owner));
     rail.appendChild(priChip(t.priority));
     rail.appendChild(statusChip(t.status));
-    if (t.area) rail.appendChild(el("span", "adm-area-chip", t.area));
+    rail.appendChild(labelChips(t.labels));
     /* LAST in the rail on purpose. The rail wraps at 390px, so the last chip
        is the one on its own line, and this is the one to read. A task with no
-       date gets no chip at all — 130 rows each saying "No date" is a wall of
+       date gets no chip at all — 149 rows each saying "No date" is a wall of
        nothing, and the absence is already the message. */
     if (st) rail.appendChild(dueChip(st));
     li.appendChild(rail);
@@ -1031,9 +1401,7 @@
     var body = el("div", "adm-task-body");
     li.appendChild(body);
 
-    if (editing === t.id) { openEditor(body, t); return li; }
-
-    body.appendChild(el("p", "adm-title", t.title || "Untitled task"));
+    body.appendChild(openTitle("adm-title", t.title || "Untitled task", "admin_tasks", t.id));
     if (t.detail) body.appendChild(el("p", "adm-detail", t.detail));
     var w = whenLine(t);
     if (w) body.appendChild(el("p", "adm-when", w));
@@ -1067,10 +1435,14 @@
       }));
     }
 
-    a.appendChild(btn("Edit", null, function () {
-      editing = t.id;
-      render();
-    }));
+    /* THERE IS NO LONGER AN IN-ROW EDITOR. Everything a task can be changed to
+       is in the detail view, which is the same form, on one surface, with the
+       record and the conversation beside it. Two editors for one document
+       would be two places to fix a bug in and two ways for the same field to
+       be saved. */
+    var open = btn("Open", null, function () { openSheet("admin_tasks", t.id, open); });
+    open.setAttribute("aria-haspopup", "dialog");
+    a.appendChild(open);
 
     body.appendChild(a);
     return li;
@@ -1098,8 +1470,44 @@
     return st ? st.k : "none";
   }
 
+  /* GROUPED BY LABEL, which is the one grouping where a task can be in two
+     places at once. It is built from the labels actually in use rather than
+     from a list, busiest first so the top of the page is the bucket most of
+     the work is in, and "No labels" last because it is the only group that is
+     not a label. See the note the board prints above it: a task with two
+     labels IS listed twice, and saying so is cheaper than a reader deciding
+     the board is duplicating rows. */
+  function labelGroups(open) {
+    var counts = {}, i, j, ls, out = [], keys = [], none = [];
+    for (i = 0; i < open.length; i++) {
+      ls = open[i].labels || [];
+      if (!ls.length) { none.push(open[i]); continue; }
+      for (j = 0; j < ls.length; j++) counts[ls[j]] = (counts[ls[j]] || 0) + 1;
+    }
+    for (var k in counts) {
+      if (Object.prototype.hasOwnProperty.call(counts, k)) keys.push(k);
+    }
+    keys.sort(function (a, b) {
+      if (counts[a] !== counts[b]) return counts[b] - counts[a];
+      return a < b ? -1 : (a > b ? 1 : 0);
+    });
+    for (i = 0; i < keys.length; i++) out.push({ k: keys[i], label: keys[i], items: [] });
+    for (i = 0; i < open.length; i++) {
+      ls = open[i].labels || [];
+      for (j = 0; j < out.length; j++) {
+        for (var m = 0; m < ls.length; m++) {
+          if (ls[m] === out[j].k) { out[j].items.push(open[i]); break; }
+        }
+      }
+    }
+    if (none.length) out.push({ k: "__none", label: "No labels", items: none });
+    for (i = 0; i < out.length; i++) out[i].items.sort(cmp);
+    return out;
+  }
+
   function groupsFor(open) {
     var out = [], i, j;
+    if (groupBy === "label") return labelGroups(open);
     if (groupBy === "owner") {
       for (i = 0; i < OWNERS.length; i++) {
         out.push({ k: OWNERS[i], label: OWNER_LABEL[OWNERS[i]], items: [] });
@@ -1133,6 +1541,12 @@
      on anything" are different facts and running them together is how a board
      gets read as broken. Nothing in here can print NaN: every count starts at
      0 and only a validated `due` increments one. */
+  function hasLabel(t, one) {
+    var ls = (t && t.labels) || [];
+    for (var i = 0; i < ls.length; i++) { if (ls[i] === one) return true; }
+    return false;
+  }
+
   function timelineSentence(open) {
     var over = 0, soon = 0, dated = 0, i, n;
     for (i = 0; i < open.length; i++) {
@@ -1171,7 +1585,7 @@
            high + " high priority, " + doing + " already moving. " +
            timelineSentence(open) + " " +
            "Hassan " + mine.hassan + ", Kathryn " + mine.kathryn +
-           ", either of you " + mine.either + ". " +
+           ", up for grabs " + mine.either + ". " +
            plural(week, "task", "tasks") + " finished in the last 7 days.";
   }
 
@@ -1218,7 +1632,9 @@
 
     var shown = [];
     for (i = 0; i < open.length; i++) {
-      if (ownerFilter === "all" || open[i].owner === ownerFilter) shown.push(open[i]);
+      if (ownerFilter !== "all" && open[i].owner !== ownerFilter) continue;
+      if (labelFilter && !hasLabel(open[i], labelFilter)) continue;
+      shown.push(open[i]);
     }
 
     if (!shown.length) {
@@ -1227,11 +1643,25 @@
       state.hidden = false;
       clear(state);
       state.appendChild(el("b", null, "Nothing open here."));
-      state.appendChild(document.createTextNode(
-        ownerFilter === "all"
-          ? " Everything on the board is finished. The record is in Done, below."
-          : " Nothing open is assigned to " + (OWNER_LABEL[ownerFilter] || ownerFilter) +
-            ". Switch Show to Everyone to see the rest of the board."));
+      /* Three different reasons for an empty list and three different next
+         actions. Running them together is how an empty state gets read as a
+         bug. */
+      if (labelFilter) {
+        state.appendChild(document.createTextNode(
+          " Nothing open is labelled " + labelFilter +
+          ". Set the Label filter back to All labels to see the rest of the board."));
+      } else if (ownerFilter === "all") {
+        state.appendChild(document.createTextNode(
+          " Everything on the board is finished. The record is in Done, below."));
+      } else if (ownerFilter === "either") {
+        state.appendChild(document.createTextNode(
+          " Nothing open is up for grabs — every open task has a name on it. " +
+          "Switch Show to Everyone to see the rest of the board."));
+      } else {
+        state.appendChild(document.createTextNode(
+          " Nothing open is assigned to " + (OWNER_LABEL[ownerFilter] || ownerFilter) +
+          ". Switch Show to Everyone to see the rest of the board."));
+      }
       return;
     }
 
@@ -1258,7 +1688,22 @@
       groupBy === "owner" ? "grouped by who has it"
       : (groupBy === "status" ? "grouped by what is moving"
       : (groupBy === "due" ? "grouped by when it is due, nearest first"
-      : "grouped by priority")));
+      : (groupBy === "label" ? "grouped by label, busiest first"
+      : "grouped by priority"))));
+
+    var note = $("adm-board-note");
+    if (note) {
+      if (groupBy === "label") {
+        note.textContent = "A task can carry several labels, so a task labelled " +
+          "both product and code is listed under both. That is one task shown " +
+          "twice, not two tasks — the count beside each label counts rows in " +
+          "that label, and the summary above counts tasks.";
+        note.hidden = false;
+      } else {
+        note.hidden = true;
+        note.textContent = "";
+      }
+    }
   }
 
   /* ==========================================================================
@@ -1313,40 +1758,8 @@
   function goalCard(g) {
     var card = el("div", "adm-goal");
 
-    if (editingGoal === g.id) {
-      var f = goalForm("adm-eg", g);
-      card.appendChild(f.node);
-      var a = acts();
-      a.appendChild(btn("Save", "adm-btn-go", function () {
-        var v = f.read();
-        if (!v.title) { f.focus(); say("A goal needs a title."); return; }
-        if (f.badDue()) { f.focusDue(); warn(BAD_DUE); return; }
-        editingGoal = null;
-        call("updateGoal", g.id, v, "save that goal", function () { say("Goal saved."); render(); });
-        render();
-      }));
-      a.appendChild(btn("Cancel", null, function () { editingGoal = null; render(); }));
-      var armed = false, timer = null;
-      var del = btn("Delete", "adm-btn-bad", function () {
-        if (!armed) {
-          armed = true;
-          del.textContent = "Press again to delete";
-          timer = setTimeout(function () { armed = false; del.textContent = "Delete"; }, 5000);
-          return;
-        }
-        if (timer) clearTimeout(timer);
-        editingGoal = null;
-        call("deleteGoal", g.id, undefined, "delete that goal", function () { say("Goal deleted."); render(); });
-        render();
-      });
-      a.appendChild(del);
-      f.node.appendChild(a);
-      f.focus();
-      return card;
-    }
-
     card.appendChild(el("span", "adm-goal-s adm-goal-s-" + g.status, GOAL_LABEL[g.status] || g.status));
-    card.appendChild(el("span", "adm-goal-t", g.title || "Untitled goal"));
+    card.appendChild(openTitle("adm-goal-t", g.title || "Untitled goal", "admin_goals", g.id));
     if (g.target) {
       card.appendChild(el("span", "adm-goal-k", "Target"));
       card.appendChild(el("span", "adm-goal-target", g.target));
@@ -1361,9 +1774,18 @@
       card.appendChild(dueWrap);
     }
     if (g.detail) card.appendChild(el("span", "adm-goal-d", g.detail));
+    var gw = g.updatedAt || g.createdAt;
+    if (gw) {
+      card.appendChild(el("span", "adm-when",
+        (g.updatedAt ? "Updated " : "Added ") + fmtShortAt(gw)));
+    }
 
     var acts2 = el("div", "adm-rowacts");
-    acts2.appendChild(btn("Edit", null, function () { editingGoal = g.id; render(); }));
+    /* Same as a task: the card opens, and everything a goal can be changed to
+       is inside the one detail view. */
+    var open = btn("Open", null, function () { openSheet("admin_goals", g.id, open); });
+    open.setAttribute("aria-haspopup", "dialog");
+    acts2.appendChild(open);
     if (g.status !== "hit") {
       acts2.appendChild(btn("Mark hit", null, function () {
         call("updateGoal", g.id, { status: "hit" }, "mark that goal hit", function () { say("Goal hit."); });
@@ -1418,13 +1840,551 @@
   }
 
   /* ==========================================================================
+     THE DETAIL VIEW — one component, both collections
+
+     Tasks and goals differ by four fields. Everything that is hard here — the
+     focus trap, Escape, the live thread, the composer, the two-step delete,
+     the rule that every string from the database is set with textContent — is
+     written ONCE and branches on `openKind`, which is the collection name. A
+     second copy of this for goals would be a second escaping decision, and the
+     second one is the one that renders raw HTML six months from now.
+
+     WHAT IT SHOWS. The record — the full detail text, which the row truncates
+     and the history hid entirely; the owner, the labels, the priority, the
+     status and the due date; when it was created and by whom; when it was
+     completed and by whom. WHAT IT DOES. All of the same fields, editable, in
+     the same form the add box uses, saved through FBT.updateTask /
+     FBT.updateGoal — the one field-level merge path, so two people changing
+     different fields of one task both survive.
+
+     THE HONEST PART, and it is the reason half of this section exists.
+     `createdBy` starts today. 149 rows have none and there is nothing to
+     recover one from: `updatedBy` is the LAST writer, and on ~125 of them it
+     is the string "seed" because they were generated from git commits. So a
+     row with no author says it has no author, in words, and this file never
+     falls back to `updatedBy` to fill that gap. Inventing an author on a
+     shared record is the one thing this view must never do.
+     ========================================================================== */
+
+  var CMT_MAX = 1000;
+
+  /* Said once each, because they are the sentences the whole section is
+     accountable for. `%` is the noun — a task or a goal. */
+  var UNKNOWN_CREATED =
+    "Who created it is not recorded. This % was made before the board kept " +
+    "that, and nothing stored on it can be turned into an answer — it is not " +
+    "being guessed from whoever edited it last.";
+  var UNKNOWN_CLOSED =
+    "Who closed it is not recorded. It was closed before the board kept that.";
+
+  function nounFor(kind) { return kind === "admin_goals" ? "goal" : "task"; }
+
+  function rowOf(kind, id) {
+    var list = kind === "admin_goals" ? GOALS : TASKS, i;
+    for (i = 0; i < list.length; i++) { if (list[i].id === id) return list[i]; }
+    return null;
+  }
+
+  function myUid() {
+    try {
+      var m = (FBT && typeof FBT.me === "function") ? FBT.me() : null;
+      return m ? str(m.uid) : "";
+    } catch (e) { return ""; }
+  }
+
+  /* A uid is not a name, and this page will not print one at a person. What it
+     CAN say truthfully: that uid is you, or it is the seeding script, or it is
+     the other admin — plus whatever that account called itself at the time, if
+     the write recorded it. The uid is the fact (firestore.rules pins it to the
+     ID token); the name beside it is a convenience and is never the evidence. */
+  function whoWord(uid, name) {
+    if (!uid) return "";
+    if (uid === "seed") return "the seeding script";
+    var mine = myUid();
+    if (mine && uid === mine) return name ? name + " (you)" : "you";
+    return name || "the other admin";
+  }
+
+  function factRow(k, v, note) {
+    var d = el("div", "adm-fact");
+    d.appendChild(el("span", "adm-fact-k", k));
+    d.appendChild(el("span", "adm-fact-v", v));
+    if (note) d.appendChild(el("span", "adm-fact-n", note));
+    return d;
+  }
+
+  /* The record half of the sheet: chips, the notes as they stand, and the
+     three moments. Rebuilt whenever the underlying row changes; it holds no
+     typing, so nothing is lost by rebuilding it. */
+  function sheetRecord(kind, row) {
+    var box = el("div", "adm-sheet-rec");
+    var noun = nounFor(kind);
+
+    var rail = el("div", "adm-task-rail adm-sheet-rail");
+    if (kind === "admin_goals") {
+      rail.appendChild(el("span", "adm-goal-s adm-goal-s-" + row.status,
+                          GOAL_LABEL[row.status] || row.status));
+    } else {
+      rail.appendChild(ownerChip(row.owner));
+      rail.appendChild(priChip(row.priority));
+      rail.appendChild(statusChip(row.status));
+      rail.appendChild(labelChips(row.labels));
+    }
+    var st = dueState(row.due, TODAY,
+                      kind === "admin_goals" ? row.status !== "open" : row.status === "done");
+    if (st) rail.appendChild(dueChip(st));
+    box.appendChild(rail);
+
+    if (kind === "admin_goals" && row.target) {
+      box.appendChild(el("span", "adm-goal-k", "Target"));
+      box.appendChild(el("p", "adm-goal-target", row.target));
+    }
+
+    /* THE FULL TEXT. The row clamps it and the history did not show it at all,
+       which is most of what "the done tasks should have a description" was
+       asking for. An empty one says so rather than leaving a gap that reads
+       like a bug. */
+    box.appendChild(el("span", "adm-fact-k", "Notes"));
+    if (row.detail) {
+      box.appendChild(el("p", "adm-sheet-detail", row.detail));
+    } else {
+      box.appendChild(el("p", "adm-mini-note",
+        "No notes were written for this " + noun + ". There is a box below."));
+    }
+
+    var facts = el("div", "adm-facts");
+
+    /* CREATED. */
+    var madeWhen = row.createdAt ? fmtDayAt(row.createdAt) : "not recorded";
+    var madeWho = whoWord(row.createdBy, row.createdByName);
+    facts.appendChild(factRow(
+      "Created",
+      madeWho ? madeWhen + " by " + madeWho : madeWhen,
+      madeWho ? "" : UNKNOWN_CREATED.replace("%", noun)));
+
+    /* COMPLETED — a task is closed at a moment, a goal is marked hit or
+       missed, which is a state somebody chose and not an instant. Two
+       different facts, so two different lines rather than one that lies
+       slightly about whichever it is not. */
+    if (kind === "admin_goals") {
+      facts.appendChild(factRow("Outcome",
+        row.status === "open" ? "Open — not settled yet"
+                              : (GOAL_LABEL[row.status] || row.status), ""));
+    } else if (row.status === "done") {
+      var doneWhen = row.doneAt ? fmtDayAt(row.doneAt) : "the time was not recorded";
+      var doneWho = whoWord(row.doneBy, row.doneByName);
+      facts.appendChild(factRow(
+        "Completed",
+        doneWho ? doneWhen + " by " + doneWho : doneWhen,
+        doneWho ? "" : UNKNOWN_CLOSED));
+    } else {
+      facts.appendChild(factRow("Completed", "Not finished yet", ""));
+    }
+
+    /* LAST EDITED. `updatedBy` is the last writer and it is labelled as
+       exactly that — it is never borrowed to answer either question above. */
+    var edWho = whoWord(row.updatedBy, "");
+    facts.appendChild(factRow(
+      "Last edited",
+      (row.updatedAt ? fmtDayAt(row.updatedAt) : "not recorded") +
+        (edWho ? " by " + edWho : ""),
+      edWho ? "" : "Who last edited it is not recorded."));
+
+    box.appendChild(facts);
+    return box;
+  }
+
+  /* ---- The thread ------------------------------------------------------- */
+
+  function commentRow(c) {
+    var li = el("li", "adm-cmt");
+    var head = el("div", "adm-cmt-head");
+    head.appendChild(el("span", "adm-cmt-who", whoWord(c.by, c.byName) || "somebody"));
+    /* A comment whose serverTimestamp() has not come back yet has no time. It
+       says so for the one frame it lasts rather than printing 1 Jan 1970. */
+    head.appendChild(el("span", "adm-cmt-at", c.at ? fmtDayAt(c.at) : "sending…"));
+    li.appendChild(head);
+
+    /* textContent, like every other string on this page. Two people type into
+       this and it renders for the other one; the fact that the other one is a
+       cofounder does not change what a <script> tag does. */
+    li.appendChild(el("p", "adm-cmt-t", c.text));
+
+    if (c.by && c.by === myUid()) {
+      var acts = el("div", "adm-cmt-acts");
+      var armed = false, timer = null;
+      var del = btn("Delete", "adm-btn-bad", function () {
+        if (!armed) {
+          armed = true;
+          del.textContent = "Press again to delete";
+          say("Press delete again to remove your comment.");
+          timer = setTimeout(function () { armed = false; del.textContent = "Delete"; }, 5000);
+          return;
+        }
+        if (timer) clearTimeout(timer);
+        callN("deleteComment", [openKind, openId, c.id], "delete that comment", function () {
+          say("Comment deleted.");
+        });
+      });
+      acts.appendChild(del);
+      li.appendChild(acts);
+    }
+    return li;
+  }
+
+  function paintThread() {
+    var list = $("adm-cmt-list"), state = $("adm-cmt-state");
+    if (!list || !state) return;
+    clear(list);
+    if (!cmtsSeen) {
+      state.hidden = false;
+      state.textContent = "Reading the thread…";
+      list.hidden = true;
+      return;
+    }
+    if (!CMTS.length) {
+      state.hidden = false;
+      state.textContent = "No comments yet. Whatever you write here is on the " +
+        "other screen straight away, and it stays with this " + nounFor(openKind) + ".";
+      list.hidden = true;
+      return;
+    }
+    state.hidden = true;
+    list.hidden = false;
+    for (var i = 0; i < CMTS.length; i++) { list.appendChild(commentRow(CMTS[i])); }
+  }
+
+  /* ---- Opening, closing, and the keyboard -------------------------------- */
+
+  function sheetFocusables() {
+    var sheet = $("adm-sheet");
+    if (!sheet) return [];
+    var all = sheet.querySelectorAll("button, input, select, textarea, a[href]");
+    var out = [], i, n;
+    for (i = 0; i < all.length; i++) {
+      n = all[i];
+      if (n.disabled) continue;
+      if (n.hidden) continue;
+      if (n.offsetWidth === 0 && n.offsetHeight === 0) continue;
+      out.push(n);
+    }
+    return out;
+  }
+
+  /* Escape closes; Tab cycles inside the card and cannot walk out into the
+     board behind it. Both are the price of aria-modal being a claim rather
+     than a behaviour: a dialog that says it is modal and lets Tab wander
+     underneath is worse than one that never claimed it. */
+  function sheetKeys(e) {
+    if (!openId) return;
+    var k = e && (e.keyCode || e.which);
+    if (k === 27) {
+      if (e.preventDefault) e.preventDefault();
+      closeSheet();
+      return;
+    }
+    if (k !== 9) return;
+    var f = sheetFocusables();
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1], at = document.activeElement;
+    if (e.shiftKey && (at === first || at === $("adm-sheet"))) {
+      if (e.preventDefault) e.preventDefault();
+      try { last.focus(); } catch (e2) {}
+    } else if (!e.shiftKey && at === last) {
+      if (e.preventDefault) e.preventDefault();
+      try { first.focus(); } catch (e3) {}
+    }
+  }
+
+  function sheetNote(msg, bad) {
+    var n = $("adm-sheet-note");
+    if (!n) return;
+    if (!msg) { n.hidden = true; n.textContent = ""; return; }
+    n.className = "adm-state" + (bad ? " adm-bad" : "");
+    n.textContent = String(msg);
+    n.hidden = false;
+  }
+
+  function paintFacts() {
+    var host = $("adm-sheet-rec");
+    if (!host) return;
+    var row = rowOf(openKind, openId);
+    clear(host);
+    if (!row) {
+      host.appendChild(el("p", "adm-mini-note",
+        "This " + nounFor(openKind) + " has been deleted on the other screen. " +
+        "Nothing you save here will land."));
+      return;
+    }
+    host.appendChild(sheetRecord(openKind, row));
+  }
+
+  /* Called on every snapshot while the sheet is open. It repaints the RECORD
+     and never the form — the form is where somebody is typing, and pulling the
+     DOM out from under a half-typed sentence is the thing this whole board
+     goes out of its way not to do. */
+  function refreshSheet() {
+    var row = rowOf(openKind, openId);
+    if (!row) {
+      openStale = false;
+      paintFacts();
+      sheetNote("This " + nounFor(openKind) + " has been deleted. Close this and it will be gone from the board.", true);
+      return;
+    }
+    if (row.updatedAt !== openSeenAt) {
+      if (justSaved) { justSaved = false; openSeenAt = row.updatedAt; openStale = false; }
+      else { openStale = true; }
+    }
+    paintFacts();
+    if (openStale) {
+      sheetNote("Changed on the other screen just now — the record above is " +
+                "theirs. The form below still holds what you had, so saving " +
+                "writes these fields as they are here.", false);
+    }
+  }
+
+  function openSheet(kind, id, opener) {
+    var row = rowOf(kind, id);
+    if (!row) { say("That has already been deleted."); return; }
+    if (openId) closeSheet();
+
+    openKind = kind === "admin_goals" ? "admin_goals" : "admin_tasks";
+    openId = id;
+    openerNode = opener || null;
+    openSeenAt = row.updatedAt || 0;
+    openStale = false;
+    justSaved = false;
+    CMTS = [];
+    cmtsSeen = false;
+
+    var body = $("adm-sheet-body");
+    var wrap = $("adm-modal");
+    if (!body || !wrap) return;
+    clear(body);
+    setText("adm-sheet-t", row.title || ("Untitled " + nounFor(openKind)));
+
+    body.appendChild(el("div", "adm-state", "")).id = "adm-sheet-note";
+    $("adm-sheet-note").hidden = true;
+
+    body.appendChild(el("div", null, "")).id = "adm-sheet-rec";
+
+    /* ---- the editor, the same form the add box uses ---- */
+    var edit = el("div", "adm-sheet-edit");
+    edit.appendChild(el("h3", "adm-sheet-h", "Change this " + nounFor(openKind)));
+    var f = (openKind === "admin_goals")
+      ? goalForm("adm-s", row)
+      : taskForm("adm-s", row, { inRow: true });
+    openForm = f;
+    edit.appendChild(f.node);
+
+    var eacts = acts();
+    eacts.appendChild(btn("Save changes", "adm-btn-go", saveSheet));
+    var armed = false, timer = null;
+    var del = btn("Delete", "adm-btn-bad", function () {
+      if (!armed) {
+        armed = true;
+        del.textContent = "Press again to delete";
+        say("Press delete again to remove this " + nounFor(openKind) + ".");
+        timer = setTimeout(function () { armed = false; del.textContent = "Delete"; }, 5000);
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      var what = openKind === "admin_goals" ? "deleteGoal" : "deleteTask";
+      var noun = nounFor(openKind);
+      var id2 = openId;
+      closeSheet();
+      callN(what, [id2], "delete that " + noun, function () {
+        say("Deleted. Its comments went with it.");
+        render();
+      });
+    });
+    eacts.appendChild(del);
+    edit.appendChild(eacts);
+    body.appendChild(edit);
+
+    /* ---- the thread ---- */
+    var talk = el("div", "adm-sheet-talk");
+    talk.appendChild(el("h3", "adm-sheet-h", "Comments"));
+    talk.appendChild(el("div", "adm-state", "Reading the thread…")).id = "adm-cmt-state";
+    var ul = el("ul", "adm-cmt-list");
+    ul.id = "adm-cmt-list";
+    ul.hidden = true;
+    talk.appendChild(ul);
+
+    /* THE COMPOSER IS IN NORMAL FLOW at the bottom of a scrolling card, not
+       pinned to the viewport. A position:fixed bar is what iOS hides behind
+       the on-screen keyboard; in flow, the browser's own scroll-into-view puts
+       the caret above the keys and the Post button follows the text. */
+    var comp = el("div", "adm-cmt-new");
+    var ta = textarea("adm-cmt-box", "", "Say something about this — the other one of you sees it straight away.");
+    ta.className = "adm-area adm-cmt-box";
+    try { ta.maxLength = CMT_MAX; } catch (e) {}
+    var lab = el("label", "adm-sr", "Write a comment");
+    lab.setAttribute("for", "adm-cmt-box");
+    comp.appendChild(lab);
+    comp.appendChild(ta);
+    var cacts = acts();
+    cacts.appendChild(btn("Post comment", "adm-btn-go", function () {
+      var t = str(ta.value).replace(/^\s+|\s+$/g, "");
+      if (!t) { try { ta.focus(); } catch (e2) {} say("A comment needs something in it."); return; }
+      if (t.length > CMT_MAX) t = t.slice(0, CMT_MAX);
+      callN("addComment", [openKind, openId, t], "post that comment", function () {
+        ta.value = "";
+        say("Comment posted.");
+      });
+    }));
+    comp.appendChild(cacts);
+    talk.appendChild(comp);
+    body.appendChild(talk);
+
+    paintFacts();
+    paintThread();
+
+    wrap.hidden = false;
+    try { document.body.className += " adm-locked"; } catch (e3) {}
+    try { document.addEventListener("keydown", sheetKeys, true); } catch (e4) {}
+    try { $("adm-sheet").scrollTop = 0; } catch (e5) {}
+    try { $("adm-sheet").focus(); } catch (e6) {}
+    say("Opened " + (row.title || nounFor(openKind)) + ".");
+
+    /* The thread, live, for exactly as long as this is open. Nothing
+       subscribes to a conversation nobody is reading. */
+    if (FBT && typeof FBT.watchComments === "function") {
+      try {
+        openUnsub = FBT.watchComments(openKind, openId, function (list) {
+          CMTS = [];
+          list = list || [];
+          for (var i = 0; i < list.length; i++) {
+            CMTS.push({
+              id: str(list[i].id),
+              text: str(list[i].text),
+              by: str(list[i].by),
+              byName: str(list[i].byName),
+              at: toMs(list[i].at)
+            });
+          }
+          cmtsSeen = true;
+          if (openId) paintThread();
+        });
+      } catch (e7) { cmtsSeen = true; paintThread(); }
+    } else {
+      cmtsSeen = true;
+      paintThread();
+    }
+  }
+
+  function saveSheet() {
+    if (!openId || !openForm) return;
+    var row = rowOf(openKind, openId);
+    if (!row) { sheetNote("This has been deleted — there is nothing to save it to.", true); return; }
+    var v = openForm.read();
+    if (!v.title) { openForm.focus(); say("It needs a title."); return; }
+    if (openForm.badDue()) { openForm.focusDue(); sheetNote(BAD_DUE, true); return; }
+    justSaved = true;
+    sheetNote("", false);
+    var id2 = openId;
+    if (openKind === "admin_goals") {
+      callN("updateGoal", [id2, v], "save that goal", function () {
+        say("Saved.");
+        setText("adm-sheet-t", v.title);
+        render();
+      });
+    } else {
+      callN("updateTask", [id2, {
+        title: v.title, detail: v.detail, owner: v.owner, priority: v.priority,
+        status: v.status, labels: v.labels, due: v.due
+      }], "save that task", function () {
+        say("Saved.");
+        setText("adm-sheet-t", v.title);
+        render();
+      });
+    }
+  }
+
+  function closeSheet() {
+    if (!openId) return;
+    var wasId = openId;
+    try { if (openUnsub) openUnsub(); } catch (e) {}
+    openUnsub = null;
+    openForm = null;
+    openKind = "";
+    openId = "";
+    CMTS = [];
+    cmtsSeen = false;
+    openStale = false;
+    var wrap = $("adm-modal");
+    if (wrap) wrap.hidden = true;
+    var body = $("adm-sheet-body");
+    if (body) clear(body);
+    try { document.body.className = document.body.className.replace(/\s*adm-locked/g, ""); } catch (e2) {}
+    try { document.removeEventListener("keydown", sheetKeys, true); } catch (e3) {}
+    /* Anything the snapshot deferred while this was open paints now — and it
+       has to happen BEFORE focus is restored, because it is what replaces the
+       row that opened this. */
+    render();
+
+    /* Focus goes back to the control that opened this, not to the top of the
+       document — otherwise closing a task opened from row ninety of the
+       history lands a keyboard user back at the masthead. The original node is
+       usually gone by now (the render above rebuilt its row), so the fallback
+       is the button for the same row in the newly painted list, found by the
+       data-row it carries. */
+    try {
+      if (openerNode && openerNode.focus && document.body.contains(openerNode)) {
+        openerNode.focus();
+      } else {
+        focusRow(wasId);
+      }
+    } catch (e4) {}
+    openerNode = null;
+  }
+
+  function focusRow(id) {
+    if (!id) return false;
+    var ns = document.querySelectorAll("button.adm-open");
+    for (var i = 0; i < ns.length; i++) {
+      if (ns[i].getAttribute("data-row") === id) {
+        try { ns[i].focus(); } catch (e) {}
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /* ==========================================================================
      History — long by construction, so shut and paged by default
      ========================================================================== */
 
-  function renderHistory() {
-    var days = $("adm-hist-days"), state = $("adm-hist-state");
-    if (!days || !state) return;
+  /* One finished task, inside its day. The title is a button like every other
+     title on this page, so the record opens from the history too — which is
+     where "the done tasks should have a description, tappable to open" starts.
 
+     The row carries its own closed TIME as well as its day. The day is the
+     heading it sits under; the fact has to survive the row being copied out on
+     its own, which is exactly what happens when one of them pastes "did we
+     ever do this?" into a chat. */
+  function doneRow(t) {
+    var row = el("div", "adm-done-row");
+    row.appendChild(openTitle("adm-done-t", t.title || "Untitled task", "admin_tasks", t.id));
+
+    var ms = t.doneAt || t.updatedAt || 0;
+    row.appendChild(el("span", "adm-done-when",
+      ms ? "closed " + fmtShortAt(ms) : "closed — time not recorded"));
+
+    var meta = OWNER_LABEL[t.owner] || t.owner;
+    var ls = t.labels || [];
+    if (ls.length) meta += " · " + ls.join(", ");
+    /* And what it was DUE by, when it had a date — the two together are the
+       only place the board says whether the plan held. Stated as facts, not
+       graded. */
+    if (t.due) meta += " · due " + fmtDue(t.due);
+    row.appendChild(el("span", "adm-done-m", meta));
+    return row;
+  }
+
+  /* Everything finished, newest first, bucketed into local days. Local and not
+     UTC: work finished at 9pm in London belongs to that evening. */
+  function doneDays() {
     var done = [], i;
     for (i = 0; i < TASKS.length; i++) { if (TASKS[i].status === "done") done.push(TASKS[i]); }
     done.sort(function (a, b) {
@@ -1432,97 +2392,166 @@
       if (d) return d;
       return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
     });
+    var days = [], cur = null, k, ms;
+    for (i = 0; i < done.length; i++) {
+      ms = done[i].doneAt || done[i].updatedAt || 0;
+      k = dayKey(ms);
+      if (!cur || cur.key !== k) {
+        cur = { key: k, ms: ms, items: [] };
+        days.push(cur);
+      }
+      cur.items.push(done[i]);
+    }
+    return days;
+  }
 
-    setText("adm-hist-label",
-      !tasksSeen ? "History"
-      : (done.length ? "History · " + plural(done.length, "task", "tasks") + " done"
-                     : "History · nothing finished yet"));
+  /* Which days open themselves, decided ONCE per load rather than per paint —
+     a live edit from the other screen must not re-open a day the reader just
+     shut. Newest first, until three days or twenty rows, whichever comes
+     first, and always at least one. See the constants at the top for why. */
+  function chooseOpenDays(days) {
+    var out = {}, rows = 0, i;
+    for (i = 0; i < days.length && i < HIST_AUTO_DAYS; i++) {
+      if (i > 0 && rows + days[i].items.length > HIST_AUTO_ROWS) break;
+      out[days[i].key] = true;
+      rows += days[i].items.length;
+    }
+    return out;
+  }
 
-    clear(days);
+  function renderHistory() {
+    var host = $("adm-hist-days"), state = $("adm-hist-state");
+    if (!host || !state) return;
 
-    if (!done.length) {
+    var days = doneDays(), i, total = 0;
+    for (i = 0; i < days.length; i++) total += days[i].items.length;
+
+    clear(host);
+
+    if (!tasksSeen) {
+      setText("adm-hist-label", "Loading the history…");
+      state.hidden = true;
+      hide("adm-hist-more-wrap");
+      return;
+    }
+
+    if (!days.length) {
+      setText("adm-hist-label", "Nothing finished yet.");
       state.hidden = false;
-      state.textContent = tasksSeen
-        ? "Nothing has been marked done yet. When something is, it lands here with the day it was finished."
-        : "Loading the history…";
+      state.textContent = "Nothing has been marked done yet. When something is, " +
+        "it lands here under the day it was finished.";
       hide("adm-hist-more-wrap");
       return;
     }
     state.hidden = true;
 
-    if (histShown > done.length) histShown = done.length;
-    var page = done.slice(0, histShown);
+    if (histOpen === null) histOpen = chooseOpenDays(days);
 
-    /* Grouped by the day it was finished. The date is the point of this
-       section — "a history of work done, with the date it was done" — so it
-       is a heading, not a column someone has to scan for. */
-    var curKey = null, curBox = null;
+    setText("adm-hist-label",
+      plural(total, "task", "tasks") + " done across " +
+      plural(days.length, "day", "days") + ", newest first. Each day opens on " +
+      "its own; the count beside a day is what got finished that day.");
+
+    if (histDays > days.length) histDays = days.length;
+    var page = days.slice(0, histDays);
+
     for (i = 0; i < page.length; i++) {
-      var t = page[i];
-      var ms = t.doneAt || t.updatedAt || 0;
-      var k = dayKey(ms);
-      if (k !== curKey) {
-        curKey = k;
-        var d = el("div", "adm-day");
-        d.appendChild(el("div", "adm-day-h", fmtDay(ms)));
-        curBox = el("div");
-        d.appendChild(curBox);
-        days.appendChild(d);
-      }
-      var row = el("div", "adm-done-row");
-      row.appendChild(el("span", "adm-done-t", t.title || "Untitled task"));
-
-      /* THE COMPLETION DATE, ON THE ROW. This is the half the owner asked for
-         and it was invisible: `doneAt` has been stamped on every one of these
-         since the board shipped, and the only place it appeared was the date
-         heading above the group. A heading is the group, not the fact — and a
-         row copied out of this list on its own, which is exactly what happens
-         when one of them pastes "did we ever do this?" into a chat, carried no
-         date at all. Now it carries its own.
-
-         `ms` is 0 only for a row whose doneAt AND updatedAt are both missing,
-         which is a row written by hand in the console. It says so in words
-         rather than printing 1 Jan 1970. */
-      row.appendChild(el("span", "adm-done-when",
-        ms ? "closed " + fmtShort(ms) : "closed — date not recorded"));
-
-      var meta = OWNER_LABEL[t.owner] || t.owner;
-      if (t.area) meta += " · " + t.area;
-      /* And what it was DUE by, when it had a date — the two together are the
-         only place the board says whether the plan held. Stated as facts, not
-         graded: "due 8 Sep · closed 10 Sep" is enough, and a row that told
-         two people they were two days late every time they looked at it is a
-         row they would stop looking at. */
-      if (t.due) meta += " · due " + fmtDue(t.due);
-      row.appendChild(el("span", "adm-done-m", meta));
-      curBox.appendChild(row);
+      host.appendChild(dayBlock(page[i]));
     }
 
     var wrap = $("adm-hist-more-wrap"), more = $("adm-hist-more");
-    if (done.length > page.length) {
-      var left = done.length - page.length;
-      if (more) more.textContent = "Show " + Math.min(left, HIST_STEP) + " more of " + left;
+    if (days.length > page.length) {
+      var left = days.length - page.length;
+      if (more) more.textContent = "Show " + Math.min(left, HIST_DAYS_STEP) +
+                                   " more " + (left === 1 ? "day" : "days") + " of " + left;
       if (wrap) wrap.hidden = false;
     } else if (wrap) {
       wrap.hidden = true;
     }
   }
 
+  /* ONE DAY. A <details>, which is the browser's own disclosure — it carries
+     its expanded state to a screen reader without a line of ARIA, it is
+     keyboard-operable for free, and it survives JavaScript failing after the
+     page is painted.
+
+     A SHUT DAY BUILDS NO ROWS AT ALL. That is the difference between this and
+     wrapping the old flat list in expanders: the rows are built by fill() when
+     the day opens and thrown away when it shuts, so ten headings cost ten
+     summaries and not four hundred rows. */
+  function dayBlock(day) {
+    var d = document.createElement("details");
+    d.className = "adm-day";
+
+    var sum = document.createElement("summary");
+    sum.className = "adm-day-sum";
+    sum.setAttribute("data-fbt", "-");
+    sum.appendChild(el("span", "adm-caret"))
+       .setAttribute("aria-hidden", "true");
+    sum.appendChild(el("span", "adm-day-h", fmtDay(day.ms)));
+    sum.appendChild(el("span", "adm-count", plural(day.items.length, "task", "tasks")));
+    d.appendChild(sum);
+
+    var body = el("div", "adm-day-body");
+    d.appendChild(body);
+
+    function fill() {
+      if (body.firstChild) return;
+      for (var i = 0; i < day.items.length; i++) { body.appendChild(doneRow(day.items[i])); }
+    }
+
+    if (histOpen[day.key]) { d.open = true; fill(); }
+
+    d.ontoggle = function () {
+      if (d.open) { histOpen[day.key] = true; fill(); }
+      else { delete histOpen[day.key]; clear(body); }
+    };
+    return d;
+  }
+
   /* ==========================================================================
      Render
      ========================================================================== */
+
+  /* The filter's options are the labels that exist, so a label invented five
+     seconds ago is filterable. The current choice survives a repaint unless
+     the last row carrying it was just relabelled, in which case the filter
+     falls back to All rather than silently showing nothing. */
+  function renderLabelFilter() {
+    var sel = $("adm-label-filter");
+    if (!sel) return;
+    var have = allLabels(), i, keep = labelFilter, found = false;
+    for (i = 0; i < have.length; i++) { if (have[i] === keep) found = true; }
+    if (keep && !found) labelFilter = "";
+    clear(sel);
+    var all = document.createElement("option");
+    all.value = "";
+    all.textContent = "All labels";
+    sel.appendChild(all);
+    for (i = 0; i < have.length; i++) {
+      var o = document.createElement("option");
+      o.value = have[i];          /* a value, never markup */
+      o.textContent = have[i];
+      sel.appendChild(o);
+    }
+    sel.value = labelFilter;
+  }
 
   function render() {
     /* One reading of the clock per paint. A board left open overnight rolls
        over on its next render — which the live snapshot triggers on the next
        edit either of them makes — rather than half-way down a list. */
     TODAY = todayNum();
+    renderLabelFilter();
     renderBoard();
     renderGoals();
     renderHistory();
   }
 
   function incoming() {
+    /* The sheet is a live view of one row and it updates even while the board
+       behind it is held still: the RECORD repaints, the form does not. */
+    if (openId) refreshSheet();
     if (editorOpen()) {
       deferred = true;
       var n = $("adm-board-state");
@@ -1677,13 +2706,23 @@
     radios("adm-group", function (v) { groupBy = v; render(); });
     radios("adm-who", function (v) { ownerFilter = v; render(); });
 
+    var lf = $("adm-label-filter");
+    if (lf) lf.onchange = function () { labelFilter = labelOne(lf.value); render(); };
+
+    /* The sheet: a Close button, the scrim, and Escape (in sheetKeys). Three
+       ways out, because a modal on a phone with one of them is a trap. */
+    var x = $("adm-sheet-x");
+    if (x) x.onclick = function () { closeSheet(); };
+    var scrim = $("adm-scrim");
+    if (scrim) scrim.onclick = function () { closeSheet(); };
+
     var add = $("adm-add-open");
     if (add) add.onclick = function () { if (addOpen) return; openAdd(); };
     var g = $("adm-goal-open");
     if (g) g.onclick = function () { if (goalOpen) return; openGoal(); };
 
     var more = $("adm-hist-more");
-    if (more) more.onclick = function () { histShown += HIST_STEP; renderHistory(); };
+    if (more) more.onclick = function () { histDays += HIST_DAYS_STEP; renderHistory(); };
 
     render();
 
@@ -1733,7 +2772,7 @@
         window.FBU.onChange(function (u) {
           /* Signing out with the board open takes the board away rather than
              leaving both of your task lists on a shared laptop. */
-          if (!u) { TASKS = []; GOALS = []; panel("adm-p-out"); }
+          if (!u) { closeSheet(); TASKS = []; GOALS = []; panel("adm-p-out"); }
         });
       }
     } catch (e3) {}

@@ -17,8 +17,8 @@
 
      admin_tasks/c-<full sha>    one commit, status "done", doneAt and
                                  createdAt set to the commit's author date,
-                                 title from the commit subject, area "code",
-                                 owner "hassan", and NO due date
+                                 title from the commit subject, labels
+                                 ["code"], owner "hassan", and NO due date
      admin_tasks/k-<key>         a task from --file, keyed on whatever the
                                  JSON called it
      admin_goals/kg-<key>        a goal from --file
@@ -32,8 +32,24 @@
    board it belongs to whoever is looking at the board, and a seeder that
    reasserted its own idea of the title every run would silently undo them.
 
-   WHY THE ID AND NOT A `sha` FIELD. firestore.rules enumerates the twelve
-   keys a task may have and one unlisted key denies the whole write — and on
+   LABELS, NOT `area`. A task carries a LIST of labels now — see the note in
+   js/admin-tasks.js for the normalisation, which this file repeats exactly:
+   lowercase, whitespace and underscores to hyphens, nothing outside
+   [a-z0-9-], no empties, no duplicates, sorted, six at most and twenty-four
+   characters each. A --file row may say "labels": ["code","seo"] or the old
+   "area": "code", which is folded into a one-element list. Nothing here
+   writes `area` any more.
+
+   IT DOES NOT WRITE `createdBy`, AND THAT IS DELIBERATE. The board records
+   who created a task from the moment somebody creates one in a browser; a row
+   generated from a git commit was not created by a person sitting at the
+   board, and the detail view says "not recorded" for it rather than naming
+   anybody. A --file row carrying "createdBy" is refused outright rather than
+   quietly honoured: a seeder that let you type an author into a shared record
+   is a seeder that can put Kathryn's name on something she never wrote.
+
+   WHY THE ID AND NOT A `sha` FIELD. firestore.rules enumerates the keys a
+   task may have and one unlisted key denies the whole write — and on
    an update `request.resource.data` is the document AFTER the merge, so a
    thirteenth field written here would not sit there harmlessly: it would make
    every later edit from the browser fail with permission-denied, on rows
@@ -104,6 +120,7 @@ const STATUSES      = ["todo", "doing", "done"];
 const GOAL_STATUSES = ["open", "hit", "missed"];
 
 const MAX_TITLE = 120, MAX_DETAIL = 600, MAX_AREA = 40, MAX_TARGET = 40;
+const MAX_LABELS = 6, MAX_LABEL = 24;
 
 const ARGS = process.argv.slice(2);
 const has = (f) => ARGS.indexOf(f) !== -1;
@@ -146,6 +163,43 @@ function dueOf(v, what) {
     die(`"${raw}" is not a real day for ${what}. Use YYYY-MM-DD, e.g. 2026-09-15.`);
   }
   return raw;
+}
+
+/* One label, normalised, or "". Character for character the same gate as
+   label() in js/admin-tasks.js and labelOne() in admin/tasks.html: if these
+   three ever disagree, the collection fills up with synonyms nobody can
+   search. */
+function labelOf(v) {
+  return String(v == null ? "" : v)
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, MAX_LABEL)
+    .replace(/-+$/g, "");
+}
+
+/* The whole list for one row. A label that normalises to nothing, or a row
+   with more than six, is a HARD FAILURE rather than a silent trim — for the
+   same reason an unreadable due date is: a seeder that quietly threw away half
+   the file is discovered a week later by somebody wondering where their tag
+   went. */
+function labelsOf(row, what) {
+  const raw = Array.isArray(row.labels) ? row.labels
+            : (typeof row.labels === "string" ? row.labels.split(",")
+            : (row.area == null ? [] : [row.area]));
+  const out = [];
+  for (const one of raw) {
+    if (String(one == null ? "" : one).trim() === "") continue;
+    const l = labelOf(one);
+    if (!l) die(`"${one}" is not usable as a label for ${what}. Labels are letters and numbers, e.g. back-end.`);
+    if (out.indexOf(l) === -1) out.push(l);
+  }
+  if (out.length > MAX_LABELS) {
+    die(`${what} has ${out.length} labels; ${MAX_LABELS} is the most a task carries.`);
+  }
+  return out.sort();
 }
 
 /* A document id, not a field: [A-Za-z0-9._-], never empty, never "." or
@@ -215,7 +269,7 @@ function taskFromCommit(c, admin) {
       owner: "hassan",
       priority: "low",
       status: "done",
-      area: "code",
+      labels: ["code"],
       /* Chronological, so the done column reads like a history. */
       order: c.when.getTime(),
       createdAt: at,
@@ -229,6 +283,12 @@ function taskFromCommit(c, admin) {
 function taskFromFile(row, i, admin, now) {
   const title = clip(row.title, MAX_TITLE);
   if (!title) die(`task #${i + 1} in --file has no title`);
+  /* See the header: authorship is not a thing you type into a file. */
+  if ("createdBy" in row || "createdByName" in row || "doneBy" in row || "doneByName" in row) {
+    die(`task #${i + 1} ("${title}") carries an authorship field. This tool ` +
+        `does not write one: a row it creates was not made by a person at the ` +
+        `board, and the detail view says so honestly rather than naming somebody.`);
+  }
   const status = pick(row.status, STATUSES, "todo", "status");
   const when = row.at ? new Date(row.at) : null;
   const at = (when && !isNaN(when.getTime()))
@@ -241,7 +301,7 @@ function taskFromFile(row, i, admin, now) {
       owner: pick(row.owner, OWNERS, "either", "owner"),
       priority: pick(row.priority, PRIORITIES, "low", "priority"),
       status,
-      area: clip(row.area, MAX_AREA),
+      labels: labelsOf(row, `task #${i + 1} ("${title}")`),
       due: dueOf(row.due, `task #${i + 1} ("${title}")`),
       order: typeof row.order === "number" && isFinite(row.order) ? row.order : (i + 1),
       createdAt: at,

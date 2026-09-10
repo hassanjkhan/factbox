@@ -85,6 +85,15 @@ service cloud.firestore {
             && request.resource.data[k].size() == 10
             && request.resource.data[k].matches("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"));
     }
+    // "absent, or null, or a string that fits". The board clears an
+    // authorship field by writing null rather than by deleting the key —
+    // deleteField() would need another import on a page that is deliberately
+    // one dynamic import deep — so null has to be a legal value here.
+    function nullStr(k, n) {
+      return !(k in request.resource.data)
+        || request.resource.data[k] == null
+        || (request.resource.data[k] is string && request.resource.data[k].size() <= n);
+    }
     function smallList(k, n) {
       return !(k in request.resource.data)
         || (request.resource.data[k] is list && request.resource.data[k].size() <= n);
@@ -528,14 +537,42 @@ service cloud.firestore {
     // share this board and "who moved this" is the only thing either of them
     // can ask about a change; a field the client could put any string in would
     // answer that question wrongly and confidently.
+    //
+    // LABELS — the tags a task is filed under, replacing the single `area`.
+    // A list, capped at 6, and here is the part that must be said plainly
+    // rather than implied, in the same spirit as the note above about
+    // "2026-02-31":
+    //
+    //     THESE RULES CANNOT CHECK THE ELEMENTS OF A LIST. There is no loop
+    //     in this language and RE2 cannot be applied across a list, so
+    //     `labels is list` and `size() <= 6` is the whole of what is
+    //     enforced HERE. The shape of each element — lowercase, trimmed,
+    //     `^[a-z0-9][a-z0-9-]{0,23}$`, no empties, no duplicates — is
+    //     enforced by label() and labelList() in js/admin-tasks.js and by
+    //     nothing else.
+    //
+    // What that means in practice, stated honestly: an admin holding a
+    // console can put a 900-character string, a number, or the empty string
+    // into this list, and these rules will accept it. What they cannot do is
+    // put 700 of them in (the count is capped), and they cannot do it to
+    // anybody else's data, because the only people who can write here at all
+    // are the two people the board belongs to. The cap is a real limit; the
+    // element shape is a convention this file is not able to keep. A rule
+    // that pretended otherwise would be the more dangerous thing.
+    //
+    // `area` stays in the key list because 149 rows still carry one and they
+    // must go on being editable. Nothing writes it any more: js/admin-tasks.js
+    // folds an old row's area into `labels` at the first edit.
     function taskShape() {
       return request.resource.data.keys().hasOnly([
                "title", "detail", "owner", "priority", "status", "area",
-               "due", "order", "createdAt", "updatedAt", "doneAt", "updatedBy"
+               "labels", "due", "order", "createdAt", "updatedAt", "doneAt",
+               "updatedBy", "createdBy", "createdByName", "doneBy", "doneByName"
              ])
         && reqStr("title", 120)
         && shortStr("detail", 600)
         && shortStr("area", 40)
+        && smallList("labels", 6)
         && dayStr("due")
         && request.resource.data.owner in ["hassan", "kathryn", "either"]
         && request.resource.data.priority in ["high", "low"]
@@ -546,6 +583,22 @@ service cloud.firestore {
         && (!("doneAt" in request.resource.data)
             || request.resource.data.doneAt == null
             || request.resource.data.doneAt is timestamp)
+        // WHO CLOSED IT. Written by the same patch that writes doneAt, and it
+        // is either nobody (the task is not done) or the person making this
+        // very request. There is no third possibility: a client that could
+        // name somebody else as the closer could put Kathryn's name on work
+        // she did not finish, on the one record either of them would ever
+        // consult to find out.
+        && (!("doneBy" in request.resource.data)
+            || request.resource.data.doneBy == null
+            || request.resource.data.doneBy == request.auth.uid)
+        && nullStr("doneByName", 60)
+        // WHO CREATED IT is checked at the two ends rather than here, because
+        // the answer differs: on create it must be the requester, and on
+        // update it must be exactly what is already stored — see both match
+        // blocks below. Here it is only pinned to a sane size and type.
+        && shortStr("createdBy", 128)
+        && shortStr("createdByName", 60)
         && request.resource.data.updatedBy == request.auth.uid;
     }
     function goalShape() {
@@ -564,17 +617,93 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
     }
 
+    // --- A thread, on a task or on a goal ---------------------------------
+    //
+    //     admin_tasks/{id}/comments/{cid}
+    //     admin_goals/{id}/comments/{cid}
+    //
+    // ONE FUNCTION, TWO PLACES, on purpose. A goal is the thing most worth
+    // arguing about on this board and the argument belongs on the goal, so
+    // both collections carry a thread — and the second copy of a validation
+    // rule is the one that drifts. If the shape of a comment ever changes it
+    // changes here, once, for both.
+    //
+    // A SUBCOLLECTION RATHER THAN AN ARRAY on the parent, and these rules are
+    // half the reason: hasOnly() can pin a document's keys and this pins a
+    // comment's, but nothing in this language can validate the elements of a
+    // growing array (see the labels note above). One document per comment gets
+    // one real validation each — length, author, clock.
+    //
+    // NO UPDATE, EVER. A comment is a record of something one of them said.
+    // Wrong comment: delete it and say the next thing. An edit path would let
+    // either of them rewrite what is on the other's screen with no trace,
+    // which is the one property a shared record must not have.
+    //
+    // `at == request.time` forces serverTimestamp(): a browser with a wrong
+    // clock cannot post a comment into the middle of yesterday. `by` is the
+    // uid off the ID token and is the only identity here that is evidence;
+    // `byName` is what that account called itself and is a convenience for
+    // printing, which is why it is capped and otherwise unchecked.
+    function commentShape() {
+      return request.resource.data.keys().hasOnly(["text", "by", "byName", "at"])
+        && reqStr("text", 1000)
+        && shortStr("byName", 60)
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.at == request.time;
+    }
+    // DELETE IS THE AUTHOR'S, with one deliberate exception. A comment belongs
+    // to whoever wrote it: on a two-person board a deletion by the other
+    // person is indistinguishable from the author's own and there is no audit
+    // trail to tell them apart, so the answer to "please take that down" is to
+    // ask, or to delete the whole task. The exception is a comment whose
+    // PARENT IS ALREADY GONE — deleteTask()/deleteGoal() sweep the thread
+    // after removing the document, and without this clause that sweep would
+    // stop dead at the first comment the other person wrote, leaving orphans
+    // under a document that no longer exists. exists() costs a read and is
+    // only ever reached on the sweep, because the author check in front of it
+    // short-circuits every ordinary delete.
+    function commentDeletable(parentPath) {
+      return resource.data.by == request.auth.uid || !exists(parentPath);
+    }
+
     match /admin_tasks/{id} {
       allow read: if isAdmin();
       allow delete: if isAdmin();
+      // `createdBy` is OPTIONAL on create and pinned to the requester when it
+      // is there. Optional rather than required for one reason: a browser
+      // still running the previous version of js/admin-tasks.js out of its
+      // cache does not send it, and a rule that required it would turn "Add a
+      // task" into permission-denied for whichever of them had not reloaded.
+      // Present-and-wrong is refused; absent is a task with no recorded
+      // author, which is a thing this collection already has 149 of.
       allow create: if isAdmin()
         && taskShape()
+        && request.resource.data.get("createdBy", request.auth.uid) == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
+      // AN UPDATE MAY NEVER TOUCH THE AUTHOR — and note what the two get()s
+      // with the same default buy, which is more than "do not change it":
+      // absent must stay absent, so an update cannot ADD an author to one of
+      // the 149 rows that has none. That is the rule that makes the detail
+      // view's "not recorded" honest. Without it, the first person to edit an
+      // old task could quietly become its creator, and nothing on the board
+      // would ever say otherwise.
       allow update: if isAdmin()
         && taskShape()
         && request.resource.data.updatedAt == request.time
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.get("createdBy", "") == resource.data.get("createdBy", "")
+        && request.resource.data.get("createdByName", "") == resource.data.get("createdByName", "");
+
+      // The thread on this task. Written once, for both collections — see
+      // commentShape() and commentDeletable() above.
+      match /comments/{cid} {
+        allow read: if isAdmin();
+        allow create: if isAdmin() && commentShape();
+        allow update: if false;
+        allow delete: if isAdmin()
+          && commentDeletable(/databases/$(database)/documents/admin_tasks/$(id));
+      }
     }
 
     match /admin_goals/{id} {
@@ -588,6 +717,18 @@ service cloud.firestore {
         && goalShape()
         && request.resource.data.updatedAt == request.time
         && request.resource.data.createdAt == resource.data.createdAt;
+
+      // The thread on this goal. Identical to the one on a task, from the same
+      // two functions — "is one paying subscriber still the right goal this
+      // month" is a conversation, and it should live on the goal rather than
+      // in a chat neither of them can find later.
+      match /comments/{cid} {
+        allow read: if isAdmin();
+        allow create: if isAdmin() && commentShape();
+        allow update: if false;
+        allow delete: if isAdmin()
+          && commentDeletable(/databases/$(database)/documents/admin_goals/$(id));
+      }
     }
 
     // --- Everything else --------------------------------------------------
