@@ -29,3 +29,5 @@ __pycache__/
 # from the content package. Never track it.
 content/
 tools/shots/
+tools/reel/.venv/
+tools/reel/runs/
