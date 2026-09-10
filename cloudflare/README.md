@@ -6,9 +6,34 @@ SDK does — loading `array.js`, fetching remote config, sending events — goes
 lists match `*.i.posthog.com` by hostname; they cannot match this without
 blocking factbox.app.
 
-`js/analytics.js` already points at `/ink` and falls back to PostHog's own
-hosts if this Worker is missing, so **the site is not broken while this is
-undeployed** — it is just back to losing the 10–25% of events that blockers eat.
+---
+
+## STATUS — as of 2026-09-10 this proxy is NOT live, and the switch is OFF
+
+`js/analytics.js` has `var PROXY_ENABLED = false`, so it starts PostHog on
+`us.i.posthog.com` directly and **never requests `/ink/…` at all**. Analytics
+work; they are just back to losing the 10–25% of events that blockers eat.
+
+It was turned off because the proxy could not work and was 404ing on every
+page load. The evidence, which anyone can re-run:
+
+```sh
+dig +short factbox.app
+#   185.199.108.153 … 185.199.111.153     <- GitHub Pages IPs, not Cloudflare's
+
+curl -sI https://factbox.app | grep -i 'server\|cf-ray'
+#   server: GitHub.com                    <- no cf-ray, no cloudflare
+```
+
+The zone IS on Cloudflare (`dig +short factbox.app NS` → `faye`/`pranab
+.ns.cloudflare.com`), but the apex record is **grey-cloud "DNS only"**.
+Requests never enter Cloudflare's edge, so the Worker route cannot fire
+whether or not the Worker is deployed. Every `/ink/static/array.js` fell
+through to GitHub Pages as a 404, and `js/analytics.js` fell back — correctly,
+but only after paying for a doomed round trip on every page view.
+
+**Fixing this needs the owner's Cloudflare dashboard access.** Nothing in this
+repo can do it. See "Before you start", then flip the switch in step 8.
 
 ---
 
@@ -18,6 +43,10 @@ undeployed** — it is just back to losing the 10–25% of events that blockers 
 only run on proxied records; on a grey-cloud "DNS only" record the route is
 silently ignored and every `/ink/…` request falls through to GitHub Pages as a
 404. Check under **DNS → Records** for `factbox.app` and `www`.
+
+**This is the thing that is currently wrong.** Both records are grey-cloud
+today. Toggling them to Proxied is step zero; the rest of this page is a
+no-op until it is done.
 
 Workers routes are on the free plan. Ingestion counts against the free Worker
 allowance (100,000 requests/day); at this site's traffic that is not close.
@@ -48,6 +77,18 @@ allowance (100,000 requests/day); at this site's traffic that is not close.
    `js/analytics.js` builds the proxy URL from `location.origin`, so a reader
    who arrives on `www` uses the `www` route. Without it, `www` readers silently
    fall back to the direct host — which still works, and still gets blocked.
+
+8. **Flip the switch in the site.** In `js/analytics.js` set
+
+   ```js
+   var PROXY_ENABLED = true;
+   ```
+
+   then `python3 tools/stamp-assets.py && python3 tools/compose.py` and deploy.
+   Until this is flipped the site does not ask for `/ink/…` at all, so steps
+   1–7 change nothing a reader can see. **Run verify step 1 below BEFORE
+   flipping it** — if that curl is not a 200, flipping this just reinstates a
+   404 on every page load.
 
 That is the whole deploy. No environment variables, no secrets, no bindings.
 
@@ -143,6 +184,9 @@ the path name has been listed and should be changed (in both
 | `js/analytics.js` | `var PROXY_PATH = "/ink"` |
 | Cloudflare routes | `factbox.app/ink/*` and `www.factbox.app/ink/*` |
 
+`tools/check-regressions.js` asserts the first two agree, so a path changed in
+one place and not the other fails the precommit rather than silently 404ing.
+
 Do not pick `/analytics`, `/track`, `/telemetry`, `/ph` or `/posthog`. PostHog's
 own documentation warns that blocker lists match those paths regardless of the
 domain they sit on, which would give back the problem the Worker exists to fix.
@@ -151,7 +195,12 @@ domain they sit on, which would give back the problem the Worker exists to fix.
 
 ## Rolling it back
 
-Delete the two routes. Nothing else. The next page load fails to fetch
-`/ink/static/array.js`, `js/analytics.js` falls back to `us.i.posthog.com`
-within one script-error event, and measurement continues at the pre-proxy
-hit rate. The Worker itself can be left deployed and unrouted.
+Set `PROXY_ENABLED = false` in `js/analytics.js`, restamp, deploy. The site
+stops asking for `/ink/…` entirely and measurement continues on the direct
+hosts at the pre-proxy hit rate. Then delete the two routes at leisure; the
+Worker itself can be left deployed and unrouted.
+
+Do it in that order. Deleting the routes first — or leaving `PROXY_ENABLED`
+true with the DNS grey-clouded, which is the state this repo was found in —
+still works, because `js/analytics.js` falls back within one script-error
+event, but it puts a 404 on every page load in the meantime.

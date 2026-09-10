@@ -115,10 +115,27 @@
   </div>
   <noscript><p class="fine" style="margin-top:24px">Factbox needs JavaScript to
   show today's story. Every story is listed on the
-  <a href="/stories">season shelf</a>.</p></noscript>
+  <a href="/history/">story index</a>.</p></noscript>
 
+  <!-- WHY THE STORY INDEX IS IN THIS FOOTER AND NOT ON A CARD.
+       /history/<slug> is a real page per story and until this line nothing on
+       the site linked to one. The sitemap alone gets them fetched; a link is
+       what makes them part of the site. The shelf cannot carry that link: every
+       card above is built by js/today.js after load, so in the bytes a crawler
+       is served there are no cards — only the spinner in #view. This footer IS
+       in those bytes, it costs one word of chrome, and from it all 51 pages are
+       two hops away. data-fbt="-" so the generic ui_click handler in
+       js/analytics.js leaves it alone; no new event name was invented for it.
+
+       The words are "51 stories" and not "Story index" because at 390px the
+       longer label pushes this row onto a second line, and the point of
+       putting it here was that it costs the page nothing. It is also not
+       "All stories": /explore's own shelf heading and every story page footer
+       already say that about /explore, and two destinations must not share
+       one label. The house already writes the number out in prose — see
+       fail() in js/today.js. -->
   <p class="fine" style="margin-top:34px;text-align:center">
-    <a href="/account">Account</a> · <a href="/credits">Artwork credits</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
+    <a href="/history/" data-fbt="-">51 stories</a> · <a href="/account">Account</a> · <a href="/credits">Artwork credits</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
   </p>
 </main>
 
@@ -127,16 +144,16 @@
      and progress.js needs Stripe's session_id out of it first. explore.js is
      the subject names on window.FBTAX; today.js needs all of them and goes
      last. -->
-<script src="/js/progress.js?v=44e9d717"></script>
+<script src="/js/progress.js?v=b5d6c73a"></script>
 <script src="/js/access.js?v=253a4e0f"></script>
 <script src="/js/gate.js?v=bfce3033"></script>
 <script src="/js/explore.js?v=03eeeb77"></script>
-<script src="/js/today.js?v=0994108a"></script>
+<script src="/js/today.js?v=c43ee15f"></script>
 <!-- js/auth.js is a module, so the browser defers it: it runs after the
      document is parsed and BEFORE DOMContentLoaded, whatever position this tag
      is in. js/acct.js reaches it through the whenFBU() bridge from AUTH.md. -->
 <script type="module" src="/js/auth.js?v=35b20584"></script>
-<script src="/js/analytics.js?v=a72ffef9"></script>
+<script src="/js/analytics.js?v=62eb8b43"></script>
 <script src="/js/acct.js?v=9427c787"></script>
 </body>
 </html>

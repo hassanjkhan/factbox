@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/admin.css?v=9e297505">
+<link rel="stylesheet" href="/css/admin.css?v=0439ba16">
 </head>
 <body>
 
@@ -26,8 +26,9 @@
        alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
     <h1>Tasks</h1>
     <p class="adm-sub">The shared board. Both of you edit it and every change
-    lands on the other person's screen without a reload. Finished work drops
-    into the history below with the day it was done.</p>
+    lands on the other person's screen without a reload. A task can carry the
+    day you want it done by, and says out loud when that day has gone.
+    Finished work drops into the history below with the day it was closed.</p>
   </header>
 
   <!-- ====================================================================
@@ -97,31 +98,40 @@
          set of tasks read three ways, so this is a grouping toggle plus a
          filter that works in every grouping, and never a separate page.
 
-         The DEFAULT is priority, because it is the only grouping where the
-         first row on the page is literally the next thing to do. Owner and
-         status are one tap away, and the owner filter narrows any of them.
-         "This week" is answered by the summary line under the bar plus the
-         history below: with no due-date field in the data contract, the
-         honest reading of "expected this week" is "everything still open,
-         highest priority first", which is exactly the default view.
+         DUE is the fourth, and it is the planning dimension: Overdue, then
+         today and tomorrow, then the rest of the week, then later, then the
+         things nobody has put a date on. It is a grouping and not a separate
+         page for the same reason the other three are not — it is the same
+         tasks, read a fourth way, and the owner filter still narrows it.
+
+         The DEFAULT is still priority, because it is the grouping where the
+         first row on the page is literally the next thing to do, and because
+         this board is in daily use and moving somebody's home view out from
+         under them is not an upgrade. The timeline is not hidden by that
+         choice: every row carries its own due chip in EVERY grouping, the
+         summary line under the bar counts what is overdue and what is due
+         this week in words, and the sort inside every group puts the nearest
+         date first. "Due" is one tap for the full reading.
          ------------------------------------------------------------------ -->
     <form class="adm-bar" id="adm-bar" onsubmit="return false">
 
       <div class="adm-field">
         <span class="adm-legend" id="adm-lg-group">Group by</span>
-        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-group">
+        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-group" data-fbt="-">
           <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-priority" value="priority" checked>
           <label class="adm-seg-l" for="adm-g-priority">Priority</label>
           <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-owner" value="owner">
           <label class="adm-seg-l" for="adm-g-owner">Owner</label>
           <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-status" value="status">
           <label class="adm-seg-l" for="adm-g-status">Status</label>
+          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-due" value="due">
+          <label class="adm-seg-l" for="adm-g-due">Due</label>
         </div>
       </div>
 
       <div class="adm-field">
         <span class="adm-legend" id="adm-lg-who">Show</span>
-        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-who">
+        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-who" data-fbt="-">
           <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-all" value="all" checked>
           <label class="adm-seg-l" for="adm-w-all">Everyone</label>
           <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-hassan" value="hassan">
@@ -140,8 +150,11 @@
 
     </form>
 
-    <!-- The one-line answer to "what is expected this week". Written by the
-         script; it never says "undefined" because it is built from counts. -->
+    <!-- The one-line answer to "what is expected this week", and now it is a
+         real answer rather than a proxy: it counts what is OVERDUE and what
+         falls inside the next seven days. Written by the script; it never says
+         "undefined" because it is built from counts, and never says "NaN"
+         because a task with no due date is counted as having no due date. -->
     <p class="adm-q" id="adm-summary">Counting…</p>
 
     <!-- The add form. Same fields as the in-row editor, deliberately: one
@@ -169,7 +182,9 @@
         <button class="adm-btn adm-mini" type="button" id="adm-goal-open" data-fbt="-">Add a goal</button>
       </div>
       <p class="adm-q">A goal is a number or an outcome with a date on it, not
-      a job. Tasks are how a goal gets hit; this is the thing being aimed at.</p>
+      a job. Tasks are how a goal gets hit; this is the thing being aimed at.
+      The target is the measure in your own words ("200 subscribers"); the date
+      beside it is a real day, so an open goal whose day has gone says so.</p>
       <div class="adm-form" id="adm-goal-form" hidden></div>
       <div class="adm-state" id="adm-goals-state" role="status">Loading the goals…</div>
       <div class="adm-goals" id="adm-goals" hidden></div>
@@ -220,7 +235,7 @@
 </noscript>
 
 <script type="module" src="/js/auth.js?v=35b20584"></script>
-<script src="/js/admin-tasks.js?v=8e125268"></script>
+<script src="/js/admin-tasks.js?v=31f37646"></script>
 <script>
 /* ==========================================================================
    /admin/tasks — the board
@@ -403,6 +418,121 @@
            " " + d.getFullYear();
   }
 
+  /* ==========================================================================
+     DUE DATES — a calendar day, never an instant
+
+     `due` is the string "YYYY-MM-DD" or it is "". See the long note in
+     js/admin-tasks.js for why it is not a Timestamp; the consequence HERE is
+     the rule that every function below obeys:
+
+         NOTHING EVER HANDS A DUE DATE TO `new Date(string)`.
+
+     `new Date("2026-09-10")` is parsed as UTC midnight by spec, so in any zone
+     west of Greenwich it prints as the 9th — the board would tell Kathryn a
+     task is due the day before it is. So the string is split into three
+     integers and formatted from the MONTHS table by hand, and every comparison
+     is done on a DAY NUMBER built with Date.UTC from those same integers, on
+     both sides. Same basis, same arithmetic, no zone, no DST, no hour.
+
+     MISSING IS "" AND "" IS TOTAL. The 130-odd rows seeded out of git history
+     have no `due` key at all. dueOf() turns undefined, null, 0, a Timestamp, a
+     half-typed "2026-09-" and the string "soon" into "", every function below
+     answers "" with "no date", and no chip, no count, no sort key and no
+     format call ever sees anything else. That is the whole of how a missing
+     date is handled: there is one gate, it is total, and past it the value is
+     either a real day or the empty string. 1970 is unreachable because 0 is
+     never a due date; "Invalid Date" is unreachable because Date is never
+     handed the string; NaN is unreachable because dayNum("") returns 0 and
+     every caller checks the string first.
+     ========================================================================== */
+
+  var DUE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+  /* The one gate. Refuses a shape that parses but is not a real day —
+     "2026-02-31", "2026-13-01" — by building it in UTC and checking every
+     field survived. Same function, same answer, as js/admin-tasks.js. */
+  function dueOf(v) {
+    var iso = str(v).replace(/^\s+|\s+$/g, "");
+    if (!iso) return "";
+    var m = DUE_RE.exec(iso);
+    if (!m) return "";
+    var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (!isFinite(y) || !isFinite(mo) || !isFinite(d)) return "";
+    var t = new Date(Date.UTC(y, mo - 1, d));
+    if (!isFinite(t.getTime())) return "";
+    if (t.getUTCFullYear() !== y || t.getUTCMonth() !== (mo - 1) || t.getUTCDate() !== d) return "";
+    return iso;
+  }
+
+  /* A day INDEX — days since the epoch — for a validated ISO day. Only ever
+     called with a string dueOf() has already approved, and returns 0 for ""
+     so a careless caller gets a number rather than a NaN that spreads. */
+  function dayNum(iso) {
+    var m = DUE_RE.exec(iso || "");
+    if (!m) return 0;
+    return Math.round(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86400000);
+  }
+
+  /* TODAY, on the same basis: the LOCAL calendar day, lifted into the same UTC
+     day-index space. Local because "is this overdue" is asked by a person
+     looking at a wall calendar, not at UTC. */
+  function todayNum() {
+    var d = new Date();
+    return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+  }
+
+  /* "15 Sep", or "15 Sep 2027" when the year is not this one — a bare "15 Sep"
+     for a date fourteen months out is a lie by omission. Formatted from the
+     string's own digits; Date is never asked to parse it. */
+  function fmtDue(iso) {
+    var m = DUE_RE.exec(iso || "");
+    if (!m) return "";
+    var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    var out = String(d) + " " + (MONTHS[mo - 1] || "");
+    var thisYear = new Date().getFullYear();
+    if (y !== thisYear) out += " " + y;
+    return out;
+  }
+
+  /* The four states, and the sentence for each. `today` is passed in rather
+     than read here so that one render cannot straddle midnight and sort a list
+     against two different todays.
+
+       over  the day has gone
+       soon  today or tomorrow
+       week  inside the next seven days
+       far   further out than that — a date, not an alarm
+
+     A DONE task is never any of the first three. It was closed; whether it was
+     closed late is a question for the history, and a finished row shouting
+     "Overdue by 40 days" is how a board teaches people to ignore red. */
+  function dueState(iso, today, done) {
+    if (!iso) return null;
+    var n = dayNum(iso) - today;
+    if (done) return { k: "far", text: "Was due " + fmtDue(iso), n: n };
+    if (n < 0) {
+      var late = -n;
+      return { k: "over", text: "Overdue by " + plural(late, "day", "days"), n: n };
+    }
+    if (n === 0) return { k: "soon", text: "Due today", n: n };
+    if (n === 1) return { k: "soon", text: "Due tomorrow", n: n };
+    if (n <= 7)  return { k: "week", text: "Due in " + plural(n, "day", "days") + " · " + fmtDue(iso), n: n };
+    return { k: "far", text: "Due " + fmtDue(iso), n: n };
+  }
+
+  /* The chip. The whole sentence in words, plus a marker whose SHAPE carries
+     the same four states, plus a class whose fill and corner radius carry them
+     a third time. The marker is aria-hidden: it repeats the text beside it and
+     a screen reader reading "filled square Overdue by 3 days" is worse. */
+  function dueChip(st) {
+    var wrap = el("span", "adm-due adm-due-" + st.k);
+    var mark = el("span", "adm-due-mark");
+    mark.setAttribute("aria-hidden", "true");
+    wrap.appendChild(mark);
+    wrap.appendChild(document.createTextNode(st.text));
+    return wrap;
+  }
+
   /* "4 Sep" — the short form, for a line inside a row. */
   function fmtShort(ms) {
     if (!ms) return "";
@@ -444,6 +574,10 @@
   var editingGoal = null;
   var addOpen = false, goalOpen = false;
   var histShown = HIST_FIRST;
+  /* Today's day index, recomputed once at the top of each render. Held rather
+     than read per row so that a single paint cannot sort half its list against
+     one day and half against the next. */
+  var TODAY = todayNum();
   var deferred = false;               /* a change arrived while an editor was open */
 
   /* A re-render pulls the DOM out from under a half-typed sentence, and the
@@ -463,6 +597,9 @@
     o.priority = key(t && t.priority, PRIORITIES, "low");
     o.status   = key(t && t.status, STATUSES, "todo");
     o.area     = str(t && t.area);
+    /* "" for every row written before this field existed. Not null, not 0,
+       not undefined — one value for "no date", everywhere below. */
+    o.due      = dueOf(t && t.due);
     o.order    = num(t && t.order, 0);
     o.createdAt = toMs(t && t.createdAt);
     o.updatedAt = toMs(t && t.updatedAt);
@@ -477,6 +614,7 @@
     o.title  = str(g && g.title);
     o.detail = str(g && g.detail);
     o.target = str(g && g.target);
+    o.due    = dueOf(g && g.due);
     o.status = key(g && g.status, ["open", "hit", "missed"], "open");
     o.order  = num(g && g.order, 0);
     return o;
@@ -502,6 +640,26 @@
   function statusRank(s) { return s === "doing" ? 0 : (s === "todo" ? 1 : 2); }
   function priRank(p)    { return p === "high" ? 0 : 1; }
 
+  /* THE DUE TIEBREAK, and where it sits is the whole decision.
+
+     It goes AFTER priority and status and BEFORE `order`. After, because a
+     high-priority task with no date is still more urgent than a low-priority
+     one due in three weeks, and a board that reordered itself around dates
+     would punish the honest half of the pair for filling the field in. Before
+     `order`, because `order` is a creation timestamp until somebody builds
+     drag-to-reorder, and "the thing I typed first" is not an answer to "what
+     is next".
+
+     Undated sorts LAST among otherwise-equal rows — not first, not
+     interleaved. A row with no date makes no claim on a day; a row with one
+     does, and the one making a claim is the one to look at. */
+  function dueCmp(a, b) {
+    if (a.due && b.due) return a.due < b.due ? -1 : (a.due > b.due ? 1 : 0);
+    if (a.due) return -1;
+    if (b.due) return 1;
+    return 0;
+  }
+
   function cmp(a, b) {
     var d;
     if (groupBy === "priority") {
@@ -509,10 +667,16 @@
       d = priRank(a.priority) - priRank(b.priority);   if (d) return d;
     } else if (groupBy === "status") {
       d = priRank(a.priority) - priRank(b.priority);   if (d) return d;
+    } else if (groupBy === "due") {
+      /* The group already IS the date band, so inside it urgency decides,
+         and the date breaks the tie below like everywhere else. */
+      d = priRank(a.priority) - priRank(b.priority);   if (d) return d;
+      d = statusRank(a.status) - statusRank(b.status); if (d) return d;
     } else {
       d = priRank(a.priority) - priRank(b.priority);   if (d) return d;
       d = statusRank(a.status) - statusRank(b.status); if (d) return d;
     }
+    d = dueCmp(a, b); if (d) return d;
     d = a.order - b.order; if (d) return d;
     d = (a.createdAt || 0) - (b.createdAt || 0); if (d) return d;
     return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
@@ -554,9 +718,13 @@
      The add / edit form — one shape, three places
      ========================================================================== */
 
-  function field(labelText, control, wide) {
+  /* `forId` exists for the one control that is a WRAPPER — the due date, which
+     is an input and a Clear button on one line. Without it the <label> would
+     look for an id on the wrapper, find none, and the field would be the only
+     unlabelled control on the page. */
+  function field(labelText, control, wide, forId) {
     var f = el("div", "adm-field" + (wide ? " adm-form-wide" : ""));
-    var id = control.id;
+    var id = forId || control.id;
     var lab = el("label", null, labelText);
     if (id) lab.setAttribute("for", id);
     f.appendChild(lab);
@@ -572,6 +740,54 @@
     n.value = str(value);
     if (placeholder) n.placeholder = placeholder;
     return n;
+  }
+
+  /* A native date picker, and a text box on anything too old to have one.
+     `type = "date"` is assigned inside a try because IE throws on an unknown
+     type rather than falling back; where the assignment does not take, the
+     browser reports type "text" and the field stays usable by typing — which
+     is why the placeholder spells the format out, and why the Save handlers
+     below refuse a value dueOf() cannot read instead of silently dropping it.
+     The value of a date input is "YYYY-MM-DD" in every browser that has one,
+     whatever the picker shows the reader, so no locale parsing happens here. */
+  function dateInput(id, value) {
+    var n = document.createElement("input");
+    try { n.type = "date"; } catch (e) { n.type = "text"; }
+    n.className = "adm-input";
+    n.id = id;
+    n.value = dueOf(value);
+    n.placeholder = "YYYY-MM-DD";
+    n.setAttribute("autocomplete", "off");
+    return n;
+  }
+
+  /* The date field: the input, and a real Clear button beside it. The button
+     is not a nicety — <input type="date"> on iOS gives no visible way back to
+     empty once a day is chosen, and this is the page Kathryn opens on a phone.
+     A date you can set and cannot unset is worse than no date. */
+  function dueField(pre, value, label) {
+    var inp = dateInput(pre + "-due", value);
+    var wrap = el("div", "adm-due-edit");
+    /* js/analytics.js is not loaded on the admin surfaces, but skipControl()
+       walks six ancestors looking for data-fbt, so one attribute here opts the
+       date input AND the Clear button out for good if that is ever reversed.
+       No new event name is introduced anywhere on this page. */
+    wrap.setAttribute("data-fbt", "-");
+    wrap.appendChild(inp);
+    wrap.appendChild(btn("Clear", null, function () {
+      inp.value = "";
+      try { inp.focus(); } catch (e) {}
+      say("Due date cleared. Press Save to keep it.");
+    }));
+    return {
+      node: field(label, wrap, true, inp.id),
+      /* what the person typed, untouched — so a Save can tell "empty" from
+         "not a date I can read" and say so rather than throwing it away */
+      raw: function () { return str(inp.value).replace(/^\s+|\s+$/g, ""); },
+      focus: function () { try { inp.focus(); inp.select(); } catch (e) {} },
+      /* the same value through the one gate: "" or a real day */
+      read: function () { return dueOf(inp.value); }
+    };
   }
 
   function textarea(id, value, placeholder) {
@@ -611,12 +827,14 @@
     var fPri    = select(pre + "-pri", PRIORITIES, PRI_LABEL, t.priority);
     var fStat   = select(pre + "-status", STATUSES, ST_LABEL, t.status);
     var fArea   = input(pre + "-area", t.area, "e.g. content, stripe, social");
+    var fDue    = dueField(pre, t.due, "Due by (optional)");
 
     box.appendChild(field("Task", fTitle, true));
     box.appendChild(field("Owner", fOwner));
     box.appendChild(field("Priority", fPri));
     box.appendChild(field("Status", fStat));
     box.appendChild(field("Area", fArea));
+    box.appendChild(fDue.node);
     box.appendChild(field("Detail", fDetail, true));
 
     var wrap = el("div", opts && opts.inRow ? "adm-form adm-form-in" : null);
@@ -625,6 +843,15 @@
     return {
       node: wrap,
       focus: function () { try { fTitle.focus(); } catch (e) {} },
+      /* True when something was typed into the date box that is not a day.
+         Checked before every save so a mistyped date is refused out loud
+         instead of being quietly written as "no date". */
+      badDue: function () { return !!fDue.raw() && !fDue.read(); },
+      /* The refusal message goes to the board's state line at the TOP of the
+         page, which on a phone, with a row being edited half-way down a list
+         of thirteen, is off screen. So the cursor goes to the field as well:
+         the sentence explains it, the caret points at it. */
+      focusDue: function () { fDue.focus(); },
       read: function () {
         return {
           title:    fTitle.value.replace(/^\s+|\s+$/g, ""),
@@ -632,11 +859,17 @@
           owner:    fOwner.value,
           priority: fPri.value,
           status:   fStat.value,
-          area:     fArea.value.replace(/^\s+|\s+$/g, "")
+          area:     fArea.value.replace(/^\s+|\s+$/g, ""),
+          /* "" clears it. The rules accept the empty string and the data layer
+             writes it as a field rather than deleting one. */
+          due:      fDue.read()
         };
       }
     };
   }
+
+  /* Said in three places, so written once. */
+  var BAD_DUE = "That due date is not a real day. Write it as year-month-day — 2026-09-15 — or press Clear to leave it off. Nothing was saved.";
 
   function acts() { return el("div", "adm-form-acts"); }
 
@@ -665,6 +898,22 @@
     say("Could not " + what + ".");
   }
 
+  /* A refusal this page made ITSELF, as opposed to one the server made. It
+     lands in the same place as fail() — the board's state line, where the eye
+     already is — but without fail()'s "the database said" framing, because the
+     database never saw it and telling somebody their typo was a server error
+     sends them to look in the wrong place. */
+  function warn(msg) {
+    var n = $("adm-board-state");
+    if (n) {
+      n.className = "adm-state adm-bad";
+      clear(n);
+      n.appendChild(document.createTextNode(String(msg)));
+      n.hidden = false;
+    }
+    say(String(msg));
+  }
+
   function call(name, a, b, what, then) {
     if (!FBT || typeof FBT[name] !== "function") {
       fail(what, { message: "the data layer is not loaded" });
@@ -688,7 +937,10 @@
      this board and the owner chip already says whose it is, so the line
      carries the DATE, which is the part a human reads. */
   function whenLine(t) {
-    if (t.status === "done" && t.doneAt) return "Done " + fmtShort(t.doneAt);
+    /* The owner's word for this is "closed", and it is the word the history
+       uses two sections down. One vocabulary. */
+    if (t.status === "done" && t.doneAt) return "Closed " + fmtShort(t.doneAt);
+    if (t.status === "done") return "Closed — the date was not recorded";
     var ms = t.updatedAt || t.createdAt;
     if (!ms) return "";
     return (t.updatedAt ? "Updated " : "Added ") + fmtShort(ms);
@@ -705,9 +957,10 @@
     a.appendChild(btn("Save", "adm-btn-go", function () {
       var v = f.read();
       if (!v.title) { f.focus(); say("A task needs a title."); return; }
+      if (f.badDue()) { f.focusDue(); warn(BAD_DUE); return; }
       var patch = {
         title: v.title, detail: v.detail, owner: v.owner,
-        priority: v.priority, status: v.status, area: v.area
+        priority: v.priority, status: v.status, area: v.area, due: v.due
       };
       editing = null;
       call("updateTask", t.id, patch, "save that task", function () {
@@ -753,14 +1006,26 @@
   }
 
   function taskRow(t) {
+    var st = dueState(t.due, TODAY, t.status === "done");
+
+    /* The row's own outline gets heavier as the day gets nearer. A stroke
+       weight, not a hue: it is the row-level signal that still reads in the
+       greyscale screenshot that ends up in a chat. */
     var li = el("li", "adm-task adm-task-" + t.priority +
-                      (t.status === "done" ? " adm-task-done" : ""));
+                      (t.status === "done" ? " adm-task-done" : "") +
+                      (st && st.k === "over" ? " adm-task-over" : "") +
+                      (st && st.k === "soon" ? " adm-task-soon" : ""));
 
     var rail = el("div", "adm-task-rail");
     rail.appendChild(ownerChip(t.owner));
     rail.appendChild(priChip(t.priority));
     rail.appendChild(statusChip(t.status));
     if (t.area) rail.appendChild(el("span", "adm-area-chip", t.area));
+    /* LAST in the rail on purpose. The rail wraps at 390px, so the last chip
+       is the one on its own line, and this is the one to read. A task with no
+       date gets no chip at all — 130 rows each saying "No date" is a wall of
+       nothing, and the absence is already the message. */
+    if (st) rail.appendChild(dueChip(st));
     li.appendChild(rail);
 
     var body = el("div", "adm-task-body");
@@ -815,8 +1080,26 @@
      The board
      ========================================================================== */
 
+  /* Which band an OPEN task falls in, when the board is grouped by Due. The
+     bands are declared in order, so the first non-empty one is the top of the
+     page — which is the point of the grouping: whatever is nearest is first,
+     and "No date" is last because it is the only band that is not a date. */
+  var DUE_BANDS = [
+    { k: "over", label: "Overdue" },
+    { k: "soon", label: "Due today or tomorrow" },
+    { k: "week", label: "Due this week" },
+    { k: "far",  label: "Later" },
+    { k: "none", label: "No date set" }
+  ];
+
+  function dueBand(t) {
+    if (!t.due) return "none";
+    var st = dueState(t.due, TODAY, false);
+    return st ? st.k : "none";
+  }
+
   function groupsFor(open) {
-    var out = [], i;
+    var out = [], i, j;
     if (groupBy === "owner") {
       for (i = 0; i < OWNERS.length; i++) {
         out.push({ k: OWNERS[i], label: OWNER_LABEL[OWNERS[i]], items: [] });
@@ -824,19 +1107,49 @@
     } else if (groupBy === "status") {
       out.push({ k: "doing", label: "Doing", items: [] });
       out.push({ k: "todo",  label: "To do", items: [] });
+    } else if (groupBy === "due") {
+      for (i = 0; i < DUE_BANDS.length; i++) {
+        out.push({ k: DUE_BANDS[i].k, label: DUE_BANDS[i].label, items: [] });
+      }
     } else {
       out.push({ k: "high", label: "High priority", items: [] });
       out.push({ k: "low",  label: "Low priority",  items: [] });
     }
     for (i = 0; i < open.length; i++) {
       var t = open[i];
-      var k = groupBy === "owner" ? t.owner : (groupBy === "status" ? t.status : t.priority);
-      for (var j = 0; j < out.length; j++) {
+      var k = groupBy === "owner" ? t.owner
+            : (groupBy === "status" ? t.status
+            : (groupBy === "due" ? dueBand(t) : t.priority));
+      for (j = 0; j < out.length; j++) {
         if (out[j].k === k) { out[j].items.push(t); break; }
       }
     }
     for (i = 0; i < out.length; i++) { out[i].items.sort(cmp); }
     return out;
+  }
+
+  /* The timeline half of the summary, in words. Three different sentences,
+     because "0 overdue, 0 due in the next 7 days" and "nobody has put a date
+     on anything" are different facts and running them together is how a board
+     gets read as broken. Nothing in here can print NaN: every count starts at
+     0 and only a validated `due` increments one. */
+  function timelineSentence(open) {
+    var over = 0, soon = 0, dated = 0, i, n;
+    for (i = 0; i < open.length; i++) {
+      if (!open[i].due) continue;
+      dated++;
+      n = dayNum(open[i].due) - TODAY;
+      if (n < 0) over++; else if (n <= 7) soon++;
+    }
+    if (!dated) {
+      return "Nothing open has a day on it yet — set one from Edit and it shows here.";
+    }
+    if (!over && !soon) {
+      return "Nothing is overdue and nothing is due in the next 7 days (" +
+             dated + " of them dated).";
+    }
+    return over + " overdue, " + soon + " due in the next 7 days, " +
+           (open.length - dated) + " with no date.";
   }
 
   function summary(open, done) {
@@ -850,12 +1163,13 @@
     for (i = 0; i < done.length; i++) { if (done[i].doneAt >= cut) week++; }
 
     /* Deliberately a sentence, not a row of numbers: it is read once on the
-       way past. "Open" is the week's plan — the data contract has no due
-       date, so the honest reading of "what is expected this week" is
-       "everything still open, highest first", which is what the board below
-       is showing. */
+       way past. "What is expected this week" is now answered with real counts
+       rather than with the proxy this line used to carry, because the tasks
+       finally have days on them. It is text, so it survives the screenshot
+       that ends up in the chat with no colour to lose. */
     return plural(open.length, "task", "tasks") + " open — " +
            high + " high priority, " + doing + " already moving. " +
+           timelineSentence(open) + " " +
            "Hassan " + mine.hassan + ", Kathryn " + mine.kathryn +
            ", either of you " + mine.either + ". " +
            plural(week, "task", "tasks") + " finished in the last 7 days.";
@@ -942,7 +1256,9 @@
 
     setText("adm-board-sub",
       groupBy === "owner" ? "grouped by who has it"
-      : (groupBy === "status" ? "grouped by what is moving" : "grouped by priority"));
+      : (groupBy === "status" ? "grouped by what is moving"
+      : (groupBy === "due" ? "grouped by when it is due, nearest first"
+      : "grouped by priority")));
   }
 
   /* ==========================================================================
@@ -958,10 +1274,21 @@
     var fTarget = input(pre + "-target", g.target, "e.g. 200 subscribers by 31 Oct");
     var fStat   = select(pre + "-status", GOAL_STATUSES, GOAL_LABEL, g.status);
     var fDetail = textarea(pre + "-detail", g.detail, "How we would know (optional)");
+    /* A goal gets a REAL DATE beside its prose target, and this is the "where
+       it fits" answer: `target` is the MEASURE — "200 subscribers", "the
+       Stripe migration finished" — and it stays free text, because a measure
+       is not a date and squeezing both into one 40-character box is what made
+       "200 subscribers by 31 Oct" unsortable and uncomparable in the first
+       place. Splitting them costs one field and buys the goal card the same
+       four states a task has, from the same functions, with no English being
+       parsed anywhere. It is optional for the same reason a task's is: a goal
+       nobody has dated is still a goal. */
+    var fDue    = dueField(pre, g.due, "By (optional)");
 
     box.appendChild(field("Goal", fTitle, true));
     box.appendChild(field("Target", fTarget, true));
     box.appendChild(field("Outcome", fStat));
+    box.appendChild(fDue.node);
     box.appendChild(field("Detail", fDetail, true));
 
     var wrap = el("div");
@@ -969,12 +1296,15 @@
     return {
       node: wrap,
       focus: function () { try { fTitle.focus(); } catch (e) {} },
+      badDue: function () { return !!fDue.raw() && !fDue.read(); },
+      focusDue: function () { fDue.focus(); },
       read: function () {
         return {
           title:  fTitle.value.replace(/^\s+|\s+$/g, ""),
           target: fTarget.value.replace(/^\s+|\s+$/g, ""),
           status: fStat.value,
-          detail: fDetail.value.replace(/\s+$/g, "")
+          detail: fDetail.value.replace(/\s+$/g, ""),
+          due:    fDue.read()
         };
       }
     };
@@ -990,6 +1320,7 @@
       a.appendChild(btn("Save", "adm-btn-go", function () {
         var v = f.read();
         if (!v.title) { f.focus(); say("A goal needs a title."); return; }
+        if (f.badDue()) { f.focusDue(); warn(BAD_DUE); return; }
         editingGoal = null;
         call("updateGoal", g.id, v, "save that goal", function () { say("Goal saved."); render(); });
         render();
@@ -1019,6 +1350,15 @@
     if (g.target) {
       card.appendChild(el("span", "adm-goal-k", "Target"));
       card.appendChild(el("span", "adm-goal-target", g.target));
+    }
+    /* A goal that has been HIT or MISSED is finished, so its date is history
+       and gets the quiet treatment — the same reason a done task never shows
+       "Overdue". Only an OPEN goal can still be late. */
+    var gst = dueState(g.due, TODAY, g.status !== "open");
+    if (gst) {
+      var dueWrap = el("span", "adm-goal-due");
+      dueWrap.appendChild(dueChip(gst));
+      card.appendChild(dueWrap);
     }
     if (g.detail) card.appendChild(el("span", "adm-goal-d", g.detail));
 
@@ -1068,6 +1408,9 @@
     sorted.sort(function (a, b) {
       var ra = a.status === "open" ? 0 : 1, rb = b.status === "open" ? 0 : 1;
       if (ra !== rb) return ra - rb;
+      /* Then the nearest date, undated last — the same rule the tasks use, so
+         the two lists on this page answer "what is next" the same way. */
+      var rd = dueCmp(a, b); if (rd) return rd;
       if (a.order !== b.order) return a.order - b.order;
       return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
     });
@@ -1128,8 +1471,29 @@
       }
       var row = el("div", "adm-done-row");
       row.appendChild(el("span", "adm-done-t", t.title || "Untitled task"));
+
+      /* THE COMPLETION DATE, ON THE ROW. This is the half the owner asked for
+         and it was invisible: `doneAt` has been stamped on every one of these
+         since the board shipped, and the only place it appeared was the date
+         heading above the group. A heading is the group, not the fact — and a
+         row copied out of this list on its own, which is exactly what happens
+         when one of them pastes "did we ever do this?" into a chat, carried no
+         date at all. Now it carries its own.
+
+         `ms` is 0 only for a row whose doneAt AND updatedAt are both missing,
+         which is a row written by hand in the console. It says so in words
+         rather than printing 1 Jan 1970. */
+      row.appendChild(el("span", "adm-done-when",
+        ms ? "closed " + fmtShort(ms) : "closed — date not recorded"));
+
       var meta = OWNER_LABEL[t.owner] || t.owner;
       if (t.area) meta += " · " + t.area;
+      /* And what it was DUE by, when it had a date — the two together are the
+         only place the board says whether the plan held. Stated as facts, not
+         graded: "due 8 Sep · closed 10 Sep" is enough, and a row that told
+         two people they were two days late every time they looked at it is a
+         row they would stop looking at. */
+      if (t.due) meta += " · due " + fmtDue(t.due);
       row.appendChild(el("span", "adm-done-m", meta));
       curBox.appendChild(row);
     }
@@ -1149,6 +1513,10 @@
      ========================================================================== */
 
   function render() {
+    /* One reading of the clock per paint. A board left open overnight rolls
+       over on its next render — which the live snapshot triggers on the next
+       edit either of them makes — rather than half-way down a list. */
+    TODAY = todayNum();
     renderBoard();
     renderGoals();
     renderHistory();
@@ -1197,6 +1565,7 @@
     a.appendChild(btn("Add task", "adm-btn-go", function () {
       var v = f.read();
       if (!v.title) { f.focus(); say("A task needs a title."); return; }
+      if (f.badDue()) { f.focusDue(); warn(BAD_DUE); return; }
       addOpen = false;
       host.hidden = true;
       clear(host);
@@ -1230,6 +1599,7 @@
     a.appendChild(btn("Add goal", "adm-btn-go", function () {
       var v = f.read();
       if (!v.title) { f.focus(); say("A goal needs a title."); return; }
+      if (f.badDue()) { f.focusDue(); warn(BAD_DUE); return; }
       goalOpen = false;
       host.hidden = true;
       clear(host);
@@ -1379,7 +1749,13 @@
         start();
         return;
       }
-      var why = r && r.why ? String(r.why) : "sdk_failed";
+      /* js/admin-tasks.js spells these with hyphens ("signed-out",
+         "not-admin"); this page and admin/index.html were both written against
+         underscores. The mismatch meant a signed-out admin got "we could not
+         load the board" instead of the Sign in button. Accept both rather than
+         picking a side, because admin/index.html carries the same two lines
+         and the two pages must not start disagreeing about a string. */
+      var why = (r && r.why ? String(r.why) : "sdk_failed").replace(/-/g, "_");
       if (why === "signed_out") { panel("adm-p-out"); return; }
       if (why === "not_admin")  { panel("adm-p-no");  return; }
       panel("adm-p-noauth");

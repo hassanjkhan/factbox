@@ -18,7 +18,7 @@
      admin_tasks/c-<full sha>    one commit, status "done", doneAt and
                                  createdAt set to the commit's author date,
                                  title from the commit subject, area "code",
-                                 owner "hassan"
+                                 owner "hassan", and NO due date
      admin_tasks/k-<key>         a task from --file, keyed on whatever the
                                  JSON called it
      admin_goals/kg-<key>        a goal from --file
@@ -32,13 +32,27 @@
    board it belongs to whoever is looking at the board, and a seeder that
    reasserted its own idea of the title every run would silently undo them.
 
-   WHY THE ID AND NOT A `sha` FIELD. firestore.rules enumerates the eleven
+   WHY THE ID AND NOT A `sha` FIELD. firestore.rules enumerates the twelve
    keys a task may have and one unlisted key denies the whole write — and on
    an update `request.resource.data` is the document AFTER the merge, so a
-   twelfth field written here would not sit there harmlessly: it would make
+   thirteenth field written here would not sit there harmlessly: it would make
    every later edit from the browser fail with permission-denied, on rows
    that look perfectly normal. The id carries the key instead, and everything
    this tool writes is a shape the browser can go on editing.
+
+   DUE DATES. A row in --file may carry "due": "2026-09-15" — the day the work
+   is WANTED by, as a plain calendar day, which is what the board stores and
+   what firestore.rules pins with a regex. It is optional, and an unreadable
+   one is a hard failure rather than a silent drop: a seeder that quietly threw
+   away half the dates in the file would be discovered a week later by somebody
+   wondering why the board looked empty of plans.
+
+   COMMITS GET NO DUE DATE, deliberately. They are history — every one of them
+   is already `done`, with `doneAt` set to the real commit date — and a due
+   date on finished work is a claim nobody made at the time. The key is left
+   OFF those documents entirely rather than written as "", which the rules
+   allow (absent and "" both mean no date) and which keeps 130 history rows one
+   field lighter.
 
    CREDENTIALS. The service-account key at ~/.factbox-keys/admin.json, the
    same one tools/mint-promo-codes.js uses, loaded the same way. (Unlike
@@ -80,8 +94,10 @@ const KEY_PATH = path.join(os.homedir(), ".factbox-keys", "admin.json");
 const TASKS = "admin_tasks";
 const GOALS = "admin_goals";
 
-/* The same three lists js/admin-tasks.js exposes and firestore.rules
-   enforces. If these ever disagree, the rules are the ones that decide. */
+/* The shape of a due date, and the same three lists js/admin-tasks.js exposes
+   and firestore.rules enforces. If these ever disagree, the rules are the ones
+   that decide. */
+const DUE_RE        = /^(\d{4})-(\d{2})-(\d{2})$/;
 const OWNERS        = ["hassan", "kathryn", "either"];
 const PRIORITIES    = ["high", "low"];
 const STATUSES      = ["todo", "doing", "done"];
@@ -114,6 +130,24 @@ function pick(v, list, fallback, what) {
   }
   return s;
 }
+/* "" or one real calendar day. The same gate js/admin-tasks.js applies before
+   a browser writes: the shape has to match, and the day has to exist, which is
+   checked by building it in UTC and seeing whether every field survived — so
+   "2026-02-31" and "2026-13-01" are refused here rather than being written and
+   then rendered as nothing. */
+function dueOf(v, what) {
+  const raw = (v == null ? "" : String(v)).trim();
+  if (!raw) return "";
+  const m = DUE_RE.exec(raw);
+  const y = m && Number(m[1]), mo = m && Number(m[2]), d = m && Number(m[3]);
+  const t = m && new Date(Date.UTC(y, mo - 1, d));
+  if (!m || !t || isNaN(t.getTime()) ||
+      t.getUTCFullYear() !== y || t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d) {
+    die(`"${raw}" is not a real day for ${what}. Use YYYY-MM-DD, e.g. 2026-09-15.`);
+  }
+  return raw;
+}
+
 /* A document id, not a field: [A-Za-z0-9._-], never empty, never "." or
    "..", never __surrounded__. */
 function idPart(s) {
@@ -208,6 +242,7 @@ function taskFromFile(row, i, admin, now) {
       priority: pick(row.priority, PRIORITIES, "low", "priority"),
       status,
       area: clip(row.area, MAX_AREA),
+      due: dueOf(row.due, `task #${i + 1} ("${title}")`),
       order: typeof row.order === "number" && isFinite(row.order) ? row.order : (i + 1),
       createdAt: at,
       updatedAt: at,
@@ -226,6 +261,7 @@ function goalFromFile(row, i, admin, now) {
       title,
       detail: clip(row.detail, MAX_DETAIL),
       target: clip(row.target, MAX_TARGET),
+      due: dueOf(row.due, `goal #${i + 1} ("${title}")`),
       status: pick(row.status, GOAL_STATUSES, "open", "goal status"),
       order: typeof row.order === "number" && isFinite(row.order) ? row.order : (i + 1),
       createdAt: now,

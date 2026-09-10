@@ -1180,8 +1180,15 @@
         '<div class="tdy-void">' +
           '<b>The stories did not arrive.</b>' +
           '<p>That usually means the connection dropped on the way. Reload the ' +
-          'page, or open the season shelf, which lists all fifty-one.</p>' +
-          '<a href="/explore">All stories</a>' +
+          'page, or open the story index, which lists all fifty-one.</p>' +
+          /* /history/ and not /explore: this branch is reached because
+             data/index.json did not arrive, and /explore is THIS page, which
+             builds itself from that same file. The index is static HTML with
+             all 51 links in it and needs no fetch to render, so it is the one
+             destination that is certain to work when this text is on screen.
+             data-fbt="-" — the generic ui_click handler in js/analytics.js
+             would otherwise name this control from its own words. */
+          '<a href="/history/" data-fbt="-">All 51 stories</a>' +
         '</div>';
     } catch (e) {}
   }

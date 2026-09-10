@@ -76,6 +76,46 @@
   var HOST       = "https://us.i.posthog.com";        /* direct ingestion  */
   var ASSET_HOST = "https://us-assets.i.posthog.com"; /* direct assets     */
 
+  /* ---- Is the proxy actually in front of the site? --------------------- *
+     FALSE, and it has to stay false until the Cloudflare side is real.
+
+     This is not a preference. factbox.app's nameservers ARE Cloudflare's
+     (faye/pranab.ns.cloudflare.com), so the zone is on Cloudflare and the
+     Worker in cloudflare/posthog-proxy.js looks deployable — but the apex
+     record is grey-cloud "DNS only", and that is checkable from outside:
+
+         dig +short factbox.app
+           185.199.108.153 … 185.199.111.153     <- GitHub Pages, not Cloudflare
+         curl -sI https://factbox.app | grep -i 'server\|cf-ray'
+           server: GitHub.com                    <- no cf-ray, no cloudflare
+
+     A proxied record answers from Cloudflare's own IPs and stamps every
+     response with cf-ray. These do neither, so requests never enter
+     Cloudflare's edge at all, so a Worker ROUTE CANNOT FIRE — deployed or
+     not. cloudflare/README.md's "Before you start" says exactly this and it
+     is what is wrong today.
+
+     While that is true, pointing api_host at /ink buys nothing and costs
+     something. Every page load fired GET /ink/static/array.js, took a 404
+     from GitHub Pages, and only then fell back to PostHog's own hosts. The
+     fallback worked — measurement was never lost — but the site shipped a
+     guaranteed-failing request on every single page view, which is noise in
+     the console, a wasted round trip on the phones this is designed for, and
+     a 404 in the Pages log that looks like a broken link forever.
+
+     So the switch is off, and the direct hosts are used directly. Nothing
+     below is deleted: the proxy path, the fallback and the watcher are all
+     still here and still correct.
+
+     TO TURN IT ON — both steps, in this order, or it goes back to 404ing:
+       1. Cloudflare -> DNS -> Records -> factbox.app AND www: set Proxy
+          status to "Proxied" (orange cloud). OWNER ACCESS REQUIRED.
+       2. Deploy the Worker and attach both routes, per cloudflare/README.md.
+       3. Flip this to true, restamp, deploy.
+     Verify with the curl in cloudflare/README.md step 1 BEFORE flipping:
+     if it does not return 200 and ~270KB of JavaScript, leave this false. */
+  var PROXY_ENABLED = false;
+
   /* posthog-js derives its dashboard links from api_host by string
      replacement (".i.posthog.com" -> ".posthog.com"). Through the proxy that
      replacement no longer matches and every link would point at
@@ -289,37 +329,65 @@
   }
 
   var PH_PROXY = proxyHost();
-  try {
-    posthog.init(KEY, phConfig(PH_PROXY));
-    phVia = "proxy";
-  } catch (e) {}
 
-  /* Find the element the snippet just inserted — it did so synchronously,
-     inside that init() — and watch it. addEventListener rather than .onerror,
-     so the snippet's own handler is left intact. */
-  try {
-    var phSrc = PH_PROXY + "/static/array.js";
-    var phEl  = null, phAll = document.getElementsByTagName("script"), phI;
-    for (phI = phAll.length - 1; phI >= 0; phI--) {
-      if (String(phAll[phI].src || "") === phSrc) { phEl = phAll[phI]; break; }
-    }
-    if (phEl && phEl.addEventListener) {
-      /* A 404 from GitHub Pages — the Worker route missing or misspelled —
-         and a blocked request both arrive here. */
-      phEl.addEventListener("error", function () { phFallback(); }, false);
-      /* 200 with something that is not the SDK: the script "loads" fine and
-         never fires error. Its bootstrap is synchronous, so by this event
-         __loaded is either true or never coming. */
-      phEl.addEventListener("load", function () {
-        if (!phLoaded()) phFallback();
-      }, false);
-    } else if (!phEl) {
-      /* init threw, or the snippet was already satisfied. */
-      phFallback();
-    }
-    /* Neither event fires for a request that simply hangs. */
-    setTimeout(function () { if (!phLoaded()) phFallback(); }, PROXY_WAIT_MS);
-  } catch (e) {}
+  if (!PROXY_ENABLED) {
+    /* ---- Proxy off: start on PostHog's own hosts, and ask for nothing else.
+       The snippet turns api_host into the asset host by string replacement
+       (".i.posthog.com" -> "-assets.i.posthog.com"), so init() on HOST
+       inserts us-assets.i.posthog.com/static/array.js and no request to this
+       origin is made at all. That is the whole point: with the Worker not in
+       front of the site, /ink/static/array.js is a 404 nobody needs to take.
+
+       There is no fallback here because there is nothing to fall back FROM —
+       this IS the fallback destination. phTried is set so that if anything
+       later reaches phFallback() it cannot re-init over a live SDK. */
+    try {
+      posthog.init(KEY, phConfig(HOST));
+      phVia = "direct";
+      phTried = true;
+    } catch (e) {}
+
+    /* A blocker eats this one too, and when it does phVia must say so rather
+       than claim a "direct" load that never happened — "" is the documented
+       value for "neither loaded", and FBQ.phVia() is what the render checks
+       and cloudflare/README.md read. */
+    try {
+      setTimeout(function () { if (!phLoaded()) phVia = ""; }, PROXY_WAIT_MS);
+    } catch (e) {}
+
+  } else {
+    try {
+      posthog.init(KEY, phConfig(PH_PROXY));
+      phVia = "proxy";
+    } catch (e) {}
+
+    /* Find the element the snippet just inserted — it did so synchronously,
+       inside that init() — and watch it. addEventListener rather than
+       .onerror, so the snippet's own handler is left intact. */
+    try {
+      var phSrc = PH_PROXY + "/static/array.js";
+      var phEl  = null, phAll = document.getElementsByTagName("script"), phI;
+      for (phI = phAll.length - 1; phI >= 0; phI--) {
+        if (String(phAll[phI].src || "") === phSrc) { phEl = phAll[phI]; break; }
+      }
+      if (phEl && phEl.addEventListener) {
+        /* A 404 from GitHub Pages — the Worker route missing or misspelled —
+           and a blocked request both arrive here. */
+        phEl.addEventListener("error", function () { phFallback(); }, false);
+        /* 200 with something that is not the SDK: the script "loads" fine and
+           never fires error. Its bootstrap is synchronous, so by this event
+           __loaded is either true or never coming. */
+        phEl.addEventListener("load", function () {
+          if (!phLoaded()) phFallback();
+        }, false);
+      } else if (!phEl) {
+        /* init threw, or the snippet was already satisfied. */
+        phFallback();
+      }
+      /* Neither event fires for a request that simply hangs. */
+      setTimeout(function () { if (!phLoaded()) phFallback(); }, PROXY_WAIT_MS);
+    } catch (e) {}
+  }
 
   /* ======================================================================
      Google Analytics 4, through the Firebase SDK.

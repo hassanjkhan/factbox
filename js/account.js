@@ -584,6 +584,48 @@ var FBA = (function () {
     } catch (e) { return ""; }
   }
 
+  /* ----------------------------------------------------------------------
+     THE PER-DAY FIGURE, AND THE ONE PLACE IT IS WORKED OUT.
+
+     Two screens lead with it now — the plan cards on /join and the paywall
+     inside the reader — so it lives here beside the amount it is derived
+     from rather than in either of them. A screen that divides a price for
+     itself is a second opinion about what Stripe charges, and this file
+     exists so there is only ever one.
+
+     IT IS DERIVED FROM THE BILLED AMOUNT, NEVER FROM perMonthCents, which is
+     itself already a rounded derivation — dividing a rounding by thirty is
+     how a price drifts.
+
+     DAYS IN A PERIOD come from the plan's own interval, at the calendar's own
+     rate of 365/12 days a month. A yearly plan is therefore 365 days exactly
+     and a monthly one 30.42. One rule, no table of month lengths, and it goes
+     on working for whatever intervals PRICING grows later.
+
+     THE ROUNDING IS UP, TO THE CENT, AND THE DIRECTION IS THE WHOLE POINT.
+     US$4.56 a month is 14.99 cents a day. Rounded DOWN that prints fourteen
+     cents — a rate nobody is charged, which multiplies back out to US$4.26
+     and flatters the plan. Rounded UP it prints fifteen, a hair MORE than the
+     true daily rate: it understates the value of the plan rather than
+     overstating it, so a reader who multiplies it back out lands slightly
+     ABOVE the real bill and can never be surprised at the till.
+
+     Takes a raw record or a shaped one — `months` is read when it is already
+     there, and derived from the interval when it is not. */
+  var DAYS_PER_MONTH = 365 / 12;
+
+  function perDayCents(p) {
+    try {
+      if (!p) return 0;
+      var m = Number(p.months);
+      if (!isFinite(m) || m <= 0) m = monthsIn(p);
+      var days = m * DAYS_PER_MONTH;
+      if (!(days > 0)) return 0;
+      var c = Math.ceil(Number(p.amountCents) / days);
+      return isFinite(c) && c > 0 ? c : 0;
+    } catch (e) { return 0; }
+  }
+
   /* shape() — one raw record into everything a screen could want to say
      about it. It never throws; the worst case is the charged figure with no
      extras attached, and the charged figure is the one that matters. */
@@ -634,6 +676,13 @@ var FBA = (function () {
       perMonthExact: exact,
       /* "$2.99" when it divides cleanly, "about $2.92" when it does not */
       perMonthAbout: (exact ? "" : "about ") + moneyCents(perMonthC),
+      /* the daily rate the two price screens lead with, rounded UP — see
+         perDayCents() above for why the direction matters. perDayText is the
+         whole price as one string, which is what an accessible name for the
+         split-size treatment has to say. */
+      perDayCents:   perDayCents(raw),
+      perDay:        perDayCents(raw) / 100,
+      perDayText:    moneyCents(perDayCents(raw)),
       savePct:  saveP,
       best:     !!raw.best,
       offered:  !!raw.offered,
@@ -1435,6 +1484,10 @@ var FBA = (function () {
        to Stripe — /subscription's save offer is the second one. */
     attribute: attribute,
     anyLinkReady: anyLinkReady, money: money, moneyCents: moneyCents,
+    /* the daily rate, for the screens that lead with it. THE ONLY place the
+       division is done — a screen that works it out for itself is a second
+       opinion about what Stripe charges. */
+    perDayCents: perDayCents,
     /* the source record itself, copied */
     pricing: pricing, PRICING: pricing(),
     /* the trial, as configuration rather than a literal in someone's copy.
@@ -1505,9 +1558,27 @@ var FBA = (function () {
       } catch (e2) {}
     }
 
-    var url = here ? here.replace(/account\.js(\?.*)?$/, "profile-sync.js")
-                   : "/js/profile-sync.js";
-    if (url.indexOf("profile-sync.js") === -1) url = "/js/profile-sync.js";
+    /* The one literal, and the only thing tools/stamp-assets.py rewrites here:
+       it replaces the ?v= with a hash of js/profile-sync.js's own bytes, the
+       same way it stamps a <script src> in a page. It matters because this
+       file is loaded by INJECTION, so it appears in no HTML and the stamper
+       would otherwise never see it — leaving one asset on the site able to go
+       ten minutes stale after a deploy while everything around it could not.
+       tools/check-regressions.js fails if this stamp and the file disagree.
+
+       Derive the DIRECTORY from account.js's own src (so a copy served from
+       somewhere other than /js still finds its sibling), but take the
+       filename and the stamp from here rather than from that src — the old
+       code replaced `account.js?v=…` wholesale and threw the version away. */
+    var SYNC_ABS  = "/js/profile-sync.js?v=32cb826a"; /* stamped */
+    var SYNC_TAIL = SYNC_ABS.replace(/^.*\//, "");   /* profile-sync.js?v=… */
+
+    var url = SYNC_ABS;
+    if (here) {
+      var dir = String(here).match(/^(.*\/)account\.js(?:\?.*)?$/);
+      if (dir) url = dir[1] + SYNC_TAIL;
+    }
+    if (url.indexOf("profile-sync.js") === -1) url = SYNC_ABS;
 
     /* Already in the markup? Then the markup wins and this does nothing. */
     try {

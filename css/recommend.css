@@ -649,53 +649,147 @@ a.ec-go{
 
 /* ---- the offer ----------------------------------------------------------- */
 
-/* THE PROOF SLOT. It renders the copy-only arm, and it is built to hold a
-   measured figure the day there is one — see PROOF in js/recommend.js for
-   what would have to be true first. .fbg-stat is the numeric arm and nothing
-   renders it today; it is here so that turning the slot on is one edit in
-   one file rather than two. */
-.fbg-proof{
-  margin:16px 0 0; padding:14px 16px;
-  border-radius:16px;
+/* THE STRIP OF COVERS — what stands where a statistic was asked for.
+
+   js/recommend.js builds it: one band, aria-hidden, holding the whole
+   catalogue's covers twice over in one track. WHAT IT REPLACED was the proof
+   slot, a tinted box with two lines of copy in it, sitting where the mockup
+   wanted two percentages about "Factbox members" that no study supports. The
+   covers assert nothing; they are the product.
+
+   THE ANIMATION MOVES ONE PROPERTY. translate3d on the track, 0 to -50%, and
+   the two halves are identical so the wrap is invisible. Nothing here reads
+   or writes layout per frame — no width is measured, no offset is set — which
+   matters because this runs inside an in-app webview on the screen that takes
+   money. The duration is long rather than the distance short: the band drifts
+   at roughly a cover every two seconds, which reads as depth rather than as a
+   carousel demanding to be watched.
+
+   IT IS INVISIBLE UNTIL IT HAS COVERS. The strip is height:0 with nothing in
+   it, so a sheet whose index never arrived has no gap in it — is-on is added
+   by fillStrip() and nothing else turns it on.
+
+   AND IT STOPS FOR prefers-reduced-motion, standing still with the same
+   covers in it. Depth does not need movement to read; a reader who has asked
+   the OS for stillness on the one screen they are deciding on gets it. */
+.fbg-strip{
+  height:0; overflow:hidden;
+  margin:0;
+  /* The band fades out at both ends rather than being cut off square, so the
+     covers arrive and leave instead of appearing. currentColor, not a hex:
+     a mask only reads the alpha, and NOTHING IN THIS FILE NAMES A COLOUR. */
+  -webkit-mask-image:linear-gradient(to right, transparent, currentColor 12%,
+                                     currentColor 88%, transparent);
+  mask-image:linear-gradient(to right, transparent, currentColor 12%,
+                             currentColor 88%, transparent);
+}
+.fbg-strip.is-on{height:auto; margin:14px 0 0}
+.fbg-track{
+  display:flex; flex-direction:row; align-items:center;
+  gap:8px; width:max-content;
+  will-change:transform;
+  animation:fbg-roll 120s linear infinite;
+}
+.fbg-cover{
+  flex:0 0 auto;
+  display:block; width:46px; height:60px;
+  border-radius:8px; overflow:hidden;
   background:var(--tint);
   box-shadow:inset 0 0 0 1px var(--hair);
-  text-align:center;
 }
-.fbg .fbg-stat{
-  margin:0; color:var(--coral);
-  font-size:2.25rem; font-weight:var(--w-head); line-height:1;
-  letter-spacing:var(--ls-hero);
-  font-variant-numeric:tabular-nums;
+.fbg-cover img{
+  display:block; width:100%; height:100%;
+  object-fit:cover;
 }
-.fbg .fbg-statcap,
-.fbg .fbg-cap{
-  margin:0; color:var(--dim);
-  font-size:var(--fs-note); font-weight:var(--w-label); line-height:1.45;
-  text-wrap:pretty;
+@keyframes fbg-roll{
+  from{transform:translate3d(0,0,0)}
+  to  {transform:translate3d(-50%,0,0)}
 }
-.fbg .fbg-statcap{margin-top:8px}
+/* Stillness, on request. The band keeps its covers. */
+@media (prefers-reduced-motion:reduce){
+  .fbg-track{animation:none}
+}
+
+/* The error note under the button — an "it did not work" line, not part of
+   the offer. js/recommend.js inserts it above the two ghosts. */
 .fbg .fbg-note{
   margin:4px 0 0; color:var(--dimmer);
   font-size:var(--fs-fine); font-weight:var(--w-body); line-height:1.45;
 }
 
-/* The amount, and the period it is charged over. Both come out of FBA:
-   billedText is what Stripe charges to the cent, perLong() is the interval
-   it charges on. */
-.fbg .fbg-price{
-  margin:16px 0 0; text-align:center;
+/* ---- THE PRICE, AND THE TWO THINGS IT HAS TO DO -------------------------
+
+   .fbrate  the daily rate, in the treatment /join's plan cards use: the
+            currency mark small at the shoulder, the whole units very large,
+            the cents small and raised at the top right, PER DAY beneath
+            them. It is deliberately NOT inside a .fbg selector — the plan
+            picker (.pw-opt, further down) mounts on document.body, outside
+            the wall, and both screens must set the same figure the same way.
+   .fbg-price  the amount Stripe actually takes, in words, directly under it.
+
+   THE SECOND ONE IS NOT DECORATION AND DOES NOT GIVE WAY. A reader
+   authorises US$36.50 once a year, not ten cents; the daily figure is a
+   division of it, rounded up in js/account.js so it can never quote under
+   the real rate. Every max-height step at the foot of this file drops the
+   covers and the currency note before it touches either of these lines.
+
+   FLEX-DIRECTION IS PINNED, ON BOTH BOXES. This cluster was first built on
+   /join as .jn-day, which is also the streak badge in css/account.css: a
+   46x46 tile with flex-direction:column. It inherited all of it, the figures
+   stacked and overlapped the line below, and every content assertion passed
+   while it looked like that. The axis is stated here rather than left to the
+   initial value, and tools/check-regressions.js guards the name. */
+.fbrate{
+  display:flex; flex-direction:row; align-items:flex-start;
+  gap:6px; margin:0;
   color:var(--parchment);
-  font-size:var(--fs-h3); font-weight:var(--w-body);
   font-variant-numeric:tabular-nums;
 }
-.fbg .fbg-price b{font-weight:var(--w-head)}
-.fbg .fbg-price span{color:var(--dimmer); font-weight:var(--w-label)}
-/* The same amount divided down and rounded UP, so the softer line can never
-   quote a figure below the one the reader authorises. */
-.fbg .fbg-per{
-  margin:2px 0 0; text-align:center;
-  color:var(--dimmer);
-  font-size:var(--fs-note); font-weight:var(--w-body);
+.fbrate-was{
+  align-self:center; margin-right:2px;
+  font-size:var(--fs-meta); font-weight:var(--w-label); color:var(--dimmer);
+}
+.fbrate-cur{
+  align-self:flex-start; margin-top:.5em;
+  font-size:var(--fs-note); font-weight:var(--w-head);
+}
+.fbrate-big{
+  font-size:var(--fs-hero); font-weight:var(--w-head);
+  line-height:.92; letter-spacing:var(--ls-hero);
+}
+.fbrate-tail{
+  display:flex; flex-direction:column; align-items:flex-start;
+  align-self:flex-start; margin-top:.12em;
+}
+.fbrate-sup{font-size:var(--fs-sub); font-weight:var(--w-head); line-height:1}
+.fbrate-unit{
+  margin-top:2px;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dim);
+}
+/* ON THE WALL IT IS THE HEADLINE, and it is set at headline size — bigger
+   than /join's card sets it, because a card on a plan screen is one of two
+   things being compared and this is the only figure on the screen. The
+   proportions are /join's: the mark at the shoulder, the cents at the top
+   right at roughly a third of the digit, PER DAY under them. */
+.fbrate.is-lead{justify-content:center; margin:16px 0 0}
+.fbrate.is-lead .fbrate-big{font-size:clamp(2.75rem,13vw,3.5rem)}
+.fbrate.is-lead .fbrate-cur{font-size:var(--fs-sub); margin-top:.85em}
+.fbrate.is-lead .fbrate-sup{font-size:var(--fs-h3)}
+.fbrate.is-lead .fbrate-tail{margin-top:.2em}
+/* In a plan row it is one line of a choice, so it sits at the row's own left
+   edge and comes down a size — the row is a comparison, not a hero. */
+.fbrate.is-row{justify-content:flex-start; margin:4px 0 0}
+.fbrate.is-row .fbrate-big{font-size:var(--fs-h1); line-height:.95}
+.fbrate.is-row .fbrate-cur{font-size:var(--fs-fine); margin-top:.45em}
+.fbrate.is-row .fbrate-sup{font-size:var(--fs-note)}
+
+/* The charge itself: "US$36.50 billed once a year", from FBA's billedText
+   and its own word for the cycle. Never abbreviated, never dropped. */
+.fbg .fbg-price{
+  margin:6px 0 0; text-align:center;
+  color:var(--dim);
+  font-size:var(--fs-note); font-weight:var(--w-label);
   font-variant-numeric:tabular-nums;
 }
 
@@ -725,10 +819,11 @@ a.ec-go{
 /* Short phones, then a phone turned sideways.
 
    THE ORDER THINGS GIVE WAY IN IS THE ORDER OF WHAT THEY ARE FOR. Breathing
-   room first. Then the proof slot and the currency note, which are the two
-   things on the offer that are neither the offer nor the terms. Then the
-   sentence under the headline. The price, the button and the terms never go,
-   at any height, because those three are what the reader is agreeing to.
+   room first. Then the strip of covers and the currency note, which are the
+   two things on the offer that are neither the offer nor the terms. Then the
+   sentence under the headline. THE PRICE — BOTH LINES OF IT, the daily rate
+   and the amount actually charged — the button and the terms never go, at any
+   height, because those are what the reader is agreeing to.
 
    The 620px step is set where it is on purpose: a 320x568 phone is the
    smallest viewport this site sees and 568 has to clear it, so the step sits
@@ -737,15 +832,18 @@ a.ec-go{
   .fbg-sheet{padding-top:18px}
   .fbg .fbg-head{font-size:1.625rem}
   .fbg .fbg-headbig{font-size:1.875rem}
-  .fbg-proof{margin-top:12px; padding:11px 14px}
-  .fbg .fbg-price{margin-top:12px}
+  .fbg-strip.is-on{margin-top:10px}
+  .fbg-cover{width:42px; height:54px}
+  .fbrate.is-lead{margin-top:12px}
+  .fbrate.is-lead .fbrate-big{font-size:2.5rem}
+  .fbrate.is-lead .fbrate-sup{font-size:var(--fs-lead)}
   .fbg .fbg-go{margin-top:12px}
 }
 @media (max-height:620px){
   .fbg .fbg-head,
   .fbg .fbg-headbig{font-size:1.4375rem}
   .fbg .fbg-sub{font-size:var(--fs-note)}
-  .fbg-proof{display:none}
+  .fbg-strip{display:none}
   .fbg .fbg-cur{display:none}
   .fbg .fbg-btn{min-height:var(--tap); margin-top:6px}
   .fbg .fbg-google{margin-top:12px}
@@ -763,8 +861,10 @@ a.ec-go{
   .fbg .fbg-sub{display:none}
   .fbg .fbg-btn{margin-top:5px}
   .fbg .fbg-google{margin-top:10px}
-  .fbg .fbg-price{margin-top:8px}
-  .fbg .fbg-per{display:none}
+  .fbrate.is-lead{margin-top:8px}
+  .fbrate.is-lead .fbrate-big{font-size:var(--fs-h1)}
+  .fbrate.is-lead .fbrate-sup{font-size:var(--fs-sub)}
+  .fbrate.is-lead .fbrate-cur{font-size:var(--fs-note); margin-top:.5em}
   .fbg .fbg-go{margin-top:8px}
   .fbg .fbg-alt,
   .fbg .fbg-plans,
@@ -928,14 +1028,14 @@ a.ec-go{
   padding:3px 7px; border-radius:var(--pill);
   background:var(--coral); color:var(--on-accent);
 }
+/* The charge, under the daily rate, on every row. The rate above it is
+   .fbrate.is-row — the same cluster the wall leads with, one size down. The
+   per-month line that used to sit here is gone: it only ever appeared on
+   multi-month rungs, so the two rows were quoted in different units from each
+   other, and from the screen the reader had just come from. */
 .pw-optprice{
-  display:block; margin-top:3px;
+  display:block; margin-top:2px;
   font-size:var(--fs-note); font-weight:var(--w-label); color:var(--dim);
-  font-variant-numeric:tabular-nums;
-}
-.pw-optper{
-  display:block;
-  font-size:var(--fs-fine); font-weight:var(--w-body); color:var(--dimmer);
   font-variant-numeric:tabular-nums;
 }
 .pw-tick{

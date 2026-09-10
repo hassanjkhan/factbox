@@ -28,6 +28,13 @@
 
    --coral is a FILL (2.40:1 on --raise) and never writes a word here either.
 
+   ONE ADDITION TO "--crimson IS DELETE, AND ONLY DELETE": it is now delete AND
+   overdue, and nothing else. Overdue is the other STOP on this page — the one
+   state where the honest instruction is "this was supposed to be finished".
+   Measured on the filled chip: --ground #E7E0D3 on --crimson #A81F38 is
+   5.44:1, and --crimson on --raise (the 2px ring round an overdue row) is
+   6.06:1. Both clear AA. Nothing else on this page may reach for it.
+
    PRIORITY AND OWNER ARE NOT ENCODED IN COLOUR.
    Two people read this every day, one of them on a phone, and both of them
    screenshot it into a chat. A hue is the one signal that survives neither
@@ -39,6 +46,15 @@
      owner     the WORD ("Hassan"/"Kathryn"/"Either"), plus a monogram in a
                distinct SHAPE — circle, square, wide pill.
      status    the WORD, plus a dot that is hollow / half / filled.
+     due       the SENTENCE, in full and in words — "Overdue by 3 days", "Due
+               today", "Due in 5 days · 15 Sep" — so the state survives being
+               cropped out of a screenshot into a chat. Plus a chip that is
+               FILLED and square when overdue, hollow-and-ringed when it is
+               today or tomorrow, hollow-and-round further out, and unringed
+               beyond a week. Plus a marker drawn in CSS: a filled square, a
+               half square, a hollow circle. Plus, at the row, a border that
+               gets HEAVIER as the date gets closer — hairline, then 1.5px,
+               then 2px. Four channels; the hue is the fifth and last.
 
    Remove the colours entirely and every one of those still reads.
    ========================================================================== */
@@ -342,6 +358,17 @@
 .adm-task[hidden]{display:none}
 .adm-task-high{border-left:5px solid var(--coral-deep)}
 .adm-task-low{border-left:5px dashed var(--tint-3)}
+
+/* ---- The timeline, at the row ------------------------------------------
+   The card's own outline gets HEAVIER as the day gets nearer: the hairline
+   every row has, 1.5px for today and tomorrow, 2px for a date that has gone.
+   A stroke weight is not a hue — it is the one row-level signal that still
+   reads in a greyscale screenshot, at thumbnail size, and to somebody who
+   cannot separate red from green. The words in the chip say the same thing
+   again; neither depends on the other.
+   ---------------------------------------------------------------------- */
+.adm-task-soon{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.adm-task-over{box-shadow:inset 0 0 0 2px var(--crimson)}
 /* Done rows only appear in History, where they are quieter by design. */
 .adm-task-done .adm-title{text-decoration:line-through; color:var(--dim)}
 
@@ -436,6 +463,77 @@
 }
 .adm-area-chip[hidden]{display:none}
 
+/* ---- Due: the whole sentence, plus a shape ------------------------------
+   Deliberately NOT uppercase and NOT abbreviated, unlike every other chip in
+   this rail. The others are labels for a value you already know the range of
+   ("High", "Doing", "Hassan"); this one is a fact you are being told, and the
+   difference in typographic register is itself a signal that it is the thing
+   to read first. It is also why it sits LAST in the rail on a phone, where
+   the rail wraps: the eye lands on the sentence.
+   ---------------------------------------------------------------------- */
+.adm-due{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:3px 9px; max-width:100%;
+  font-size:var(--fs-micro); line-height:1.25; white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.adm-due[hidden]{display:none}
+
+/* Gone. Filled, square, and the one place on this page other than Delete that
+   is allowed the stop colour. */
+.adm-due-over{
+  border-radius:4px; background:var(--crimson); color:var(--ground);
+  font-weight:var(--w-head);
+}
+/* Today or tomorrow. Hollow, square, ringed in ink at the same 1.5px the row
+   is ringed at — the chip and the card agree. */
+.adm-due-soon{
+  border-radius:4px; color:var(--ink); font-weight:var(--w-head);
+  box-shadow:inset 0 0 0 1.5px var(--ink);
+}
+/* Inside the week. Hollow, ROUND, hairline. */
+.adm-due-week{
+  border-radius:var(--pill); color:var(--dim); font-weight:var(--w-label);
+  box-shadow:inset 0 0 0 1px var(--tint-3);
+}
+/* Further out than that, and on a task already finished: a date, not an
+   alarm. No ring at all. */
+.adm-due-far{border-radius:var(--pill); color:var(--dimmer); font-weight:var(--w-label)}
+
+/* The marker: filled square / half square / hollow circle, in currentColor so
+   it inherits whatever the chip is. aria-hidden in the markup — it repeats the
+   words, it does not add to them. Drawn in CSS rather than typed, for the same
+   reason .adm-caret is: a unicode geometric shape renders as an emoji on some
+   Android builds and as tofu on others. */
+.adm-due-mark{display:inline-block; width:9px; height:9px; flex:none}
+.adm-due-over  .adm-due-mark{border-radius:2px; background:currentColor}
+.adm-due-soon  .adm-due-mark{border-radius:2px; box-shadow:inset 0 0 0 1.5px currentColor;
+  background:linear-gradient(90deg,currentColor 0 50%,transparent 50% 100%)}
+.adm-due-week  .adm-due-mark{border-radius:50%; box-shadow:inset 0 0 0 1.5px currentColor}
+.adm-due-far   .adm-due-mark{border-radius:50%; box-shadow:inset 0 0 0 1px currentColor; opacity:.7}
+
+/* ---- Setting one -------------------------------------------------------
+   The date input and its Clear button on one line. Clear is a real button and
+   not a reliance on the native picker's own: <input type="date"> on iOS Safari
+   gives no visible way back to empty once a day has been chosen, and Kathryn
+   uses this on a phone. Setting a date you cannot unset is a worse board than
+   no dates at all.
+   ---------------------------------------------------------------------- */
+.adm-due-edit{display:flex; flex-wrap:nowrap; align-items:center; gap:8px; min-width:0}
+.adm-due-edit[hidden]{display:none}
+/* The input is given a fixed comfortable basis rather than told to fill the
+   row: Chrome and Safari both give <input type="date"> an intrinsic width from
+   the widest date it can show, and a flex-grow on top of that produces either
+   a field stretched across a desk monitor or, at 390px, a field that will not
+   shrink and pushes the Clear button off the edge. 210px fits "2026-09-15"
+   with room, and 210 + Clear is 275px inside a 330px column. */
+.adm-due-edit > .adm-input{flex:0 1 210px; min-width:0}
+.adm-due-edit > .adm-btn{flex:none}
+/* Safari sizes a date input to its own idea of the text and ignores width
+   unless the platform appearance is dropped. Without this the field is wider
+   than the 390px column and the row scrolls sideways. */
+input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
+
 /* ==========================================================================
    The add / edit form
 
@@ -500,6 +598,11 @@
   line-height:var(--lh-body); overflow-wrap:anywhere; white-space:pre-wrap;
 }
 .adm-goal-d[hidden]{display:none}
+
+/* A goal's date sits under its target, because the target is the number and
+   this is only when. Same chip as a task's, same four states, same words. */
+.adm-goal-due{display:block; margin:7px 0 0}
+.adm-goal-due[hidden]{display:none}
 
 /* A goal's outcome, in words, with a shape: open is hollow, hit is filled,
    missed is a dashed outline. Never the hue alone. */
@@ -571,6 +674,16 @@
   flex:none; font-size:var(--fs-fine); color:var(--dimmer); font-weight:var(--w-label);
   font-variant-numeric:tabular-nums;
 }
+/* THE DAY IT WAS CLOSED, on the row and not only in the date heading above it.
+   The heading is the group; this is the fact, and it survives the row being
+   copied out of the page on its own — which is what happens when one of them
+   pastes "did we do this?" into a chat. Set in the ink the titles use, because
+   it is the half of this section that was asked for and it was invisible. */
+.adm-done-when{
+  flex:none; font-size:var(--fs-fine); color:var(--dim); font-weight:var(--w-strong);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.adm-done-when[hidden]{display:none}
 
 /* ==========================================================================
    The foot

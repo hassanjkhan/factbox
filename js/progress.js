@@ -1297,7 +1297,15 @@ var FBP = (function () {
     if (document.getElementById("fbp-sync")) return;
     var s = document.createElement("script");
     s.id = "fbp-sync";
-    s.src = "/js/progress-sync.js";
+    /* The ?v= is a hash of js/progress-sync.js's own bytes, written by
+       tools/stamp-assets.py exactly as it stamps a <script src> in a page.
+       Because this file is INJECTED it is in no HTML, so the stamper could
+       not see it and this was the site's one unstamped asset: every other
+       script picked up a deploy at once while this one could serve from cache
+       for GitHub Pages' full max-age=600. Leave it as a single literal — the
+       stamper rewrites the string, and tools/check-regressions.js fails the
+       commit if the hash here and the file on disk ever disagree. */
+    s.src = "/js/progress-sync.js?v=91dabae0"; /* stamped */
     s.async = true;
     (document.head || document.documentElement).appendChild(s);
   } catch (e) {}

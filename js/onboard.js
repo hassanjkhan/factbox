@@ -545,7 +545,7 @@ var FBOB = (function () {
       }
       w = el("span", anim ? "ob-w is-in" : "ob-w");
       w.appendChild(D().createTextNode(parts[i]));
-      if (anim) { try { w.style.animationDelay = (n * 55) + "ms"; } catch (e) {} }
+      if (anim) { try { w.style.animationDelay = (n * 75) + "ms"; } catch (e) {} }
       h.appendChild(w);
       n++;
     }
@@ -2182,7 +2182,7 @@ var FBOB = (function () {
       /* F · the three deal in. The first one is usually the plate that
          morphed here from the loader, and runMorph() stands its deal down so
          it does not fade underneath its own arrival. */
-      ul.appendChild(enter(li, "ob-in-deal", 160 + i * 90));
+      ul.appendChild(enter(li, "ob-in-deal", 160 + i * 110));
     }
     if (rows.length) inn.appendChild(ul);
     else {

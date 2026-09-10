@@ -7,7 +7,7 @@
    the storage under one board they both edit at the same time: two
    collections, live snapshots, and writes that stamp themselves.
 
-       admin_tasks/{id}    a thing to do
+       admin_tasks/{id}    a thing to do, optionally by a day
        admin_goals/{id}    a thing to hit, with a human deadline
 
    It owns the DATA and nothing else. `admin/tasks.html` and whatever script
@@ -98,6 +98,30 @@
   var MAX_AREA   = 40;
   var MAX_TARGET = 40;
 
+  /* ----------------------------------------------------------------------
+     `due` — the day a task is WANTED by. A calendar day, and stored as the
+     string "YYYY-MM-DD", not as a Timestamp. Three reasons, and the first is
+     the one that decides it:
+
+       1. A Timestamp is an INSTANT, so storing a day as one forces a
+          time-of-day and a zone, and then reading it back in the browser's
+          zone moves it. "due 10 Sep" written as 2026-09-10T00:00:00Z prints
+          as 9 Sep for anybody west of Greenwich. `doneAt` is genuinely an
+          instant — the moment somebody pressed the button — and stays a
+          Timestamp for exactly that reason. A due date is not.
+       2. It sorts and compares as a plain string: "2026-09-08" < "2026-09-10"
+          is chronological, no arithmetic, no DST, no leap second.
+       3. firestore.rules can pin the FORMAT of a string with matches(); it
+          cannot say anything at all about which instant a timestamp is.
+
+     It is OPTIONAL and the empty string is how "no date" is spelled — the
+     same way `detail` and `area` are empty rather than absent. The 130-odd
+     rows already on the board have no `due` key at all; isoDay() turns both
+     that and an empty string into "", so nothing downstream has to tell them
+     apart, and nothing ever hands a missing value to `new Date`.
+     ---------------------------------------------------------------------- */
+  var DUE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
   /* How long to wait for js/auth.js to exist and answer before giving up and
      telling the page the truth. A board that never resolves is worse than a
      board that says it could not sign you in. */
@@ -129,6 +153,27 @@
   function num(v, fallback) {
     var n = Number(v);
     return (typeof n === "number" && isFinite(n)) ? n : fallback;
+  }
+
+  /* A calendar day, or "". Total: undefined, null, a number, a Timestamp, a
+     half-typed "2026-09-" and the string "next tuesday" all come back "".
+     A shape that PARSES but is not a real day — "2026-02-31", "2026-13-01" —
+     is refused too, by building the date in UTC and checking every field
+     survived the round trip. UTC on purpose: this function must give the same
+     answer in Auckland as in Los Angeles. */
+  function isoDay(v) {
+    var s = "";
+    try { s = (v == null) ? "" : String(v); } catch (e) { return ""; }
+    try { s = s.replace(/^\s+|\s+$/g, ""); } catch (e2) { return ""; }
+    if (!s) return "";
+    var m = DUE_RE.exec(s);
+    if (!m) return "";
+    var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (!isFinite(y) || !isFinite(mo) || !isFinite(d)) return "";
+    var t = new Date(Date.UTC(y, mo - 1, d));
+    if (!isFinite(t.getTime())) return "";
+    if (t.getUTCFullYear() !== y || t.getUTCMonth() !== (mo - 1) || t.getUTCDate() !== d) return "";
+    return s;
   }
 
   /* Firestore hands back a Timestamp; a board wants a number it can sort and
@@ -375,6 +420,9 @@
       priority: oneOf(d.priority, PRIORITIES, "low"),
       status: oneOf(d.status, STATUSES, "todo"),
       area: str(d.area, MAX_AREA),
+      /* "" for the 130 rows written before this field existed, and for every
+         row nobody put a date on. Never null, never 0, never a Date. */
+      due: isoDay(d.due),
       order: num(d.order, 0),
       /* milliseconds, not Timestamps: the UI formats and sorts these, and a
          Timestamp is neither comparable nor printable without the SDK. 0
@@ -394,6 +442,11 @@
       title: str(d.title, MAX_TITLE),
       detail: str(d.detail, MAX_DETAIL),
       target: str(d.target, MAX_TARGET),
+      /* A goal already carries a free-text `target` ("200 subscribers by the
+         end of October"). That is the MEASURE and it stays prose; this is the
+         date, and it is a date so the card can say "overdue" without anybody
+         parsing English. */
+      due: isoDay(d.due),
       status: oneOf(d.status, GOAL_STATUSES, "open"),
       order: num(d.order, 0),
       createdAt: toMs(d.createdAt),
@@ -549,6 +602,11 @@
     if (forCreate || has("priority")) out.priority = oneOf(o.priority, PRIORITIES, "low");
     if (forCreate || has("status"))   out.status   = oneOf(o.status, STATUSES, "todo");
     if (forCreate || has("area"))     out.area     = str(o.area, MAX_AREA);
+    /* Clearing a due date is `due: ""`, which is a write of the empty string
+       rather than a deleteField(): the rules accept both "absent" and "", the
+       board reads them identically, and "" needs no extra SDK import on a page
+       that is deliberately one dynamic import deep. */
+    if (forCreate || has("due"))      out.due      = isoDay(o.due);
     if (forCreate || has("order"))    out.order    = num(o.order, forCreate ? nowOrder() : 0);
 
     /* doneAt is derived, not typed. A task that just became done is stamped
@@ -578,6 +636,7 @@
     }
     if (forCreate || has("detail")) out.detail = str(o.detail, MAX_DETAIL);
     if (forCreate || has("target")) out.target = str(o.target, MAX_TARGET);
+    if (forCreate || has("due"))    out.due    = isoDay(o.due);
     if (forCreate || has("status")) out.status = oneOf(o.status, GOAL_STATUSES, "open");
     if (forCreate || has("order"))  out.order  = num(o.order, forCreate ? nowOrder() : 0);
     return { ok: out };
@@ -687,6 +746,12 @@
     deleteGoal: deleteGoal,
 
     me: me,
+
+    /* Published so the board and any future tool coerce a typed date exactly
+       the way a write does, rather than each inventing its own idea of what
+       "2026-02-31" means. */
+    isoDay: isoDay,
+    DUE_FORMAT: "YYYY-MM-DD",
 
     OWNERS: OWNERS,
     PRIORITIES: PRIORITIES,

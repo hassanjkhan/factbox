@@ -128,13 +128,13 @@ window.FB_FREE_FILE = { "01": 1, "02": 1 };
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
 <script src="/js/loader.js?v=1b02aa41"></script>
-<link rel="stylesheet" href="/css/recommend.css?v=bdec6d86">
+<link rel="stylesheet" href="/css/recommend.css?v=b0d82e4f">
 <!-- The eleven onboarding screens. Everything in it is scoped under .fbob and
      it is written to live INSIDE .fbg-sheet, which css/recommend.css above
      defines — so it is loaded after that file for the same reason it is
      loaded after css/app.css: every colour and size in it is a token one of
      those two declares. -->
-<link rel="stylesheet" href="/css/onboard.css?v=d533585a">
+<link rel="stylesheet" href="/css/onboard.css?v=bc6ec82b">
 <link rel="stylesheet" href="/css/scenes.css?v=c09a81fe">
 <link rel="stylesheet" href="/css/audio-reader.css?v=0cd80c5f">
 <link rel="stylesheet" href="/css/reader-rail.css?v=f91d2934">
@@ -172,7 +172,7 @@ window.FB_FREE_FILE = { "01": 1, "02": 1 };
 read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></noscript>
 
 <script src="/js/drag-deck.js?v=7bc7ed89"></script>
-<script src="/js/progress.js?v=44e9d717"></script>
+<script src="/js/progress.js?v=b5d6c73a"></script>
 <script src="/js/access.js?v=253a4e0f"></script>
 <script src="/js/gate.js?v=bfce3033"></script>
 <!-- The price ladder. Nothing on this page may contain a dollar figure: the
@@ -180,7 +180,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      out of FBA, which is the one place that knows what Stripe charges. Without
      it js/recommend.js draws both screens with no amounts on them rather than
      with invented ones. -->
-<script src="/js/account.js?v=ffdbdc59"></script>
+<script src="/js/account.js?v=d3ddea35"></script>
 <!-- The onboarding engine, and the ranker it reads. THE ORDER IS THE
      DEPENDENCY ORDER and is not incidental: js/onboard.js writes every answer
      through FBA, so js/account.js has to be above it, and it ranks the
@@ -216,10 +216,10 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      editing firestore.rules and privacy.html in the same commit, or it will
      silently stop mirroring the eleven that work today. -->
 <script src="/js/personalize.js?v=41896023"></script>
-<script src="/js/onboard.js?v=e1113dc8"></script>
+<script src="/js/onboard.js?v=2e07dde8"></script>
 <script src="/js/profile-sync.js?v=32cb826a"></script>
 <script src="/js/saves.js?v=b3ba85f2"></script>
-<script src="/js/recommend.js?v=bc6fd4e2"></script>
+<script src="/js/recommend.js?v=9dff7c7d"></script>
 <script src="/js/scenes.js?v=cd75cf00" defer></script>
 <script>
 (function () {
@@ -1473,7 +1473,7 @@ read a story. <a href="/explore" style="color:#FF7A5C">All stories</a></p></nosc
      and before DOMContentLoaded, whatever position this tag is in, and
      access.js reaches it through the whenFBU() bridge in AUTH.md §2. -->
 <script type="module" src="/js/auth.js?v=35b20584"></script>
-<script src="/js/analytics.js?v=a72ffef9"></script>
+<script src="/js/analytics.js?v=62eb8b43"></script>
 <!-- The sign-up ask the retired deck ended on, folded into the end card. -->
 <script>
 (function () {

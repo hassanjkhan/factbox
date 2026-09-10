@@ -94,6 +94,53 @@ ASSET = re.compile(
     r'\2'                             # the same quote again
 )
 
+# ---------------------------------------------------------------------------
+# Scripts that are INJECTED at runtime rather than written into a page.
+#
+# Two files load a sibling by building a <script> element and setting .src:
+#
+#   js/progress.js  -> /js/progress-sync.js   (the reading-progress mirror)
+#   js/account.js   -> /js/profile-sync.js    (the account mirror)
+#
+# Both are deliberate — appending once from the file that needs them means
+# they cannot be forgotten on a page that carries the parent, and cannot be
+# added twice. But it also means the URL appears in NO HTML, so the regex
+# above never saw it, and js/progress-sync.js was the one asset on the whole
+# site still able to go stale: every <script src> moved on deploy while that
+# one kept serving out of cache for Pages' full max-age=600. A cache bug in
+# the file that syncs reading position across devices is exactly the kind
+# that gets reported as "it lost my place" and reproduces for nobody.
+#
+# So the same stamp is applied to the string LITERAL in the injecting file.
+#
+# It is opt-in per literal, by a trailing `/* stamped */` marker, and that is
+# not decoration. "Any string in this file that looks like /js/*.js" is the
+# obvious rule and it is wrong twice over in js/account.js alone, which spells
+# the markup it is standing in for inside a doc comment:
+#
+#       <script src="/js/account.js"></script>
+#       <script src="/js/profile-sync.js"></script>
+#
+# Stamping prose would be merely wrong; stamping THAT prose does not even
+# terminate, because writing account.js's hash into account.js changes
+# account.js's bytes, which changes its hash. A --check gate built on it would
+# fail forever and no edit could make it pass. The marker means the tool
+# rewrites only what someone deliberately marked, and a reader of the line can
+# see that it is rewritten.
+#
+# Order matters and is handled in main(): these are stamped BEFORE the pages,
+# because stamping js/progress.js changes js/progress.js, which changes the
+# hash every page's <script src="/js/progress.js"> has to carry.
+INJECTORS = ["js/progress.js", "js/account.js"]
+
+JS_ASSET = re.compile(
+    r'(["\'])'                                     # 1: the opening quote
+    r'(/(?:js|css)/[A-Za-z0-9._-]+\.(?:js|css))'   # 2: the path, no query
+    r'(\?v=[0-9a-fA-F]+)?'                         # 3: a previous stamp
+    r'\1'                                          # the same quote again
+    r'(\s*;?[ \t]*/\*\s*stamped\s*\*/)'            # 4: the opt-in marker
+)
+
 
 def asset_hash(path: pathlib.Path) -> str:
     """First 8 hex of a sha256 of the file's bytes.
@@ -137,6 +184,39 @@ def stamp_text(html: str, root: pathlib.Path = ROOT):
     return ASSET.sub(one, html), warnings
 
 
+def stamp_js_text(src: str, root: pathlib.Path = ROOT):
+    """Stamp the marked asset literals in a JS file. Returns (text, warnings).
+
+    Same contract as stamp_text: pure, idempotent, and any previous ?v= is
+    discarded rather than carried, so the output depends only on the path and
+    on the bytes on disk.
+    """
+    warnings = []
+    seen = {}
+
+    def one(m):
+        quote, path, marker = m.group(1), m.group(2), m.group(4)
+        f = root / path.lstrip("/")
+        if not f.is_file():
+            warnings.append(path)
+            return m.group(0)
+        if path not in seen:
+            seen[path] = asset_hash(f)
+        return f'{quote}{path}?v={seen[path]}{quote}{marker}'
+
+    return JS_ASSET.sub(one, src), warnings
+
+
+def stamp_js_file(path: pathlib.Path, write: bool = True):
+    """Stamp one injecting JS file in place. Returns (changed, warnings)."""
+    before = path.read_text()
+    after, warnings = stamp_js_text(before, ROOT)
+    changed = after != before
+    if changed and write:
+        path.write_text(after)
+    return changed, warnings
+
+
 def unstamp_text(html: str) -> str:
     """Strip every stamp, leaving the bare URLs.
 
@@ -172,6 +252,27 @@ def main(argv):
         targets = [ROOT / p for p in PAGES]
 
     stale, missing, done = [], [], 0
+
+    # The injecting JS files first, and only on a whole-site run. Stamping one
+    # of them REWRITES it, which moves its own hash, so the pages that load it
+    # have to be stamped afterwards in the same pass or the run leaves the site
+    # inconsistent and --check disagrees with the run that just happened.
+    # Explicitly-named targets are left alone: `stamp-assets.py one.html` means
+    # that file, and quietly rewriting two JS files as well would be a side
+    # effect nobody asked for.
+    if not names:
+        for rel in INJECTORS:
+            p = ROOT / rel
+            if not p.is_file():
+                print(f"  no such injector: {rel}")
+                return 2
+            changed, warnings = stamp_js_file(p, write=not check)
+            for w in warnings:
+                missing.append(f"{rel}: {w}")
+            if changed:
+                stale.append(rel)
+            done += 1
+
     for t in targets:
         if not t.is_file():
             print(f"  no such page: {t}")

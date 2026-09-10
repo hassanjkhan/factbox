@@ -375,22 +375,12 @@ var FBR = (function () {
     return "";
   }
 
-  /* "$35.88/yr". The suffix comes off the interval Stripe bills on, so a
-     plan billed every 3 months could never be labelled "/yr" by accident. */
-  function perSuffix(p) {
-    try {
-      var n = Math.max(1, Math.floor(+p.intervalCount) || 1);
-      var u = str(p.intervalUnit);
-      if (u === "year")  return n === 1 ? "/yr"  : "/" + n + "yr";
-      if (u === "month") return n === 1 ? "/mo"  : "/" + n + "mo";
-      if (u === "week")  return n === 1 ? "/wk"  : "/" + n + "wk";
-      if (u === "day")   return n === 1 ? "/day" : "/" + n + "d";
-    } catch (e) {}
-    return "";
-  }
-  function priceTag(p) {
-    try { return str(p.billedText) + perSuffix(p); } catch (e) { return ""; }
-  }
+  /* WHAT USED TO BE HERE: perSuffix() and priceTag(), which built "/yr" and
+     "35.88/yr" off the interval Stripe bills on. Nothing renders a slashed
+     rate any more — both price surfaces in this file lead with the daily
+     figure and then name the charge in words, "billed once a year", which is
+     account.js's own cycleShort and cannot be mislabelled by a suffix table
+     here. billedLine() below is what replaced them. */
 
   /* ======================================================================
      THE READER'S OWN NUMBERS — and the rule that governs all of them.
@@ -717,43 +707,171 @@ var FBR = (function () {
   }
 
   /* ======================================================================
-     MONEY, PART TWO — the two lines the wall leads with.
+     MONEY, PART TWO — the two lines every price surface in this file leads
+     with, in this order:
 
-     Both are derived. perLong() reads the interval Stripe bills on, so a
-     plan billed every three months could never be labelled "/year"; and
-     underMonth() rounds the DERIVED per-month figure UP to the next whole
-     unit, which is the only way "less than" can be said without a person
-     typing a number that stops being true when account.js changes.
+         the daily rate      big, and rounded UP by js/account.js
+         the amount charged  in full, with the cycle in words
 
-     If the plan divides into whole units exactly — a hypothetical 36.00 a
-     year — "less than 3 a month" is false, so the claim is not made and the
-     exact figure is printed instead. Nothing here rounds in our favour.
+     WHAT WENT, AND WHY. The wall used to lead with "US$36.50/year" and put
+     "Less than US$4 a month" under it — a slashed rate and a rounded-up
+     per-month claim. Both are gone. A per-month figure on a plan billed in a
+     lump is a third framing of the same money, and three framings of one
+     price on one screen is not clarity, it is a screen that sounds like it is
+     working the reader. What replaced it is the rate as it feels — ten cents
+     a day — and the charge as it is: US$36.50 billed once a year.
+
+     NOTHING IS TYPED AND NOTHING IS DIVIDED HERE. billedText, cycleShort and
+     perDayCents all come out of FBA. tools/check-regressions.js greps this
+     file, css/recommend.css and read.html for a typed $<digit> and fails the
+     build on one.
      ====================================================================== */
 
-  /* "/year", spelled out. perSuffix() above is the short form the sheet uses. */
-  function perLong(p) {
+  /* "US$36.50 billed once a year" — the amount the reader actually
+     authorises, in full, with the cycle account.js words for it. THE ONE
+     LINE THAT IS NEVER ABBREVIATED AND NEVER DROPPED. The daily rate above
+     it is a rounded division; this is the charge, and a daily figure on a
+     plan billed in a lump is the half of the truth that gets a refund
+     request. */
+  function billedLine(p) {
     try {
-      var n = Math.max(1, Math.floor(+p.intervalCount) || 1);
-      var u = str(p.intervalUnit);
-      if (n !== 1) return perSuffix(p);
-      if (u === "year")  return "/year";
-      if (u === "month") return "/month";
-      if (u === "week")  return "/week";
-      if (u === "day")   return "/day";
-    } catch (e) {}
-    return perSuffix(p);
+      var b = str(p && p.billedText), c = str(p && p.cycleShort);
+      if (!b) return "";
+      return c ? b + " billed " + c : b;
+    } catch (e) { return ""; }
   }
 
-  function underMonth(p) {
+  /* ======================================================================
+     MONEY, PART THREE — THE DAILY RATE, AND THE TREATMENT IT IS SET IN.
+
+     WHAT IT IS. Ten cents a day, printed as a very large 0 with the cents
+     small and raised beside it, the currency mark small at the shoulder, and
+     PER DAY under the cents. It is /join's plan card, which shipped first;
+     this is the same cluster on the two price surfaces inside the reader, so
+     the three screens a buyer sees in one session agree with each other.
+
+     WHERE THE FIGURE COMES FROM. FBA.perDayCents(). Not from arithmetic
+     here. js/account.js is the only file that knows what Stripe charges
+     (STRIPE.md §2) and it now derives the daily rate beside the amount it
+     divides — rounded UP, so the printed rate is never below the one the
+     till takes. This file splits that integer into two runs of digits and
+     sets them at two sizes. THAT IS ALL IT DOES: no division, no rounding,
+     and nothing to drift when the price changes.
+
+     WHY IT IS SPLIT AT ALL. Because the whole point of the treatment is that
+     the figure a reader is deciding about should be the size of the decision
+     it is, and "$0.10" set as one string cannot do that. What it must not do
+     is become two numbers to a screen reader, which is what aria-label on
+     the container is for, and why every piece inside it is aria-hidden.
+     ====================================================================== */
+
+  function moneyC(c) {
+    var A = acct();
+    try { if (A && A.moneyCents) return str(A.moneyCents(c)); } catch (e) {}
+    return "";
+  }
+
+  /* The rung the saving is measured against — account.js's own `base`, never
+     a hard-coded "monthly". planByKeyAny, because a base that has since been
+     retired still has to be able to name the rate a cheaper rung beats. */
+  function basePlan() {
+    var A = acct();
+    if (!A) return null;
     try {
-      if (!p || !(p.months > 1)) return "";
-      var c = Math.round(Number(p.perMonthCents));
-      if (!isFinite(c) || c <= 0) return "";
-      /* It divides into whole units: "less than" would be a lie, so say the
-         figure instead. account.js's own phrasing, with its own "about". */
-      if (c % 100 === 0) return str(p.perMonthAbout) + " a month";
-      return "Less than " + symbol() + String(Math.ceil(c / 100)) + " a month";
-    } catch (e) { return ""; }
+      var k = str((A.pricing() || {}).base);
+      if (!k) return null;
+      return A.planByKeyAny ? A.planByKeyAny(k) : planFor(k);
+    } catch (e) { return null; }
+  }
+
+  /* THE ACCESSOR, and the only way this file learns the daily rate. An older
+     cached js/account.js without it falls back to the field on the shaped
+     plan, and a file with neither draws no figure at all — a missing price
+     is a smaller failure than an invented one, which is this file's rule for
+     every other amount on these screens. */
+  function dayCents(p) {
+    var A = acct();
+    try {
+      if (A && typeof A.perDayCents === "function") {
+        return Math.max(0, Math.round(Number(A.perDayCents(p)) || 0));
+      }
+      return Math.max(0, Math.round(Number(p && p.perDayCents) || 0));
+    } catch (e) { return 0; }
+  }
+
+  /* Ten cents as the two runs of digits the treatment sets at two sizes: the
+     whole units very large, the cents small and raised beside them. Purely
+     typographic — the accessible name on the container puts them back
+     together into the one price they are. */
+  function dayParts(c) {
+    var v = Math.round(Number(c) || 0);
+    if (!(v > 0)) v = 0;
+    var w = Math.floor(v / 100), r = v % 100;
+    return { big: String(w), sup: (r < 10 ? "0" : "") + String(r) };
+  }
+
+  /* The empty cluster. `mod` is "is-lead" on the paywall, where it is the
+     headline, and "is-row" in a plan row, where it is one line of a choice. */
+  function rateBox(mod) {
+    return el("span", "fbrate" + (mod ? " " + mod : ""));
+  }
+
+  /* Fills one. Returns false when there is no figure to draw, and the box is
+     then hidden rather than left as an empty gap. Called again on every plan
+     change, so it clears what was there first. */
+  function paintRate(box, p) {
+    if (!box) return false;
+    while (box.firstChild) { box.removeChild(box.firstChild); }
+    var c = dayCents(p);
+    if (!c) {
+      box.style.display = "none";
+      box.removeAttribute("role");
+      box.removeAttribute("aria-label");
+      return false;
+    }
+    box.style.display = "";
+
+    var b = basePlan(), bc = b ? dayCents(b) : 0;
+    /* Struck only when the arithmetic really does come out cheaper, and only
+       against a DIFFERENT rung. The cheaper plan is a choice on this screen,
+       not a discount off a former price, so the base plan's own cycle word is
+       printed beside the struck figure: a bare struck number reads as "this
+       used to cost that", and it never did. */
+    var beats = !!(b && bc > 0 && p.key !== b.key && c < bc);
+    var word = b ? str(b.cycleShort || b.cycle) : "";
+    var parts = dayParts(c);
+
+    /* ONE accessible name for the whole cluster. Without it a screen reader
+       announces the split as "zero" then "ten" — two numbers, neither of them
+       the price. role="img" is what makes aria-label on a generic element
+       reach the accessibility tree at all, and every piece inside is
+       aria-hidden so none of them is read a second time. */
+    box.setAttribute("role", "img");
+    box.setAttribute("aria-label",
+      (str(p.perDayText) || moneyC(c)) + " a day" +
+      (beats ? ", down from " + moneyC(bc) + " a day on the " + word + " plan" : ""));
+
+    if (beats) {
+      var was = el("span", "fbrate-was");
+      was.setAttribute("aria-hidden", "true");
+      was.appendChild(document.createTextNode(word + " "));
+      was.appendChild(el("s", null, moneyC(bc)));
+      box.appendChild(was);
+    }
+    var cur = el("span", "fbrate-cur", symbol());
+    cur.setAttribute("aria-hidden", "true");
+    box.appendChild(cur);
+
+    var big = el("span", "fbrate-big", parts.big);
+    big.setAttribute("aria-hidden", "true");
+    box.appendChild(big);
+
+    var tail = el("span", "fbrate-tail");
+    tail.setAttribute("aria-hidden", "true");
+    tail.appendChild(el("span", "fbrate-sup", parts.sup));
+    tail.appendChild(el("span", "fbrate-unit", "per day"));
+    box.appendChild(tail);
+    return true;
   }
 
   /* ======================================================================
@@ -1680,50 +1798,130 @@ var FBR = (function () {
     } catch (e) { return false; }
   }
 
-  /* ---- the proof slot · NO STATISTIC SHIPS ------------------------------
-     The mockup's purchase screen carries two percentages about what "Factbox
-     members" did in their first thirty days. Both are marked verified:false
-     in the mockup's own source, and the designer's changelog says outright
-     that they are prototype placeholders with no study behind them. They are
-     also claims about a member base this product does not yet have. So the
-     slot is built and the figures are not: `stat` is null, `on` is false,
-     and what renders is the copy-only arm — which is the A/B arm the mockup
-     itself describes, and which says nothing that cannot be defended.
+  /* ---- the strip of covers · WHAT THE MONEY SCREEN SHOWS INSTEAD OF A
+     CLAIM ------------------------------------------------------------------
+     A slow, continuous band of story covers under the sentence that says
+     every story opens. The catalogue is 51 paintings; the point of the strip
+     is that a reader deciding whether to pay can see that, rather than read
+     an adjective about it.
 
-     This is the third time this repo has been asked for a number nobody
-     measured. js/start.js's RECALL_CLAIM_PCT is null for the same reason.
+     WHAT IT REPLACED, AND WHAT MUST NOT COME BACK. This slot used to be the
+     "proof" box: two lines of copy — "Make five minutes of screen time
+     count." / "Same phone. Something to show for it." — sitting where the
+     mockup put two percentages about what "Factbox members" did in their
+     first thirty days. Those figures never shipped: they were marked
+     verified:false in the mockup's own source and there is no study behind
+     them, and no member base to have studied. js/start.js's RECALL_CLAIM_PCT
+     is null for the same reason. NOTHING GOES IN THIS SLOT THAT ASSERTS
+     SOMETHING NOBODY MEASURED. What is here now asserts nothing at all: it
+     is the product's own covers, and the reader can count them.
 
-     TO TURN IT ON, both of these, in this order:
-       1. Run the study. A cohort, a definition of the behaviour, a window,
-          and a figure that survives somebody else recomputing it. "Built a
-          consistent learning habit" is not measurable until "consistent" is
-          a number of days in a number of weeks.
-       2. Put the measured figure in `stat` and its sentence in `cap`, then
-          set `on` to true. Nothing else changes: the numeric arm renders
-          from the same slot.
-     A figure that arrives without step 1 is the same failure as printing a
-     round price when the till takes eighty-eight cents more. */
-  var PROOF = {
-    on: false,
-    stat: null,
-    /* The measured claim's sentence goes here with the figure. */
-    statCap: "",
-    /* The copy-only arm, which is what ships. Neither line asserts anything
-       about anybody: they describe what the product is. */
-    cap: "Make five minutes of screen time count.",
-    note: "Same phone. Something to show for it."
-  };
+     THE RULES IT IS BUILT TO, all of which are about a mid-range phone
+     inside the Instagram webview looking at the one screen that takes money:
 
-  function proofSlot() {
-    var box = el("div", "fbg-proof");
-    if (PROOF.on && PROOF.stat) {
-      box.appendChild(el("p", "fbg-stat", str(PROOF.stat)));
-      box.appendChild(el("p", "fbg-statcap", str(PROOF.statCap)));
-      return box;
-    }
-    box.appendChild(el("p", "fbg-cap", str(PROOF.cap)));
-    if (PROOF.note) box.appendChild(el("p", "fbg-note", str(PROOF.note)));
+       transform ONLY. One CSS animation on one duplicated track, running
+       translate3d from 0 to -50%. No left, no scrollLeft on a timer, no
+       measuring, nothing per frame that touches layout. The two halves are
+       identical, so -50% lands the strip exactly where it started and the
+       loop has no seam to see.
+
+       DECORATIVE, AND SAID SO. aria-hidden on the whole strip, alt="" on
+       every image, nothing focusable and nothing in the tab order. The
+       sentence above it already carries the meaning; a screen reader that
+       read out 102 covers would be reading the wallpaper.
+
+       IT STOPS FOR prefers-reduced-motion. The band still stands there full
+       of covers — depth reads perfectly well standing still — and this is in
+       css/recommend.css beside the animation rather than in a matchMedia
+       here, so it also follows a reader who changes the setting mid-session.
+
+       A COVER THAT 404s LEAVES NOTHING BEHIND. One retry at the larger size,
+       then the tile is taken out of the flow. A broken-image glyph on the
+       purchase screen is worse than one fewer painting.
+
+       IT GIVES WAY BEFORE THE PRICE DOES. It is the first thing dropped on a
+       short viewport (css/recommend.css, the max-height steps), because it is
+       the only thing on the sheet that is neither the offer nor the terms. */
+
+  /* Every cover in the catalogue, shuffled ONCE per page load and then held.
+     Shuffled because the index is in fixed order and a strip that always
+     opens on the same four paintings looks like four paintings; held because
+     a re-shuffle between the two halves of the track — or on a repaint —
+     would resort the band mid-scroll, which is the one thing that would make
+     the loop visible. */
+  var STRIP_ORDER = null;
+
+  function stripOrder(list) {
+    if (STRIP_ORDER) return STRIP_ORDER;
+    var a = [], i, j, t;
+    try {
+      for (i = 0; i < list.length; i++) {
+        var nm = str(list[i] && list[i].img);
+        if (nm) a.push(nm);
+      }
+      for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+    } catch (e) {}
+    STRIP_ORDER = a;
+    return a;
+  }
+
+  /* How many load at once. The rest carry loading="lazy" and arrive as the
+     band brings them round, which keeps the sheet's own cost to about a
+     screenful of covers rather than the whole catalogue — 51 thumbnails is
+     1.2MB and this is the screen a reader is standing on with their card in
+     their hand. The second half of the track is the same URLs as the first,
+     so it costs nothing at all. */
+  var STRIP_EAGER = 10;
+
+  function coverTile(name, eager) {
+    var tile = el("span", "fbg-cover");
+    var img = document.createElement("img");
+    var tried = false;
+    img.alt = "";
+    img.decoding = "async";
+    if (!eager) { try { img.loading = "lazy"; } catch (e0) {} }
+    img.onerror = function () {
+      if (!tried) { tried = true; img.src = "/img/stacks/" + name + ".webp"; return; }
+      img.onerror = null;
+      try { tile.style.display = "none"; } catch (e1) {}
+    };
+    img.src = "/img/thumbs/" + name + ".webp";
+    tile.appendChild(img);
+    return tile;
+  }
+
+  /* The empty band. It occupies nothing until it has covers in it: an empty
+     strip on a sheet whose index never loaded is a gap where a reader expects
+     something, and the sheet reads perfectly well without it. */
+  function coversStrip() {
+    var box = el("div", "fbg-strip");
+    box.setAttribute("aria-hidden", "true");
+    box.appendChild(el("div", "fbg-track"));
     return box;
+  }
+
+  /* Fills one, once. TWO IDENTICAL PASSES over the same order — that is what
+     makes -50% seamless, and it is why the order is computed before the loop
+     rather than inside it. */
+  function fillStrip(box, list) {
+    try {
+      if (!box || !list || !list.length) return false;
+      var track = box.firstChild;
+      if (!track || track.firstChild) return false;    /* already filled */
+      var names = stripOrder(list);
+      if (!names.length) return false;
+      var i, k;
+      for (k = 0; k < 2; k++) {
+        for (i = 0; i < names.length; i++) {
+          track.appendChild(coverTile(names[i], k === 0 && i < STRIP_EAGER));
+        }
+      }
+      box.className = "fbg-strip is-on";
+      return true;
+    } catch (e) { return false; }
   }
 
   /* Google's mark, inline, at the size the sheet uses it. Drawn rather than
@@ -1824,13 +2022,21 @@ var FBR = (function () {
         if (p.best) top.appendChild(el("span", "pw-best", "Best value"));
         b.appendChild(top);
 
-        b.appendChild(el("span", "pw-optprice", str(p.billedLine)));
-        /* perMonthAbout, never perMonthText: 35.88 divides into exactly 2.99,
-           35.00 does not, and dropping the word "about" is quoting a figure
-           nobody is charged. */
-        if (p.months > 1 && p.perMonthAbout) {
-          b.appendChild(el("span", "pw-optper", str(p.perMonthAbout) + " a month"));
-        }
+        /* THE SAME TWO LINES AS THE WALL, IN THE SAME ORDER AND THE SAME
+           TREATMENT. A reader who taps "View other plans" is comparing, and a
+           comparison screen that quotes its plans in a different unit from
+           the screen behind it makes the reader do the conversion. So: the
+           daily rate, set the way the wall sets it, and the charge under it
+           in full.
+
+           It replaced "US$36.50 a year" over "about US$3.04 a month". The
+           per-month line is gone for the reason given in MONEY, PART TWO —
+           and note that it only ever appeared on multi-month rungs, so the
+           two rows were being quoted in different units from each other on
+           this screen as well as from the wall. */
+        var rate = rateBox("is-row");
+        if (paintRate(rate, p)) b.appendChild(rate);
+        b.appendChild(el("span", "pw-optprice", billedLine(p)));
 
         b.appendChild(el("span", "pw-tick", ""));
         b.lastChild.innerHTML = tickSVG();
@@ -2032,16 +2238,29 @@ var FBR = (function () {
       buy.appendChild(el("p", "fbg-sub",
         "Unlock every story in Factbox. Your next story is already waiting."));
 
-      buy.appendChild(proofSlot());
+      /* The covers. Built empty and filled when the index lands — see the
+         FB.loadIndex() preload further down, which this shares rather than
+         issuing a second fetch of its own. It is directly under the sentence
+         about every story opening because it is that sentence's evidence. */
+      var strip = coversStrip();
+      buy.appendChild(strip);
 
-      var priceP = null, perP = null;
+      /* THE PRICE, IN TWO PARTS, AND THE ORDER IS THE DECISION.
+
+         The daily rate leads, at the size of the thing being decided. The
+         amount Stripe will actually take sits immediately under it, in full,
+         with the cycle spelled out — "US$36.50 billed once a year". The
+         second line is not optional and does not give way at any height: a
+         reader authorises the annual amount, not ten cents, and the media
+         queries at the foot of css/recommend.css drop the proof strip and the
+         currency note before they touch either of these. */
+      var rateP = null, priceP = null;
       if (lead && lead.billedText) {
-        priceP = el("p", "fbg-price");
-        priceP.appendChild(el("b", null, str(lead.billedText)));
-        priceP.appendChild(el("span", null, perLong(lead)));
+        rateP = rateBox("is-lead");
+        if (paintRate(rateP, lead)) buy.appendChild(rateP);
+        else rateP = null;
+        priceP = el("p", "fbg-price", billedLine(lead));
         buy.appendChild(priceP);
-        var per = underMonth(lead);
-        if (per) { perP = el("p", "fbg-per", per); buy.appendChild(perP); }
       }
 
       var go = el("button", "go fbg-go", state.ctaLabel);
@@ -2235,11 +2454,15 @@ var FBR = (function () {
          one screen missing rather than the funnel stopped. */
       var quizUp = false;
       var quizStacks = null;
-      /* Started here, not in mountQuiz, so the tap never waits on a fetch. */
+      /* Started here, not in mountQuiz, so the tap never waits on a fetch.
+         THE STRIP OF COVERS ON THE OFFER SHEET IS FILLED FROM THE SAME
+         ANSWER — one loadIndex() for both, and js/gate.js caches it anyway,
+         so the band costs the sheet no request of its own. */
       try {
         if (window.FB && typeof FB.loadIndex === "function") {
           FB.loadIndex().then(function (list) {
             quizStacks = (list && list.length) ? list : null;
+            fillStrip(strip, quizStacks);
           }, function () { quizStacks = null; });
         }
       } catch (e) { quizStacks = null; }
@@ -2518,16 +2741,12 @@ var FBR = (function () {
         var p = planFor(key);
         if (!p) return;
         state.key = p.key;
-        if (priceP) {
-          priceP.innerHTML = "";
-          priceP.appendChild(el("b", null, str(p.billedText)));
-          priceP.appendChild(el("span", null, perLong(p)));
-        }
-        if (perP) {
-          var per2 = underMonth(p);
-          perP.textContent = per2;
-          perP.style.display = per2 ? "" : "none";
-        }
+        /* Both lines move together, because they are two statements about
+           one plan: the rate the reader is being shown and the charge they
+           are agreeing to. A repaint that moved one and not the other is how
+           a monthly plan ends up advertised at the annual plan's daily rate. */
+        if (rateP) paintRate(rateP, p);
+        if (priceP) priceP.textContent = billedLine(p);
         try { if (acct() && FBA.setPlan) FBA.setPlan(p.key); } catch (e) {}
         /* Two literal names. Never one built out of the key — GA4 caps the
            number of distinct event names and tools/check-analytics.js fails

@@ -58,6 +58,23 @@ const db = admin.firestore();
    Ten minutes is the window in which a re-seed is invisible to a warm
    instance — short enough that a typo fix lands the same session, long enough
    that a reader flicking through a topic pays for almost none of it. */
+/* THE FREE TASTE.
+
+   How many cards of a paid story an unentitled reader gets before the wall.
+   Closing the static-JSON leak took this to zero as a side effect: a
+   signed-out reader went from a couple of real cards to headlines only, and
+   that taste was doing sales work. Nobody buys a history subscription from a
+   list of titles.
+
+   Two, deliberately. Enough to establish the voice and reach the turn that
+   makes somebody want the third; nowhere near the payoff, because the
+   reversal these stories are built on lands late. A scraper walking all 51
+   gets about a hundred cards of 450 and none of the answers — the same trade
+   a newspaper makes, for the same reason.
+
+   Zero disables the preview and restores the headlines-only wall. */
+const PREVIEW_CARDS = 2;
+
 const CONTENT_TTL_MS = 10 * 60 * 1000;
 const contentCache = new Map();
 
@@ -151,6 +168,28 @@ function fail(req, res, reads, status, error, extra) {
   const body = { ok: false, error: error };
   if (extra) Object.keys(extra).forEach((k) => { body[k] = extra[k]; });
   return sendJSON(req, res, reads, status, body);
+}
+
+/* The first PREVIEW_CARDS cards, as a NEW object.
+
+   getStory() returns a cached object shared with every other request for
+   CONTENT_TTL_MS. Truncating it in place would serve two cards to whichever
+   subscriber asked next — a cache poisoning of the worst kind, because it
+   would look like a content bug rather than a leak of the wrong shape.
+   Everything is copied and `cards` is a fresh array.
+
+   `totalCards` goes with it so the wall can say how much is behind it rather
+   than guessing. */
+function previewOf(story) {
+  if (!story || PREVIEW_CARDS < 1) return null;
+  const all = Array.isArray(story.cards) ? story.cards : [];
+  if (!all.length) return null;
+  const out = {};
+  Object.keys(story).forEach(function (k) { if (k !== "cards") out[k] = story[k]; });
+  out.cards = all.slice(0, PREVIEW_CARDS);
+  out.preview = true;
+  out.totalCards = all.length;
+  return out;
 }
 
 /* Ids are `01`..`50` plus `07B` (SPEC.md §5: a string, never a number). The
@@ -307,9 +346,19 @@ exports.story = onRequest(
       return fail(req, res, reads, 401, "bad_token", { id: id, free: false });
     }
 
-    if (!who) return fail(req, res, reads, 401, "auth_required", { id: id, free: false });
+    /* Refused, but not empty-handed. The status stays 401/403 — the client
+       keys its wall on that, and a 200 here would have it render a truncated
+       story as though it were the whole thing. The preview rides in the error
+       body, which is purely additive: a client that ignores the field behaves
+       exactly as it does today. */
+    const taste = previewOf(story);
+    if (!who) {
+      return fail(req, res, reads, 401, "auth_required",
+                  { id: id, free: false, preview: taste });
+    }
     if (!who.premium) {
-      return fail(req, res, reads, 403, "subscription_required", { id: id, free: false });
+      return fail(req, res, reads, 403, "subscription_required",
+                  { id: id, free: false, preview: taste });
     }
 
     /* no-store, not merely private: this body is one subscriber's, and an

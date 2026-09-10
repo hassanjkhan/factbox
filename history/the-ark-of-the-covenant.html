@@ -122,6 +122,11 @@ h2{font-size:.78rem;letter-spacing:.11em;text-transform:uppercase;
 
 <p class="foot">
   <a href="/explore">All stories</a>
+  <!-- The hub. This is the other half of the link graph: /history/ lists all
+       51 of these pages, and every one of them points back at it, so a
+       crawler that lands on any single story can reach the other 50
+       without going through a page that builds its shelf in JavaScript. -->
+  <a href="/history/">Story index</a>
   <a href="/library">Your library</a>
   <a href="/credits">Artwork credits</a>
 </p>

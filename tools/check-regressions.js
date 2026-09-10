@@ -974,6 +974,122 @@ const CHECKS = [
       return true;
     },
   },
+  {
+    name: "injected scripts carry a stamp matching their file's bytes",
+    why: "Two files load a sibling by building a <script> and setting .src — " +
+         "js/progress.js -> js/progress-sync.js, js/account.js -> " +
+         "js/profile-sync.js. Because the URL is in no HTML, tools/" +
+         "stamp-assets.py's page scan never saw it, and js/progress-sync.js " +
+         "was the one asset on the site that could still go stale: everything " +
+         "else moved its URL on deploy while that kept serving out of cache " +
+         "for GitHub Pages' full max-age=600. It is stamped now — but a stamp " +
+         "that stops tracking the file is WORSE than none, because it looks " +
+         "handled. So this recomputes the hash from the bytes on disk and " +
+         "fails if the two disagree, which is what happens the moment someone " +
+         "edits progress-sync.js and does not re-run the stamper.",
+    pass: () => {
+      const crypto = require("crypto");
+      /* Must stay identical to asset_hash() in tools/stamp-assets.py:
+         first 8 hex of a sha256 over the file's BYTES. */
+      const hashOf = (rel) => {
+        const p = path.join(ROOT, rel);
+        if (!fs.existsSync(p)) return null;
+        return crypto.createHash("sha256").update(fs.readFileSync(p))
+                     .digest("hex").slice(0, 8);
+      };
+
+      const PAIRS = [
+        ["js/progress.js", "/js/progress-sync.js"],
+        ["js/account.js",  "/js/profile-sync.js"],
+      ];
+
+      for (const [injector, asset] of PAIRS) {
+        const src = read(injector);
+        if (!src) return injector + " is missing or unreadable";
+
+        const want = hashOf(asset.replace(/^\//, ""));
+        if (!want) return asset + " does not exist on disk, but " + injector +
+                          " injects it — that is a guaranteed 404";
+
+        /* The literal, its stamp, and the /* stamped *​/ marker that opts it
+           in to tools/stamp-assets.py. Losing the marker is silent: the
+           stamper simply stops rewriting the line and the hash freezes. */
+        const re = new RegExp(
+          '["\']' + asset.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+          '(\\?v=([0-9a-fA-F]+))?["\']\\s*;?[ \\t]*/\\*\\s*stamped\\s*\\*/');
+        const m = src.match(re);
+        if (!m) {
+          return injector + ' no longer carries a marked "' + asset +
+                 '" literal. Either the injection was rewritten to build the ' +
+                 'URL by concatenation — which tools/stamp-assets.py cannot ' +
+                 'see — or the /* stamped */ marker was dropped. Restore the ' +
+                 'single literal plus its marker.';
+        }
+        if (!m[2]) {
+          return injector + " injects " + asset + " with no ?v= at all. Run " +
+                 "python3 tools/stamp-assets.py.";
+        }
+        if (m[2].toLowerCase() !== want) {
+          return injector + " injects " + asset + "?v=" + m[2] +
+                 " but that file now hashes to " + want +
+                 ". The stamp has gone stale — browsers will keep serving the " +
+                 "old file for ten minutes. Run python3 tools/stamp-assets.py.";
+        }
+      }
+      return true;
+    },
+  },
+  {
+    name: "the PostHog proxy path agrees with the Worker, and can be turned off",
+    why: "js/analytics.js pointed api_host at /ink, the Cloudflare Worker " +
+         "route. factbox.app is grey-cloud DNS-only on Cloudflare — it answers " +
+         "from GitHub Pages with no cf-ray — so no Worker route can fire, and " +
+         "every page load spent a request on /ink/static/array.js to collect a " +
+         "404 before falling back. The fallback is what kept measurement alive " +
+         "and must not be deleted; the switch is what keeps the doomed request " +
+         "from being made while the proxy is not really there. Both have to " +
+         "survive, and the path has to match the Worker or turning it back on " +
+         "just reinstates the 404.",
+    pass: () => {
+      const a = read("js/analytics.js");
+      const w = read("cloudflare/posthog-proxy.js");
+      if (!a) return "js/analytics.js is missing";
+
+      const ap = a.match(/var\s+PROXY_PATH\s*=\s*"([^"]+)"/);
+      if (!ap) return "js/analytics.js no longer defines PROXY_PATH";
+      if (w) {
+        const wp = w.match(/const\s+PREFIX\s*=\s*"([^"]+)"/);
+        if (!wp) return "cloudflare/posthog-proxy.js no longer defines PREFIX";
+        if (wp[1] !== ap[1]) {
+          return 'PROXY_PATH is "' + ap[1] + '" but the Worker\'s PREFIX is "' +
+                 wp[1] + '". They are two halves of one URL; a mismatch is a ' +
+                 '404 on every page load.';
+        }
+      }
+
+      const en = a.match(/var\s+PROXY_ENABLED\s*=\s*(true|false)\s*;/);
+      if (!en) {
+        return "js/analytics.js no longer has a PROXY_ENABLED switch. Without " +
+               "it the site asks for " + ap[1] + "/static/array.js on every " +
+               "page load whether or not anything answers there.";
+      }
+
+      /* The direct start is where PROXY_ENABLED=false lands, and phFallback is
+         where PROXY_ENABLED=true lands when the proxy does not answer. Losing
+         either one loses measurement outright rather than degrading it. */
+      if (!/posthog\.init\(KEY,\s*phConfig\(HOST\)\)/.test(a)) {
+        return "js/analytics.js can no longer start PostHog on the direct " +
+               "host — phConfig(HOST) is gone. That is both the proxy-off " +
+               "path and the destination of the fallback.";
+      }
+      if (!/function phFallback\(\)/.test(a)) {
+        return "js/analytics.js lost phFallback(). With the proxy on, a " +
+               "missing Worker then loses 100% of PostHog events and looks " +
+               "exactly like 'nobody visited today'.";
+      }
+      return true;
+    },
+  },
 ];
 
 /* A check returns `true`, or a STRING saying what it found. It used to be

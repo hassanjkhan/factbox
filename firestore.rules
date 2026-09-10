@@ -58,6 +58,33 @@ service cloud.firestore {
       return !(k in request.resource.data)
         || (request.resource.data[k] is string && request.resource.data[k].size() <= n);
     }
+    // "absent, or the empty string, or exactly one calendar day". The board's
+    // `due` field: the day a task is WANTED by, as "YYYY-MM-DD".
+    //
+    // A STRING AND NOT A TIMESTAMP, and this is the half of that decision the
+    // rules get a vote on: a timestamp field can be checked for its TYPE and
+    // nothing else — there is no expression here that can say "and it must be
+    // local midnight". A string can be pinned exactly, and is, so a console
+    // cannot put "next tuesday", "2026-13-01" or a megabyte in this field.
+    //
+    // The regex refuses month 00 and 13, and day 00 and 32. It still accepts
+    // 2026-02-31, which is a real limitation: RE2 cannot count the days in a
+    // month. js/admin-tasks.js rejects that one by round-tripping the date
+    // through UTC before it writes, and a 31 February that somehow landed here
+    // would render as "no date" rather than as anything wrong — the board
+    // parses this field with the same round trip it validates with.
+    //
+    // The empty string is how "cleared" is spelled, so that clearing a date is
+    // an ordinary field write and not a deleteField(). Absent is legal too:
+    // the 130-odd rows seeded from git predate this field entirely, and an
+    // edit to one of them must not have to invent one.
+    function dayStr(k) {
+      return !(k in request.resource.data)
+        || request.resource.data[k] == ""
+        || (request.resource.data[k] is string
+            && request.resource.data[k].size() == 10
+            && request.resource.data[k].matches("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"));
+    }
     function smallList(k, n) {
       return !(k in request.resource.data)
         || (request.resource.data[k] is list && request.resource.data[k].size() <= n);
@@ -445,8 +472,9 @@ service cloud.firestore {
 
     // --- The board the two of us run on (js/admin-tasks.js, admin/tasks.html) -
     //
-    // `admin_tasks/{id}` is one thing to do; `admin_goals/{id}` is one thing to
-    // hit by a human deadline ("this week"). Hassan and Kathryn both edit both,
+    // `admin_tasks/{id}` is one thing to do, optionally by a day;
+    // `admin_goals/{id}` is one thing to hit, with a measure in prose and,
+    // optionally, the same kind of day. Hassan and Kathryn both edit both,
     // live, from the browser — which makes these the only client-WRITTEN
     // collections on the site outside a reader's own subdocuments, and the only
     // ones where the client doing the writing is trusted with more than its own
@@ -475,8 +503,17 @@ service cloud.firestore {
     // version of the seeder, does not sit there harmlessly — it makes every
     // later edit from the browser fail. That is the intended direction (a
     // surprise is refused, not absorbed), and it is why tools/seed-tasks.js
-    // writes these eleven keys and nothing else, keeping its idempotency key in
-    // the DOCUMENT ID rather than in a twelfth field.
+    // writes these twelve keys and nothing else, keeping its idempotency key in
+    // the DOCUMENT ID rather than in a thirteenth field.
+    //
+    // ADDING A KEY IS A MIGRATION, and `due` is the worked example. The 130-odd
+    // rows already on the board have no `due`, and they must go on being
+    // editable — which they do, because hasOnly() constrains the keys that ARE
+    // present and dayStr() treats absent as legal. What is NOT safe is the
+    // reverse order: shipping a browser that writes a key this list does not
+    // name turns every subsequent edit of every touched row into
+    // permission-denied, silently, with a UI that looks fine. The rules go
+    // first, or in the same commit; never after.
     //
     // TIMESTAMPS COME OFF THE SERVER CLOCK. `updatedAt` must equal request.time
     // on every write, which means the client has to send serverTimestamp() and
@@ -494,11 +531,12 @@ service cloud.firestore {
     function taskShape() {
       return request.resource.data.keys().hasOnly([
                "title", "detail", "owner", "priority", "status", "area",
-               "order", "createdAt", "updatedAt", "doneAt", "updatedBy"
+               "due", "order", "createdAt", "updatedAt", "doneAt", "updatedBy"
              ])
         && reqStr("title", 120)
         && shortStr("detail", 600)
         && shortStr("area", 40)
+        && dayStr("due")
         && request.resource.data.owner in ["hassan", "kathryn", "either"]
         && request.resource.data.priority in ["high", "low"]
         && request.resource.data.status in ["todo", "doing", "done"]
@@ -513,11 +551,12 @@ service cloud.firestore {
     function goalShape() {
       return request.resource.data.keys().hasOnly([
                "title", "detail", "target", "status",
-               "order", "createdAt", "updatedAt", "updatedBy"
+               "due", "order", "createdAt", "updatedAt", "updatedBy"
              ])
         && reqStr("title", 120)
         && shortStr("detail", 600)
         && shortStr("target", 40)
+        && dayStr("due")
         && request.resource.data.status in ["open", "hit", "missed"]
         && request.resource.data.order is number
         && request.resource.data.createdAt is timestamp

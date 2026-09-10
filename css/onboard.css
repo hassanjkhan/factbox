@@ -111,6 +111,35 @@
 }
 
 /* ==========================================================================
+   WHY THESE NUMBERS, AND WHY TWO GROUPS OF THEM.
+
+   The owner watched a screen recording and said the motion was "a little
+   fast". Measuring the recording agreed and said where: frame differencing
+   across a transition showed the screen swapping in a SINGLE frame — one
+   delta of 559 parts per thousand — and then a decaying tail of motion that
+   settled by 600ms. A 260ms whole-screen fade is short enough that it reads
+   as a cut with some movement after it, rather than as one screen becoming
+   another.
+
+   So the entrances were lengthened and the FEEDBACK WAS NOT. That split is
+   the whole idea:
+
+     ENTRANCES may be leisurely. Nobody is waiting on them — the reader has
+     just arrived and the motion is what tells them something new is here.
+     Screen fade 260 -> 400. Words 460 -> 580 at a 75ms stagger rather than
+     55. Rows 380 -> 480. Plates 520 -> 660.
+
+     FEEDBACK MUST BE INSTANT. The tap spring (340ms), the tick pop (380ms)
+     and the 160ms colour transitions are untouched. A control that takes
+     half a second to admit it was pressed does not feel considered, it feels
+     broken, and the reader's finger is still on the screen waiting for it.
+
+   The plate morph at 520ms in js/recommend.js is also untouched: it is not
+   an entrance, it is one object moving between two places, and its duration
+   is tied to the distance it travels.
+   ========================================================================== */
+
+/* ==========================================================================
    THE MOTION SYSTEM.
 
    THE ONE RULE EVERYTHING BELOW OBEYS: transform and opacity, and nothing
@@ -141,7 +170,7 @@
 .fbob .ob-screen{
   position:absolute; top:0; right:0; bottom:0; left:0;
 }
-.fbob .ob-screen.is-enter{animation:ob-fade .26s ease both}
+.fbob .ob-screen.is-enter{animation:ob-fade .40s ease both}
 .fbob .ob-screen.is-enter.is-morph{animation:none}
 
 /* the four entry moves */
@@ -161,10 +190,10 @@
   from{opacity:0; transform:scale(1.035)}
   to{opacity:1; transform:none}
 }
-.fbob .ob-in     {animation:ob-rise .42s cubic-bezier(.2,.75,.25,1) both}
-.fbob .ob-in-row {animation:ob-row  .38s cubic-bezier(.2,.75,.25,1) both}
-.fbob .ob-in-deal{animation:ob-deal .46s cubic-bezier(.2,.75,.25,1) both}
-.fbob .ob-in-art {animation:ob-art  .52s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-in     {animation:ob-rise .54s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-in-row {animation:ob-row  .48s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-in-deal{animation:ob-deal .58s cubic-bezier(.2,.75,.25,1) both}
+.fbob .ob-in-art {animation:ob-art  .66s cubic-bezier(.2,.75,.25,1) both}
 
 /* ---- A · the word-by-word headline -------------------------------------
    The spans are inline-block so a word can never break across a line, and
@@ -180,7 +209,7 @@
    and a dozen permanent composited layers on a phone is a cost with no
    payment; the class is removed from the markup on the next render anyway. */
 .fbob .ob-w.is-in{
-  animation:ob-word .46s cubic-bezier(.2,.75,.25,1) both;
+  animation:ob-word .58s cubic-bezier(.2,.75,.25,1) both;
   will-change:opacity, transform, filter;
 }
 

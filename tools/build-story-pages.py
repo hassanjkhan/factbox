@@ -15,6 +15,18 @@ or Slack pulled the same site-wide og:image, whichever story was being shared.
 So: one static page per story at /history/<slug>, built from the fields that
 are already public.
 
+AND ONE PAGE THAT LINKS TO ALL OF THEM
+--------------------------------------
+Being in the sitemap is not the same as being linked to. A sitemap gets a URL
+fetched; internal links are what say the URL belongs to the site. The 51 pages
+shipped with no inbound link from anywhere, and the shelf could not give them
+one: /explore serves a spinner and builds every card in js/today.js, so a
+crawler that does not run JavaScript finds no card to hang a link on there.
+
+So this file also writes history/index.html — /history/ — which lists all 51
+with their hooks. / and /explore link to it in their footers, in the served
+HTML, and every story page links back. See the block above hub_html().
+
 WHAT MAY GO ON THESE PAGES, AND WHAT MAY NOT
 --------------------------------------------
 The only input is data/index.json. That file is published deliberately and
@@ -42,7 +54,7 @@ which also keeps these pages out of tools/stamp-assets.py — they reference no
 
 USAGE
 -----
-    python3 tools/build-story-pages.py           # write pages, og jpegs, sitemap
+    python3 tools/build-story-pages.py           # pages, hub, og jpegs, sitemap
     python3 tools/build-story-pages.py --check   # write nothing; exit 1 if stale
 
 The --check mode is what tools/precommit.sh section 6 runs. It refuses and
@@ -107,6 +119,10 @@ def slugs_for(stacks):
         if not slug:
             raise SystemExit("story %s has a title with no usable characters: %r"
                              % (sid, title))
+        if slug == "index":
+            raise SystemExit(
+                "story %s makes /history/index, which is the hub page's own "
+                "file (history/index.html). Rename the title." % sid)
         if slug in seen:
             raise SystemExit(
                 "slug collision: stories %s and %s both make /history/%s\n"
@@ -263,7 +279,7 @@ h2{font-size:.78rem;letter-spacing:.11em;text-transform:uppercase;
 """
 
 
-def page_html(s, slug, og_url, cards):
+def page_html(s, slug, og_url, cards, ntotal):
     sid    = str(s["id"])
     title  = str(s.get("title") or "")
     hook   = str(s.get("hook") or "")
@@ -364,6 +380,11 @@ def page_html(s, slug, og_url, cards):
 
 <p class="foot">
   <a href="/explore">All stories</a>
+  <!-- The hub. This is the other half of the link graph: /history/ lists all
+       {ntotal} of these pages, and every one of them points back at it, so a
+       crawler that lands on any single story can reach the other {nother}
+       without going through a page that builds its shelf in JavaScript. -->
+  <a href="/history/">Story index</a>
   <a href="/library">Your library</a>
   <a href="/credits">Artwork credits</a>
 </p>
@@ -376,7 +397,147 @@ def page_html(s, slug, og_url, cards):
            img=e(str(s.get("img") or "")), dims=dims,
            credit=credit_html(cap, cr), mins=mins, ncards=len(cards),
            access="free to read" if s.get("free") is True else "for members",
-           read=e(read), beats=beats, ldj=ldj, css=CSS)
+           read=e(read), beats=beats, ldj=ldj, css=CSS,
+           ntotal=ntotal, nother=max(0, ntotal - 1))
+
+
+# --------------------------------------------------------------------------
+# the hub: /history/, the one page that links to all of them
+# --------------------------------------------------------------------------
+# WHY THIS PAGE EXISTS AT ALL
+# --------------------------
+# The 51 pages above were orphans. They were in sitemap.xml and nothing on the
+# site linked to them, and those are two different things: a sitemap gets a URL
+# fetched, internal links are what tell Google the URL is part of the site and
+# worth ranking. A page with no inbound link is a page that gets crawled once
+# and filed under "we found this, nobody references it".
+#
+# The obvious place to put those links is the shelf, and the shelf cannot hold
+# them. /explore ships a spinner and a <noscript>; every card on it is built by
+# js/today.js from data/index.json AFTER the page loads. A crawler that does
+# not run JavaScript sees no cards, so there is no card to hang a link on. That
+# is also why the "make the card an anchor to /history/<slug> and intercept the
+# click" idea does not survive contact with this page: the anchor it would
+# upgrade does not exist until the script that would upgrade it has already
+# run. It would be progressive enhancement with nothing underneath, and it
+# would put every human tap one broken handler away from the wrong page.
+#
+# So the link that has to exist in the served bytes is a link to ONE page, and
+# that page carries the other 51. /explore and / link here in their footers,
+# every story page links back here, and the loop closes.
+#
+# It is generated, not written, for the reason section 6 of precommit exists: a
+# hand-kept index of 51 titles is an index that is wrong the first time a story
+# is retitled, and a wrong link here is a 404 with the site's own name on it.
+
+HUB_CSS = """
+.lede{font:400 clamp(1.02rem,3.4vw,1.15rem)/1.5 Newsreader,Georgia,serif;
+  color:var(--dim);margin:0 0 26px}
+.idx{margin:0;padding:0;list-style:none}
+.idx li{padding:14px 0;border-top:1px solid var(--hair)}
+.idx a{font:500 1.06rem/1.35 Newsreader,Georgia,serif;text-decoration:none;
+  letter-spacing:-.01em}
+.idx a:hover{text-decoration:underline}
+.idx .say{margin:5px 0 0;font-size:.92rem;line-height:1.45;color:var(--dim)}
+.idx .m{display:block;margin-top:5px;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;font-weight:600;color:var(--dimmer)}
+"""
+
+
+def hub_html(stacks, slugs):
+    """One page, 51 links, no script.
+
+    Titles and hooks only. Both are published in data/index.json on purpose —
+    the headline is the shelf's own copy and the hook is the cover line — and
+    the card bodies are not in that file, so, exactly as with the story pages,
+    this cannot leak one because it never holds one.
+    """
+    e = html.escape
+    url = "%s/history/" % SITE
+    rows, items = [], []
+    for s in stacks:
+        sid = str(s["id"])
+        slug = slugs[sid]
+        title = str(s.get("title") or "")
+        hook = str(s.get("hook") or "")
+        mins = max(1, int(round(int(s.get("secs") or 0) / 60.0)))
+        n = len(s.get("cards") or [])
+        meta = "%d cards &middot; %d min" % (n, mins)
+        if s.get("free") is True:
+            meta += " &middot; free to read"
+        rows.append(
+            '  <li><a href="/history/%s">%s</a>'
+            '<p class="say">%s</p><span class="m">%s</span></li>'
+            % (e(slug), e(title), e(hook), meta))
+        items.append({"@type": "ListItem", "position": len(items) + 1,
+                      "url": "%s/history/%s" % (SITE, slug), "name": title})
+
+    ld = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "Every Factbox story",
+        "description": "All %d Factbox history stories." % len(stacks),
+        "url": url,
+        "isPartOf": {"@type": "WebSite", "name": "Factbox", "url": SITE + "/"},
+        "mainEntity": {"@type": "ItemList", "numberOfItems": len(items),
+                       "itemListElement": items},
+    }
+    ldj = json.dumps(ld, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+
+    return """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Every Factbox story &mdash; Factbox</title>
+<meta name="description" content="{desc}">
+<meta name="theme-color" content="#E7E0D3">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<!-- The trailing slash is the address. GitHub Pages serves history/index.html
+     at /history/ and 301s /history to it, so every link on the site says
+     /history/ and no crawler spends a hop on the redirect. -->
+<link rel="canonical" href="{url}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Factbox">
+<meta property="og:title" content="Every Factbox story">
+<meta property="og:description" content="{desc}">
+<meta property="og:image" content="{site}{og}">
+<meta property="og:url" content="{url}">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{ldj}</script>
+<style>{css}</style>
+</head>
+<body>
+<main class="wrap">
+
+<p class="mast"><a href="/">Factbox</a></p>
+
+<h1>Every Factbox story</h1>
+<p class="lede">All {n} of them, in the order the archive files them. Each
+  one is about five minutes, told one card at a time on paintings from the
+  world&rsquo;s museums. <a href="/explore">The shelf</a> is where you read
+  them.</p>
+
+<ol class="idx">
+{rows}
+</ol>
+
+<p class="foot">
+  <a href="/explore">All stories</a>
+  <a href="/library">Your library</a>
+  <a href="/credits">Artwork credits</a>
+</p>
+
+</main>
+</body>
+</html>
+""".format(desc=e("All %d Factbox history stories, from Cleopatra to the "
+                  "twentieth century — five minutes each." % len(stacks)),
+           url=e(url), site=SITE, og=OG_FALLBACK, ldj=ldj,
+           css=CSS + HUB_CSS, n=len(stacks), rows="\n".join(rows))
 
 
 # --------------------------------------------------------------------------
@@ -477,8 +638,29 @@ def main(argv):
         if not old or old[0] != h:
             stale.append("%s changed" % url)
 
-    # 2 · a page per story
+    # 2 · the hub, /history/. It is written before the stories so its <loc>
+    #     lands between the static pages and the 51, which is also the shape
+    #     of the link graph: the footers of / and /explore reach it, and it
+    #     reaches every story page.
     want_pages, want_og, og_bytes, made = set(), set(), 0, 0
+
+    hub_file = PAGES / "index.html"
+    hub = hub_html(stacks, slugs).encode("utf-8")
+    want_pages.add(hub_file.name)
+    h = sha(hub)
+    old = prev.get("/history/")
+    rows.append(("/history/", h, old[1] if old and old[0] == h else today))
+    on_disk = hub_file.read_bytes() if hub_file.exists() else None
+    if check:
+        if on_disk != hub:
+            stale.append("history/index.html is out of date")
+        elif not old or old[0] != h:
+            stale.append("/history/ has no recorded lastmod")
+    elif on_disk != hub:
+        hub_file.parent.mkdir(parents=True, exist_ok=True)
+        hub_file.write_bytes(hub)
+
+    # 3 · a page per story
     for s in stacks:
         sid, slug = str(s["id"]), slugs[str(s["id"])]
         cover = ROOT / "img" / "stacks" / ("%s.webp" % s.get("img"))
@@ -504,7 +686,7 @@ def main(argv):
 
         out = PAGES / ("%s.html" % slug)
         want_pages.add(out.name)
-        text = page_html(s, slug, og_url, s.get("cards") or [])
+        text = page_html(s, slug, og_url, s.get("cards") or [], len(stacks))
         blob = text.encode("utf-8")
 
         url = "/history/%s" % slug
@@ -522,7 +704,7 @@ def main(argv):
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_bytes(blob)
 
-    # 3 · anything left behind. A story dropped from the index must not leave a
+    # 4 · anything left behind. A story dropped from the index must not leave a
     #     live page and a stale share image on the site.
     for d, want, label in ((PAGES, want_pages, "history"), (OG, want_og, "img/og")):
         if not d.exists():
@@ -537,7 +719,7 @@ def main(argv):
     if OG.exists():
         og_bytes = sum(f.stat().st_size for f in OG.glob("*.jpg"))
 
-    # 4 · the sitemap and the date table
+    # 5 · the sitemap and the date table
     xml, tbl = sitemap_xml(rows).encode("utf-8"), write_lastmod(rows).encode("utf-8")
     if check:
         if not SITEMAP.exists() or SITEMAP.read_bytes() != xml:
@@ -556,10 +738,11 @@ def main(argv):
             if len(stale) > 12:
                 print("stale  ... and %d more" % (len(stale) - 12))
             return 1
-        print("%d story pages + %d sitemap URLs current" % (len(stacks), len(rows)))
+        print("%d story pages + hub + %d sitemap URLs current"
+                  % (len(stacks), len(rows)))
         return 0
 
-    print("%d story pages, %d og jpegs (%s bytes), %d sitemap URLs"
+    print("%d story pages + /history/ hub, %d og jpegs (%s bytes), %d sitemap URLs"
           % (len(stacks), made, "{:,}".format(og_bytes), len(rows)))
     return 0
 

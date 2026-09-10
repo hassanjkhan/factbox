@@ -27,7 +27,7 @@
      /admin and /admin/index.html, and a relative href resolves differently
      under the two. Only the absolute form is the same URL at both addresses. -->
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/admin.css?v=9e297505">
+<link rel="stylesheet" href="/css/admin.css?v=0439ba16">
 </head>
 <body>
 
@@ -164,7 +164,7 @@
      that decision is ever reversed, nothing on this page is double-counted
      by the generic handler. -->
 <script type="module" src="/js/auth.js?v=35b20584"></script>
-<script src="/js/admin-tasks.js?v=8e125268"></script>
+<script src="/js/admin-tasks.js?v=31f37646"></script>
 <script>
 /* ==========================================================================
    /admin — the portal
@@ -293,9 +293,20 @@
         opened();
         return;
       }
-      var why = r && r.why ? String(r.why) : "sdk_failed";
-      if (why === "signed_out") { panel("adm-p-out"); return; }
-      if (why === "not_admin")  { panel("adm-p-no");  return; }
+      /* HYPHENS OR UNDERSCORES, BECAUSE THE TWO SIDES DISAGREED.
+
+         js/admin-tasks.js answers "signed-out" / "not-admin" / "sdk-failed".
+         This page tested for "signed_out" / "not_admin", so every one of them
+         fell through to the last line and a signed-out admin was told the
+         board could not be loaded instead of being shown a Sign in button —
+         the one screen where being unhelpful costs you the whole session.
+
+         Normalising rather than picking a spelling, because admin/tasks.html
+         accepts both too and the fix is worthless if the two pages start
+         disagreeing again the next time somebody edits one of them. */
+      var why = String((r && r.why) || "sdk-failed").replace(/_/g, "-");
+      if (why === "signed-out") { panel("adm-p-out"); return; }
+      if (why === "not-admin")  { panel("adm-p-no");  return; }
       panel("adm-p-noauth");
     }
 
