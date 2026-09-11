@@ -36,9 +36,24 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RUNS = os.path.join(HERE, "runs")
 W, H, FPS = 1080, 1920, 30
 
-FONTS = ["/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-         "/System/Library/Fonts/Supplemental/Arial.ttf",
-         "/System/Library/Fonts/Helvetica.ttc"]
+# The reel is set in the same faces as the site — DM Sans for anything that
+# behaves like interface, Newsreader for display — so a reel and the app read
+# as one product rather than two. Both are open-licensed and vendored in
+# tools/reel/fonts so a run does not depend on what a given machine happens
+# to have installed. System faces are a fallback, never the intent.
+_BRAND = os.path.join(HERE, "fonts")
+FACES = {
+    "ui": [os.path.join(_BRAND, "DMSans-700.ttf"),
+           "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+           "/System/Library/Fonts/Helvetica.ttc"],
+    "body": [os.path.join(_BRAND, "DMSans-500.ttf"),
+             os.path.join(_BRAND, "DMSans-700.ttf"),
+             "/System/Library/Fonts/Supplemental/Arial.ttf"],
+    "display": [os.path.join(_BRAND, "Newsreader-600.ttf"),
+                "/System/Library/Fonts/Supplemental/Georgia Bold.ttf",
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf"],
+}
+FONTS = FACES["ui"]
 FONT = next((f for f in FONTS if os.path.exists(f)), None)
 
 
@@ -132,8 +147,11 @@ def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190, 
         wav = os.path.join(parts_dir, b["slug"] + ".wav")
         if provider == "say":
             say_one(b["text"], wav, voice=voice, rate=rate)
+        elif provider == "elevenlabs":
+            import providers
+            providers.elevenlabs_say(b["text"], wav, run)
         else:
-            raise SystemExit("voice provider not wired yet: " + provider)
+            raise SystemExit("unknown voice provider: " + provider)
         d = probe(wav)
         b["audio"] = os.path.relpath(wav, run_dir)
         b["start"] = round(t, 3)
@@ -189,9 +207,9 @@ def cmd_timeline(run_dir, **_):
 
 # --------------------------------------------------------------- images ----
 
-def _font(size, bold=True):
+def _font(size, face="ui"):
     from PIL import ImageFont
-    for f in FONTS:
+    for f in FACES.get(face, FACES["ui"]):
         try:
             return ImageFont.truetype(f, size)
         except Exception:
@@ -220,8 +238,10 @@ def cmd_images(run_dir, provider="placeholder", **_):
     from PIL import Image, ImageDraw
     doc = read_json(run_dir, "beats.json")
     d = ensure(os.path.join(run_dir, "images"))
+    if provider == "higgsfield":
+        return _higgsfield_images(run_dir, doc, d, **_)
     if provider != "placeholder":
-        raise SystemExit("image provider not wired yet: " + provider)
+        raise SystemExit("unknown image provider: " + provider)
     for s in doc["shots"]:
         p = os.path.join(d, s["slug"] + ".png")
         v = 26 + (s["beat"] * 11) % 58
@@ -231,7 +251,7 @@ def cmd_images(run_dir, provider="placeholder", **_):
         num = "%02d" % s["i"]
         dr.text(((W - dr.textlength(num, font=big)) / 2, 210), num, font=big,
                 fill=(min(255, 90 + v), min(255, 90 + v), min(255, 100 + v)))
-        body = _font(64)
+        body = _font(64, "display")
         lines = _wrap(dr, s["text"], body, W - 200)[:7]
         y = H // 2 - (len(lines) * 82) // 2
         for ln in lines:
@@ -245,6 +265,78 @@ def cmd_images(run_dir, provider="placeholder", **_):
         s["image"] = os.path.relpath(p, run_dir)
     write_json(run_dir, "beats.json", doc)
     print("  images           : %d %s frames" % (len(doc["shots"]), provider))
+    return doc
+
+
+def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, **_):
+    """Real images, real money. Three rules are enforced here rather than
+    trusted to whoever runs it:
+
+    THE STYLE GUIDE IS APPENDED VERBATIM. It is read from a file and pasted
+    unchanged onto every prompt. A style described in prose, or re-typed per
+    shot, drifts — and a set that drifts is a set you pay for twice.
+
+    THE FIRST SHOT IS APPROVED BY EYE. The run stops after shot 1 until it is
+    passed --approved=1. A locked character that looks wrong looks wrong 69
+    times, and the reference thumbnail is too small to judge from.
+
+    FAILURES ARE NEVER RETRIED SILENTLY. They are listed at the end for a
+    human to reword. Roughly one in six trips the content filter or errors,
+    and a silent retry loop is how a bug becomes a bill."""
+    import providers
+    name = os.path.splitext(os.path.basename(doc["script"]))[0]
+    base = os.path.join(HERE, "scripts")
+    pf = os.path.join(base, name + ".prompts.json")
+    sf = os.path.join(base, name + ".style.txt")
+    if not os.path.exists(pf):
+        raise SystemExit(
+            "no prompts file at %s\n"
+            "  Each shot needs a written prompt — that is the one step still worth a\n"
+            "  human's judgement and a model's time. Shape: {\"01\": \"SHOT 01 — ...\"}\n"
+            "  with one entry per shot in beats.json." % pf)
+    prompts = json.load(open(pf))
+    style = open(sf).read().strip() if os.path.exists(sf) else ""
+    if not style:
+        print("  WARNING          : no %s — every image will drift in style" % os.path.basename(sf))
+
+    shots = doc["shots"][:limit] if limit else doc["shots"]
+    if not approved:
+        shots = shots[:1]
+    todo = [s for s in shots if not os.path.exists(os.path.join(d, s["slug"] + ".png"))]
+    print("  higgsfield       : %d to generate (%d already on disk)"
+          % (len(todo), len(shots) - len(todo)))
+
+    failed = []
+    for s in todo:
+        key = "%02d" % s["i"]
+        if key not in prompts:
+            failed.append((key, "no prompt in " + os.path.basename(pf)))
+            continue
+        tag = "SHOT %s" % key
+        prompt = prompts[key].strip()
+        if style:
+            prompt = prompt + "\n\n" + style
+        p = os.path.join(d, s["slug"] + ".png")
+        res = providers.higgsfield_image(prompt, p, tag)
+        if res.get("ok"):
+            print("    %s ok" % tag)
+        else:
+            failed.append((tag, res.get("why") + (" — " + res["hint"] if res.get("hint") else "")))
+            print("    %s FAILED: %s" % (tag, res.get("why")))
+
+    for s in doc["shots"]:
+        p = os.path.join(d, s["slug"] + ".png")
+        if os.path.exists(p):
+            s["image"] = os.path.relpath(p, run_dir)
+    write_json(run_dir, "beats.json", doc)
+
+    if failed:
+        print("  %d shot(s) need rewording:" % len(failed))
+        for t, why in failed:
+            print("    %-10s %s" % (t, why))
+    if not approved:
+        print("  STOPPED after shot 1 on purpose. Look at it — the character and the\n"
+              "  style are being judged here, not later. Then re-run with --approved=1.")
     return doc
 
 
@@ -268,7 +360,7 @@ def cmd_captions(run_dir, **_):
             fh.write("%d\n%s --> %s\n%s\n\n"
                      % (i, srt_time(b["start"]), srt_time(b["end"]), b["text"]))
     d = ensure(os.path.join(run_dir, "captions"))
-    font = _font(58)
+    font = _font(58, "ui")
     for b in doc["beats"]:
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         dr = ImageDraw.Draw(img)
