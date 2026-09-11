@@ -500,6 +500,12 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
                            % (s["beat"], len(group), s["of"])))
             continue
         prompt = group[s["sub"]].strip()
+        # Decide the reference from the SHOT's own words, before the style
+        # block is appended. The style block ends "Cleopatra, wherever she
+        # appears, is…", so testing the assembled prompt matched every shot
+        # and the filter never excluded anything — she turned up twice, in
+        # armour, in the middle of a street battle she is not in.
+        names_char = bool(anchor_name) and anchor_name.lower() in prompt.lower()
         if tag not in prompt:
             failed.append((tag, "prompt is not tagged %s — refusing to spend a credit "
                            "on a prompt that may belong to another sentence" % tag))
@@ -516,9 +522,7 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
         # handing it a picture of Cleopatra can only push her into a frame she
         # does not belong in. The name comes from the first line of the
         # character sheet if it declares one.
-        use_ref = ref_url
-        if ref_url and anchor_name and anchor_name.lower() not in prompt.lower():
-            use_ref = None
+        use_ref = ref_url if (not anchor_name or names_char) else None
         res = providers.higgsfield_image(prompt, p, tag, reference_url=use_ref)
         if res.get("ok"):
             print("    %s ok" % label)
