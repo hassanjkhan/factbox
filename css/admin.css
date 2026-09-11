@@ -214,14 +214,6 @@
    The board's control bar
    ========================================================================== */
 
-.adm-bar{
-  display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px;
-  margin:20px 0 0; padding:14px 14px 15px;
-  border-radius:14px; background:var(--raise);
-  box-shadow:inset 0 0 0 1px var(--hair);
-}
-.adm-bar[hidden]{display:none}
-
 .adm-field{display:flex; flex-direction:column; gap:6px; min-width:0}
 .adm-field[hidden]{display:none}
 .adm-field label,
@@ -229,12 +221,6 @@
   font-size:var(--fs-micro); font-weight:var(--w-label);
   letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
 }
-/* .adm-grow goes on the FIELD, never on the control inside it: .adm-field is
-   a COLUMN flex container, so a flex-basis on a child is a HEIGHT. */
-.adm-grow{flex:1 1 240px; min-width:0}
-.adm-grow > .adm-input,
-.adm-grow > .adm-select{width:100%; min-width:0}
-
 /* font-family is set explicitly: a form control does not inherit it, and the
    inputs come out in the platform sans beside DM Sans everywhere else. */
 .adm-input,
@@ -318,15 +304,6 @@
   font-size:var(--fs-note); color:var(--dim); line-height:var(--lh-body);
 }
 
-/* ---- A group inside the board ------------------------------------------ */
-.adm-group{display:block; margin:18px 0 0}
-.adm-group[hidden]{display:none}
-.adm-group-h{
-  display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
-  margin:0 2px 8px;
-  font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--ink);
-  letter-spacing:var(--ls-title);
-}
 .adm-count{
   font-size:var(--fs-micro); font-weight:var(--w-label); color:var(--dimmer);
   letter-spacing:var(--ls-caps); text-transform:uppercase;
@@ -334,81 +311,322 @@
 }
 
 /* ==========================================================================
-   A task row
+   THE TOOLBAR
 
-   Grid, not a table: at 390px a table of six columns is a horizontal scroll
-   bar, and this is the page Kathryn opens on a phone. One column on a phone,
-   two on a desk — the meta rail carries owner / priority / status and the
-   body carries the words.
+   One line above the table: how many tasks are listed, a Find box that
+   filters as you type, and four popovers — Group, Filter, Columns, Sort.
+   The four used to be a row of segmented controls that ate the bar at 390px;
+   folded into popovers the bar is one line on a phone and the controls
+   themselves are unchanged underneath (same radio names, same ids).
+
+   THE POPOVER IS POSITIONED AGAINST THE BAR, not against its own button.
+   A panel anchored to a button that has wrapped to the right-hand end of a
+   390px bar hangs off the side of the document, and a document wider than
+   its viewport is the one layout failure this page may not have. Pinned to
+   the bar with left AND right it cannot exceed it.
    ========================================================================== */
 
-.adm-list{display:block; margin:0; padding:0; list-style:none}
-.adm-list[hidden]{display:none}
-
-.adm-task{
-  display:grid; gap:8px 14px;
-  grid-template-columns:minmax(0,1fr);
-  margin:0 0 8px; padding:12px 14px 12px 12px;
-  border-radius:12px; background:var(--raise);
+.adm-tb{
+  position:relative;
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
+  margin:18px 0 0; padding:10px 12px;
+  border-radius:14px; background:var(--raise);
   box-shadow:inset 0 0 0 1px var(--hair);
-  /* The priority rail. SOLID for high, DASHED for low — a difference of form
-     that survives greyscale, and it is repeated in words in the chip. */
-  border-left:5px solid var(--tint-3);
 }
-.adm-task[hidden]{display:none}
-.adm-task-high{border-left:5px solid var(--coral-deep)}
-.adm-task-low{border-left:5px dashed var(--tint-3)}
+.adm-tb[hidden]{display:none}
+.adm-tb-count{
+  margin:0; flex:none;
+  font-size:var(--fs-meta); font-weight:var(--w-strong); color:var(--ink);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.adm-find{flex:0 1 220px; min-width:120px; min-height:34px; padding:7px 11px}
+.adm-tb-sp{flex:1 1 auto; min-width:0}
 
-/* ---- The timeline, at the row ------------------------------------------
-   The card's own outline gets HEAVIER as the day gets nearer: the hairline
-   every row has, 1.5px for today and tomorrow, 2px for a date that has gone.
-   A stroke weight is not a hue — it is the one row-level signal that still
-   reads in a greyscale screenshot, at thumbnail size, and to somebody who
-   cannot separate red from green. The words in the chip say the same thing
-   again; neither depends on the other.
+.adm-pop-wrap{display:inline-flex; flex:none}
+.adm-pop{
+  position:absolute; z-index:60; top:calc(100% + 6px); left:12px; right:12px;
+  display:block; max-width:340px;
+  padding:12px 13px; border-radius:12px; background:var(--menu);
+  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
+}
+.adm-pop[hidden]{display:none}
+.adm-pop-r{display:block; margin:0 0 12px}
+.adm-pop-r:last-child{margin-bottom:0}
+.adm-pop .adm-select{width:100%}
+.adm-pop .adm-seg{flex-wrap:wrap}
+
+/* A checkbox and its word, for the Columns list. The input is a real
+   checkbox: it is what a screen reader announces and what the keyboard
+   toggles with Space. */
+.adm-check{
+  display:flex; align-items:center; gap:9px; padding:5px 2px;
+  font-size:var(--fs-meta); color:var(--ink); cursor:pointer;
+}
+.adm-check input{flex:none; width:16px; height:16px; accent-color:var(--coral-deep)}
+
+/* One sort key. role="menuitemradio", so the chosen one is announced as
+   chosen and not merely shaded. */
+.adm-sortb{
+  display:flex; width:100%; align-items:center; gap:8px; padding:6px 8px;
+  border:0; border-radius:8px; background:transparent; cursor:pointer;
+  font:inherit; font-size:var(--fs-meta); color:var(--ink); text-align:left;
+}
+.adm-sortb:hover{background:var(--tint)}
+.adm-sortb:focus-visible{outline:2px solid var(--ring); outline-offset:-2px}
+.adm-sortb[aria-checked="true"]{
+  background:var(--accent-wash); box-shadow:inset 0 0 0 1px var(--accent-edge);
+  font-weight:var(--w-strong);
+}
+
+/* ==========================================================================
+   THE TABLE
+
+   A table now, and not the card grid this used to be. The board is read down
+   a column of thirty rows to answer "what is next" and across one row to
+   answer "whose is this, when is it due, what did they last say" — which is
+   a table, and a card that stacks those facts vertically makes the first
+   question cost thirty screens of scrolling.
+
+   THE 390px ANSWER IS NOT "COLLAPSE IT". The old comment here said a table at
+   390px is a horizontal scroll bar; that is true, and a horizontal scroll bar
+   INSIDE ITS OWN BOX is the right answer rather than an argument against the
+   table. The box below scrolls in both directions with a sticky header; the
+   DOCUMENT never scrolls sideways, which is the rule that actually matters.
+   The Columns popover is the second half of the answer: turn off what you do
+   not need on a phone and the row fits.
+   ========================================================================== */
+
+.adm-tablewrap{
+  display:block; margin:14px 0 0;
+  max-height:min(70vh,780px); overflow:auto; -webkit-overflow-scrolling:touch;
+  border-radius:14px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.adm-tablewrap[hidden]{display:none}
+
+.adm-table{
+  border-collapse:separate; border-spacing:0;
+  width:100%; min-width:900px;
+  font-size:var(--fs-meta); color:var(--ink);
+}
+.adm-table[hidden]{display:none}
+@media (max-width:720px){ .adm-table{min-width:660px} }
+
+.adm-table th,
+.adm-table td{
+  margin:0; padding:0; text-align:left; vertical-align:middle;
+  border-bottom:1px solid var(--hair); white-space:nowrap;
+}
+/* The header stays put while the rows go past. It is sticky against the box
+   above, which is why that box has a max-height: a sticky top inside a
+   container with no height sticks to nothing. */
+.adm-table thead th{
+  position:sticky; top:0; z-index:3;
+  background:var(--raise); box-shadow:inset 0 -1px 0 var(--hair);
+}
+
+/* A sortable column header is a BUTTON carrying a glyph: two arrows when the
+   column is not the sort, one when it is, pointing the way it is sorted. */
+.adm-th{
+  display:flex; align-items:center; gap:5px; width:100%;
+  padding:9px 10px; border:0; background:transparent; cursor:pointer;
+  font:inherit; font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
+  text-align:left; white-space:nowrap;
+}
+.adm-th:hover{color:var(--ink); background:var(--tint)}
+.adm-th:focus-visible{outline:2px solid var(--ring); outline-offset:-2px}
+.adm-th-on{color:var(--ink)}
+.adm-th-g{flex:none; font-size:9px; letter-spacing:0; opacity:.85}
+/* A column that cannot be sorted gets the same type without the button. */
+.adm-thp{
+  display:block; padding:9px 10px;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
+  white-space:nowrap;
+}
+
+/* ---- A group heading, inside the table ---------------------------------
+   A row of its own spanning every column, carrying a disclosure triangle and
+   the count. Collapsing it does not hide rows with CSS — it does not BUILD
+   them, which is what keeps a 149-row history-sized board cheap on a phone.
    ---------------------------------------------------------------------- */
-.adm-task-soon{box-shadow:inset 0 0 0 1.5px var(--ink)}
-.adm-task-over{box-shadow:inset 0 0 0 2px var(--crimson)}
-/* Done rows only appear in History, where they are quieter by design. */
-.adm-task-done .adm-title{text-decoration:line-through; color:var(--dim)}
-
-@media (min-width:720px){
-  .adm-task{grid-template-columns:minmax(180px,auto) minmax(0,1fr)}
-  .adm-task-body{grid-column:2}
-  .adm-task-rail{grid-column:1; grid-row:1 / span 2}
+.adm-table tr.adm-grp > td{background:var(--tint); border-bottom:1px solid var(--hair)}
+.adm-grp-b{
+  display:flex; align-items:center; gap:9px; width:100%;
+  padding:8px 10px; border:0; background:transparent; cursor:pointer;
+  font:inherit; font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--ink); letter-spacing:var(--ls-title); text-align:left;
 }
+.adm-grp-b:hover{background:var(--tint-2)}
+.adm-grp-b:focus-visible{outline:2px solid var(--ring); outline-offset:-2px}
+.adm-grp-b[aria-expanded="true"] .adm-caret{transform:rotate(90deg)}
+.adm-grp-h{flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis}
 
-/* align-content:flex-start is load-bearing, not tidiness. On a desk the rail
-   spans BOTH grid rows (grid-row:1/span 2), so its box is as tall as the whole
-   task; a wrapping flex container with align-content unset stretches its single
-   line to that full height, and align-items:center then centres the chips in
-   the middle of it — the reported bug, a rail floating in space with a gap
-   above and below. Packing the lines to the top puts the first chip level with
-   the title. align-items:center STAYS: it is what keeps the monogram, the
-   priority chip and the status dot aligned with each other inside a line. */
-.adm-task-rail{display:flex; flex-wrap:wrap; align-items:center; align-content:flex-start; gap:6px; min-width:0}
-.adm-task-body{display:block; min-width:0}
+/* Still used by the goal cards below, which are cards and not table rows. */
+.adm-rowacts{display:flex; flex-wrap:wrap; gap:7px; margin:9px 0 0}
+.adm-rowacts[hidden]{display:none}
+
+/* ---- A task row --------------------------------------------------------- */
+.adm-tr:hover > td{background:var(--tint)}
+.adm-tr-sel > td{background:var(--accent-wash)}
+.adm-tr-sel:hover > td{background:var(--accent-wash)}
+.adm-tr-done .adm-title{text-decoration:line-through; color:var(--dim)}
+
+/* EVERY CELL RULE BELOW IS WRITTEN `.adm-table td.x` AND NOT `.x`, and that
+   is not style. The reset above is `.adm-table td`, two components, and it
+   sets padding:0 — so a bare `.adm-td{padding:…}` is one component and
+   LOSES to it. The cells came out with no padding at all and the tick sat
+   welded to the first letter of the title. Match the reset's specificity or
+   do not write the rule. */
+.adm-table td.adm-td{padding:6px 10px}
+/* The title is the one cell that wraps: everything else is a chip or a date
+   and a wrapped date is worse than a scroll bar. */
+.adm-table td.adm-td-title{white-space:normal; min-width:240px; max-width:460px}
+.adm-table td.adm-td-note{white-space:normal; min-width:200px; max-width:340px}
+.adm-table td.adm-td-grab{width:22px; padding:0 0 0 6px}
+/* The tick needs air on its right or it reads as a bullet glued to the
+   title's first letter. 34px is the box plus that air. */
+.adm-table td.adm-td-check{width:34px; padding:6px 10px 6px 6px}
+/* THE ROW MENU IS PINNED TO THE RIGHT EDGE of the scrolling box. It is the
+   last column of a table that is wider than the window, so without this it
+   sits off screen and the row's actions are behind a horizontal scroll —
+   which is exactly the control you do not want to have to go looking for.
+   The background is opaque because the rows scroll underneath it; the hover
+   and selected tints are laid over that as an image rather than replacing
+   it, so the pinned cell still lights up with its row. */
+.adm-table td.adm-td-acts{
+  position:sticky; right:0; z-index:1;
+  width:34px; padding:6px 8px 6px 4px; text-align:right;
+  background:var(--raise); box-shadow:inset 1px 0 0 var(--hair);
+}
+.adm-tr:hover > td.adm-td-acts{background-image:linear-gradient(var(--tint),var(--tint))}
+.adm-tr-sel > td.adm-td-acts,
+.adm-tr-sel:hover > td.adm-td-acts{background-image:linear-gradient(var(--accent-wash),var(--accent-wash))}
+.adm-table thead th.adm-h-acts{
+  position:sticky; top:0; right:0; z-index:4;
+  box-shadow:inset 0 -1px 0 var(--hair), inset 1px 0 0 var(--hair);
+}
 
 .adm-title{
-  display:block; margin:0; font-size:var(--fs-sub); font-weight:var(--w-strong);
+  display:block; margin:0; font-size:var(--fs-note); font-weight:var(--w-strong);
   color:var(--ink); line-height:var(--lh-tight); letter-spacing:var(--ls-title);
   overflow-wrap:anywhere;
 }
+/* The second line of the title cell: the notes the row used to give a
+   paragraph to. One line, clipped — the pane has the whole thing. */
 .adm-detail{
-  display:block; margin:5px 0 0; max-width:70ch;
-  font-size:var(--fs-meta); color:var(--dim); line-height:var(--lh-body);
-  overflow-wrap:anywhere; white-space:pre-wrap;
+  display:block; margin:3px 0 0; max-width:44ch;
+  font-size:var(--fs-fine); color:var(--dimmer); line-height:var(--lh-tight);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .adm-detail[hidden]{display:none}
 .adm-when{
-  display:block; margin:5px 0 0;
+  display:block;
   font-size:var(--fs-fine); color:var(--dimmer); font-weight:var(--w-label);
   font-variant-numeric:tabular-nums;
 }
 .adm-when[hidden]{display:none}
+/* The trailing preview column: the newest comment where this session has
+   read the thread, the task's own notes where it has not. Two different
+   facts, so two different weights — the comment is in quotes and in --dim,
+   the notes are in --dimmer with no quotes. */
+.adm-prev{
+  display:block; max-width:100%;
+  font-size:var(--fs-fine); color:var(--dim); line-height:var(--lh-tight);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.adm-prev-d{color:var(--dimmer)}
 
-.adm-rowacts{display:flex; flex-wrap:wrap; gap:7px; margin:9px 0 0}
-.adm-rowacts[hidden]{display:none}
+/* ---- What appears on hover ---------------------------------------------
+   The handle and the overflow button are invisible until the row is hovered
+   or something inside it has focus. :focus-visible is listed separately and
+   is not optional: a control that only exists on hover is a control a
+   keyboard cannot see it has reached.
+   ---------------------------------------------------------------------- */
+.adm-grab,
+.adm-more{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:26px; padding:0; border:0; border-radius:6px;
+  background:transparent; color:var(--dimmer); cursor:pointer;
+  font:inherit; font-size:13px; line-height:1; opacity:0;
+}
+.adm-grab{cursor:grab}
+.adm-tr:hover .adm-grab,
+.adm-tr:hover .adm-more,
+.adm-tr:focus-within .adm-grab,
+.adm-tr:focus-within .adm-more{opacity:1}
+.adm-grab:focus-visible,
+.adm-more:focus-visible{opacity:1; outline:2px solid var(--ring); outline-offset:1px}
+.adm-grab:hover,
+.adm-more:hover{background:var(--tint-2); color:var(--ink)}
+.adm-drag-over > td{box-shadow:inset 0 2px 0 var(--coral-deep)}
+
+/* ---- The inline editor: a chip, and a caret beside it -------------------
+   THE POINT OF THE WHOLE REBUILD. Priority, status and owner each render as
+   the chip they always were, with a caret button next to it; the caret opens
+   a menu of the allowed values and picking one writes it. Nothing opens, no
+   form is filled in, no Save is pressed.
+
+   The chip is not the button. A chip that was itself a menu would mean the
+   only way to read a value is to be one click from changing it, and this
+   board is read far more often than it is edited — so the reading half stays
+   inert and the 20px beside it is the control.
+   ---------------------------------------------------------------------- */
+.adm-inline{display:inline-flex; align-items:center; gap:2px; max-width:100%}
+.adm-caretb{
+  flex:none; display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:20px; padding:0; border:0; border-radius:6px;
+  background:transparent; color:var(--dimmer); cursor:pointer;
+  font:inherit; font-size:10px; line-height:1;
+}
+.adm-caretb:hover{background:var(--tint-2); color:var(--ink)}
+.adm-caretb:focus-visible{outline:2px solid var(--ring); outline-offset:1px}
+.adm-caretb[aria-expanded="true"]{background:var(--tint-2); color:var(--ink)}
+/* The caret itself, DRAWN and not typed, for the same reason .adm-caret is:
+   a unicode triangle renders as an emoji on some Android builds, and an
+   emoji inside a 20px button is a different control. */
+.adm-caret-d{
+  display:inline-block; width:0; height:0; flex:none;
+  border-top:5px solid currentColor;
+  border-left:4px solid transparent; border-right:4px solid transparent;
+}
+/* The drag handle's dots, drawn for the same reason — U+283F is a braille
+   pattern and half the Android fleet has no glyph for it. */
+.adm-grab-g{
+  display:block; width:8px; height:12px; flex:none;
+  background-image:radial-gradient(currentColor 42%, transparent 44%);
+  background-size:4px 4px;
+}
+
+/* The menu the caret opens. FIXED and appended to <body>, not absolute inside
+   the cell: the table scrolls in its own box, and a menu inside that box is
+   clipped by it the moment it is taller than the row. */
+.adm-menu{
+  position:fixed; z-index:120; min-width:156px; max-width:260px;
+  padding:5px; border-radius:10px; background:var(--menu);
+  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
+}
+.adm-menu[hidden]{display:none}
+.adm-mi{
+  display:flex; width:100%; align-items:center; gap:8px;
+  padding:7px 9px; border:0; border-radius:7px; background:transparent;
+  cursor:pointer; font:inherit; font-size:var(--fs-meta); color:var(--ink);
+  text-align:left; white-space:nowrap;
+}
+.adm-mi:hover{background:var(--tint)}
+.adm-mi:focus-visible{outline:2px solid var(--ring); outline-offset:-2px}
+.adm-mi[aria-checked="true"]{background:var(--accent-wash); font-weight:var(--w-strong)}
+.adm-mi-bad{color:var(--crimson)}
+.adm-mi-sep{display:block; height:1px; margin:4px 2px; background:var(--hair)}
+
+/* The done tick in the leading column. A real checkbox: it is what marks a
+   task done, which is the single most-used write on this board. */
+.adm-tick{width:16px; height:16px; margin:0; accent-color:var(--coral-deep); cursor:pointer}
+.adm-tick:focus-visible{outline:2px solid var(--ring); outline-offset:2px}
+
+/* The rail of chips, still used by the detail pane's record. */
+.adm-task-rail{display:flex; flex-wrap:wrap; align-items:center; align-content:flex-start; gap:6px; min-width:0}
 
 /* ==========================================================================
    The chips — owner, priority, status, area
@@ -754,62 +972,108 @@ input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
 .adm-done-when[hidden]{display:none}
 
 /* ==========================================================================
-   THE DETAIL VIEW
+   THE DETAIL VIEW — a docked right-hand pane, not a modal
 
-   A modal, and the layout decisions in here are all the same decision: it is
-   read on a phone at 390px, with a keyboard up, by somebody who got to it
-   from row ninety of a list.
+   It used to be a centred modal over a scrim. It is now a pane docked to the
+   right edge, and the change is the whole point of this rebuild: opening a
+   task must not take the list away. The list stays on the left, narrowed by
+   the pane's width; the row you opened stays highlighted in it; and changing
+   a second task is one click in the list rather than close-then-open.
 
-     * The card is the viewport minus a margin, and IT is what scrolls —
-       never the page behind it, which is pinned by .adm-locked. Two scrolls
-       in one direction is how you lose your place on a phone.
-     * The composer is in NORMAL FLOW at the bottom of that scroll, not
-       position:fixed. A fixed bar is what iOS puts underneath the on-screen
-       keyboard; in flow, the browser's own scroll-into-view lifts the caret
-       above the keys.
-     * 100dvh and not 100vh: with a keyboard up, vh is the height the viewport
-       had before it appeared.
+   WHY position:fixed AND NOT A COLUMN IN THE BOARD. A task opens from three
+   places on this page — the table, a goal card, and a row ninety deep in the
+   history — and a pane that lives inside the board's own flex row would
+   appear a full screen above the reader whenever they opened something from
+   the bottom two. Docked to the viewport it is in the same place every time.
+
+   The layout decisions inside it are the ones the modal made, for the same
+   reasons, because the phone case has not changed:
+
+     * the BODY is what scrolls, never the page behind it, which is pinned by
+       .adm-pane-on at phone widths where the pane covers everything;
+     * 100dvh via inset:0, not 100vh: with a keyboard up, vh is the height the
+       viewport had before it appeared;
+     * the composer is a flex-none FOOTER on a desk — pinned to the bottom of
+       the pane, as the reference does it — and drops back into NORMAL FLOW
+       below 900px, because a bottom-pinned bar is exactly what iOS puts
+       underneath the on-screen keyboard.
    ========================================================================== */
 
-.adm-modal{
-  position:fixed; inset:0; z-index:80;
-  display:flex; align-items:center; justify-content:center;
-  padding:max(12px,var(--top-safe)) 12px max(12px,var(--bottom-safe));
-}
-.adm-modal[hidden]{display:none}
-.adm-scrim{position:absolute; inset:0; background:rgba(20,16,12,.44)}
-
-.adm-sheet{
-  position:relative; z-index:1;
+.adm-pane{
+  position:fixed; z-index:70; top:0; right:0; bottom:0;
+  width:min(46vw,620px);
   display:flex; flex-direction:column;
-  width:100%; max-width:640px;
-  max-height:100%;
-  border-radius:16px; background:var(--ground);
-  box-shadow:var(--shadow-2), inset 0 0 0 1px var(--hair);
-  overflow:hidden;
+  background:var(--ground);
+  box-shadow:var(--shadow-2), inset 1px 0 0 var(--hair);
 }
-.adm-sheet:focus{outline:none}
-.adm-sheet:focus-visible{outline:2px solid var(--ring); outline-offset:2px}
+.adm-pane[hidden]{display:none}
+/* The pane takes focus when it opens so that the reading position moves with
+   the eye, and a ring around a whole container says nothing a reader can act
+   on — the controls inside it all draw their own. */
+.adm-pane:focus{outline:none}
 
-.adm-sheet-head{
-  display:flex; align-items:flex-start; gap:12px; flex:none;
-  padding:14px 15px 12px;
+.adm-pane-head{
+  display:flex; align-items:flex-start; gap:10px; flex:none;
+  padding:max(12px,var(--top-safe)) 15px 12px;
   border-bottom:1px solid var(--hair); background:var(--raise);
 }
-.adm-sheet-t{
+.adm-pane-head[hidden]{display:none}
+.adm-pane-t{
   flex:1 1 auto; min-width:0; margin:0;
   font-size:var(--fs-lead); font-weight:var(--w-head); color:var(--ink);
   letter-spacing:var(--ls-title); line-height:var(--lh-tight);
   overflow-wrap:anywhere;
 }
-.adm-sheet-head > .adm-btn{flex:none}
+/* A square X, because that is what closes a pane on every tool this is
+   modelled on. It carries an aria-label, since the glyph is a shape. */
+.adm-pane-x{
+  flex:none; display:flex; align-items:center; justify-content:center;
+  width:32px; height:32px; padding:0; border:0; border-radius:9px;
+  background:transparent; color:var(--dim); cursor:pointer;
+  font:inherit; font-size:15px; line-height:1;
+}
+.adm-pane-x:hover{background:var(--tint-2); color:var(--ink)}
+.adm-pane-x:focus-visible{outline:2px solid var(--ring); outline-offset:2px}
 
 /* The one scrolling box. -webkit-overflow-scrolling is for older iOS, where
    an overflow box without it scrolls without momentum and feels broken. */
-.adm-sheet-body{
+.adm-pane-body{
   flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
   padding:14px 15px 18px;
 }
+.adm-pane-body[hidden]{display:none}
+.adm-pane-foot{
+  flex:none; display:block; padding:11px 15px max(12px,var(--bottom-safe));
+  border-top:1px solid var(--hair); background:var(--raise);
+}
+.adm-pane-foot[hidden]{display:none}
+
+/* The quick row of editable chips under the title: owner, priority, status,
+   each a chip and a caret, the same control the table row carries. Changing
+   one here is one click and no Save, exactly as in the list. */
+.adm-pane-chips{display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0 0 12px}
+.adm-pane-chips[hidden]{display:none}
+
+/* The list narrows rather than being covered. max-width is dropped because a
+   centred 1180px column inside a viewport that is 620px narrower on one side
+   reads as a page shoved sideways; left-aligning it keeps the table still. */
+@media (min-width:900px){
+  body.adm-pane-on .adm{
+    max-width:none; margin:0;
+    padding-right:calc(min(46vw,620px) + 18px);
+  }
+}
+
+/* PHONE: a full-screen overlay, not a squeezed column — and the composer
+   back in normal flow at the end of the scroll. */
+@media (max-width:899px){
+  .adm-pane{left:0; width:auto; display:block; overflow-y:auto; -webkit-overflow-scrolling:touch}
+  .adm-pane-head{position:sticky; top:0; z-index:2}
+  .adm-pane-body{overflow:visible; padding-bottom:0}
+  .adm-pane-foot{border-top:0; background:transparent; padding:12px 15px 24px}
+  body.adm-pane-on{overflow:hidden}
+}
+
 .adm-sheet-rail{margin:0 0 10px}
 .adm-sheet-detail{
   display:block; margin:5px 0 0; max-width:64ch;
@@ -872,17 +1136,17 @@ input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
   overflow-wrap:anywhere; white-space:pre-wrap;
 }
 .adm-cmt-acts{display:flex; flex-wrap:wrap; gap:7px; margin:8px 0 0}
-.adm-cmt-new{display:block; margin:12px 0 0}
 .adm-cmt-box{min-height:84px}
 /* The notes box in the sheet is the one place the FULL text is meant to be
    readable, so it is not the 66px the compact add-form uses. A box that shows
    two lines of a six-line note is how the detail stayed invisible. */
 .adm-sheet-edit .adm-area{min-height:132px}
 
-/* The page behind a modal does not scroll. Without this, a flick that starts
-   on the scrim scrolls the board underneath and the reader loses the row they
-   opened. */
-body.adm-locked{overflow:hidden}
+/* The composer, at the foot of the pane. The box itself is short — it is one
+   remark, not a document — and it sits beside the Post button. */
+.adm-cmt-foot{display:flex; align-items:flex-end; gap:8px}
+.adm-cmt-foot > .adm-area{flex:1 1 auto; min-width:0; min-height:44px}
+.adm-cmt-foot > .adm-btn{flex:none}
 
 /* ==========================================================================
    The foot

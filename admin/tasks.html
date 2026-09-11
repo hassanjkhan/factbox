@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/admin.css?v=b0bfbb4c">
+<link rel="stylesheet" href="/css/admin.css?v=6a5d9760">
 </head>
 <body>
 
@@ -91,78 +91,101 @@
       <button class="adm-btn adm-mini" type="button" id="adm-signout" data-fbt="-">Sign out</button>
     </div>
 
-    <!-- ---- The control bar ------------------------------------------------
+    <!-- ---- The toolbar ---------------------------------------------------
+         One line above the table: the count, a Find box that narrows the list
+         as you type, and four popovers.
+
          GROUPING. Hassan asked for three readings of the same list: high
          versus low, everything for Kathryn versus everything for me, and
          what is expected this week. They are not three boards — they are one
          set of tasks read three ways, so this is a grouping toggle plus a
-         filter that works in every grouping, and never a separate page.
-
-         DUE is the fourth, and it is the planning dimension: Overdue, then
-         today and tomorrow, then the rest of the week, then later, then the
-         things nobody has put a date on. It is a grouping and not a separate
-         page for the same reason the other three are not — it is the same
-         tasks, read a fourth way, and the owner filter still narrows it.
-
+         filter that works in every grouping, and never a separate page. DUE
+         is the fourth and it is the planning dimension; LABEL is the fifth.
          The DEFAULT is still priority, because it is the grouping where the
-         first row on the page is literally the next thing to do, and because
-         this board is in daily use and moving somebody's home view out from
-         under them is not an upgrade. The timeline is not hidden by that
-         choice: every row carries its own due chip in EVERY grouping, the
-         summary line under the bar counts what is overdue and what is due
-         this week in words, and the sort inside every group puts the nearest
-         date first. "Due" is one tap for the full reading.
+         first row on the page is literally the next thing to do.
+
+         THE FIVE CONTROLS ARE IN POPOVERS NOW and they were not before. The
+         segmented controls are unchanged inside them — same radio names, same
+         ids, same handlers — but a bar carrying two segmented controls, a
+         select and a button is three lines deep at 390px, and the table below
+         it is the thing the page is for. Group, Filter, Columns and Sort are
+         one line; what is inside them is one tap away.
          ------------------------------------------------------------------ -->
-    <form class="adm-bar" id="adm-bar" onsubmit="return false">
+    <div class="adm-tb" id="adm-tb">
 
-      <div class="adm-field">
-        <span class="adm-legend" id="adm-lg-group">Group by</span>
-        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-group" data-fbt="-">
-          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-priority" value="priority" checked>
-          <label class="adm-seg-l" for="adm-g-priority">Priority</label>
-          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-owner" value="owner">
-          <label class="adm-seg-l" for="adm-g-owner">Owner</label>
-          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-status" value="status">
-          <label class="adm-seg-l" for="adm-g-status">Status</label>
-          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-due" value="due">
-          <label class="adm-seg-l" for="adm-g-due">Due</label>
-          <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-label" value="label">
-          <label class="adm-seg-l" for="adm-g-label">Label</label>
+      <p class="adm-tb-count" id="adm-tb-count">Counting…</p>
+
+      <label class="adm-sr" for="adm-find">Find a task</label>
+      <input class="adm-input adm-find" type="search" id="adm-find"
+             placeholder="Find…" autocomplete="off" data-fbt="-">
+
+      <span class="adm-pop-wrap"><button class="adm-btn adm-mini" type="button"
+        id="adm-b-group" aria-haspopup="true" aria-expanded="false"
+        aria-controls="adm-pop-group" data-fbt="-">Group</button></span>
+      <span class="adm-pop-wrap"><button class="adm-btn adm-mini" type="button"
+        id="adm-b-filter" aria-haspopup="true" aria-expanded="false"
+        aria-controls="adm-pop-filter" data-fbt="-">Filter</button></span>
+      <span class="adm-pop-wrap"><button class="adm-btn adm-mini" type="button"
+        id="adm-b-cols" aria-haspopup="true" aria-expanded="false"
+        aria-controls="adm-pop-cols" data-fbt="-">Columns</button></span>
+      <span class="adm-pop-wrap"><button class="adm-btn adm-mini" type="button"
+        id="adm-b-sort" aria-haspopup="true" aria-expanded="false"
+        aria-controls="adm-pop-sort" data-fbt="-">Sort</button></span>
+
+      <span class="adm-tb-sp"></span>
+      <button class="adm-btn adm-btn-go adm-mini" type="button" id="adm-add-open" data-fbt="-">Add a task</button>
+
+      <div class="adm-pop" id="adm-pop-group" hidden>
+        <div class="adm-pop-r">
+          <span class="adm-legend" id="adm-lg-group">Group by</span>
+          <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-group" data-fbt="-">
+            <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-priority" value="priority" checked>
+            <label class="adm-seg-l" for="adm-g-priority">Priority</label>
+            <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-owner" value="owner">
+            <label class="adm-seg-l" for="adm-g-owner">Owner</label>
+            <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-status" value="status">
+            <label class="adm-seg-l" for="adm-g-status">Status</label>
+            <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-due" value="due">
+            <label class="adm-seg-l" for="adm-g-due">Due</label>
+            <input class="adm-seg-i" type="radio" name="adm-group" id="adm-g-label" value="label">
+            <label class="adm-seg-l" for="adm-g-label">Label</label>
+          </div>
         </div>
       </div>
 
-      <div class="adm-field">
-        <span class="adm-legend" id="adm-lg-who">Show</span>
-        <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-who" data-fbt="-">
-          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-all" value="all" checked>
-          <label class="adm-seg-l" for="adm-w-all">Everyone</label>
-          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-hassan" value="hassan">
-          <label class="adm-seg-l" for="adm-w-hassan">Hassan</label>
-          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-kathryn" value="kathryn">
-          <label class="adm-seg-l" for="adm-w-kathryn">Kathryn</label>
-          <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-either" value="either">
-          <label class="adm-seg-l" for="adm-w-either">Up for grabs</label>
+      <div class="adm-pop" id="adm-pop-filter" hidden>
+        <div class="adm-pop-r">
+          <span class="adm-legend" id="adm-lg-who">Show</span>
+          <div class="adm-seg" role="radiogroup" aria-labelledby="adm-lg-who" data-fbt="-">
+            <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-all" value="all" checked>
+            <label class="adm-seg-l" for="adm-w-all">Everyone</label>
+            <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-hassan" value="hassan">
+            <label class="adm-seg-l" for="adm-w-hassan">Hassan</label>
+            <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-kathryn" value="kathryn">
+            <label class="adm-seg-l" for="adm-w-kathryn">Kathryn</label>
+            <input class="adm-seg-i" type="radio" name="adm-who" id="adm-w-either" value="either">
+            <label class="adm-seg-l" for="adm-w-either">Up for grabs</label>
+          </div>
+        </div>
+        <!-- The label filter is a SELECT and not a sixth segmented control:
+             the owner and priority vocabularies are closed and three options
+             wide, and this one is open-ended by design — they invent a tag by
+             typing it. A segmented control that grows a button per invented
+             tag is a control that eats the popover by the end of the month. -->
+        <div class="adm-pop-r">
+          <label for="adm-label-filter">Label</label>
+          <select class="adm-select" id="adm-label-filter" data-fbt="-">
+            <option value="">All labels</option>
+          </select>
         </div>
       </div>
 
-      <!-- The label filter is a SELECT and not a fifth segmented control:
-           the owner and priority vocabularies are closed and three options
-           wide, and this one is open-ended by design — they invent a tag by
-           typing it. A segmented control that grows a button per invented tag
-           is a control that eats the bar at 390px by the end of the month. -->
-      <div class="adm-field">
-        <label for="adm-label-filter">Label</label>
-        <select class="adm-select" id="adm-label-filter" data-fbt="-">
-          <option value="">All labels</option>
-        </select>
-      </div>
+      <!-- Both are built by the script from the one column table it renders
+           from, so a column cannot exist in the table and be missing here. -->
+      <div class="adm-pop" id="adm-pop-cols" hidden></div>
+      <div class="adm-pop" id="adm-pop-sort" hidden></div>
 
-      <div class="adm-field adm-grow" style="align-items:flex-end">
-        <span class="adm-legend">&nbsp;</span>
-        <button class="adm-btn adm-btn-go" type="button" id="adm-add-open" data-fbt="-">Add a task</button>
-      </div>
-
-    </form>
+    </div>
 
     <!-- The one-line answer to "what is expected this week", and now it is a
          real answer rather than a proxy: it counts what is OVERDUE and what
@@ -180,7 +203,14 @@
          shape to learn, and a task added is a task you can immediately fix. -->
     <div class="adm-form" id="adm-add-form" hidden></div>
 
-    <!-- ---- Open work --------------------------------------------------- -->
+    <!-- ---- Open work ------------------------------------------------------
+         A TABLE, and it scrolls inside its own box. The document must never
+         scroll sideways — that is the rule this box exists to keep — so the
+         eleven columns live in a container with its own overflow and its own
+         sticky header, and what does not fit is scrolled to rather than
+         wrapped. The Columns popover above is the other half of the answer on
+         a phone: turn off what you do not need and the row fits.
+         ------------------------------------------------------------------ -->
     <section class="adm-sec" id="adm-sec-board">
       <div class="adm-sechead">
         <h2>Open</h2>
@@ -189,7 +219,13 @@
       <!-- Loading, empty, filtered-to-nothing and write-failed all render
            here, and exactly one of them does whenever the list is not shown. -->
       <div class="adm-state" id="adm-board-state" role="status">Loading the board — reading tasks and goals from Firestore.</div>
-      <div id="adm-board" hidden></div>
+      <div class="adm-tablewrap" id="adm-tablewrap" hidden>
+        <table class="adm-table" id="adm-table">
+          <caption class="adm-sr" id="adm-table-cap">Everything open.</caption>
+          <thead><tr id="adm-thr"></tr></thead>
+          <tbody id="adm-board"></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- ---- Goals ------------------------------------------------------- -->
@@ -238,42 +274,46 @@
   </div>
 
   <!-- ====================================================================
-       THE DETAIL VIEW — a modal, and here is why rather than an expander.
+       THE DETAIL VIEW — a pane docked to the right, and not a modal.
 
-       This board is read on a phone at 390px and its longest list is 149 rows
-       deep. An expanding row puts the thing you opened INSIDE that list: the
-       facts, a form and a conversation unfold under your thumb, everything
-       below jumps, and closing it leaves you somewhere else in the scroll than
-       you started. Worse for the case that matters most — a done task, opened
-       out of the history — the expander lives inside a day group inside a
-       section at the very bottom of the page, so the comment box you are
-       typing into is 149 rows down a document.
+       It was a modal, and the argument for it was that this board is read on
+       a phone at 390px and its longest list is 149 rows deep: one surface at
+       a known position, identical whether it was opened from the board or
+       from the history. That argument is still true of the phone, and below
+       900px this IS that modal — a full-screen overlay with the composer back
+       in normal flow at the end of its scroll.
 
-       A modal is one surface at a known position, identical whether it was
-       opened from the board or from the history, and it can be closed with
-       Escape from a keyboard and with one obvious button on a phone. It also
-       makes the comment box the only text field on screen, which is what makes
-       it usable with the on-screen keyboard: the card scrolls, the composer is
-       in normal flow at the bottom of that scroll (NOT position:fixed, which
-       iOS puts underneath the keyboard), and the browser's own
-       scroll-into-view puts the caret above the keys.
+       On a desk it is wrong, and the reason is the thing this rebuild is
+       for. Opening a task took the list away: you could not see what else
+       was outstanding while reading one of them, you could not change a
+       second task without closing the first, and the row you opened was
+       invisible behind the scrim. A pane keeps the list on screen, narrowed;
+       the row you opened stays highlighted in it; and the next task is one
+       click away in the list rather than close-then-find-then-open.
 
-       The accessibility that costs: role="dialog" + aria-modal, focus moved
-       into the card on open, Tab cycled inside it, Escape closes, and focus
-       returned to the exact control that opened it. All of it is below in
-       openDetail()/closeDetail().
+       WHY IT IS position:fixed AND NOT A COLUMN OF THE BOARD. A task opens
+       from three places — the table, a goal card, and a row ninety deep in
+       the history — and a pane inside the board's own layout would appear a
+       full screen above the reader whenever they opened one of the last two.
+
+       WHAT IT IS NOT: aria-modal. It does not trap Tab and it does not claim
+       to. Tab walks out of it into the list behind, which is the honest
+       description of a pane that leaves the list usable. Escape closes it and
+       focus returns to the row that opened it.
        ==================================================================== -->
-  <div class="adm-modal" id="adm-modal" hidden>
-    <div class="adm-scrim" id="adm-scrim"></div>
-    <div class="adm-sheet" id="adm-sheet" role="dialog" aria-modal="true"
-         aria-labelledby="adm-sheet-t" tabindex="-1">
-      <div class="adm-sheet-head">
-        <h2 class="adm-sheet-t" id="adm-sheet-t">Task</h2>
-        <button class="adm-btn adm-mini" type="button" id="adm-sheet-x" data-fbt="-">Close</button>
-      </div>
-      <div class="adm-sheet-body" id="adm-sheet-body"></div>
+  <aside class="adm-pane" id="adm-pane" hidden aria-labelledby="adm-pane-t" tabindex="-1">
+    <div class="adm-pane-head">
+      <h2 class="adm-pane-t" id="adm-pane-t">Task</h2>
+      <button class="adm-pane-x" type="button" id="adm-pane-x"
+              aria-label="Close the detail pane" data-fbt="-">&#10005;</button>
     </div>
-  </div>
+    <div class="adm-pane-body" id="adm-pane-body"></div>
+    <!-- The composer. A flex-none footer on a desk — pinned to the bottom of
+         the pane, as the tool this is modelled on does it — and back in
+         normal flow below 900px, because a bottom-pinned bar is exactly what
+         iOS hides behind the on-screen keyboard. -->
+    <div class="adm-pane-foot" id="adm-pane-foot"></div>
+  </aside>
 
   <!-- Announced, not seen: a change made by the other person, or by a button
        whose effect is further down the page. -->
@@ -777,6 +817,47 @@
   var labelFilter = "";               /* "" is every label, not "no label" */
   var addOpen = false, goalOpen = false;
 
+  /* ---- The table -------------------------------------------------------
+     `findText` is the Find box, lowercased once per keystroke rather than
+     once per row. `sortKey` is a column or "smart" — the comparator the
+     board has always used, which knows which grouping is on screen — and
+     "manual", which is `order` and nothing else, so that a row dragged by
+     hand stays where it was put. `sortDir` is 1 ascending, -1 descending.
+
+     `groupShut` is which group headings the reader has COLLAPSED, keyed by
+     grouping-and-group so that switching from Priority to Owner does not
+     arrive with somebody else's collapses already applied. A collapsed group
+     builds no rows at all, which is the same decision the history's day
+     blocks make and for the same reason.
+
+     `ROWORDER` is the ids the table last painted, in the order it painted
+     them. It is what a drag reads to work out where "above this row" is; a
+     drop cannot ask the DOM, because the row it is dropping onto is about to
+     be rebuilt. */
+  var findText = "";
+  var sortKey = "smart", sortDir = 1;
+  var groupShut = {};
+  var ROWORDER = [];
+
+  /* THE NEWEST COMMENT, for the trailing column — and the honest limit on it.
+
+     A comment is a document in a subcollection under its task, watched only
+     while that task is open; see the long note in js/admin-tasks.js for why
+     it is not a field on the task. So there is no way to show the newest
+     comment for 149 rows without 149 listeners, and this page will not open
+     them. What it does instead: it remembers the newest comment of every
+     thread THIS SESSION has read, and the column shows that where it has it
+     and the task's own notes where it has not. The two are drawn differently
+     — a comment is quoted, notes are not — because they are different facts
+     and a column that ran them together would be a column nobody can trust. */
+  var LASTC = {};
+
+  /* The tiny menu a caret opens, and the toolbar popover. One of each at a
+     time, held here so that opening either closes the other. */
+  var menu = null;                    /* { node, anchor } */
+  var popOpen = "";                   /* the id of the open popover, or "" */
+  var dragId = "";                    /* the task being dragged, while it is */
+
   /* The history, in days. `histOpen` is which days the reader has open, kept
      across renders so a live edit somewhere else on the board does not shut
      the day they were reading. It starts null: the defaults are chosen once,
@@ -793,9 +874,9 @@
   var openKind = "", openId = "";
   var openerNode = null;              /* what to give focus back to */
   var openUnsub = null;               /* the live thread, while it is open */
-  var openForm = null;                /* the editor inside the sheet */
+  var openForm = null;                /* the editor inside the pane */
   var CMTS = [], cmtsSeen = false;
-  var openSeenAt = 0;                 /* updatedAt as the sheet last saw it */
+  var openSeenAt = 0;                 /* updatedAt as the pane last saw it */
   var openStale = false;              /* it changed on the other screen */
   var justSaved = false;              /* ...because of us, so not stale */
   /* Today's day index, recomputed once at the top of each render. Held rather
@@ -808,8 +889,19 @@
      whole point of this page is that the other person is typing into it at
      the same time. So while any editor is open the incoming data is kept but
      not painted, and the board says so. */
+  /* WHICH SURFACES FREEZE THE BOARD. A repaint pulls the DOM out from under a
+     half-typed sentence, and the whole point of this page is that the other
+     person is typing into it at the same time. So the two ADD forms hold the
+     board still while they are open.
+
+     The detail pane does not, and that changed with the pane. A modal covered
+     the list, so repainting it underneath was free and freezing it cost
+     nothing; a pane leaves the list on screen beside it, and a list that
+     stops updating the moment you open something is a list that lies. The
+     pane's own form is protected the way it always was — refreshSheet()
+     repaints the RECORD and never the fields. */
   function editorOpen() {
-    return addOpen || goalOpen || !!openId;
+    return addOpen || goalOpen;
   }
 
   function normTask(t) {
@@ -922,6 +1014,52 @@
     return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
   }
 
+  /* ---- Sorting by a COLUMN, which is the other reading ------------------
+     cmp() above answers "what is next", and it is the default and stays the
+     default: the first row on the board is the thing to do. A column header
+     answers a different question — "who has the oldest of these", "what did
+     we touch last" — and it answers it INSIDE each group rather than across
+     the board, because the grouping is what the reader chose first.
+
+     Two of the nine are special. "smart" is cmp() and is the default.
+     "manual" is `order` alone, which is what a drag writes; it is listed so
+     that dragging has a reading in which it is the whole order rather than
+     the last tiebreak.
+
+     Every branch falls back to cmp() on a tie, so a sort by Priority still
+     puts Doing above To do inside the Highs rather than shuffling them. */
+  function ownerRank(o) {
+    for (var i = 0; i < OWNERS.length; i++) { if (OWNERS[i] === o) return i; }
+    return OWNERS.length;
+  }
+
+  function textCmp(a, b) { return a < b ? -1 : (a > b ? 1 : 0); }
+
+  function sortCmp(a, b) {
+    var d = 0;
+    if (sortKey === "smart") return cmp(a, b);
+    if (sortKey === "manual") {
+      d = a.order - b.order;
+      if (!d) d = (a.createdAt || 0) - (b.createdAt || 0);
+    } else if (sortKey === "title") {
+      d = textCmp(String(a.title).toLowerCase(), String(b.title).toLowerCase());
+    } else if (sortKey === "priority") {
+      d = priRank(a.priority) - priRank(b.priority);
+    } else if (sortKey === "status") {
+      d = statusRank(a.status) - statusRank(b.status);
+    } else if (sortKey === "owner") {
+      d = ownerRank(a.owner) - ownerRank(b.owner);
+    } else if (sortKey === "due") {
+      d = dueCmp(a, b);
+    } else if (sortKey === "updated") {
+      d = (a.updatedAt || 0) - (b.updatedAt || 0);
+    } else if (sortKey === "created") {
+      d = (a.createdAt || 0) - (b.createdAt || 0);
+    }
+    if (d) return d * sortDir;
+    return cmp(a, b);
+  }
+
   /* ==========================================================================
      The chips
 
@@ -951,6 +1089,211 @@
     dot.setAttribute("aria-hidden", "true");
     wrap.appendChild(dot);
     wrap.appendChild(document.createTextNode(ST_LABEL[s] || s));
+    return wrap;
+  }
+
+  /* ==========================================================================
+     THE TINY MENU — what a caret opens, and the whole point of the rebuild
+
+     Priority, status and owner each render as the chip they always were with
+     a caret button beside it. The caret opens a list of the allowed values,
+     picking one writes it, and nothing else happens: no dialog, no form, no
+     Save. Changing the priority of six tasks used to be six open-edit-save
+     round trips.
+
+     IT IS FIXED AND IT HANGS OFF <body>. The table scrolls inside its own
+     box, so a menu positioned inside a cell is clipped by that box the
+     moment it is taller than the row it came from. Fixed and measured off
+     the caret's own rectangle, it is never clipped and never off screen —
+     the placement below clamps it into the viewport on both axes, which also
+     means it can never make the document wider than the window.
+
+     THE KEYBOARD IS NOT OPTIONAL. The menu takes focus when it opens, the
+     arrow keys walk it, Escape closes it and puts focus back on the caret,
+     and every item is a real <button> so Tab and Enter work without being
+     asked to. A menu that only a mouse can reach is a feature two people
+     cannot use, and one of them is on a phone.
+     ========================================================================== */
+
+  function menuGone() { closeMenu(false); }
+
+  function menuOut(e) {
+    if (!menu) return;
+    var t = e && e.target;
+    if (!t) return;
+    try {
+      if (menu.node.contains(t)) return;
+      if (menu.anchor && menu.anchor.contains(t)) return;
+    } catch (e2) {}
+    closeMenu(false);
+  }
+
+  function menuItems() {
+    if (!menu) return [];
+    var all = menu.node.getElementsByTagName("button"), out = [], i;
+    for (i = 0; i < all.length; i++) { out.push(all[i]); }
+    return out;
+  }
+
+  function menuKeys(e) {
+    if (!menu) return;
+    var k = e && (e.keyCode || e.which);
+    if (k === 27) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      closeMenu(true);
+      return;
+    }
+    if (k !== 38 && k !== 40) return;
+    var f = menuItems();
+    if (!f.length) return;
+    if (e.preventDefault) e.preventDefault();
+    var at = -1, i;
+    for (i = 0; i < f.length; i++) { if (f[i] === document.activeElement) at = i; }
+    var next = (k === 40) ? (at + 1) : (at <= 0 ? f.length - 1 : at - 1);
+    if (next >= f.length) next = 0;
+    try { f[next].focus(); } catch (e2) {}
+  }
+
+  function closeMenu(back) {
+    if (!menu) return;
+    var a = menu.anchor, node = menu.node;
+    menu = null;
+    try { if (node.parentNode) node.parentNode.removeChild(node); } catch (e) {}
+    try { if (a) a.setAttribute("aria-expanded", "false"); } catch (e2) {}
+    try { document.removeEventListener("keydown", menuKeys, true); } catch (e3) {}
+    try { document.removeEventListener("mousedown", menuOut, true); } catch (e4) {}
+    try { window.removeEventListener("scroll", menuGone, true); } catch (e5) {}
+    try { window.removeEventListener("resize", menuGone, false); } catch (e6) {}
+    if (back && a && a.focus && document.body.contains(a)) {
+      try { a.focus(); } catch (e7) {}
+    }
+  }
+
+  /* `items` is a list of { v, t } for a value, { t, go } for an action, and
+     { sep:true } for a rule between them. `pick` is handed the item. An item
+     carrying `keep` leaves the menu open, which is how the two-step delete
+     asks a second time without the list disappearing under the answer. */
+  function openMenu(anchor, items, current, pick) {
+    closeMenu(false);
+    closePop();
+
+    var box = el("div", "adm-menu");
+    box.setAttribute("role", "menu");
+
+    for (var i = 0; i < items.length; i++) {
+      (function (it) {
+        if (it.sep) {
+          var r = el("span", "adm-mi-sep");
+          r.setAttribute("aria-hidden", "true");
+          box.appendChild(r);
+          return;
+        }
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "adm-mi" + (it.bad ? " adm-mi-bad" : "");
+        b.setAttribute("data-fbt", "-");
+        if (it.v === undefined) {
+          b.setAttribute("role", "menuitem");
+        } else {
+          b.setAttribute("role", "menuitemradio");
+          b.setAttribute("aria-checked", it.v === current ? "true" : "false");
+        }
+        b.textContent = it.t;               /* textContent, like everything */
+        b.onclick = function () {
+          if (!it.keep) closeMenu(true);
+          pick(it, b);
+        };
+        box.appendChild(b);
+      })(items[i]);
+    }
+
+    document.body.appendChild(box);
+
+    /* Measured after it is in the document, because a box that is not laid
+       out has no width. Clamped into the viewport on both axes: 8px of margin
+       on every side, and flipped above the caret when there is no room under
+       it. Nothing here can put a pixel outside the window. */
+    var r = anchor.getBoundingClientRect();
+    var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+    var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    var w = box.offsetWidth, h = box.offsetHeight;
+    var left = r.left;
+    if (left + w > vw - 8) left = vw - w - 8;
+    if (left < 8) left = 8;
+    var top = r.bottom + 4;
+    if (top + h > vh - 8) top = r.top - h - 4;
+    if (top < 8) top = 8;
+    box.style.left = Math.round(left) + "px";
+    box.style.top = Math.round(top) + "px";
+
+    try { anchor.setAttribute("aria-expanded", "true"); } catch (e) {}
+    menu = { node: box, anchor: anchor };
+
+    try { document.addEventListener("keydown", menuKeys, true); } catch (e2) {}
+    try { document.addEventListener("mousedown", menuOut, true); } catch (e3) {}
+    try { window.addEventListener("scroll", menuGone, true); } catch (e4) {}
+    try { window.addEventListener("resize", menuGone, false); } catch (e5) {}
+
+    var first = box.getElementsByTagName("button")[0];
+    if (first) { try { first.focus(); } catch (e6) {} }
+  }
+
+  /* ---- A chip, and the caret that changes it ---------------------------- */
+
+  /* The three fields a row can be edited on without opening anything. The
+     chip stays INERT and the 20px beside it is the control: this board is
+     read far more often than it is written, and a value you cannot look at
+     without being one click from changing it is a value nobody trusts. */
+  var INLINE = {
+    priority: { list: function () { return PRIORITIES; }, label: PRI_LABEL,   chip: priChip,    word: "priority" },
+    status:   { list: function () { return STATUSES; },   label: ST_LABEL,    chip: statusChip, word: "progress" },
+    owner:    { list: function () { return OWNERS; },     label: OWNER_LABEL, chip: ownerChip,  word: "owner" }
+  };
+
+  function chipMenu(t, fieldName) {
+    var spec = INLINE[fieldName];
+    var cur = t[fieldName];
+    var keys = spec.list(), items = [], i;
+    for (i = 0; i < keys.length; i++) {
+      items.push({ v: keys[i], t: spec.label[keys[i]] || keys[i] });
+    }
+
+    var wrap = el("span", "adm-inline");
+    wrap.appendChild(spec.chip(cur));
+
+    var car = document.createElement("button");
+    car.type = "button";
+    car.className = "adm-caretb";
+    car.setAttribute("data-fbt", "-");
+    car.setAttribute("aria-haspopup", "true");
+    car.setAttribute("aria-expanded", "false");
+    /* The title is deliberately NOT in here. It is user text, this file has
+       no markup-building path and is not about to grow one for a label, and
+       the row already says which task this is, out loud, one cell away. */
+    car.setAttribute("aria-label",
+      "Change " + spec.word + ", currently " + (spec.label[cur] || cur));
+    /* How focus finds its way back to this exact control after the snapshot
+       that its own write triggers rebuilds the row. See focusMark(). */
+    car.setAttribute("data-row", t.id);
+    car.setAttribute("data-inline", fieldName);
+    var g = el("span", "adm-caret-d");
+    g.setAttribute("aria-hidden", "true");
+    car.appendChild(g);
+
+    car.onclick = function () {
+      if (menu && menu.anchor === car) { closeMenu(true); return; }
+      openMenu(car, items, cur, function (it) {
+        if (it.v === cur) { say("Already " + it.t + "."); return; }
+        var patch = {};
+        patch[fieldName] = it.v;
+        callN("updateTask", [t.id, patch], "change that " + spec.word, function () {
+          say(spec.word + " set to " + it.t + " for " + (t.title || "that task") + ".");
+        });
+      });
+    };
+
+    wrap.appendChild(car);
     return wrap;
   }
 
@@ -1260,14 +1603,15 @@
      mutates TASKS itself, so the screen can never disagree with the server.
      ========================================================================== */
 
-  /* WHERE A REFUSAL LANDS. The board's state line is at the TOP of the page,
-     and when the detail view is open the reader is inside a modal that covers
-     it — a message there would be a failure reported into a place nobody can
-     see. So both of these write into the sheet when the sheet is open and into
-     the board when it is not. */
+  /* WHERE A REFUSAL LANDS. The board's state line is above the table, and a
+     reader who is looking at the pane is looking at the right-hand half of
+     the window — a message on the left is a failure reported into a place
+     nobody is looking, and below 900px the pane covers it outright. So both
+     of these write into the pane when the pane is open and into the board
+     when it is not. */
   function errHost() {
     if (openId) {
-      var sn = $("adm-sheet-note");
+      var sn = $("adm-pane-note");
       if (sn) return sn;
     }
     return $("adm-board-state");
@@ -1325,7 +1669,8 @@
   }
 
   /* ==========================================================================
-     A task row
+     THE TABLE — one row per task, eleven columns, and every one of them
+     editable where editing it is one value out of a closed list.
      ========================================================================== */
 
   /* `updatedBy` is a UID — firestore.rules requires it to match the uid on
@@ -1347,18 +1692,17 @@
   }
 
   /* The title of any row on this page is a BUTTON, and that is the whole
-     affordance for "tap a task to open it": the biggest word in the row is
-     the thing you press. It is a real <button>, so it is reachable with Tab,
-     announced as a button, and carries aria-haspopup="dialog" — a link would
-     have promised a page that does not exist. */
+     affordance for "click a task to open it": the biggest word in the row is
+     the thing you press. It is a real <button>, so it is reachable with Tab
+     and announced as one. It no longer claims aria-haspopup="dialog" —
+     what it opens is a pane beside the list, not a dialog over it. */
   function openTitle(cls, text, kind, id) {
     var b = document.createElement("button");
     b.type = "button";
     b.className = cls + " adm-open";
     b.setAttribute("data-fbt", "-");
-    b.setAttribute("aria-haspopup", "dialog");
     /* Which row this button belongs to, so that focus can be put BACK on it
-       after the sheet closes even though the render that follows built a new
+       after the pane closes even though the render that follows built a new
        node for the same task. Not data-fbt: that attribute means one thing on
        this site and it is not an id. */
     b.setAttribute("data-row", String(id));
@@ -1375,77 +1719,468 @@
     return frag;
   }
 
-  function taskRow(t) {
-    var st = dueState(t.due, TODAY, t.status === "done");
+  /* ---- Keeping the caret you were on ------------------------------------
+     An inline edit writes, the server pushes the change back, and the paint
+     that follows rebuilds the row the caret lives in — so the control the
+     reader just used is destroyed a quarter of a second after they used it,
+     and a keyboard user is dropped on <body>. These two put them back: what
+     was focused is recorded by the ids it carries, and the newly built node
+     with the same ids takes the focus. Nothing is remembered across a paint
+     except two strings.
+     ---------------------------------------------------------------------- */
+  function focusMark() {
+    var a = null;
+    try { a = document.activeElement; } catch (e) { return null; }
+    if (!a || !a.getAttribute) return null;
+    var g = a.getAttribute("data-grp");
+    if (g) return { g: g };
+    var r = a.getAttribute("data-row");
+    if (!r) return null;
+    return { r: r, f: a.getAttribute("data-inline") || "" };
+  }
 
-    /* The row's own outline gets heavier as the day gets nearer. A stroke
-       weight, not a hue: it is the row-level signal that still reads in the
-       greyscale screenshot that ends up in a chat. */
-    var li = el("li", "adm-task adm-task-" + t.priority +
-                      (t.status === "done" ? " adm-task-done" : "") +
-                      (st && st.k === "over" ? " adm-task-over" : "") +
-                      (st && st.k === "soon" ? " adm-task-soon" : ""));
+  function focusBack(m) {
+    if (!m) return;
+    var ns, i;
+    if (m.g) {
+      ns = document.querySelectorAll("button[data-grp]");
+      for (i = 0; i < ns.length; i++) {
+        if (ns[i].getAttribute("data-grp") === m.g) { try { ns[i].focus(); } catch (e) {} return; }
+      }
+      return;
+    }
+    ns = document.querySelectorAll("#adm-board [data-row]");
+    for (i = 0; i < ns.length; i++) {
+      if (ns[i].getAttribute("data-row") !== m.r) continue;
+      if ((ns[i].getAttribute("data-inline") || "") !== m.f) continue;
+      try { ns[i].focus(); } catch (e2) {}
+      return;
+    }
+  }
 
-    var rail = el("div", "adm-task-rail");
-    rail.appendChild(ownerChip(t.owner));
-    rail.appendChild(priChip(t.priority));
-    rail.appendChild(statusChip(t.status));
-    rail.appendChild(labelChips(t.labels));
-    /* LAST in the rail on purpose. The rail wraps at 390px, so the last chip
-       is the one on its own line, and this is the one to read. A task with no
-       date gets no chip at all — 149 rows each saying "No date" is a wall of
-       nothing, and the absence is already the message. */
-    if (st) rail.appendChild(dueChip(st));
-    li.appendChild(rail);
+  /* ---- The columns ------------------------------------------------------
+     ONE TABLE, read by the header builder, the row builder and the Columns
+     popover alike, so a column cannot exist in one of the three and be
+     missing from another. `fixed` is a column that cannot be turned off —
+     the tick, the title and the row menu are the row.
 
-    var body = el("div", "adm-task-body");
-    li.appendChild(body);
+     `created` starts OFF. Eleven columns is more than fits on a laptop
+     without scrolling and the created date is the one nobody reads daily;
+     it is one tap away in Columns and it is spelled out in the pane.
+     ---------------------------------------------------------------------- */
+  var COLUMNS = [
+    { k: "grab",     label: "",               sort: "",         fixed: true },
+    { k: "check",    label: "",               sort: "",         fixed: true },
+    { k: "title",    label: "Title",          sort: "title",    fixed: true },
+    { k: "status",   label: "Progress",       sort: "status" },
+    { k: "priority", label: "Priority",       sort: "priority" },
+    { k: "owner",    label: "Owner",          sort: "owner" },
+    { k: "labels",   label: "Labels",         sort: "" },
+    { k: "due",      label: "Target date",    sort: "due" },
+    { k: "updated",  label: "Updated",        sort: "updated" },
+    { k: "created",  label: "Created",        sort: "created" },
+    { k: "note",     label: "Latest comment", sort: "" },
+    { k: "acts",     label: "",               sort: "",         fixed: true }
+  ];
 
-    body.appendChild(openTitle("adm-title", t.title || "Untitled task", "admin_tasks", t.id));
-    if (t.detail) body.appendChild(el("p", "adm-detail", t.detail));
-    var w = whenLine(t);
-    if (w) body.appendChild(el("p", "adm-when", w));
+  var colOn = {
+    status: true, priority: true, owner: true, labels: true,
+    due: true, updated: true, created: false, note: true
+  };
 
-    var a = el("div", "adm-rowacts");
+  function shownCols() {
+    var out = [], i;
+    for (i = 0; i < COLUMNS.length; i++) {
+      if (COLUMNS[i].fixed || colOn[COLUMNS[i].k]) out.push(COLUMNS[i]);
+    }
+    return out;
+  }
 
-    if (t.status !== "done") {
-      a.appendChild(btn("Mark done", "adm-btn-go", function () {
-        call("updateTask", t.id, { status: "done" }, "mark that task done", function () {
-          say("Marked done: " + t.title);
-        });
-      }));
-      if (t.status === "todo") {
-        a.appendChild(btn("Start", null, function () {
-          call("updateTask", t.id, { status: "doing" }, "start that task", function () {
-            say("Started: " + t.title);
-          });
-        }));
+  /* The screen-reader name of a column that shows no heading. A blank <th>
+     is a column a screen reader cannot name when it reads a cell in it. */
+  var COL_SR = { grab: "Reorder", check: "Done", acts: "Row actions" };
+
+  function sortWord(k) {
+    var i;
+    for (i = 0; i < SORTS.length; i++) { if (SORTS[i].k === k) return SORTS[i].t; }
+    return k;
+  }
+
+  function setSort(k) {
+    if (sortKey === k) {
+      sortDir = -sortDir;
+    } else {
+      sortKey = k;
+      /* Newest first is what "sort by Updated" means to the person asking
+         for it; ascending is what it means for a title or a date you are
+         working towards. */
+      sortDir = (k === "updated" || k === "created") ? -1 : 1;
+    }
+    renderBoard();
+    buildSortPop();
+    say("Sorted by " + sortWord(sortKey) + ", " +
+        (sortDir > 0 ? "ascending" : "descending") + ".");
+  }
+
+  function buildHead() {
+    var tr = $("adm-thr");
+    if (!tr) return;
+    clear(tr);
+    var cols = shownCols(), i, c, th, b, g;
+    for (i = 0; i < cols.length; i++) {
+      c = cols[i];
+      th = document.createElement("th");
+      th.className = "adm-h-" + c.k;
+      th.setAttribute("scope", "col");
+      if (c.sort) {
+        th.setAttribute("aria-sort",
+          sortKey === c.sort ? (sortDir > 0 ? "ascending" : "descending") : "none");
+        b = document.createElement("button");
+        b.type = "button";
+        b.className = "adm-th" + (sortKey === c.sort ? " adm-th-on" : "");
+        b.setAttribute("data-fbt", "-");
+        b.appendChild(document.createTextNode(c.label));
+        /* Two arrows when this is not the sort, one when it is, pointing the
+           way it is sorted. aria-sort on the <th> above says the same thing
+           to a screen reader, so the glyph is decoration and marked as such. */
+        g = el("span", "adm-th-g",
+               sortKey === c.sort ? (sortDir > 0 ? "↑" : "↓") : "⇅");
+        g.setAttribute("aria-hidden", "true");
+        b.appendChild(g);
+        b.onclick = (function (key) { return function () { setSort(key); }; })(c.sort);
+        th.appendChild(b);
+      } else if (c.label) {
+        th.appendChild(el("span", "adm-thp", c.label));
       } else {
-        a.appendChild(btn("Back to to-do", null, function () {
-          call("updateTask", t.id, { status: "todo" }, "move that task back", function () {
-            say("Moved back to to-do: " + t.title);
-          });
-        }));
+        th.appendChild(el("span", "adm-sr", COL_SR[c.k] || "Actions"));
+      }
+      tr.appendChild(th);
+    }
+  }
+
+  /* ---- Reordering by hand -----------------------------------------------
+     `order` is a number on every task and the comparator's last tiebreak;
+     it has been there since the board was written, waiting for this.
+
+     A DROP WRITES THE MIDPOINT between the row above the target and the
+     target itself, so one write moves one task and nothing else is touched —
+     which matters on a board two people are editing at once, where
+     renumbering a whole column would be thirty writes racing theirs.
+
+     WHAT IT CANNOT PROMISE, said out loud rather than discovered: `order` is
+     the LAST tiebreak in the default sort, so a task dragged above one with a
+     higher priority does not move, because priority decides first. That is
+     why Sort carries "Manual order", where `order` is the only thing that
+     decides, and why the message after a drag says so when the board is in
+     any other sort.
+     ---------------------------------------------------------------------- */
+  function orderAbove(targetId, movingId) {
+    var seq = [], i;
+    for (i = 0; i < ROWORDER.length; i++) {
+      if (ROWORDER[i] !== movingId) seq.push(ROWORDER[i]);
+    }
+    var idx = -1;
+    for (i = 0; i < seq.length; i++) { if (seq[i] === targetId) idx = i; }
+    if (idx < 0) return null;
+    var tgt = rowOf("admin_tasks", targetId);
+    if (!tgt) return null;
+    var prev = idx > 0 ? rowOf("admin_tasks", seq[idx - 1]) : null;
+    var hi = tgt.order;
+    var lo = prev ? prev.order : (hi - 2000);
+    /* Rows seeded from git commits share an order, and a midpoint between two
+       equal numbers is that number — a move that moves nothing. Step off it
+       instead; the createdAt tiebreak below it keeps the rest stable. */
+    if (!(lo < hi)) lo = hi - 2000;
+    return (lo + hi) / 2;
+  }
+
+  function afterMove(t) {
+    return function () {
+      if (sortKey === "manual") { say("Moved: " + (t.title || "that task") + "."); return; }
+      say("Moved. The board is sorted by " + sortWord(sortKey) +
+          ", which decides before a hand-made order does — open Sort and " +
+          "choose Manual order to see the row where you put it.");
+    };
+  }
+
+  function dropOnto(targetId) {
+    if (!dragId || dragId === targetId) { dragId = ""; return; }
+    var moving = rowOf("admin_tasks", dragId);
+    var n = orderAbove(targetId, dragId);
+    dragId = "";
+    if (!moving || n === null) return;
+    callN("updateTask", [moving.id, { order: n }], "move that task", afterMove(moving));
+  }
+
+  /* The same move, from the keyboard, out of the row menu — because a drag
+     handle is a control a keyboard cannot hold. */
+  function moveBy(t, dir) {
+    var i, idx = -1;
+    for (i = 0; i < ROWORDER.length; i++) { if (ROWORDER[i] === t.id) idx = i; }
+    if (idx < 0) return;
+    var j = idx + dir;
+    if (j < 0 || j >= ROWORDER.length) {
+      say("Already at the " + (dir < 0 ? "top" : "bottom") + " of the list.");
+      return;
+    }
+    var nb = rowOf("admin_tasks", ROWORDER[j]);
+    if (!nb) return;
+    var beyond = (j + dir >= 0 && j + dir < ROWORDER.length)
+      ? rowOf("admin_tasks", ROWORDER[j + dir]) : null;
+    var n;
+    if (beyond && beyond.order !== nb.order) n = (nb.order + beyond.order) / 2;
+    else n = nb.order + (dir < 0 ? -1000 : 1000);
+    if (n === t.order) n = t.order + (dir < 0 ? -1 : 1);
+    callN("updateTask", [t.id, { order: n }], "move that task", afterMove(t));
+  }
+
+  /* ---- The row menu ------------------------------------------------------ */
+
+  function rowMenu(t, anchor) {
+    var items = [{ t: "Open details" }];
+    items[0].go = function () { openSheet("admin_tasks", t.id, anchor); };
+
+    items.push({ sep: true });
+    if (t.status !== "done") {
+      items.push({ t: "Mark done", go: function () {
+        callN("updateTask", [t.id, { status: "done" }], "mark that task done",
+              function () { say("Marked done: " + t.title); });
+      } });
+      if (t.status === "todo") {
+        items.push({ t: "Start it", go: function () {
+          callN("updateTask", [t.id, { status: "doing" }], "start that task",
+                function () { say("Started: " + t.title); });
+        } });
+      } else {
+        items.push({ t: "Back to to-do", go: function () {
+          callN("updateTask", [t.id, { status: "todo" }], "move that task back",
+                function () { say("Moved back to to-do: " + t.title); });
+        } });
       }
     } else {
-      a.appendChild(btn("Reopen", null, function () {
-        call("updateTask", t.id, { status: "todo" }, "reopen that task", function () {
-          say("Reopened: " + t.title);
-        });
-      }));
+      items.push({ t: "Reopen", go: function () {
+        callN("updateTask", [t.id, { status: "todo" }], "reopen that task",
+              function () { say("Reopened: " + t.title); });
+      } });
     }
 
-    /* THERE IS NO LONGER AN IN-ROW EDITOR. Everything a task can be changed to
-       is in the detail view, which is the same form, on one surface, with the
-       record and the conversation beside it. Two editors for one document
-       would be two places to fix a bug in and two ways for the same field to
-       be saved. */
-    var open = btn("Open", null, function () { openSheet("admin_tasks", t.id, open); });
-    open.setAttribute("aria-haspopup", "dialog");
-    a.appendChild(open);
+    items.push({ sep: true });
+    items.push({ t: "Move up",   go: function () { moveBy(t, -1); } });
+    items.push({ t: "Move down", go: function () { moveBy(t, 1); } });
 
-    body.appendChild(a);
-    return li;
+    /* TWO STEPS, and the menu stays open between them. A delete that takes
+       one click on a row eleven columns wide is a delete that happens by
+       accident; a confirm that closes the menu is a confirm nobody sees. */
+    items.push({ sep: true });
+    var armed = false, timer = null;
+    items.push({ t: "Delete", bad: true, keep: true, go: function (it, b) {
+      if (!armed) {
+        armed = true;
+        b.textContent = "Press again to delete";
+        say("Press delete again to remove this task.");
+        timer = setTimeout(function () {
+          armed = false;
+          try { b.textContent = "Delete"; } catch (e) {}
+        }, 5000);
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      closeMenu(false);
+      if (openId === t.id) closeSheet();
+      callN("deleteTask", [t.id], "delete that task", function () {
+        say("Deleted: " + t.title + ". Its comments went with it.");
+      });
+    } });
+
+    openMenu(anchor, items, undefined, function (it, b) {
+      if (it.go) it.go(it, b);
+    });
+  }
+
+  /* ---- One cell ---------------------------------------------------------- */
+
+  function grabButton(t) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "adm-grab";
+    b.setAttribute("data-fbt", "-");
+    b.setAttribute("data-row", t.id);
+    b.setAttribute("data-inline", "grab");
+    b.setAttribute("aria-label",
+      "Drag to reorder. From the keyboard, use Move up and Move down in this row's menu.");
+    var g = el("span", "adm-grab-g");
+    g.setAttribute("aria-hidden", "true");
+    b.appendChild(g);
+    b.draggable = true;
+    b.ondragstart = function (ev) {
+      dragId = t.id;
+      try {
+        ev.dataTransfer.effectAllowed = "move";
+        ev.dataTransfer.setData("text/plain", t.id);
+      } catch (e) {}
+    };
+    b.ondragend = function () { dragId = ""; unmarkDrop(); };
+    /* The handle is a button and a button is pressable; pressing it opens the
+       row's menu, where Move up and Move down are. So it is never a control
+       that does nothing when it is clicked rather than dragged. */
+    b.onclick = function () { rowMenu(t, b); };
+    return b;
+  }
+
+  function unmarkDrop() {
+    var ns = document.querySelectorAll("tr.adm-drag-over"), i;
+    for (i = 0; i < ns.length; i++) {
+      ns[i].className = ns[i].className.replace(/\s*adm-drag-over/g, "");
+    }
+  }
+
+  function tickBox(t) {
+    var b = document.createElement("input");
+    b.type = "checkbox";
+    b.className = "adm-tick";
+    b.setAttribute("data-fbt", "-");
+    b.setAttribute("data-row", t.id);
+    b.setAttribute("data-inline", "tick");
+    b.checked = t.status === "done";
+    b.setAttribute("aria-label", t.status === "done" ? "Reopen this task" : "Mark this task done");
+    b.onchange = function () {
+      var to = b.checked ? "done" : "todo";
+      callN("updateTask", [t.id, { status: to }], "change that task", function () {
+        say((to === "done" ? "Marked done: " : "Reopened: ") + t.title);
+      });
+    };
+    return b;
+  }
+
+  /* The trailing preview: the newest comment where this session has read the
+     thread, the task's own notes where it has not, and nothing at all where
+     there is neither. Quoted versus not, and two different weights, because
+     they are two different facts. */
+  function previewCell(td, t) {
+    var last = LASTC[t.id];
+    if (last) {
+      td.appendChild(el("span", "adm-prev", "“" + last + "”"));
+      return;
+    }
+    if (t.detail) {
+      td.appendChild(el("span", "adm-prev adm-prev-d", t.detail));
+      return;
+    }
+  }
+
+  function fillCell(td, k, t, tr) {
+    var st, w;
+    if (k === "grab")          { td.appendChild(grabButton(t)); return; }
+    if (k === "check")         { td.appendChild(tickBox(t)); return; }
+    if (k === "title") {
+      td.appendChild(openTitle("adm-title", t.title || "Untitled task", "admin_tasks", t.id));
+      if (t.detail) td.appendChild(el("p", "adm-detail", t.detail));
+      return;
+    }
+    if (k === "status" || k === "priority" || k === "owner") {
+      td.appendChild(chipMenu(t, k));
+      return;
+    }
+    if (k === "labels")        { td.appendChild(labelChips(t.labels)); return; }
+    if (k === "due") {
+      st = dueState(t.due, TODAY, t.status === "done");
+      if (st) td.appendChild(dueChip(st));
+      return;
+    }
+    if (k === "updated") {
+      w = t.updatedAt || t.createdAt;
+      if (w) td.appendChild(el("span", "adm-when", fmtShortAt(w)));
+      return;
+    }
+    if (k === "created") {
+      if (t.createdAt) td.appendChild(el("span", "adm-when", fmtShortAt(t.createdAt)));
+      return;
+    }
+    if (k === "note")          { previewCell(td, t); return; }
+    if (k === "acts") {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "adm-more";
+      b.setAttribute("data-fbt", "-");
+      b.setAttribute("data-row", t.id);
+      b.setAttribute("data-inline", "more");
+      b.setAttribute("aria-haspopup", "true");
+      b.setAttribute("aria-expanded", "false");
+      b.setAttribute("aria-label", "More for this task");
+      b.textContent = "…";
+      b.onclick = function () {
+        if (menu && menu.anchor === b) { closeMenu(true); return; }
+        rowMenu(t, b);
+      };
+      td.appendChild(b);
+      return;
+    }
+  }
+
+  function taskRow(t) {
+    var sel = (openId === t.id && openKind === "admin_tasks");
+    var tr = el("tr", "adm-tr" +
+                      (t.status === "done" ? " adm-tr-done" : "") +
+                      (sel ? " adm-tr-sel" : ""));
+    tr.setAttribute("data-id", t.id);
+    if (sel) tr.setAttribute("aria-current", "true");
+
+    var cols = shownCols(), i, td;
+    for (i = 0; i < cols.length; i++) {
+      td = el("td", "adm-td adm-td-" + cols[i].k);
+      fillCell(td, cols[i].k, t, tr);
+      tr.appendChild(td);
+    }
+
+    tr.ondragover = function (ev) {
+      if (!dragId || dragId === t.id) return;
+      if (ev.preventDefault) ev.preventDefault();
+      try { ev.dataTransfer.dropEffect = "move"; } catch (e) {}
+      if (tr.className.indexOf("adm-drag-over") < 0) tr.className += " adm-drag-over";
+    };
+    tr.ondragleave = function () {
+      tr.className = tr.className.replace(/\s*adm-drag-over/g, "");
+    };
+    tr.ondrop = function (ev) {
+      if (ev.preventDefault) ev.preventDefault();
+      if (ev.stopPropagation) ev.stopPropagation();
+      unmarkDrop();
+      dropOnto(t.id);
+    };
+    return tr;
+  }
+
+  /* ---- A group heading, as a row of the table ---------------------------- */
+
+  function groupRow(g, span) {
+    var kk = groupBy + ":" + g.k;
+    var shut = !!groupShut[kk];
+
+    var tr = el("tr", "adm-grp");
+    var td = document.createElement("td");
+    td.colSpan = span;
+
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "adm-grp-b";
+    b.setAttribute("data-fbt", "-");
+    b.setAttribute("data-grp", kk);
+    b.setAttribute("aria-expanded", shut ? "false" : "true");
+    var car = el("span", "adm-caret");
+    car.setAttribute("aria-hidden", "true");
+    b.appendChild(car);
+    b.appendChild(el("span", "adm-grp-h", g.label));
+    b.appendChild(el("span", "adm-count", plural(g.items.length, "task", "tasks")));
+    b.onclick = function () {
+      if (groupShut[kk]) { delete groupShut[kk]; } else { groupShut[kk] = true; }
+      renderBoard();
+      focusBack({ g: kk });
+      say(g.label + (groupShut[kk] ? " collapsed." : " expanded."));
+    };
+
+    td.appendChild(b);
+    tr.appendChild(td);
+    return tr;
   }
 
   /* ==========================================================================
@@ -1501,7 +2236,7 @@
       }
     }
     if (none.length) out.push({ k: "__none", label: "No labels", items: none });
-    for (i = 0; i < out.length; i++) out[i].items.sort(cmp);
+    for (i = 0; i < out.length; i++) out[i].items.sort(sortCmp);
     return out;
   }
 
@@ -1532,7 +2267,7 @@
         if (out[j].k === k) { out[j].items.push(t); break; }
       }
     }
-    for (i = 0; i < out.length; i++) { out[i].items.sort(cmp); }
+    for (i = 0; i < out.length; i++) { out[i].items.sort(sortCmp); }
     return out;
   }
 
@@ -1589,19 +2324,33 @@
            plural(week, "task", "tasks") + " finished in the last 7 days.";
   }
 
+  /* Does this task answer the Find box? Title, notes and labels — the three
+     things somebody types a fragment of when they are looking for a row they
+     know exists. Lowercased once per keystroke by the caller, not once per
+     row per keystroke. */
+  function findHit(t, q) {
+    if (!q) return true;
+    var s = String(t.title || "") + " " + String(t.detail || "") + " " +
+            ((t.labels || []).join(" "));
+    return s.toLowerCase().indexOf(q) >= 0;
+  }
+
   function renderBoard() {
     var box = $("adm-board");
+    var wrap = $("adm-tablewrap");
     var state = $("adm-board-state");
-    if (!box || !state) return;
+    if (!box || !wrap || !state) return;
 
     state.className = "adm-state";
+    ROWORDER = [];
 
     if (!tasksSeen) {
-      box.hidden = true;
+      wrap.hidden = true;
       clear(box);
       state.hidden = false;
       state.textContent = "Loading the board — reading tasks and goals from Firestore.";
       setText("adm-summary", "Counting…");
+      setText("adm-tb-count", "Counting…");
       return;
     }
 
@@ -1617,8 +2366,9 @@
        actions and running them together is how an empty state gets read as a
        bug. */
     if (!TASKS.length) {
-      box.hidden = true;
+      wrap.hidden = true;
       clear(box);
+      setText("adm-tb-count", "No tasks");
       state.hidden = false;
       clear(state);
       var b = el("b", null, "The board is empty.");
@@ -1630,23 +2380,37 @@
       return;
     }
 
+    var q = String(findText || "").toLowerCase();
     var shown = [];
     for (i = 0; i < open.length; i++) {
       if (ownerFilter !== "all" && open[i].owner !== ownerFilter) continue;
       if (labelFilter && !hasLabel(open[i], labelFilter)) continue;
+      if (!findHit(open[i], q)) continue;
       shown.push(open[i]);
     }
 
+    /* The count above the table, and it says both numbers whenever they
+       differ: "12 of 29 tasks" is the sentence that stops somebody reporting
+       that seventeen tasks have vanished. */
+    setText("adm-tb-count",
+      shown.length === open.length
+        ? plural(open.length, "task", "tasks")
+        : (shown.length + " of " + plural(open.length, "task", "tasks")));
+
     if (!shown.length) {
-      box.hidden = true;
+      wrap.hidden = true;
       clear(box);
       state.hidden = false;
       clear(state);
       state.appendChild(el("b", null, "Nothing open here."));
-      /* Three different reasons for an empty list and three different next
+      /* Four different reasons for an empty list and four different next
          actions. Running them together is how an empty state gets read as a
          bug. */
-      if (labelFilter) {
+      if (q) {
+        state.appendChild(document.createTextNode(
+          " Nothing open matches what is in the Find box. Clear it to see the " +
+          "rest of the board — the search reads titles, notes and labels."));
+      } else if (labelFilter) {
         state.appendChild(document.createTextNode(
           " Nothing open is labelled " + labelFilter +
           ". Set the Label filter back to All labels to see the rest of the board."));
@@ -1665,24 +2429,29 @@
       return;
     }
 
+    /* The control that was focused, so it can be handed back its focus after
+       the rebuild below destroys it. See focusMark(). */
+    var mark = focusMark();
+
     state.hidden = true;
-    box.hidden = false;
+    wrap.hidden = false;
+    buildHead();
     clear(box);
 
+    var span = shownCols().length;
     var groups = groupsFor(shown);
     for (i = 0; i < groups.length; i++) {
       var g = groups[i];
       if (!g.items.length) continue;         /* an empty group is noise */
-      var sec = el("div", "adm-group");
-      var h = el("div", "adm-group-h");
-      h.appendChild(document.createTextNode(g.label));
-      h.appendChild(el("span", "adm-count", plural(g.items.length, "task", "tasks")));
-      sec.appendChild(h);
-      var ul = el("ul", "adm-list");
-      for (var j = 0; j < g.items.length; j++) { ul.appendChild(taskRow(g.items[j])); }
-      sec.appendChild(ul);
-      box.appendChild(sec);
+      box.appendChild(groupRow(g, span));
+      if (groupShut[groupBy + ":" + g.k]) continue;   /* collapsed builds nothing */
+      for (var j = 0; j < g.items.length; j++) {
+        box.appendChild(taskRow(g.items[j]));
+        ROWORDER.push(g.items[j].id);
+      }
     }
+
+    focusBack(mark);
 
     setText("adm-board-sub",
       groupBy === "owner" ? "grouped by who has it"
@@ -1690,6 +2459,10 @@
       : (groupBy === "due" ? "grouped by when it is due, nearest first"
       : (groupBy === "label" ? "grouped by label, busiest first"
       : "grouped by priority"))));
+
+    setText("adm-table-cap",
+      "Everything open, " + $("adm-board-sub").textContent + ", sorted by " +
+      sortWord(sortKey) + ".");
 
     var note = $("adm-board-note");
     if (note) {
@@ -1704,6 +2477,156 @@
         note.textContent = "";
       }
     }
+  }
+
+  /* ==========================================================================
+     The toolbar — the four popovers
+
+     One open at a time, closed by Escape, by a click anywhere else, and by
+     opening another. Escape puts focus back on the button that opened it,
+     which is the whole difference between a popover and a trap.
+     ========================================================================== */
+
+  var POPS = [
+    { b: "adm-b-group",  p: "adm-pop-group" },
+    { b: "adm-b-filter", p: "adm-pop-filter" },
+    { b: "adm-b-cols",   p: "adm-pop-cols" },
+    { b: "adm-b-sort",   p: "adm-pop-sort" }
+  ];
+
+  function closePop(back) {
+    if (!popOpen) return;
+    var was = popOpen, i;
+    popOpen = "";
+    for (i = 0; i < POPS.length; i++) {
+      var pn = $(POPS[i].p), bn = $(POPS[i].b);
+      if (pn) pn.hidden = true;
+      if (bn) bn.setAttribute("aria-expanded", "false");
+      if (back && POPS[i].p === was && bn) { try { bn.focus(); } catch (e) {} }
+    }
+    try { document.removeEventListener("mousedown", popOut, true); } catch (e2) {}
+    try { document.removeEventListener("keydown", popKeys, true); } catch (e3) {}
+  }
+
+  function popOut(e) {
+    if (!popOpen) return;
+    var t = e && e.target;
+    if (!t) return;
+    try {
+      var pn = $(popOpen);
+      if (pn && pn.contains(t)) return;
+      for (var i = 0; i < POPS.length; i++) {
+        var bn = $(POPS[i].b);
+        if (bn && bn.contains(t)) return;
+      }
+    } catch (e2) {}
+    closePop(false);
+  }
+
+  function popKeys(e) {
+    if (!popOpen) return;
+    var k = e && (e.keyCode || e.which);
+    if (k !== 27) return;
+    if (menu) return;                  /* the menu inside it answers first */
+    if (e.preventDefault) e.preventDefault();
+    closePop(true);
+  }
+
+  function openPop(which) {
+    closeMenu(false);
+    var already = popOpen === which;
+    closePop(false);
+    if (already) return;
+    var pn = $(which);
+    if (!pn) return;
+    pn.hidden = false;
+    popOpen = which;
+    for (var i = 0; i < POPS.length; i++) {
+      if (POPS[i].p === which) {
+        var bn = $(POPS[i].b);
+        if (bn) bn.setAttribute("aria-expanded", "true");
+      }
+    }
+    try { document.addEventListener("mousedown", popOut, true); } catch (e) {}
+    try { document.addEventListener("keydown", popKeys, true); } catch (e2) {}
+    var first = pn.querySelector("input, select, button");
+    if (first) { try { first.focus(); } catch (e3) {} }
+  }
+
+  var SORTS = [
+    { k: "smart",    t: "What is next (default)" },
+    { k: "manual",   t: "Manual order" },
+    { k: "title",    t: "Title" },
+    { k: "priority", t: "Priority" },
+    { k: "status",   t: "Progress" },
+    { k: "owner",    t: "Owner" },
+    { k: "due",      t: "Target date" },
+    { k: "updated",  t: "Updated" },
+    { k: "created",  t: "Created" }
+  ];
+
+  function buildSortPop() {
+    var host = $("adm-pop-sort");
+    if (!host) return;
+    clear(host);
+    var lg = el("span", "adm-legend", "Sort by");
+    lg.id = "adm-lg-sort";
+    host.appendChild(lg);
+    var group = el("div", null);
+    group.setAttribute("role", "menu");
+    group.setAttribute("aria-labelledby", "adm-lg-sort");
+    for (var i = 0; i < SORTS.length; i++) {
+      (function (sc) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "adm-sortb";
+        b.setAttribute("data-fbt", "-");
+        b.setAttribute("role", "menuitemradio");
+        b.setAttribute("aria-checked", sortKey === sc.k ? "true" : "false");
+        b.appendChild(document.createTextNode(sc.t));
+        if (sortKey === sc.k) {
+          /* The chosen one says which way, and clicking it again flips it. */
+          var g = el("span", "adm-th-g", sortDir > 0 ? "↑" : "↓");
+          g.setAttribute("aria-hidden", "true");
+          b.appendChild(g);
+        }
+        b.onclick = function () { setSort(sc.k); };
+        group.appendChild(b);
+      })(SORTS[i]);
+    }
+    host.appendChild(group);
+    var note = el("p", "adm-mini-note",
+      "Manual order is the one that a dragged row sticks in. Every other " +
+      "sort decides before a hand-made order does.");
+    host.appendChild(note);
+  }
+
+  function buildColsPop() {
+    var host = $("adm-pop-cols");
+    if (!host) return;
+    clear(host);
+    host.appendChild(el("span", "adm-legend", "Columns"));
+    for (var i = 0; i < COLUMNS.length; i++) {
+      (function (c) {
+        if (c.fixed) return;
+        var lab = el("label", "adm-check");
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!colOn[c.k];
+        cb.setAttribute("data-fbt", "-");
+        cb.onchange = function () {
+          colOn[c.k] = !!cb.checked;
+          renderBoard();
+          say(c.label + (colOn[c.k] ? " shown." : " hidden."));
+        };
+        lab.appendChild(cb);
+        lab.appendChild(document.createTextNode(c.label));
+        host.appendChild(lab);
+      })(COLUMNS[i]);
+    }
+    host.appendChild(el("p", "adm-mini-note",
+      "The tick, the title and the row menu are the row; everything else " +
+      "here can go. Turning columns off is how the table fits a phone."));
   }
 
   /* ==========================================================================
@@ -1913,27 +2836,30 @@
     return d;
   }
 
-  /* The record half of the sheet: chips, the notes as they stand, and the
-     three moments. Rebuilt whenever the underlying row changes; it holds no
-     typing, so nothing is lost by rebuilding it. */
+  /* The record half of the pane: the labels, the date, the notes as they
+     stand, and the three moments. Rebuilt whenever the underlying row
+     changes; it holds no typing, so nothing is lost by rebuilding it. */
   function sheetRecord(kind, row) {
     var box = el("div", "adm-sheet-rec");
     var noun = nounFor(kind);
 
+    /* A TASK'S OWNER, PRIORITY AND STATUS ARE NOT REPEATED HERE. The pane
+       carries them at the top as live chips with their own carets — the same
+       control the table row has — and printing them again four lines down
+       would be two readings of one value with only one of them editable,
+       which is how a reader ends up changing the wrong one. What stays is
+       everything the chips do not say: the labels and the date. */
     var rail = el("div", "adm-task-rail adm-sheet-rail");
     if (kind === "admin_goals") {
       rail.appendChild(el("span", "adm-goal-s adm-goal-s-" + row.status,
                           GOAL_LABEL[row.status] || row.status));
     } else {
-      rail.appendChild(ownerChip(row.owner));
-      rail.appendChild(priChip(row.priority));
-      rail.appendChild(statusChip(row.status));
       rail.appendChild(labelChips(row.labels));
     }
     var st = dueState(row.due, TODAY,
                       kind === "admin_goals" ? row.status !== "open" : row.status === "done");
     if (st) rail.appendChild(dueChip(st));
-    box.appendChild(rail);
+    if (rail.firstChild) box.appendChild(rail);
 
     if (kind === "admin_goals" && row.target) {
       box.appendChild(el("span", "adm-goal-k", "Target"));
@@ -2056,53 +2982,47 @@
 
   /* ---- Opening, closing, and the keyboard -------------------------------- */
 
-  function sheetFocusables() {
-    var sheet = $("adm-sheet");
-    if (!sheet) return [];
-    var all = sheet.querySelectorAll("button, input, select, textarea, a[href]");
-    var out = [], i, n;
-    for (i = 0; i < all.length; i++) {
-      n = all[i];
-      if (n.disabled) continue;
-      if (n.hidden) continue;
-      if (n.offsetWidth === 0 && n.offsetHeight === 0) continue;
-      out.push(n);
-    }
-    return out;
-  }
+  /* ESCAPE CLOSES IT, and that is the whole keyboard contract — there is no
+     Tab trap, because there is no longer a modal to trap Tab inside. The pane
+     sits beside the list and Tab walks out of it into the list, which is the
+     honest description of what is on screen. What Escape must still do is put
+     focus back on the row that opened it, and closeSheet() does.
 
-  /* Escape closes; Tab cycles inside the card and cannot walk out into the
-     board behind it. Both are the price of aria-modal being a claim rather
-     than a behaviour: a dialog that says it is modal and lets Tab wander
-     underneath is worse than one that never claimed it. */
-  function sheetKeys(e) {
+     A menu inside the pane answers Escape first: it is the innermost thing
+     open, and closing the pane out from under an open menu would be the
+     wrong one of the two. */
+  function paneKeys(e) {
     if (!openId) return;
+    if (menu) return;
     var k = e && (e.keyCode || e.which);
-    if (k === 27) {
-      if (e.preventDefault) e.preventDefault();
-      closeSheet();
-      return;
-    }
-    if (k !== 9) return;
-    var f = sheetFocusables();
-    if (!f.length) return;
-    var first = f[0], last = f[f.length - 1], at = document.activeElement;
-    if (e.shiftKey && (at === first || at === $("adm-sheet"))) {
-      if (e.preventDefault) e.preventDefault();
-      try { last.focus(); } catch (e2) {}
-    } else if (!e.shiftKey && at === last) {
-      if (e.preventDefault) e.preventDefault();
-      try { first.focus(); } catch (e3) {}
-    }
+    if (k !== 27) return;
+    if (e.preventDefault) e.preventDefault();
+    closeSheet();
   }
 
   function sheetNote(msg, bad) {
-    var n = $("adm-sheet-note");
+    var n = $("adm-pane-note");
     if (!n) return;
     if (!msg) { n.hidden = true; n.textContent = ""; return; }
     n.className = "adm-state" + (bad ? " adm-bad" : "");
     n.textContent = String(msg);
     n.hidden = false;
+  }
+
+  /* The live chips at the top of the pane: the same inline control the table
+     row carries, so the value is changed in the same way in both places and
+     there is one implementation of "change the priority of this task". */
+  function paintChips() {
+    var host = $("adm-pane-chips");
+    if (!host) return;
+    clear(host);
+    var row = rowOf(openKind, openId);
+    if (!row) { host.hidden = true; return; }
+    if (openKind === "admin_goals") { host.hidden = true; return; }
+    host.hidden = false;
+    host.appendChild(chipMenu(row, "owner"));
+    host.appendChild(chipMenu(row, "priority"));
+    host.appendChild(chipMenu(row, "status"));
   }
 
   function paintFacts() {
@@ -2119,14 +3039,15 @@
     host.appendChild(sheetRecord(openKind, row));
   }
 
-  /* Called on every snapshot while the sheet is open. It repaints the RECORD
-     and never the form — the form is where somebody is typing, and pulling the
-     DOM out from under a half-typed sentence is the thing this whole board
-     goes out of its way not to do. */
+  /* Called on every snapshot while the pane is open. It repaints the RECORD
+     and the chips and never the form — the form is where somebody is typing,
+     and pulling the DOM out from under a half-typed sentence is the thing
+     this whole board goes out of its way not to do. */
   function refreshSheet() {
     var row = rowOf(openKind, openId);
     if (!row) {
       openStale = false;
+      paintChips();
       paintFacts();
       sheetNote("This " + nounFor(openKind) + " has been deleted. Close this and it will be gone from the board.", true);
       return;
@@ -2135,6 +3056,8 @@
       if (justSaved) { justSaved = false; openSeenAt = row.updatedAt; openStale = false; }
       else { openStale = true; }
     }
+    setText("adm-pane-t", row.title || ("Untitled " + nounFor(openKind)));
+    paintChips();
     paintFacts();
     if (openStale) {
       sheetNote("Changed on the other screen just now — the record above is " +
@@ -2143,10 +3066,27 @@
     }
   }
 
+  /* Everything the pane holds, let go of, WITHOUT repainting the board or
+     moving focus. Opening a second task while the first is open is one
+     teardown and one build, not a close (which repaints and restores focus)
+     followed by an open that undoes both. */
+  function teardown() {
+    try { if (openUnsub) openUnsub(); } catch (e) {}
+    openUnsub = null;
+    openForm = null;
+    openKind = "";
+    openId = "";
+    CMTS = [];
+    cmtsSeen = false;
+    openStale = false;
+  }
+
   function openSheet(kind, id, opener) {
     var row = rowOf(kind, id);
     if (!row) { say("That has already been deleted."); return; }
-    if (openId) closeSheet();
+    closeMenu(false);
+    closePop(false);
+    if (openId) teardown();
 
     openKind = kind === "admin_goals" ? "admin_goals" : "admin_tasks";
     openId = id;
@@ -2157,16 +3097,28 @@
     CMTS = [];
     cmtsSeen = false;
 
-    var body = $("adm-sheet-body");
-    var wrap = $("adm-modal");
-    if (!body || !wrap) return;
+    var pane = $("adm-pane");
+    var body = $("adm-pane-body");
+    var foot = $("adm-pane-foot");
+    if (!pane || !body || !foot) return;
     clear(body);
-    setText("adm-sheet-t", row.title || ("Untitled " + nounFor(openKind)));
+    clear(foot);
+    setText("adm-pane-t", row.title || ("Untitled " + nounFor(openKind)));
 
-    body.appendChild(el("div", "adm-state", "")).id = "adm-sheet-note";
-    $("adm-sheet-note").hidden = true;
+    var note = el("div", "adm-state", "");
+    note.id = "adm-pane-note";
+    note.hidden = true;
+    body.appendChild(note);
 
-    body.appendChild(el("div", null, "")).id = "adm-sheet-rec";
+    /* The live chips, first, because they are what the reader came to change
+       nine times out of ten. */
+    var chips = el("div", "adm-pane-chips");
+    chips.id = "adm-pane-chips";
+    body.appendChild(chips);
+
+    var rec = el("div", null, "");
+    rec.id = "adm-sheet-rec";
+    body.appendChild(rec);
 
     /* ---- the editor, the same form the add box uses ---- */
     var edit = el("div", "adm-sheet-edit");
@@ -2210,21 +3162,23 @@
     ul.id = "adm-cmt-list";
     ul.hidden = true;
     talk.appendChild(ul);
+    body.appendChild(talk);
 
-    /* THE COMPOSER IS IN NORMAL FLOW at the bottom of a scrolling card, not
-       pinned to the viewport. A position:fixed bar is what iOS hides behind
-       the on-screen keyboard; in flow, the browser's own scroll-into-view puts
-       the caret above the keys and the Post button follows the text. */
-    var comp = el("div", "adm-cmt-new");
-    var ta = textarea("adm-cmt-box", "", "Say something about this — the other one of you sees it straight away.");
+    /* ---- the composer, in the pane's FOOT ----
+       Pinned to the bottom of the pane on a desk, which is what the tool this
+       is modelled on does and what makes "read the thread, then answer it"
+       one movement. Below 900px the whole pane is one scroll and the foot is
+       the last thing in it, because a bar pinned to the bottom of the window
+       is what iOS puts underneath the on-screen keyboard. */
+    var comp = el("div", "adm-cmt-foot");
+    var ta = textarea("adm-cmt-box", "", "Leave a comment…");
     ta.className = "adm-area adm-cmt-box";
     try { ta.maxLength = CMT_MAX; } catch (e) {}
     var lab = el("label", "adm-sr", "Write a comment");
     lab.setAttribute("for", "adm-cmt-box");
     comp.appendChild(lab);
     comp.appendChild(ta);
-    var cacts = acts();
-    cacts.appendChild(btn("Post comment", "adm-btn-go", function () {
+    comp.appendChild(btn("Post", "adm-btn-go", function () {
       var t = str(ta.value).replace(/^\s+|\s+$/g, "");
       if (!t) { try { ta.focus(); } catch (e2) {} say("A comment needs something in it."); return; }
       if (t.length > CMT_MAX) t = t.slice(0, CMT_MAX);
@@ -2233,19 +3187,22 @@
         say("Comment posted.");
       });
     }));
-    comp.appendChild(cacts);
-    talk.appendChild(comp);
-    body.appendChild(talk);
+    foot.appendChild(comp);
 
+    paintChips();
     paintFacts();
     paintThread();
 
-    wrap.hidden = false;
-    try { document.body.className += " adm-locked"; } catch (e3) {}
-    try { document.addEventListener("keydown", sheetKeys, true); } catch (e4) {}
-    try { $("adm-sheet").scrollTop = 0; } catch (e5) {}
-    try { $("adm-sheet").focus(); } catch (e6) {}
+    pane.hidden = false;
+    try { document.body.className += " adm-pane-on"; } catch (e3) {}
+    try { document.addEventListener("keydown", paneKeys, true); } catch (e4) {}
+    try { pane.scrollTop = 0; body.scrollTop = 0; } catch (e5) {}
+    try { pane.focus(); } catch (e6) {}
     say("Opened " + (row.title || nounFor(openKind)) + ".");
+
+    /* The list repaints so the row that was opened is highlighted in it, and
+       stays highlighted for as long as the pane is open. */
+    renderBoard();
 
     /* The thread, live, for exactly as long as this is open. Nothing
        subscribes to a conversation nobody is reading. */
@@ -2264,7 +3221,13 @@
             });
           }
           cmtsSeen = true;
-          if (openId) paintThread();
+          /* What the trailing column shows. It is only ever known for a task
+             whose thread this session has read; see the note on LASTC. */
+          if (openKind === "admin_tasks" && openId) {
+            if (CMTS.length) LASTC[openId] = CMTS[CMTS.length - 1].text;
+            else if (LASTC[openId]) { delete LASTC[openId]; }
+          }
+          if (openId) { paintThread(); renderBoard(); }
         });
       } catch (e7) { cmtsSeen = true; paintThread(); }
     } else {
@@ -2286,7 +3249,7 @@
     if (openKind === "admin_goals") {
       callN("updateGoal", [id2, v], "save that goal", function () {
         say("Saved.");
-        setText("adm-sheet-t", v.title);
+        setText("adm-pane-t", v.title);
         render();
       });
     } else {
@@ -2295,7 +3258,7 @@
         status: v.status, labels: v.labels, due: v.due
       }], "save that task", function () {
         say("Saved.");
-        setText("adm-sheet-t", v.title);
+        setText("adm-pane-t", v.title);
         render();
       });
     }
@@ -2304,23 +3267,18 @@
   function closeSheet() {
     if (!openId) return;
     var wasId = openId;
-    try { if (openUnsub) openUnsub(); } catch (e) {}
-    openUnsub = null;
-    openForm = null;
-    openKind = "";
-    openId = "";
-    CMTS = [];
-    cmtsSeen = false;
-    openStale = false;
-    var wrap = $("adm-modal");
-    if (wrap) wrap.hidden = true;
-    var body = $("adm-sheet-body");
+    closeMenu(false);
+    teardown();
+    var pane = $("adm-pane");
+    if (pane) pane.hidden = true;
+    var body = $("adm-pane-body"), foot = $("adm-pane-foot");
     if (body) clear(body);
-    try { document.body.className = document.body.className.replace(/\s*adm-locked/g, ""); } catch (e2) {}
-    try { document.removeEventListener("keydown", sheetKeys, true); } catch (e3) {}
-    /* Anything the snapshot deferred while this was open paints now — and it
-       has to happen BEFORE focus is restored, because it is what replaces the
-       row that opened this. */
+    if (foot) clear(foot);
+    try { document.body.className = document.body.className.replace(/\s*adm-pane-on/g, ""); } catch (e2) {}
+    try { document.removeEventListener("keydown", paneKeys, true); } catch (e3) {}
+    /* Anything the snapshot deferred while an add form was open paints now —
+       and it has to happen BEFORE focus is restored, because it is what
+       replaces the row that opened this. */
     render();
 
     /* Focus goes back to the control that opened this, not to the top of the
@@ -2709,12 +3667,43 @@
     var lf = $("adm-label-filter");
     if (lf) lf.onchange = function () { labelFilter = labelOne(lf.value); render(); };
 
-    /* The sheet: a Close button, the scrim, and Escape (in sheetKeys). Three
-       ways out, because a modal on a phone with one of them is a trap. */
-    var x = $("adm-sheet-x");
+    /* ---- The toolbar ---- */
+
+    /* The Find box filters as it is typed. `input` and not `change`: a filter
+       that waits for the field to be left is a filter that looks broken. No
+       debounce — the list is a hundred rows in memory and the whole cost is
+       one lowercased indexOf each. */
+    var find = $("adm-find");
+    if (find) {
+      find.oninput = function () { findText = str(find.value); renderBoard(); };
+      /* Escape empties it, which is what a type="search" promises and what
+         the browser's own clear button does on the platforms that draw one. */
+      find.onkeydown = function (e) {
+        var k = e && (e.keyCode || e.which);
+        if (k !== 27 || !str(find.value)) return;
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+        find.value = "";
+        findText = "";
+        renderBoard();
+        say("Find cleared.");
+      };
+    }
+
+    buildColsPop();
+    buildSortPop();
+    for (var pi = 0; pi < POPS.length; pi++) {
+      (function (pc) {
+        var b = $(pc.b);
+        if (b) b.onclick = function () { openPop(pc.p); };
+      })(POPS[pi]);
+    }
+
+    /* The pane: a close button and Escape (in paneKeys). No scrim to click,
+       because there is nothing to click through — the list behind it is live
+       and clicking a row in it opens that row instead. */
+    var x = $("adm-pane-x");
     if (x) x.onclick = function () { closeSheet(); };
-    var scrim = $("adm-scrim");
-    if (scrim) scrim.onclick = function () { closeSheet(); };
 
     var add = $("adm-add-open");
     if (add) add.onclick = function () { if (addOpen) return; openAdd(); };
