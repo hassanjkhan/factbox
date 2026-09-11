@@ -158,3 +158,62 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600):
                     "hint": ("content filter — reword toward flat historical description"
                              if status == "nsfw" else None)}
     return {"ok": False, "why": "timed out after %ds" % timeout}
+
+
+# ---------------------------------------------------------------- check ----
+
+def check():
+    """Prove both keys work before a real run, and spend nothing doing it.
+
+    Higgsfield has NO endpoint to create or list characters — the OpenAPI spec
+    exposes only the endpoints that consume custom_reference_id. So the
+    character stays a thing made in their UI, and the id has to be lifted out
+    of it. If that proves impossible, soul/reference takes a plain
+    image_reference_url instead and needs no id at all.
+    """
+    ok = True
+
+    # --- ElevenLabs: the key and the voice, both free to ask about ---------
+    try:
+        cfg = load_key("elevenlabs", ["api_key", "voice_id"])
+        raw, _ = _req(EL_HOST + "/v1/user", None, {"xi-api-key": cfg["api_key"]}, "GET", 30)
+        u = json.loads(raw)
+        sub = u.get("subscription") or {}
+        used = sub.get("character_count")
+        cap = sub.get("character_limit")
+        print("  elevenlabs key   : ok   tier=%s%s"
+              % (sub.get("tier", "?"),
+                 ("  used %s/%s characters" % (used, cap)) if cap else ""))
+        raw, _ = _req(EL_HOST + "/v1/voices/" + cfg["voice_id"], None,
+                      {"xi-api-key": cfg["api_key"]}, "GET", 30)
+        v = json.loads(raw)
+        print("  elevenlabs voice : ok   \"%s\"" % v.get("name", "?"))
+    except SystemExit as e:
+        print("  elevenlabs       : %s" % e)
+        ok = False
+
+    # --- Higgsfield: ask about a request that cannot exist ------------------
+    # 404 means the credential was accepted and the id simply is not there,
+    # which is exactly what we want to learn. 401/403 means the key is wrong.
+    try:
+        cfg = load_key("higgsfield", ["key_id", "key_secret", "custom_reference_id"])
+        probe_id = "00000000-0000-0000-0000-000000000000"
+        try:
+            _req("%s/requests/%s/status" % (HF_HOST, probe_id), None, _hf_headers(cfg), "GET", 30)
+            print("  higgsfield key   : ok")
+        except SystemExit as e:
+            msg = str(e)
+            if " 404" in msg or "not found" in msg.lower():
+                print("  higgsfield key   : ok   (auth accepted)")
+            elif " 401" in msg or " 403" in msg:
+                print("  higgsfield key   : REJECTED — check key_id and key_secret")
+                ok = False
+            else:
+                print("  higgsfield key   : unclear — %s" % msg[:120])
+        print("  higgsfield char  : custom_reference_id set (only a real generation "
+              "can prove it is the right one)")
+    except SystemExit as e:
+        print("  higgsfield       : %s" % e)
+        ok = False
+
+    return ok

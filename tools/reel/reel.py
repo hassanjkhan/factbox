@@ -438,15 +438,28 @@ def cmd_render(run_dir, music=None, captions=1, **_):
     return doc
 
 
+def cmd_check(run_dir=None, **_):
+    """python3 tools/reel/reel.py check — are the keys good, before spending."""
+    import providers
+    return providers.check()
+
+
 STAGES = [("beats", cmd_beats), ("voice", cmd_voice), ("timeline", cmd_timeline),
           ("images", cmd_images), ("captions", cmd_captions), ("render", cmd_render)]
 
 
 def main(argv):
+    if len(argv) == 2 and argv[1] == "check":
+        sys.path.insert(0, HERE)
+        import providers
+        return 0 if providers.check() else 1
     if len(argv) < 3:
         print(__doc__)
         return 2
     stage, script_path = argv[1], argv[2]
+    if stage == "check":
+        import providers
+        raise SystemExit(0 if providers.check() else 1)
     opts = {}
     for a in argv[3:]:
         if a.startswith("--") and "=" in a:
