@@ -138,8 +138,18 @@ def say_one(text, out_wav, voice="Daniel", rate=190):
     os.remove(aiff)
 
 
-def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190, **_):
-    """Synthesise each sentence alone, measure it, join with a gap WE choose."""
+def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190,
+              tempo=1.0, **_):
+    """Synthesise each sentence alone, measure it, join with a gap WE choose.
+
+    TEMPO IS FREE AND SEPARATE FROM SPEED. ElevenLabs hard-caps voice speed at
+    1.2 — it rejects anything higher outright — and short-scene pacing wants
+    faster than that. So each paid sentence is kept as a .raw.wav and the
+    delivery speed is applied afterwards with ffmpeg atempo, which shortens the
+    audio without raising the pitch. Changing tempo therefore costs nothing and
+    never re-buys a character: the raw file is the receipt, the .wav is a
+    derived artefact. Durations are measured AFTER the change, so the cut
+    follows the new delivery automatically."""
     doc = read_json(run_dir, "beats.json")
     parts_dir = ensure(os.path.join(run_dir, "voice_parts"))
     parts, t = [], 0.0
@@ -151,21 +161,34 @@ def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190, 
         # would otherwise re-buy the entire voice track every time. The stamp
         # holds the text, voice and provider, so a REWRITTEN sentence is
         # correctly paid for again and an unchanged one is not.
-        stamp = wav + ".stamp"
+        raw = os.path.join(parts_dir, b["slug"] + ".raw.wav")
+        stamp = raw + ".stamp"
         want = "%s\n%s\n%s" % (provider, voice if provider == "say" else "", b["text"])
         have = open(stamp).read() if os.path.exists(stamp) else None
-        if os.path.exists(wav) and have == want:
+        if os.path.exists(raw) and have == want:
             reused += 1
         else:
             if provider == "say":
-                say_one(b["text"], wav, voice=voice, rate=rate)
+                say_one(b["text"], raw, voice=voice, rate=rate)
             elif provider == "elevenlabs":
                 import providers
-                providers.elevenlabs_say(b["text"], wav, run)
+                providers.elevenlabs_say(b["text"], raw, run)
             else:
                 raise SystemExit("unknown voice provider: " + provider)
             open(stamp, "w").write(want)
             spent += len(b["text"])
+        # atempo tops out at 2.0 per stage, so chain stages for anything faster
+        if abs(tempo - 1.0) < 0.001:
+            run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-c", "copy", wav])
+        else:
+            t, chain = tempo, []
+            while t > 2.0:
+                chain.append("atempo=2.0"); t /= 2.0
+            while t < 0.5:
+                chain.append("atempo=0.5"); t /= 0.5
+            chain.append("atempo=%.4f" % t)
+            run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-filter:a",
+                 ",".join(chain), wav])
         d = probe(wav)
         b["audio"] = os.path.relpath(wav, run_dir)
         b["start"] = round(t, 3)
@@ -185,7 +208,7 @@ def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190, 
     out = os.path.join(run_dir, "voice.wav")
     run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", listing,
          "-c", "copy", out])
-    doc["voice"] = {"provider": provider, "file": "voice.wav",
+    doc["voice"] = {"provider": provider, "file": "voice.wav", "tempo": tempo,
                     "join_gap": join_gap, "duration": round(probe(out), 3)}
     write_json(run_dir, "beats.json", doc)
     print("  voice            : %s, %d parts, %.2fs "
@@ -199,18 +222,73 @@ def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190, 
 
 # ------------------------------------------------------------- timeline ----
 
-def cmd_timeline(run_dir, **_):
-    """Deal images out inside each sentence. A sentence long enough for three
-    images gets three, a short one gets one. Every cut lands on speech, which
-    a fixed grid cannot promise."""
+def prompts_path(doc):
+    name = os.path.splitext(os.path.basename(doc["script"]))[0]
+    return os.path.join(HERE, "scripts", name + ".prompts.json")
+
+
+def load_prompts(doc):
+    """Prompts are keyed by BEAT — the sentence — not by shot. A value is either
+    one prompt, or a list of prompts for a sentence that earns more than one
+    picture. Returns {beat number: [prompt, ...]}."""
+    p = prompts_path(doc)
+    if not os.path.exists(p):
+        return {}
+    raw = json.load(open(p))
+    out = {}
+    for k, v in raw.items():
+        try:
+            n = int(k)
+        except ValueError:
+            continue
+        out[n] = [v] if isinstance(v, str) else list(v)
+    return out
+
+
+def _prompt_counts(doc):
+    return {k: len(v) for k, v in load_prompts(doc).items()}
+
+
+def cmd_timeline(run_dir, max_shot=0, **_):
+    """ONE IMAGE PER SENTENCE, HELD FOR AS LONG AS THE SENTENCE TAKES TO SAY.
+
+    This is the rule, and it overrides any target seconds-per-image. An image
+    illustrates a sentence, so it belongs on screen for exactly that sentence:
+    "It works." is under a second and "So according to the ancient historian
+    Plutarch, she has herself secretly carried into Caesar's quarters inside a
+    bedding sack" is five, and both get one picture. Cutting to a clock instead
+    splits a single thought across three frames and lands changes mid-phrase,
+    which is what makes an assembled reel feel assembled. Picture and voice
+    change together or the edit is fighting itself.
+
+    A SENTENCE MAY CARRY MORE THAN ONE IMAGE — but only when the sentence holds
+    more than one thing worth seeing, and that is a judgement about the story,
+    not about the clock. "Within weeks, Antony is dead, Cleopatra is dead, and
+    her dynasty is over" is three deaths and can take three pictures; "She has
+    been driven out of Egypt" is one picture however long it runs.
+
+    So the PROMPTS decide the cut, not arithmetic. A beat whose entry in
+    <script>.prompts.json is a list of two prompts gets two shots, splitting
+    that sentence's own time between them. Writing a second prompt IS the
+    decision to cut again, made where the scene is being imagined rather than
+    afterwards by a divider. A beat with a single prompt, or no prompts file at
+    all, gets one image for the whole sentence.
+
+    max_shot remains as a blunt fallback, off by default, for a long line with
+    no second prompt written for it yet."""
     doc = read_json(run_dir, "beats.json")
-    spi = doc.get("sec_per_image", 2.0)
+    per_beat = _prompt_counts(doc)
     shots = []
     for b in doc["beats"]:
-        n = max(1, int(round(b["dur"] / spi)))
+        n = per_beat.get(b["n"], 0)
+        if not n:
+            n = 1
+            if max_shot and b["dur"] > max_shot:
+                n = int(b["dur"] / max_shot) + 1
         each = b["dur"] / n
         for k in range(n):
-            shots.append({"i": len(shots) + 1, "beat": b["n"], "text": b["text"],
+            shots.append({"i": len(shots) + 1, "beat": b["n"], "sub": k,
+                          "of": n, "text": b["text"],
                           "slug": "%02d_%s" % (len(shots) + 1, slug(b["text"])),
                           "start": round(b["start"] + k * each, 3),
                           "dur": round(each, 3)})
@@ -224,10 +302,22 @@ def cmd_timeline(run_dir, **_):
         a["dur"] = round(b["start"] - a["start"], 3)
     shots[-1]["dur"] = round(doc["voice"]["duration"] - shots[-1]["start"], 3)
 
+    # Re-attach any image already generated for this slug. Rebuilding the
+    # timeline must never orphan pictures that are already paid for — and the
+    # timeline gets rebuilt every time a pacing rule changes.
+    img_dir = os.path.join(run_dir, "images")
+    for sh in shots:
+        f = os.path.join(img_dir, sh["slug"] + ".png")
+        if os.path.exists(f):
+            sh["image"] = os.path.relpath(f, run_dir)
+
     doc["shots"] = shots
     doc["duration"] = doc["voice"]["duration"]
     write_json(run_dir, "beats.json", doc)
-    print("  timeline         : %d shots over %.2fs (mean %.2fs on screen)"
+    print("  timeline         : %d shots over %.2fs (mean %.2fs on screen), %d with art"
+          % (len(shots), doc["duration"], doc["duration"] / len(shots),
+             sum(1 for x in shots if x.get("image"))) if False else
+          "  timeline         : %d shots over %.2fs (mean %.2fs on screen)"
           % (len(shots), doc["duration"], doc["duration"] / len(shots)))
     return doc
 
@@ -321,7 +411,7 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, **_):
             "  Each shot needs a written prompt — that is the one step still worth a\n"
             "  human's judgement and a model's time. Shape: {\"01\": \"SHOT 01 — ...\"}\n"
             "  with one entry per shot in beats.json." % pf)
-    prompts = json.load(open(pf))
+    prompts = load_prompts(doc)
     style = open(sf).read().strip() if os.path.exists(sf) else ""
     if not style:
         print("  WARNING          : no %s — every image will drift in style" % os.path.basename(sf))
@@ -335,27 +425,44 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, **_):
 
     failed = []
     for s in todo:
-        key = "%02d" % s["i"]
-        if key not in prompts:
-            failed.append((key, "no prompt in " + os.path.basename(pf)))
+        # Prompts are keyed by the SENTENCE, and a sentence may hold several.
+        # s["sub"] says which picture within that sentence this is.
+        group = prompts.get(s["beat"], [])
+        tag = "SHOT %02d" % s["beat"]
+        if s["sub"] >= len(group):
+            failed.append((tag, "sentence %d has %d prompt(s) but the timeline wants %d"
+                           % (s["beat"], len(group), s["of"])))
             continue
-        tag = "SHOT %s" % key
-        prompt = prompts[key].strip()
+        prompt = group[s["sub"]].strip()
+        if tag not in prompt:
+            failed.append((tag, "prompt is not tagged %s — refusing to spend a credit "
+                           "on a prompt that may belong to another sentence" % tag))
+            continue
+        # the base tag is what the guard counts inside the prompt; the label is
+        # only what gets printed, so a second picture on one sentence reads as
+        # 08.2 without breaking the check
+        label = "%s.%d" % (tag, s["sub"] + 1) if s["of"] > 1 else tag
         if style:
             prompt = prompt + "\n\n" + style
         p = os.path.join(d, s["slug"] + ".png")
         res = providers.higgsfield_image(prompt, p, tag)
         if res.get("ok"):
-            print("    %s ok" % tag)
+            print("    %s ok" % label)
         else:
-            failed.append((tag, res.get("why") + (" — " + res["hint"] if res.get("hint") else "")))
-            print("    %s FAILED: %s" % (tag, res.get("why")))
+            failed.append((label, res.get("why") + (" — " + res["hint"] if res.get("hint") else "")))
+            print("    %s FAILED: %s" % (label, res.get("why")))
 
-    for s in doc["shots"]:
+    # Re-read before writing. A batch takes half an hour, and the timeline can
+    # legitimately be rebuilt while it runs — a pacing rule changes, shots are
+    # renumbered. Writing back the copy loaded thirty minutes ago silently
+    # reverts all of it, which is exactly what happened once: a 20-shot
+    # timeline came back as 25 with the old numbering.
+    fresh = read_json(run_dir, "beats.json")
+    for s in fresh["shots"]:
         p = os.path.join(d, s["slug"] + ".png")
         if os.path.exists(p):
             s["image"] = os.path.relpath(p, run_dir)
-    write_json(run_dir, "beats.json", doc)
+    write_json(run_dir, "beats.json", fresh)
 
     if failed:
         print("  %d shot(s) need rewording:" % len(failed))
@@ -476,10 +583,10 @@ def cmd_capcut(run_dir, project=None, **_):
         raise SystemExit("CapCut is running — quit it first. It holds the project "
                          "list in memory and will write over a draft added behind "
                          "its back.")
-    folder, nv, nt = capcut.build(run_dir, doc, name)
+    folder, nv, nt, na = capcut.build(run_dir, doc, name)
     print("  capcut           : %s" % folder)
-    print("                     %d images, 1 voice track, %d captions, %.2fs"
-          % (nv, nt, doc["duration"]))
+    print("                     %d images, %d voice clips, %d captions, %.2fs"
+          % (nv, na, nt, doc["duration"]))
     return doc
 
 

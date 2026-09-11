@@ -122,6 +122,11 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600):
     if prompt.count(tag) != 1:
         raise SystemExit("prompt for %s does not carry its tag exactly once — refusing "
                          "to spend a credit on an ambiguous prompt" % tag)
+    # enhance_prompt defaults OFF. It rewrites the prompt before generation,
+    # and a rewrite is where negative constraints go to die: shot 01 came back
+    # with the exact heavy black wig the style guide forbids by name. The
+    # style guide only works if it arrives verbatim.
+    #
     # soul/character needs a locked character; soul/standard does not. Without
     # a reference id the written appearance block in the prompt carries the
     # consistency on its own — which the manual workflow found matters MORE
@@ -132,7 +137,7 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600):
         "prompt": prompt,
         "aspect_ratio": cfg.get("aspect_ratio", "9:16"),
         "resolution": cfg.get("resolution", "1080p"),
-        "enhance_prompt": cfg.get("enhance_prompt", True),
+        "enhance_prompt": cfg.get("enhance_prompt", False),
     }
     if locked:
         body["custom_reference_id"] = ref

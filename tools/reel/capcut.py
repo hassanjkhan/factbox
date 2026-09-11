@@ -36,6 +36,14 @@ PROJECTS = os.path.expanduser(
     "~/Movies/CapCut/User Data/Projects/com.lveditor.draft")
 US = 1000000  # CapCut counts in microseconds
 
+# Captions are set in CapCut's OWN bundled face, not a vendored one. A draft
+# that references a font from outside the app opens with the font silently
+# substituted; this one is guaranteed present wherever CapCut is.
+CAPCUT_FONT = ("/Applications/CapCut.app/Contents/Resources/Font/SystemFont/"
+               "CapCutSansText-Bold.otf")
+CAPTION_SIZE = 9.0        # CapCut's own units, not points
+CAPTION_Y = -0.72         # low in frame, clear of the phone UI at the bottom
+
 
 def uid():
     h = "%032X" % random.getrandbits(128)
@@ -142,7 +150,20 @@ def _stage_assets(run_dir, doc, folder):
     vdst = os.path.join(md, "voice.wav")
     if os.path.exists(vsrc):
         shutil.copyfile(vsrc, vdst)
-    return mapping, vdst
+    # Each sentence goes in as its OWN file. The merged voice.wav is still
+    # written for the mp4 render, but the timeline gets one clip per sentence
+    # so a sentence can be dragged, held or retimed with the image it belongs
+    # to. One welded audio blob makes every one of those edits a razor cut
+    # first.
+    voices = {}
+    for b in doc["beats"]:
+        src = os.path.abspath(os.path.join(run_dir, b.get("audio", "")))
+        if not b.get("audio") or not os.path.exists(src):
+            continue
+        dst = os.path.join(md, os.path.basename(src))
+        shutil.copyfile(src, dst)
+        voices[b["n"]] = dst
+    return mapping, vdst, voices
 
 
 def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
@@ -165,7 +186,7 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
     if os.path.exists(folder):
         shutil.rmtree(folder)
     os.makedirs(folder)
-    staged, voice_path = _stage_assets(run_dir, doc, folder)
+    staged, voice_path, voices = _stage_assets(run_dir, doc, folder)
 
     out = copy.deepcopy(tpl)
     # every managed bucket starts empty; anything we do not rebuild is cleared
@@ -226,25 +247,32 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
         vsegs.append(seg)
 
     # -------------------------------------------------------------- voice --
-    voice = voice_path
-    am = copy.deepcopy(audio_m)
-    am["id"] = uid()
-    am["path"] = voice
-    am["name"] = "voice"
-    am["duration"] = us(total)
-    am["music_id"] = ""
-    M.setdefault("audios", []).append(am)
-    aseg = copy.deepcopy(audio_seg)
-    aseg["id"] = uid()
-    aseg["material_id"] = am["id"]
-    aseg["extra_material_refs"] = _clone_extras(
-        TM, home, audio_seg.get("extra_material_refs", []), M)
-    aseg["target_timerange"] = {"start": 0, "duration": us(total)}
-    aseg["source_timerange"] = {"start": 0, "duration": us(total)}
-    aseg["speed"] = 1.0
-    aseg["volume"] = 1.0
-    aseg["common_keyframes"] = []
-    aseg["keyframe_refs"] = []
+    asegs = []
+    for b in doc["beats"]:
+        src = voices.get(b["n"])
+        if not src:
+            continue
+        am = copy.deepcopy(audio_m)
+        am["id"] = uid()
+        am["path"] = src
+        am["name"] = "%02d" % b["n"]
+        am["duration"] = us(b["dur"])
+        am["music_id"] = ""
+        M.setdefault("audios", []).append(am)
+        seg = copy.deepcopy(audio_seg)
+        seg["id"] = uid()
+        seg["material_id"] = am["id"]
+        seg["extra_material_refs"] = _clone_extras(
+            TM, home, audio_seg.get("extra_material_refs", []), M)
+        seg["target_timerange"] = {"start": us(b["start"]), "duration": us(b["dur"])}
+        seg["source_timerange"] = {"start": 0, "duration": us(b["dur"])}
+        seg["speed"] = 1.0
+        seg["volume"] = 1.0
+        seg["common_keyframes"] = []
+        seg["keyframe_refs"] = []
+        asegs.append(seg)
+    if not asegs:
+        raise SystemExit("no per-sentence audio staged — run the voice stage first")
 
     # ----------------------------------------------------------- captions --
     tsegs = []
@@ -255,8 +283,26 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
             tm["id"] = uid()
             content = copy.deepcopy(proto_content)
             content["text"] = b["text"]
-            for st in content.get("styles", []):
-                st["range"] = [0, len(b["text"])]
+            # One style spanning the whole line. The prototype can carry several
+            # ranges from whatever it was cloned from, and leaving them in means
+            # the first few characters are styled differently from the rest.
+            styles = content.get("styles") or [{}]
+            st = copy.deepcopy(styles[0])
+            st["range"] = [0, len(b["text"])]
+            st["size"] = CAPTION_SIZE
+            st["bold"] = True
+            st["italic"] = False
+            st["useLetterColor"] = True
+            st["fill"] = {"alpha": 1.0, "content": {"render_type": "solid",
+                          "solid": {"alpha": 1.0, "color": [1.0, 1.0, 1.0]}}}
+            # A white caption over a pale illustration is unreadable without
+            # this. The outline is what makes it land on ANY frame.
+            st["strokes"] = [{"alpha": 1.0, "width": 0.08,
+                              "content": {"render_type": "solid",
+                                          "solid": {"alpha": 1.0,
+                                                    "color": [0.0, 0.0, 0.0]}}}]
+            st["font"] = {"id": "", "path": CAPCUT_FONT}
+            content["styles"] = [st]
             tm["content"] = json.dumps(content)
             tm["base_content"] = b["text"]
             M.setdefault("texts", []).append(tm)
@@ -268,6 +314,11 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
                 TM, home, text_seg.get("extra_material_refs", []), M)
             ts["target_timerange"] = {"start": us(b["start"]),
                                       "duration": us(b["end"] - b["start"])}
+            ts["clip"] = {"scale": {"x": 1.0, "y": 1.0}, "rotation": 0.0,
+                          "transform": {"x": 0.0, "y": CAPTION_Y},
+                          "flip": {"vertical": False, "horizontal": False},
+                          "alpha": 1.0}
+            ts["uniform_scale"] = {"on": True, "value": 1.0}
             ts["source_timerange"] = None
             ts["render_index"] = 14000 + i
             ts["common_keyframes"] = []
@@ -279,7 +330,7 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
         return {"attribute": 0, "flag": 0, "id": uid(), "is_default_name": True,
                 "name": "", "segments": segs, "type": kind}
 
-    out["tracks"] = [track("video", vsegs, 0), track("audio", [aseg], 1)]
+    out["tracks"] = [track("video", vsegs, 0), track("audio", asegs, 1)]
     if tsegs:
         out["tracks"].append(track("text", tsegs, 2))
 
@@ -289,12 +340,12 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
         json.dump(out, fh)
 
     meta = _meta(tpl_path, folder, project_name, doc, run_dir, us(total),
-                 staged, voice_path)
+                 staged, voice_path, voices)
     with open(os.path.join(folder, "draft_meta_info.json"), "w") as fh:
         json.dump(meta, fh)
 
     _register(projects, folder, project_name, meta["draft_id"], us(total))
-    return folder, len(vsegs), len(tsegs)
+    return folder, len(vsegs), len(tsegs), len(asegs)
 
 
 def _seg_for(draft, material_id, kind):
@@ -307,7 +358,8 @@ def _seg_for(draft, material_id, kind):
     return None
 
 
-def _meta(tpl_path, folder, name, doc, run_dir, duration_us, staged, voice_path):
+def _meta(tpl_path, folder, name, doc, run_dir, duration_us, staged, voice_path,
+          voices):
     """draft_meta_info.json — what the project is, and every file it leans on.
     CapCut uses the materials list to know what to re-link when a file moves."""
     tpl = json.load(open(os.path.join(os.path.dirname(tpl_path),
@@ -341,12 +393,12 @@ def _meta(tpl_path, folder, name, doc, run_dir, duration_us, staged, voice_path)
                        "duration": 10800000000, "metetype": "photo", "type": 0,
                        "md5": "", "extra_info": os.path.basename(p)})
             items.append(it)
-        v = voice_path
-        it = copy.deepcopy(proto)
-        it.update({"id": uid(), "file_Path": v, "duration": duration_us,
-                   "metetype": "music", "type": 0, "md5": "",
-                   "extra_info": os.path.basename(v)})
-        items.append(it)
+        for n in sorted(voices):
+            v = voices[n]
+            it = copy.deepcopy(proto)
+            it.update({"id": uid(), "file_Path": v, "metetype": "music",
+                       "type": 0, "md5": "", "extra_info": os.path.basename(v)})
+            items.append(it)
     for bucket in m.get("draft_materials", []):
         bucket["value"] = items if bucket.get("type") == 0 else []
     return m
