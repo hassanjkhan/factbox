@@ -184,7 +184,13 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600,
     }
     if reference_url:
         body["image_reference_url"] = reference_url
-        body["num_images"] = 1
+        body["batch_size"] = 1
+        # style_strength defaults to 1 — MAXIMUM. Left alone, the reference
+        # does not anchor the scene, it REPLACES it: twenty prompts came back
+        # as twenty near-copies of the reference standing on a plain
+        # background, with no scene at all. Low enough to carry the face and
+        # the drawing style, not so high that it dictates the composition.
+        body["style_strength"] = float(cfg.get("reference_strength", 0.35))
     elif locked:
         body["custom_reference_id"] = ref
         body["custom_reference_strength"] = cfg.get("custom_reference_strength", 0.8)
