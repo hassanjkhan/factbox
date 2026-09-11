@@ -109,7 +109,7 @@ def write_json(run_dir, name, doc):
 
 # ---------------------------------------------------------------- beats ----
 
-def cmd_beats(run_dir, script_path=None, sec_per_image=0.7, **_):
+def cmd_beats(run_dir, script_path=None, sec_per_image=2.0, **_):
     """The script becomes a list of sentences. A sentence is the unit of
     timing; images get dealt out inside it later."""
     lines = [l.strip() for l in open(script_path).read().splitlines()]
@@ -143,15 +143,29 @@ def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190, 
     doc = read_json(run_dir, "beats.json")
     parts_dir = ensure(os.path.join(run_dir, "voice_parts"))
     parts, t = [], 0.0
+    reused, spent = 0, 0
     for b in doc["beats"]:
         wav = os.path.join(parts_dir, b["slug"] + ".wav")
-        if provider == "say":
-            say_one(b["text"], wav, voice=voice, rate=rate)
-        elif provider == "elevenlabs":
-            import providers
-            providers.elevenlabs_say(b["text"], wav, run)
+        # A sentence is only ever synthesised once. ElevenLabs bills per
+        # character, and re-running the pipeline to fix an image or a caption
+        # would otherwise re-buy the entire voice track every time. The stamp
+        # holds the text, voice and provider, so a REWRITTEN sentence is
+        # correctly paid for again and an unchanged one is not.
+        stamp = wav + ".stamp"
+        want = "%s\n%s\n%s" % (provider, voice if provider == "say" else "", b["text"])
+        have = open(stamp).read() if os.path.exists(stamp) else None
+        if os.path.exists(wav) and have == want:
+            reused += 1
         else:
-            raise SystemExit("unknown voice provider: " + provider)
+            if provider == "say":
+                say_one(b["text"], wav, voice=voice, rate=rate)
+            elif provider == "elevenlabs":
+                import providers
+                providers.elevenlabs_say(b["text"], wav, run)
+            else:
+                raise SystemExit("unknown voice provider: " + provider)
+            open(stamp, "w").write(want)
+            spent += len(b["text"])
         d = probe(wav)
         b["audio"] = os.path.relpath(wav, run_dir)
         b["start"] = round(t, 3)
@@ -177,6 +191,9 @@ def cmd_voice(run_dir, provider="say", join_gap=0.10, voice="Daniel", rate=190, 
     print("  voice            : %s, %d parts, %.2fs "
           "(the %.2fs gaps are chosen, not left over)"
           % (provider, len(parts), doc["voice"]["duration"], join_gap))
+    if provider == "elevenlabs":
+        print("                     %d characters bought, %d sentences reused free"
+              % (spent, reused))
     return doc
 
 
@@ -187,7 +204,7 @@ def cmd_timeline(run_dir, **_):
     images gets three, a short one gets one. Every cut lands on speech, which
     a fixed grid cannot promise."""
     doc = read_json(run_dir, "beats.json")
-    spi = doc.get("sec_per_image", 0.7)
+    spi = doc.get("sec_per_image", 2.0)
     shots = []
     for b in doc["beats"]:
         n = max(1, int(round(b["dur"] / spi)))
