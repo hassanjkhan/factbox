@@ -197,6 +197,16 @@ def cmd_timeline(run_dir, **_):
                           "slug": "%02d_%s" % (len(shots) + 1, slug(b["text"])),
                           "start": round(b["start"] + k * each, 3),
                           "dur": round(each, 3)})
+    # Sentences are separated by a chosen join gap, so shots laid strictly
+    # inside their sentence leave a hole at every join — nineteen of them on
+    # this script. On a timeline that is a blank frame; in a straight concat
+    # render it is worse, because the images close up and drift ahead of the
+    # voice a little further at every join. Stretch each shot to meet the next
+    # one so the track is continuous and every image stays on its own words.
+    for a, b in zip(shots, shots[1:]):
+        a["dur"] = round(b["start"] - a["start"], 3)
+    shots[-1]["dur"] = round(doc["voice"]["duration"] - shots[-1]["start"], 3)
+
     doc["shots"] = shots
     doc["duration"] = doc["voice"]["duration"]
     write_json(run_dir, "beats.json", doc)
@@ -438,6 +448,24 @@ def cmd_render(run_dir, music=None, captions=1, **_):
     return doc
 
 
+def cmd_capcut(run_dir, project=None, **_):
+    """Hand the whole cut to CapCut, laid out and timed, so the only work left
+    is the work that needs a person."""
+    sys.path.insert(0, HERE)
+    import capcut
+    doc = read_json(run_dir, "beats.json")
+    name = project or ("factbox_" + os.path.basename(run_dir))
+    if os.popen("pgrep -x CapCut").read().strip():
+        raise SystemExit("CapCut is running — quit it first. It holds the project "
+                         "list in memory and will write over a draft added behind "
+                         "its back.")
+    folder, nv, nt = capcut.build(run_dir, doc, name)
+    print("  capcut           : %s" % folder)
+    print("                     %d images, 1 voice track, %d captions, %.2fs"
+          % (nv, nt, doc["duration"]))
+    return doc
+
+
 def cmd_check(run_dir=None, **_):
     """python3 tools/reel/reel.py check — are the keys good, before spending."""
     import providers
@@ -445,7 +473,8 @@ def cmd_check(run_dir=None, **_):
 
 
 STAGES = [("beats", cmd_beats), ("voice", cmd_voice), ("timeline", cmd_timeline),
-          ("images", cmd_images), ("captions", cmd_captions), ("render", cmd_render)]
+          ("images", cmd_images), ("captions", cmd_captions), ("render", cmd_render),
+          ("capcut", cmd_capcut)]
 
 
 def main(argv):
