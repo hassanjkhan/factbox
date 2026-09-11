@@ -25,6 +25,12 @@ rotated, which is the whole argument.
 import json, os, sys, time, urllib.request, urllib.error
 
 KEYS = os.path.expanduser("~/.factbox-keys")
+# Higgsfield sits behind Cloudflare, which rejects Python's default
+# User-Agent outright: every request comes back "error code: 1010" no matter
+# which header or path is used, which reads exactly like a bad credential and
+# is not. A normal browser UA is the whole fix.
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 EL_HOST = "https://api.elevenlabs.io"
 HF_HOST = "https://api.higgsfield.ai"
 
@@ -50,6 +56,7 @@ def load_key(name, required):
 def _req(url, data=None, headers=None, method=None, timeout=180):
     body = json.dumps(data).encode() if data is not None else None
     r = urllib.request.Request(url, data=body, method=method or ("POST" if body else "GET"))
+    r.add_header("User-Agent", UA)
     for k, v in (headers or {}).items():
         r.add_header(k, v)
     if body is not None:
@@ -109,26 +116,37 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600):
     because it also catches a prompts file that has drifted out of step with
     the timeline, which is the same failure with a different cause.
     """
-    cfg = load_key("higgsfield", ["key_id", "key_secret", "custom_reference_id"])
+    cfg = load_key("higgsfield", ["key_id", "key_secret"])
+    ref = str(cfg.get("custom_reference_id") or "")
+    locked = bool(ref) and "PASTE" not in ref
     if prompt.count(tag) != 1:
         raise SystemExit("prompt for %s does not carry its tag exactly once — refusing "
                          "to spend a credit on an ambiguous prompt" % tag)
+    # soul/character needs a locked character; soul/standard does not. Without
+    # a reference id the written appearance block in the prompt carries the
+    # consistency on its own — which the manual workflow found matters MORE
+    # than the reference slot anyway, since the reference thumbnail is too
+    # small to tell two similar faces apart.
+    endpoint = "/higgsfield-ai/soul/character" if locked else "/higgsfield-ai/soul/standard"
     body = {
         "prompt": prompt,
-        "custom_reference_id": cfg["custom_reference_id"],
-        "custom_reference_strength": cfg.get("custom_reference_strength", 0.8),
         "aspect_ratio": cfg.get("aspect_ratio", "9:16"),
         "resolution": cfg.get("resolution", "1080p"),
-        "batch_size": 1,
         "enhance_prompt": cfg.get("enhance_prompt", True),
     }
+    if locked:
+        body["custom_reference_id"] = ref
+        body["custom_reference_strength"] = cfg.get("custom_reference_strength", 0.8)
+        body["batch_size"] = 1
+    else:
+        body["num_images"] = 1
     if cfg.get("style_id"):
         body["style_id"] = cfg["style_id"]
         body["style_strength"] = cfg.get("style_strength", 1.0)
     if cfg.get("seed"):
         body["seed"] = int(cfg["seed"])
 
-    raw, _ = _req(HF_HOST + "/higgsfield-ai/soul/character", body, _hf_headers(cfg))
+    raw, _ = _req(HF_HOST + endpoint, body, _hf_headers(cfg))
     job = json.loads(raw)
     rid = job.get("request_id") or job.get("id")
     if not rid:
@@ -173,21 +191,59 @@ def check():
     """
     ok = True
 
-    # --- ElevenLabs: the key and the voice, both free to ask about ---------
+    # --- ElevenLabs ---------------------------------------------------------
+    # A key can be created with a narrow scope, and a scoped key is a GOOD key.
+    # "missing_permissions" therefore proves the credential is valid and only
+    # says this particular door is shut; "invalid_api_key" is the real failure.
+    # What has to work is text-to-speech, so that is what gets checked last.
     try:
         cfg = load_key("elevenlabs", ["api_key", "voice_id"])
-        raw, _ = _req(EL_HOST + "/v1/user", None, {"xi-api-key": cfg["api_key"]}, "GET", 30)
-        u = json.loads(raw)
-        sub = u.get("subscription") or {}
-        used = sub.get("character_count")
-        cap = sub.get("character_limit")
-        print("  elevenlabs key   : ok   tier=%s%s"
-              % (sub.get("tier", "?"),
-                 ("  used %s/%s characters" % (used, cap)) if cap else ""))
-        raw, _ = _req(EL_HOST + "/v1/voices/" + cfg["voice_id"], None,
-                      {"xi-api-key": cfg["api_key"]}, "GET", 30)
-        v = json.loads(raw)
-        print("  elevenlabs voice : ok   \"%s\"" % v.get("name", "?"))
+        hdr = {"xi-api-key": cfg["api_key"]}
+        valid = None
+        try:
+            raw, _ = _req(EL_HOST + "/v1/user", None, hdr, "GET", 30)
+            sub = (json.loads(raw).get("subscription") or {})
+            print("  elevenlabs key   : ok   tier=%s  used %s/%s characters"
+                  % (sub.get("tier", "?"), sub.get("character_count", "?"),
+                     sub.get("character_limit", "?")))
+            valid = True
+        except SystemExit as e:
+            if "missing_permissions" in str(e):
+                print("  elevenlabs key   : ok   (valid, without the user_read scope — "
+                      "cannot show your credit balance, nothing else affected)")
+                valid = True
+            elif "invalid_api_key" in str(e) or " 401" in str(e):
+                print("  elevenlabs key   : REJECTED — the key itself is wrong")
+                valid = False
+            else:
+                raise
+
+        if valid:
+            try:
+                raw, _ = _req(EL_HOST + "/v1/voices/" + cfg["voice_id"], None, hdr, "GET", 30)
+                print("  elevenlabs voice : ok   \"%s\"" % json.loads(raw).get("name", "?"))
+            except SystemExit as e:
+                if "missing_permissions" in str(e):
+                    print("  elevenlabs voice : cannot verify (no voices_read scope) — "
+                          "the first sentence generated will prove it")
+                elif " 404" in str(e):
+                    print("  elevenlabs voice : NOT FOUND — check the voice_id")
+                    ok = False
+                else:
+                    raise
+            # the only permission that actually matters
+            try:
+                raw, ctype = _req(EL_HOST + "/v1/text-to-speech/" + cfg["voice_id"],
+                                  {"text": "Test.", "model_id": cfg.get("model_id",
+                                   "eleven_multilingual_v2")},
+                                  dict(hdr, **{"Accept": "audio/mpeg"}), None, 60)
+                print("  text-to-speech   : ok   (%d bytes of audio for a 5-character test)"
+                      % len(raw))
+            except SystemExit as e:
+                print("  text-to-speech   : FAILED — %s" % str(e)[:150])
+                ok = False
+        else:
+            ok = False
     except SystemExit as e:
         print("  elevenlabs       : %s" % e)
         ok = False
@@ -196,7 +252,7 @@ def check():
     # 404 means the credential was accepted and the id simply is not there,
     # which is exactly what we want to learn. 401/403 means the key is wrong.
     try:
-        cfg = load_key("higgsfield", ["key_id", "key_secret", "custom_reference_id"])
+        cfg = load_key("higgsfield", ["key_id", "key_secret"])
         probe_id = "00000000-0000-0000-0000-000000000000"
         try:
             _req("%s/requests/%s/status" % (HF_HOST, probe_id), None, _hf_headers(cfg), "GET", 30)
@@ -210,8 +266,12 @@ def check():
                 ok = False
             else:
                 print("  higgsfield key   : unclear — %s" % msg[:120])
-        print("  higgsfield char  : custom_reference_id set (only a real generation "
-              "can prove it is the right one)")
+        ref = str(cfg.get("custom_reference_id") or "")
+        if ref and "PASTE" not in ref:
+            print("  higgsfield char  : locked character set — soul/character")
+        else:
+            print("  higgsfield char  : NO locked character yet — will use soul/standard "
+                  "and carry the look in the written prompt")
     except SystemExit as e:
         print("  higgsfield       : %s" % e)
         ok = False
