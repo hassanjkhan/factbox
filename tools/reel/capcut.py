@@ -118,6 +118,33 @@ def _clone_extras(tpl_materials, home, ref_ids, out_materials):
     return new_refs
 
 
+def _stage_assets(run_dir, doc, folder):
+    """Copy every image and the voice into the draft folder.
+
+    CapCut is sandboxed. It cannot read ~/factbox, or anywhere else it was not
+    explicitly granted, and a draft pointing there opens with "Couldn't find
+    some of the imported media files — 0/70 linked". Its own projects keep
+    media inside the draft (that is what the ##_draftpath_placeholder_## paths
+    in a real draft are), so we do the same. It also makes the project
+    portable: the folder carries everything it needs."""
+    md = os.path.join(folder, "materials")
+    os.makedirs(md, exist_ok=True)
+    mapping = {}
+    for s in doc["shots"]:
+        src = os.path.abspath(os.path.join(run_dir, s["image"]))
+        if not os.path.exists(src):
+            continue
+        dst = os.path.join(md, os.path.basename(src))
+        if not os.path.exists(dst):
+            shutil.copyfile(src, dst)
+        mapping[s["i"]] = dst
+    vsrc = os.path.abspath(os.path.join(run_dir, "voice.wav"))
+    vdst = os.path.join(md, "voice.wav")
+    if os.path.exists(vsrc):
+        shutil.copyfile(vsrc, vdst)
+    return mapping, vdst
+
+
 def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
     tpl_path, tpl = pick_template(projects)
     TM = tpl["materials"]
@@ -133,6 +160,12 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
     if not (photo_seg and audio_seg and text_seg):
         raise SystemExit("template %s is missing a photo, audio or text SEGMENT"
                          % os.path.dirname(tpl_path))
+
+    folder = os.path.join(projects, project_name)
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
+    os.makedirs(folder)
+    staged, voice_path = _stage_assets(run_dir, doc, folder)
 
     out = copy.deepcopy(tpl)
     # every managed bucket starts empty; anything we do not rebuild is cleared
@@ -155,8 +188,8 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
     # ------------------------------------------------------------- images --
     vsegs = []
     for i, s in enumerate(doc["shots"]):
-        img = os.path.abspath(os.path.join(run_dir, s["image"]))
-        if not os.path.exists(img):
+        img = staged.get(s["i"])
+        if not img:
             continue
         m = copy.deepcopy(photo_m)
         m["id"] = uid()
@@ -193,7 +226,7 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
         vsegs.append(seg)
 
     # -------------------------------------------------------------- voice --
-    voice = os.path.abspath(os.path.join(run_dir, "voice.wav"))
+    voice = voice_path
     am = copy.deepcopy(audio_m)
     am["id"] = uid()
     am["path"] = voice
@@ -251,15 +284,12 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
         out["tracks"].append(track("text", tsegs, 2))
 
     # ---------------------------------------------------------- on to disk --
-    folder = os.path.join(projects, project_name)
-    if os.path.exists(folder):
-        shutil.rmtree(folder)
-    os.makedirs(folder)
     out["path"] = folder
     with open(os.path.join(folder, "draft_info.json"), "w") as fh:
         json.dump(out, fh)
 
-    meta = _meta(tpl_path, folder, project_name, doc, run_dir, us(total))
+    meta = _meta(tpl_path, folder, project_name, doc, run_dir, us(total),
+                 staged, voice_path)
     with open(os.path.join(folder, "draft_meta_info.json"), "w") as fh:
         json.dump(meta, fh)
 
@@ -277,7 +307,7 @@ def _seg_for(draft, material_id, kind):
     return None
 
 
-def _meta(tpl_path, folder, name, doc, run_dir, duration_us):
+def _meta(tpl_path, folder, name, doc, run_dir, duration_us, staged, voice_path):
     """draft_meta_info.json — what the project is, and every file it leans on.
     CapCut uses the materials list to know what to re-link when a file moves."""
     tpl = json.load(open(os.path.join(os.path.dirname(tpl_path),
@@ -300,18 +330,22 @@ def _meta(tpl_path, folder, name, doc, run_dir, duration_us):
     items = []
     if proto:
         for s in doc["shots"]:
-            p = os.path.abspath(os.path.join(run_dir, s["image"]))
-            if not os.path.exists(p):
+            p = staged.get(s["i"])
+            if not p:
                 continue
             it = copy.deepcopy(proto)
+            # extra_info is what the media bin DISPLAYS. Left at the
+            # prototype's value every clip is labelled IMG_9247.MOV and the bin
+            # cannot be used to find a shot — which is most of what it is for.
             it.update({"id": uid(), "file_Path": p, "width": 1080, "height": 1920,
                        "duration": 10800000000, "metetype": "photo", "type": 0,
-                       "md5": ""})
+                       "md5": "", "extra_info": os.path.basename(p)})
             items.append(it)
-        v = os.path.abspath(os.path.join(run_dir, "voice.wav"))
+        v = voice_path
         it = copy.deepcopy(proto)
         it.update({"id": uid(), "file_Path": v, "duration": duration_us,
-                   "metetype": "music", "type": 0, "md5": ""})
+                   "metetype": "music", "type": 0, "md5": "",
+                   "extra_info": os.path.basename(v)})
         items.append(it)
     for bucket in m.get("draft_materials", []):
         bucket["value"] = items if bucket.get("type") == 0 else []
