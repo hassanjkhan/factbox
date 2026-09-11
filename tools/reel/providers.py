@@ -106,7 +106,40 @@ def _hf_headers(cfg):
     return {"Authorization": "Key %s:%s" % (cfg["key_id"], cfg["key_secret"])}
 
 
-def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600):
+def higgsfield_upload(path):
+    """Put a local image somewhere Higgsfield can read it, and return the URL.
+
+    This is what makes a CHARACTER REFERENCE possible without the browser: one
+    approved picture of the person is uploaded once, and every later scene is
+    generated against it. Without a reference, twenty prompts become twenty
+    different women in twenty different drawing styles, however carefully the
+    appearance is described in words."""
+    cfg = load_key("higgsfield", ["key_id", "key_secret"])
+    ext = os.path.splitext(path)[1].lower()
+    ctype = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+             ".webp": "image/webp"}.get(ext, "image/png")
+    raw, _ = _req(HF_HOST + "/files/generate-upload-url", {"content_type": ctype},
+                  _hf_headers(cfg))
+    j = json.loads(raw)
+    put = urllib.request.Request(j["upload_url"], data=open(path, "rb").read(),
+                                 method="PUT")
+    put.add_header("User-Agent", UA)
+    for k, v in (j.get("upload_headers") or {}).items():
+        put.add_header(k, v)
+    if not (j.get("upload_headers") or {}).get("Content-Type"):
+        put.add_header("Content-Type", ctype)
+    try:
+        with urllib.request.urlopen(put, timeout=180) as resp:
+            if resp.status not in (200, 201, 204):
+                raise SystemExit("upload returned %s" % resp.status)
+    except urllib.error.HTTPError as e:
+        raise SystemExit("upload failed: %s %s"
+                         % (e.code, (e.read() or b"")[:200].decode("utf-8", "replace")))
+    return j["public_url"]
+
+
+def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600,
+                     reference_url=None):
     """Submit one prompt, wait for it, save the image.
 
     The guard that matters: the tag (SHOT 07) must appear in the prompt we
@@ -119,7 +152,8 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600):
     cfg = load_key("higgsfield", ["key_id", "key_secret"])
     ref = str(cfg.get("custom_reference_id") or "")
     locked = bool(ref) and "PASTE" not in ref
-    if prompt.count(tag) != 1:
+    # A character sheet has no shot to belong to, so there is nothing to check.
+    if tag and prompt.count(tag) != 1:
         raise SystemExit("prompt for %s does not carry its tag exactly once — refusing "
                          "to spend a credit on an ambiguous prompt" % tag)
     # enhance_prompt defaults OFF. It rewrites the prompt before generation,
@@ -132,14 +166,26 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600):
     # consistency on its own — which the manual workflow found matters MORE
     # than the reference slot anyway, since the reference thumbnail is too
     # small to tell two similar faces apart.
-    endpoint = "/higgsfield-ai/soul/character" if locked else "/higgsfield-ai/soul/standard"
+    # soul/reference anchors every frame to one approved picture — the
+    # character AND the drawing style come from it. That is the whole reason
+    # a set holds together. soul/character does the same through a reference
+    # locked in the UI; soul/standard has nothing to hold on to at all.
+    if reference_url:
+        endpoint = "/higgsfield-ai/soul/reference"
+    elif locked:
+        endpoint = "/higgsfield-ai/soul/character"
+    else:
+        endpoint = "/higgsfield-ai/soul/standard"
     body = {
         "prompt": prompt,
         "aspect_ratio": cfg.get("aspect_ratio", "9:16"),
         "resolution": cfg.get("resolution", "1080p"),
         "enhance_prompt": cfg.get("enhance_prompt", False),
     }
-    if locked:
+    if reference_url:
+        body["image_reference_url"] = reference_url
+        body["num_images"] = 1
+    elif locked:
         body["custom_reference_id"] = ref
         body["custom_reference_strength"] = cfg.get("custom_reference_strength", 0.8)
         body["batch_size"] = 1

@@ -385,7 +385,42 @@ def cmd_images(run_dir, provider="placeholder", **_):
     return doc
 
 
-def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, **_):
+def cmd_character(run_dir, force=0, **_):
+    """Generate ONE picture of the person, alone, before any scene exists.
+
+    This is the step that makes a set a set. A character described only in
+    words comes back as a different woman every time, in a different drawing
+    style, because each prompt is interpreted on its own. One approved picture,
+    reused as the reference for every later frame, carries both the face and
+    the aesthetic. Tight single figure on a plain background — a finished scene
+    used as a reference drags its own composition into every shot and tends to
+    duplicate the character into the background."""
+    import providers
+    doc = read_json(run_dir, "beats.json")
+    name = os.path.splitext(os.path.basename(doc["script"]))[0]
+    cf = os.path.join(HERE, "scripts", name + ".character.txt")
+    if not os.path.exists(cf):
+        raise SystemExit("no character sheet prompt at %s" % cf)
+    out = os.path.join(run_dir, "character.png")
+    if os.path.exists(out) and not force:
+        print("  character        : already generated — %s" % out)
+        print("                     pass --force=1 to replace it")
+        return doc
+    house = os.path.join(HERE, "house-style.txt")
+    prompt = open(cf).read().strip()
+    if os.path.exists(house):
+        prompt = prompt + "\n\n" + open(house).read().strip()
+    res = providers.higgsfield_image(prompt, out, None)
+    if not res.get("ok"):
+        raise SystemExit("character sheet failed: %s" % res.get("why"))
+    doc.pop("reference_url", None)      # a new face means the old upload is stale
+    write_json(run_dir, "beats.json", doc)
+    print("  character        : %s" % out)
+    print("                     LOOK AT IT. Everything else will be built to match.")
+    return doc
+
+
+def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
     """Real images, real money. Three rules are enforced here rather than
     trusted to whoever runs it:
 
@@ -405,6 +440,7 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, **_):
     base = os.path.join(HERE, "scripts")
     pf = os.path.join(base, name + ".prompts.json")
     sf = os.path.join(base, name + ".style.txt")
+    hf = os.path.join(HERE, "house-style.txt")
     if not os.path.exists(pf):
         raise SystemExit(
             "no prompts file at %s\n"
@@ -412,9 +448,33 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, **_):
             "  human's judgement and a model's time. Shape: {\"01\": \"SHOT 01 — ...\"}\n"
             "  with one entry per shot in beats.json." % pf)
     prompts = load_prompts(doc)
-    style = open(sf).read().strip() if os.path.exists(sf) else ""
+    # HOUSE STYLE FIRST, then whatever this story adds. The house file is what
+    # makes every Factbox reel look like the same product rather than each reel
+    # being internally consistent and unlike the last one. A story file should
+    # only carry what is specific to it — its people, its period.
+    house = open(hf).read().strip() if os.path.exists(hf) else ""
+    story = open(sf).read().strip() if os.path.exists(sf) else ""
+    style = "\n\n".join(x for x in (house, story) if x)
     if not style:
-        print("  WARNING          : no %s — every image will drift in style" % os.path.basename(sf))
+        print("  WARNING          : no house-style.txt and no %s — every image "
+              "will drift" % os.path.basename(sf))
+
+    # Upload the approved character once; reuse the URL for every frame.
+    ref_url = None
+    if anchor:
+        cpath = os.path.join(run_dir, "character.png")
+        if os.path.exists(cpath):
+            ref_url = doc.get("reference_url")
+            if not ref_url:
+                ref_url = providers.higgsfield_upload(cpath)
+                doc["reference_url"] = ref_url
+                write_json(run_dir, "beats.json", doc)
+                print("  reference        : uploaded character.png")
+            else:
+                print("  reference        : reusing the uploaded character")
+        else:
+            print("  reference        : NONE — run the character stage first, or the "
+                  "set will not hold together")
 
     shots = doc["shots"][:limit] if limit else doc["shots"]
     if not approved:
@@ -445,7 +505,7 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, **_):
         if style:
             prompt = prompt + "\n\n" + style
         p = os.path.join(d, s["slug"] + ".png")
-        res = providers.higgsfield_image(prompt, p, tag)
+        res = providers.higgsfield_image(prompt, p, tag, reference_url=ref_url)
         if res.get("ok"):
             print("    %s ok" % label)
         else:
@@ -601,6 +661,46 @@ STAGES = [("beats", cmd_beats), ("voice", cmd_voice), ("timeline", cmd_timeline)
           ("capcut", cmd_capcut)]
 
 
+def cmd_characters(scripts, **opts):
+    """One reference picture per story, then ONE contact sheet to approve them
+    all from. Batching the approval is the point: judging twenty faces one at a
+    time across twenty conversations is how a house style quietly drifts."""
+    sys.path.insert(0, HERE)
+    from PIL import Image
+    made = []
+    for sp in scripts:
+        name = os.path.splitext(os.path.basename(sp))[0]
+        rd = ensure(os.path.join(RUNS, name))
+        if not os.path.exists(os.path.join(rd, "beats.json")):
+            cmd_beats(rd, script_path=sp)
+        print("  %s" % name)
+        try:
+            cmd_character(rd, **opts)
+            made.append((name, os.path.join(rd, "character.png")))
+        except SystemExit as e:
+            print("    skipped: %s" % e)
+    made = [(n, p) for n, p in made if os.path.exists(p)]
+    if not made:
+        return 1
+    cols = min(5, len(made))
+    tw = 300; th = int(tw * 16 / 9)
+    rows = (len(made) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * tw, rows * (th + 34)), (18, 18, 20))
+    from PIL import ImageDraw
+    dr = ImageDraw.Draw(sheet)
+    font = _font(19, "ui")
+    for i, (n, path) in enumerate(made):
+        im = Image.open(path).convert("RGB").resize((tw, th))
+        x, y = (i % cols) * tw, (i // cols) * (th + 34)
+        sheet.paste(im, (x, y))
+        dr.text((x + 8, y + th + 7), n[:34], font=font, fill=(230, 230, 235))
+    out = os.path.join(RUNS, "characters.jpg")
+    sheet.save(out, quality=86)
+    print("\n  %d character sheet(s) -> %s" % (len(made), out))
+    print("  Approve them, then run the images stage for each story.")
+    return 0
+
+
 def main(argv):
     if len(argv) == 2 and argv[1] == "check":
         sys.path.insert(0, HERE)
@@ -610,6 +710,16 @@ def main(argv):
         print(__doc__)
         return 2
     stage, script_path = argv[1], argv[2]
+    if stage == "characters":
+        scripts = [a for a in argv[2:] if not a.startswith("--")]
+        opts = {}
+        for a in argv[2:]:
+            if a.startswith("--") and "=" in a:
+                k, v = a[2:].split("=", 1)
+                try: v = float(v) if "." in v else int(v)
+                except ValueError: pass
+                opts[k.replace("-", "_")] = v
+        return cmd_characters(scripts, **opts)
     if stage == "check":
         import providers
         raise SystemExit(0 if providers.check() else 1)
@@ -625,6 +735,11 @@ def main(argv):
     name = os.path.splitext(os.path.basename(script_path))[0]
     run_dir = ensure(os.path.join(RUNS, name))
     print("  run              : %s" % os.path.relpath(run_dir, HERE))
+    if stage == "character":
+        sys.path.insert(0, HERE)
+        cmd_character(run_dir, **opts)
+        return 0
+
     todo = STAGES if stage == "build" else [s for s in STAGES if s[0] == stage]
     if not todo:
         raise SystemExit("unknown stage: " + stage)

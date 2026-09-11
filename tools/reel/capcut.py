@@ -96,6 +96,57 @@ def pick_template(projects=PROJECTS):
     return best
 
 
+AUDIO_PREF = ["record", "extract_music", "video_original_sound"]
+
+
+def _drafts(projects):
+    out = []
+    for name in sorted(os.listdir(projects)):
+        if name.startswith(PREFIX):
+            continue
+        f = os.path.join(projects, name, "draft_info.json")
+        if not os.path.exists(f):
+            continue
+        try:
+            out.append((f, json.load(open(f))))
+        except Exception:
+            continue
+    return out
+
+
+def _proto(drafts, kind):
+    """Find one prototype material AND its segment, from whichever draft has a
+    suitable one. Prototypes are sourced independently rather than all from a
+    single draft, because the right example for each kind rarely lives in the
+    same project.
+
+    Audio is the one that matters. CapCut distinguishes a LOCAL audio file from
+    a MUSIC-LIBRARY track, and cloning a library track gives an entry CapCut
+    expects to stream from its own servers — it sits on the timeline, draws a
+    flat waveform and plays nothing. `record` is CapCut's own voiceover type
+    and is exactly what a narration track is."""
+    for want in (AUDIO_PREF if kind == "audio" else [None]):
+        for f, d in drafts:
+            M = d.get("materials", {})
+            if kind == "photo":
+                cands = [m for m in M.get("videos", []) if m.get("type") == "photo"]
+                track = "video"
+            elif kind == "text":
+                cands = M.get("texts", [])
+                track = "text"
+            else:
+                cands = [m for m in M.get("audios", []) if m.get("type") == want]
+                track = "audio"
+            for m in cands:
+                seg = _seg_for(d, m["id"], track)
+                if seg:
+                    return f, d, m, seg
+    raise SystemExit(
+        "no CapCut draft on this machine has a usable %s to clone from.\n"
+        "  Make a short project with an image, a VOICEOVER (not library music)\n"
+        "  and a caption, save it, and run this again." % kind)
+
+
 def _index(materials):
     """id -> which bucket it lives in."""
     home = {}
@@ -167,20 +218,18 @@ def _stage_assets(run_dir, doc, folder):
 
 
 def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
-    tpl_path, tpl = pick_template(projects)
+    drafts = _drafts(projects)
+    tpl_path, tpl, photo_m, photo_seg = _proto(drafts, "photo")
+    a_path, a_draft, audio_m, audio_seg = _proto(drafts, "audio")
+    t_path, t_draft, text_m, text_seg = _proto(drafts, "text")
     TM = tpl["materials"]
     home = _index(TM)
-
-    # --- prototypes, taken from a project CapCut has really opened ---------
-    photo_m = next(v for v in TM["videos"] if v.get("type") == "photo")
-    photo_seg = _seg_for(tpl, photo_m["id"], "video")
-    audio_m = TM["audios"][0]
-    audio_seg = _seg_for(tpl, audio_m["id"], "audio")
-    text_m = TM["texts"][0]
-    text_seg = _seg_for(tpl, text_m["id"], "text")
-    if not (photo_seg and audio_seg and text_seg):
-        raise SystemExit("template %s is missing a photo, audio or text SEGMENT"
-                         % os.path.dirname(tpl_path))
+    AM, AHOME = a_draft["materials"], _index(a_draft["materials"])
+    XM, XHOME = t_draft["materials"], _index(t_draft["materials"])
+    print("  prototypes       : photo=%s  audio=%s(%s)  text=%s"
+          % (os.path.basename(os.path.dirname(tpl_path)),
+             os.path.basename(os.path.dirname(a_path)), audio_m.get("type"),
+             os.path.basename(os.path.dirname(t_path))))
 
     folder = os.path.join(projects, project_name)
     if os.path.exists(folder):
@@ -258,12 +307,18 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
         am["name"] = "%02d" % b["n"]
         am["duration"] = us(b["dur"])
         am["music_id"] = ""
+        am["category_name"] = ""
+        am["category_id"] = ""
+        am["resource_id"] = ""
+        am["request_id"] = ""
+        am["source_platform"] = 0
+        am["effect_id"] = ""
         M.setdefault("audios", []).append(am)
         seg = copy.deepcopy(audio_seg)
         seg["id"] = uid()
         seg["material_id"] = am["id"]
         seg["extra_material_refs"] = _clone_extras(
-            TM, home, audio_seg.get("extra_material_refs", []), M)
+            AM, AHOME, audio_seg.get("extra_material_refs", []), M)
         seg["target_timerange"] = {"start": us(b["start"]), "duration": us(b["dur"])}
         seg["source_timerange"] = {"start": 0, "duration": us(b["dur"])}
         seg["speed"] = 1.0
@@ -311,7 +366,7 @@ def build(run_dir, doc, project_name, projects=PROJECTS, captions=True):
             ts["id"] = uid()
             ts["material_id"] = tm["id"]
             ts["extra_material_refs"] = _clone_extras(
-                TM, home, text_seg.get("extra_material_refs", []), M)
+                XM, XHOME, text_seg.get("extra_material_refs", []), M)
             ts["target_timerange"] = {"start": us(b["start"]),
                                       "duration": us(b["end"] - b["start"])}
             ts["clip"] = {"scale": {"x": 1.0, "y": 1.0}, "rotation": 0.0,
