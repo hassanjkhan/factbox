@@ -461,6 +461,12 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
 
     # Upload the approved character once; reuse the URL for every frame.
     ref_url = None
+    anchor_name = ""
+    cf_name = os.path.join(HERE, "scripts", name + ".character.txt")
+    if os.path.exists(cf_name):
+        first = open(cf_name).readline().strip()
+        if first.upper().startswith("NAME:"):
+            anchor_name = first.split(":", 1)[1].strip()
     if anchor:
         cpath = os.path.join(run_dir, "character.png")
         if os.path.exists(cpath):
@@ -505,7 +511,15 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
         if style:
             prompt = prompt + "\n\n" + style
         p = os.path.join(d, s["slug"] + ".png")
-        res = providers.higgsfield_image(prompt, p, tag, reference_url=ref_url)
+        # Anchor ONLY the shots the character is actually in. Shot 05 is a
+        # Roman fleet arriving and the prompt says Caesar is not visible;
+        # handing it a picture of Cleopatra can only push her into a frame she
+        # does not belong in. The name comes from the first line of the
+        # character sheet if it declares one.
+        use_ref = ref_url
+        if ref_url and anchor_name and anchor_name.lower() not in prompt.lower():
+            use_ref = None
+        res = providers.higgsfield_image(prompt, p, tag, reference_url=use_ref)
         if res.get("ok"):
             print("    %s ok" % label)
         else:

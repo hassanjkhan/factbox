@@ -138,6 +138,19 @@ def higgsfield_upload(path):
     return j["public_url"]
 
 
+# The line that makes a character reference work. Without it a single-figure
+# reference returns the character standing on a plain background, whatever the
+# prompt says — we proved that across 20 frames and four strength values.
+# With it, the same reference drops her into a crowded palace. One sentence.
+# Credit: Kathryn's side, from ~170 images across six sets.
+DO_NOT_COPY = ("The attached image is a CHARACTER REFERENCE SHEET, not a layout. "
+               "Use it ONLY for what the character looks like — face, hair, "
+               "colouring, and the cut and colour of their clothing. Do NOT copy "
+               "the attached image's pose, background or setting. Draw a "
+               "completely new scene, described below, in which they are one "
+               "figure among others.")
+
+
 def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600,
                      reference_url=None):
     """Submit one prompt, wait for it, save the image.
@@ -170,38 +183,51 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600,
     # character AND the drawing style come from it. That is the whole reason
     # a set holds together. soul/character does the same through a reference
     # locked in the UI; soul/standard has nothing to hold on to at all.
+    # popcorn/auto is the image endpoint that takes up to eight reference
+    # images ALONGSIDE a scene prompt, and it honours the prompt. soul/reference
+    # does not: it recreates the picture it is given. Kathryn's runs were on
+    # Nano Banana Pro through the UI, never Soul, which is why Soul was the
+    # wrong product to be fighting.
     if reference_url:
-        endpoint = "/higgsfield-ai/soul/reference"
+        endpoint = "/higgsfield-ai/popcorn/auto"
+        prompt = DO_NOT_COPY + "\n\n" + prompt
     elif locked:
         endpoint = "/higgsfield-ai/soul/character"
     else:
         endpoint = "/higgsfield-ai/soul/standard"
-    body = {
-        "prompt": prompt,
-        "aspect_ratio": cfg.get("aspect_ratio", "9:16"),
-        "resolution": cfg.get("resolution", "1080p"),
-        "enhance_prompt": cfg.get("enhance_prompt", False),
-    }
     if reference_url:
-        body["image_reference_url"] = reference_url
-        body["batch_size"] = 1
-        # style_strength defaults to 1 — MAXIMUM. Left alone, the reference
-        # does not anchor the scene, it REPLACES it: twenty prompts came back
-        # as twenty near-copies of the reference standing on a plain
-        # background, with no scene at all. Low enough to carry the face and
-        # the drawing style, not so high that it dictates the composition.
-        body["style_strength"] = float(cfg.get("reference_strength", 0.35))
-    elif locked:
-        body["custom_reference_id"] = ref
-        body["custom_reference_strength"] = cfg.get("custom_reference_strength", 0.8)
-        body["batch_size"] = 1
+        # popcorn/auto's own field set — no enhance_prompt, no style_strength.
+        # No enhancer also means the prompt reaches the model VERBATIM, which
+        # is why negations ("she NEVER wears a veil") can be trusted here and
+        # could not be trusted on Soul with enhancement on. That was the whole
+        # disagreement between our two sets of notes.
+        body = {
+            "prompt": prompt,
+            "image_urls": [reference_url],
+            "num_images": 1,
+            "aspect_ratio": cfg.get("aspect_ratio", "9:16"),
+            "resolution": "1600p",
+        }
+        if cfg.get("seed"):
+            body["seed"] = int(cfg["seed"])
     else:
-        body["num_images"] = 1
-    if cfg.get("style_id"):
-        body["style_id"] = cfg["style_id"]
-        body["style_strength"] = cfg.get("style_strength", 1.0)
-    if cfg.get("seed"):
-        body["seed"] = int(cfg["seed"])
+        body = {
+            "prompt": prompt,
+            "aspect_ratio": cfg.get("aspect_ratio", "9:16"),
+            "resolution": cfg.get("resolution", "1080p"),
+            "enhance_prompt": cfg.get("enhance_prompt", False),
+        }
+        if locked:
+            body["custom_reference_id"] = ref
+            body["custom_reference_strength"] = cfg.get("custom_reference_strength", 0.8)
+            body["batch_size"] = 1
+        else:
+            body["num_images"] = 1
+        if cfg.get("style_id"):
+            body["style_id"] = cfg["style_id"]
+            body["style_strength"] = cfg.get("style_strength", 1.0)
+        if cfg.get("seed"):
+            body["seed"] = int(cfg["seed"])
 
     raw, _ = _req(HF_HOST + endpoint, body, _hf_headers(cfg))
     job = json.loads(raw)
