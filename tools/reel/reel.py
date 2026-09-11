@@ -410,7 +410,9 @@ def cmd_character(run_dir, force=0, **_):
     prompt = open(cf).read().strip()
     if os.path.exists(house):
         prompt = prompt + "\n\n" + open(house).read().strip()
-    res = providers.higgsfield_image(prompt, out, None)
+    plate = style_plate_url(providers)
+    res = providers.higgsfield_image(prompt, out, None,
+                                     reference_url=[plate] if plate else None)
     if not res.get("ok"):
         raise SystemExit("character sheet failed: %s" % res.get("why"))
     doc.pop("reference_url", None)      # a new face means the old upload is stale
@@ -418,6 +420,32 @@ def cmd_character(run_dir, force=0, **_):
     print("  character        : %s" % out)
     print("                     LOOK AT IT. Everything else will be built to match.")
     return doc
+
+
+def style_plate_url(providers):
+    """A picture of the LOOK, passed alongside the character on every shot.
+
+    popcorn/auto takes up to eight reference images, so the style and the
+    character do not have to compete for one slot. A style described only in
+    prose drifts — ours went ink-wash, oil painting, Victorian salon across one
+    reel — because each prompt is read on its own. A plate is the same picture
+    every time.
+
+    The plate must be ONE panel with no lettering in it. A contact sheet handed
+    over as a reference invites the model to draw a contact sheet, and a panel
+    with a caption bar invites captions."""
+    plate = os.path.join(HERE, "style", "plate.png")
+    if not os.path.exists(plate):
+        return None
+    cache = plate + ".url"
+    stamp = "%d-%d" % (os.path.getsize(plate), int(os.path.getmtime(plate)))
+    if os.path.exists(cache):
+        have = open(cache).read().split("\n")
+        if len(have) == 2 and have[0] == stamp:
+            return have[1]
+    url = providers.higgsfield_upload(plate)
+    open(cache, "w").write(stamp + "\n" + url)
+    return url
 
 
 def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
@@ -460,6 +488,8 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
               "will drift" % os.path.basename(sf))
 
     # Upload the approved character once; reuse the URL for every frame.
+    plate_url = style_plate_url(providers)
+    print("  style plate      : %s" % ("uploaded/reused" if plate_url else "NONE — prose only"))
     ref_url = None
     anchor_name = ""
     cf_name = os.path.join(HERE, "scripts", name + ".character.txt")
@@ -523,7 +553,8 @@ def _higgsfield_images(run_dir, doc, d, approved=0, limit=0, anchor=1, **_):
         # does not belong in. The name comes from the first line of the
         # character sheet if it declares one.
         use_ref = ref_url if (not anchor_name or names_char) else None
-        res = providers.higgsfield_image(prompt, p, tag, reference_url=use_ref)
+        refs = [u for u in (plate_url, use_ref) if u]
+        res = providers.higgsfield_image(prompt, p, tag, reference_url=refs or None)
         if res.get("ok"):
             print("    %s ok" % label)
         else:

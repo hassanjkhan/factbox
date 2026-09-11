@@ -183,6 +183,9 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600,
     # character AND the drawing style come from it. That is the whole reason
     # a set holds together. soul/character does the same through a reference
     # locked in the UI; soul/standard has nothing to hold on to at all.
+    # reference_url may be a LIST — popcorn/auto takes up to eight images, so
+    # the style plate and the character ride together rather than competing for
+    # one slot.
     # popcorn/auto is the image endpoint that takes up to eight reference
     # images ALONGSIDE a scene prompt, and it honours the prompt. soul/reference
     # does not: it recreates the picture it is given. Kathryn's runs were on
@@ -201,9 +204,10 @@ def higgsfield_image(prompt, out_png, tag, poll_every=4, timeout=600,
         # is why negations ("she NEVER wears a veil") can be trusted here and
         # could not be trusted on Soul with enhancement on. That was the whole
         # disagreement between our two sets of notes.
+        urls = reference_url if isinstance(reference_url, list) else [reference_url]
         body = {
             "prompt": prompt,
-            "image_urls": [reference_url],
+            "image_urls": urls,
             "num_images": 1,
             "aspect_ratio": cfg.get("aspect_ratio", "9:16"),
             "resolution": "1600p",
