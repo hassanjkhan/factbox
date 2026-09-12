@@ -104,6 +104,58 @@ service cloud.firestore {
             && request.resource.data[k] >= 0
             && request.resource.data[k] <= n);
     }
+    // "absent, or null, or a number in range". THE EXPERIMENT BOARD'S METRIC
+    // FIELDS, and null is the whole point of it: a reel nobody typed a `saves`
+    // figure for has NO saves figure, and 0 is a different claim — it says
+    // somebody looked and there were none. A rule that accepted only numbers
+    // would push the client into writing zeros for every box left empty, which
+    // is how a board full of half-typed rows becomes a board full of charts
+    // with fabricated points on them. Both bounds are checked because a
+    // percentage above 100 and a negative count are typos, and a typo stored
+    // is a typo charted.
+    function numOrNull(k, lo, hi) {
+      return !(k in request.resource.data)
+        || request.resource.data[k] == null
+        || (request.resource.data[k] is number
+            && request.resource.data[k] >= lo
+            && request.resource.data[k] <= hi);
+    }
+    // "absent, or null, or a timestamp". `postedAt` and `measuredAt` are the
+    // two instants the 72-hour rule is computed from, and NEITHER may be
+    // pinned to request.time the way `updatedAt` is: both are facts about the
+    // past that a person types in, and the server clock knows nothing about
+    // when a reel went up. What the rules can say is that they are timestamps
+    // and not strings, which is enough to keep "3 days ago" out of a field the
+    // page does arithmetic on.
+    function tsOrNull(k) {
+      return !(k in request.resource.data)
+        || request.resource.data[k] == null
+        || request.resource.data[k] is timestamp;
+    }
+    // "absent, or the empty string, or an https:// URL that fits".
+    //
+    // A URL A USER PASTED IS AN EXECUTION SURFACE once the page puts it in an
+    // href, and the scheme is the whole of the defence: `javascript:` and
+    // `data:` are not locations. So the scheme is pinned HERE as well as in
+    // js/admin-experiments.js, because the client-side check is a convenience
+    // for whoever is typing and this is the boundary. The empty string is how
+    // "no link" is spelled, the same way `due` spells "no date".
+    //
+    // WHAT THIS REGEX CANNOT DO, said plainly rather than implied: RE2 has no
+    // opinion about what is on the other end, so this refuses a scheme and a
+    // newline and accepts every https:// string otherwise. Control characters
+    // inside the URL — which browsers strip before resolving, and which are
+    // therefore a way to hide a scheme — are removed by safeUrl() in the
+    // client and by nothing else. `.` does not match a newline in RE2, so a
+    // multi-line value is refused here, which is the one part of that family
+    // these rules can actually take.
+    function httpsStr(k, n) {
+      return !(k in request.resource.data)
+        || request.resource.data[k] == ""
+        || (request.resource.data[k] is string
+            && request.resource.data[k].size() <= n
+            && request.resource.data[k].matches("^https://.+$"));
+    }
     // "present, a string, not empty, and small enough" — the opposite of
     // shortStr, for the fields a row cannot exist without.
     function reqStr(k, n) {
@@ -728,6 +780,315 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isAdmin()
           && commentDeletable(/databases/$(database)/documents/admin_goals/$(id));
+      }
+    }
+
+    // --- The reel experiments (js/admin-experiments.js, admin/experiments.html) -
+    //
+    //     admin_experiments/{id}                 one experiment
+    //     admin_experiments/{id}/reels/{rid}     one reel posted under it
+    //     admin_experiments/{id}/comments/{cid}  the thread on it
+    //
+    // The third client-written collection on this site, and it belongs to the
+    // same two people as the board next door. ADMINS ONLY, BOTH WAYS, NO
+    // EXCEPTIONS, and read is the same isAdmin() as write for the same reason
+    // the task board's is: this collection says out loud which of our own
+    // reels flopped and what we think is wrong with them, and a stranger with
+    // an account must get nothing rather than a partial list.
+    //
+    // THREE STATUSES AND NOT FOUR. `status` is idea / running / ended.
+    // "EXPIRED" IS NOT STORED ANYWHERE — a running experiment whose `endBy`
+    // has gone past is DERIVED as expired by the page, from the stored day and
+    // the reader's clock. A stored fourth state would be correct when it was
+    // written and wrong at midnight, with nothing running to fix it, and the
+    // first person to notice would be whoever trusted it. The clock changes
+    // it, so the clock computes it.
+    //
+    // THE TWO INSTANTS ON A REEL ARE WHAT THE WHOLE THING IS FOR. `postedAt`
+    // and `measuredAt` are stored separately rather than storing "the numbers
+    // and a date" precisely so the AGE at measurement can be recovered. Every
+    // reel on this board is meant to be read at 72 HOURS OLD, never on a
+    // calendar date, because reels have long tails and comparing a two-day-old
+    // video against a six-hour-old one measures age and not quality. The rules
+    // cannot enforce that — it is a comparison between two fields and a
+    // constant, and a rule that refused an early reading would simply mean the
+    // reading never got typed. What the rules do is keep both instants real
+    // timestamps so the page can show a too-early reading AS too early instead
+    // of averaging it in.
+    //
+    // ONE REQUIRED FIELD PER DOCUMENT, AND THAT IS A PRODUCT DECISION MADE
+    // HERE. An experiment needs a `title`; a reel needs a `story`. Everything
+    // else — every metric, both instants, the URL, the cover, the variant — is
+    // optional and null-able. Two people post a few reels a week: a form that
+    // refuses to save until eleven boxes are full is a form that gets
+    // abandoned, and a half-filled row is worth enormously more than a row
+    // nobody typed. numOrNull() above is what makes "left blank" a first-class
+    // value rather than a zero.
+    //
+    // ONE UNLISTED KEY DENIES THE WHOLE WRITE, and on an UPDATE
+    // request.resource.data is the document AFTER the merge, not the patch —
+    // so a field written by hand in a console does not sit there harmlessly,
+    // it makes every later edit from the browser fail. Same direction as the
+    // task board, same reason, and the same warning applies to adding a key:
+    // the rules go first, or in the same commit, never after.
+    //
+    // TIMESTAMPS COME OFF THE SERVER CLOCK for `updatedAt` and `createdAt`,
+    // exactly as on the task board, so a client cannot forge "I edited this
+    // first". `startedAt` and `endedAt` are written by startExperiment() and
+    // endExperiment() with serverTimestamp() and are checked here only for
+    // type — a create sends them as null and an update may clear them, and
+    // pinning them to request.time would make "restart this" impossible to
+    // express.
+    //
+    // LISTS, AND WHAT THESE RULES CANNOT SAY ABOUT THEM. `links` is a list of
+    // reference URLs and `retention` is a list of {second, percent} points
+    // typed off the Insights graph. Repeating the note above taskShape()
+    // because it matters twice as much here:
+    //
+    //     THESE RULES CANNOT CHECK THE ELEMENTS OF A LIST. There is no loop
+    //     in this language, so `links is list` and `size() <= 8` is the whole
+    //     of what is enforced HERE — the https:// scheme of each element is
+    //     enforced by safeUrl() in js/admin-experiments.js and by nothing
+    //     else. Likewise `retention is list` and `size() <= 40`; that each
+    //     element is {s: number, p: number} is retentionList()'s promise.
+    //
+    // What that means in practice: an admin holding a console can put a
+    // 900-character string in `links` and these rules will accept it. What
+    // they cannot do is put 700 of them in, and they cannot do it to anybody
+    // else'"'"'s data, because the only people who can write here are the two
+    // people the board belongs to. The cap is a real limit; the element shape
+    // is a convention this file is not able to keep, and a rule that pretended
+    // otherwise would be the more dangerous thing.
+    //
+    // `source` IS WRITTEN TODAY FOR A PATH THAT DOES NOT EXIST YET. Every
+    // number on this board is typed off a phone screen by hand, so every reel
+    // is written with source "manual". The enum already names "instagram" and
+    // "tiktok" so that the day a fetch lands it writes into the same
+    // collection with the same shape and no migration — and so a chart can
+    // one day tell a typed number from a fetched one rather than assuming
+    // they are the same kind of thing.
+    function expShape() {
+      return request.resource.data.keys().hasOnly([
+               "title", "detail", "status", "hypothesis", "trying", "metric",
+               "decision", "inspiration", "links", "endBy",
+               "startedAt", "endedAt", "outcome",
+               "analysis", "analysisBy", "analysisByName", "analysisAt",
+               "analysisRequestedAt",
+               "order", "createdAt", "updatedAt", "updatedBy",
+               "createdBy", "createdByName"
+             ])
+        && reqStr("title", 120)
+        && shortStr("detail", 240)
+        && shortStr("hypothesis", 600)
+        && shortStr("trying", 600)
+        && shortStr("decision", 600)
+        && shortStr("inspiration", 600)
+        && shortStr("outcome", 600)
+        && smallList("links", 8)
+        && dayStr("endBy")
+        && request.resource.data.status in ["idea", "running", "ended"]
+        // THE PRIMARY METRIC is one of the ten a reel can carry and nothing
+        // else. Listed again here rather than trusted from the client for the
+        // reason the whole file gives: the site is static, its JavaScript is
+        // public, and this list is the one that decides.
+        && request.resource.data.metric in [
+             "views", "reach", "likes", "comments", "shares", "saves",
+             "profileTaps", "avgWatch", "completion", "threeSec"
+           ]
+        && tsOrNull("startedAt")
+        && tsOrNull("endedAt")
+        && request.resource.data.order is number
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && analysisShape()
+        && shortStr("createdBy", 128)
+        && shortStr("createdByName", 60)
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
+    // --- THE WRITTEN READ, and why its author is pinned ---------------------
+    //
+    // `analysis` is a paragraph saying what a result MEANS and what to try
+    // next. It is the one field on this board that is an OPINION rather than a
+    // measurement — everything the page says about hooks, drop-off points and
+    // whether an A/B gap clears the noise is arithmetic computed in the
+    // browser on every paint and stored nowhere at all, because a number that
+    // can be recomputed needs no author and cannot go stale.
+    //
+    // This one has an author, and the author is pinned to the uid on the
+    // request'"'"'s own ID token — exactly like `doneBy` on a task, and for a
+    // sharper version of the same reason. A client that could name somebody
+    // else as the writer could put Kathryn'"'"'s name on a read she never wrote,
+    // on the one record either of them would consult to find out what we
+    // decided and why. `analysisByName` beside it is what that account called
+    // itself and is a convenience for printing, never evidence.
+    //
+    // THE LIMIT, STATED RATHER THAN IMPLIED: `analysisAt` is checked for TYPE
+    // and not pinned to request.time, the same freedom `doneAt` has. Pinning
+    // it would mean an update that touches nothing else — renaming the
+    // experiment — would have to re-stamp a read it is not changing, because
+    // on an update request.resource.data is the document after the merge and
+    // the stored value is what would be compared. So an admin holding a
+    // console can date a read wrongly. They cannot sign it as the other
+    // person, which is the half that matters, and there are exactly two people
+    // who can write here at all.
+    //
+    // `analysisRequestedAt` IS A FLAG FOR A JOB THAT DOES NOT EXIST. It is
+    // where "somebody asked for a read to be written" would be recorded so a
+    // Cloud Function could notice. NOTHING WATCHES IT. It is here because the
+    // seam is worth having and the page says in those words that no job is
+    // coming, rather than showing a spinner for something that is not.
+    //
+    // Nothing in the browser calls a model and no key for one may ever be
+    // added to this repo: it is public, and a key in client JavaScript is a
+    // key in the world. A future writer of these fields runs server-side with
+    // a service-account credential and does not pass through these rules at
+    // all — which is precisely why the shape is validated here for the client
+    // that does.
+    function analysisShape() {
+      return shortStr("analysis", 1200)
+        && nullStr("analysisByName", 60)
+        && tsOrNull("analysisAt")
+        && tsOrNull("analysisRequestedAt")
+        && (!("analysisBy" in request.resource.data)
+            || request.resource.data.analysisBy == null
+            || request.resource.data.analysisBy == request.auth.uid);
+    }
+
+    // --- One reel, under one experiment ------------------------------------
+    // `story` is the only thing it cannot exist without. Ten metrics, both
+    // instants, the URL, the cover and the variant are every one of them
+    // optional — see the note above expShape() for why that is the decision
+    // the board lives or dies on.
+    function reelShape() {
+      return request.resource.data.keys().hasOnly([
+               "story", "url", "platform", "variant", "format",
+               "postedAt", "cover", "coverPath",
+               "views", "reach", "likes", "comments", "shares", "saves",
+               "profileTaps", "avgWatch", "completion", "threeSec",
+               "measuredAt", "retention", "source",
+               "analysis", "analysisBy", "analysisByName", "analysisAt",
+               "order", "createdAt", "updatedAt", "updatedBy"
+             ])
+        && reqStr("story", 120)
+        && httpsStr("url", 500)
+        // THE COVER IS A URL AND NEVER BYTES. A Firestore document is capped
+        // at 1MB and is pushed to every open listener on every change, so a
+        // base64 image would blow the cap on the second reel and re-send the
+        // picture to both browsers every time somebody typed a number. The
+        // file lives in Cloud Storage under admin/experiments/{id}/ — see
+        // storage.rules — or it is a URL somebody pasted. Either way what is
+        // stored here is a string, and httpsStr() is what stops that string
+        // being `javascript:`.
+        && httpsStr("cover", 1000)
+        && shortStr("coverPath", 300)
+        && shortStr("format", 24)
+        && request.resource.data.platform in ["instagram", "tiktok", "other"]
+        && request.resource.data.variant in ["a", "b", "none"]
+        // WHERE THE NUMBER CAME FROM. "manual" is the only value anything
+        // writes today, because every figure on this board is typed off a
+        // phone screen by a person. "api" is listed so that a writer which is
+        // not a person needs no rules change to say so, and the two platform
+        // names are listed for when that distinction matters. NOTHING FETCHES
+        // ANYTHING. Note also the deadline this field exists under: TikTok
+        // stops serving reach, watch time and retention for a video with no
+        // activity for seven days, and Instagram has never exposed a retention
+        // curve at all — so an unlogged reel is not a gap that can be filled
+        // in later, it is data that is gone. That is a UI problem, not a rules
+        // problem, and the page is where it is handled.
+        && request.resource.data.source in ["manual", "api", "instagram", "tiktok"]
+        && tsOrNull("postedAt")
+        && tsOrNull("measuredAt")
+        && smallList("retention", 40)
+        // The ten numbers. Counts get a ceiling that no reel either of them
+        // posts will ever reach and that a pasted phone number does; seconds
+        // get a day; the two percentages get 100, because a completion rate of
+        // 340% is a typo and charting it would make every other bar unreadable.
+        && numOrNull("views", 0, 10000000000)
+        && numOrNull("reach", 0, 10000000000)
+        && numOrNull("likes", 0, 10000000000)
+        && numOrNull("comments", 0, 10000000000)
+        && numOrNull("shares", 0, 10000000000)
+        && numOrNull("saves", 0, 10000000000)
+        && numOrNull("profileTaps", 0, 10000000000)
+        && numOrNull("avgWatch", 0, 86400)
+        && numOrNull("completion", 0, 100)
+        && numOrNull("threeSec", 0, 100)
+        && analysisShape()
+        && request.resource.data.order is number
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
+    match /admin_experiments/{id} {
+      allow read: if isAdmin();
+      allow delete: if isAdmin();
+      // `createdBy` is OPTIONAL on create and pinned to the requester when it
+      // is there — the same shape as a task, for the same reason: a browser
+      // running a cached older copy of js/admin-experiments.js must not have
+      // "Add an experiment" turn into permission-denied.
+      allow create: if isAdmin()
+        && expShape()
+        && request.resource.data.get("createdBy", request.auth.uid) == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      // AN UPDATE MAY NEVER TOUCH THE AUTHOR, and the two get()s with the same
+      // default buy more than "do not change it": absent must stay absent, so
+      // an update cannot ADD an author to a row that has none.
+      allow update: if isAdmin()
+        && expShape()
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.get("createdBy", "") == resource.data.get("createdBy", "")
+        && request.resource.data.get("createdByName", "") == resource.data.get("createdByName", "");
+
+      // The reels posted under this experiment. A SUBCOLLECTION AND NOT AN
+      // ARRAY on the experiment, for the reasons js/admin-experiments.js sets
+      // out — the decisive one being that the conflict rule on this site is a
+      // field-level merge, so an array of reels is ONE field and Kathryn
+      // typing reel B'"'"'s numbers while Hassan types reel A'"'"'s would lose a
+      // minute of somebody'"'"'s typing with nothing on screen to say so. Two
+      // documents cannot collide. The second reason is this rule: hasOnly()
+      // can pin a document'"'"'s keys and can say nothing at all about the
+      // elements of a growing array, and a reel carries ten numbers and two
+      // instants that are worth validating at the boundary.
+      //
+      // NO UPDATE RESTRICTION ON WHO MAY EDIT A REEL, unlike a comment. A reel
+      // is a shared record of a post, not a remark somebody made: either of
+      // them may fix a number the other typed wrong, because the alternative
+      // is a board where a typo is permanent unless its author happens to be
+      // awake.
+      match /reels/{rid} {
+        allow read: if isAdmin();
+        allow create: if isAdmin()
+          && reelShape()
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isAdmin()
+          && reelShape()
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.createdAt == resource.data.createdAt;
+        // Either admin may delete a reel, and a reel whose experiment is
+        // already gone may be deleted by either of them too — deleteExperiment()
+        // sweeps both subcollections after removing the parent, and Firestore
+        // does not cascade. Without the exists() clause that sweep would leave
+        // whatever the other person created orphaned under a document that no
+        // longer exists: invisible, unreachable, and still on the bill.
+        allow delete: if isAdmin();
+      }
+
+      // The thread on this experiment. commentShape() and commentDeletable()
+      // are the SAME two functions the task board and the goal board use —
+      // written once for all three, because the second copy of a validation
+      // rule is the one that drifts. "Do we call this one yet" is a
+      // conversation and it belongs on the experiment.
+      match /comments/{cid} {
+        allow read: if isAdmin();
+        allow create: if isAdmin() && commentShape();
+        allow update: if false;
+        allow delete: if isAdmin()
+          && commentDeletable(/databases/$(database)/documents/admin_experiments/$(id));
       }
     }
 

@@ -1,0 +1,3154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Experiments · Factbox</title>
+<meta name="description" content="The reel experiments board for factbox.app. Admin accounts only.">
+<meta name="theme-color" content="#E7E0D3">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
+<link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
+<link rel="stylesheet" href="/css/admin.css?v=12c79b19">
+</head>
+<body>
+
+<main class="adm adm-wide">
+
+  <header class="mast">
+    <p class="mark"><a href="/explore" aria-label="Factbox" data-fbt="-"><img src="/img/logo-96.png"
+       alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
+    <h1>Experiments</h1>
+    <p class="adm-sub">What we tried on the reels, and what it did. Every reel
+    is read at <b>72 hours old</b> — never on a calendar date, because a
+    two-day-old video compared against a six-hour-old one measures age and not
+    quality. Both of you edit this and it lands on the other screen live.</p>
+  </header>
+
+  <!-- ====================================================================
+       The gate — the same four panels as /admin and /admin/tasks, with the
+       same ids and the same reasoning. A convenience, not a lock:
+       firestore.rules is what refuses a non-admin, on every read and write.
+       ==================================================================== -->
+  <div class="adm-gate" id="adm-gate">
+
+    <section class="adm-panel" id="adm-p-wait" aria-live="polite">
+      <h2>Checking your access</h2>
+      <p class="adm-say">One moment — asking who you are signed in as.</p>
+    </section>
+
+    <section class="adm-panel" id="adm-p-noauth" hidden>
+      <h2>We could not load the experiments.</h2>
+      <p class="adm-say">The sign-in service did not load, so this page cannot
+      tell whether you are an admin — and it will not show anything until it
+      can. This is usually a blocked script or a dead connection.</p>
+      <p class="adm-say">Reload the page. If it keeps happening, the rest of
+      the site is probably affected too.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/admin/experiments" data-fbt="-">Try again</a>
+        <a class="adm-btn" href="/explore" data-fbt="-">Back to Explore</a>
+      </p>
+    </section>
+
+    <section class="adm-panel" id="adm-p-out" hidden>
+      <h2>Sign in to see this.</h2>
+      <p class="adm-say">This board is for admin accounts only. Sign in with
+      the account that has admin on it and you will land back here.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/login?next=/admin/experiments" data-fbt="-">Sign in</a>
+        <a class="adm-btn" href="/explore" data-fbt="-">Back to Explore</a>
+      </p>
+    </section>
+
+    <section class="adm-panel" id="adm-p-no" hidden>
+      <h2>This is not your account.</h2>
+      <p class="adm-say">You are signed in, but this board is limited to admin
+      accounts and yours is not one of them. Nothing is missing and nothing is
+      broken — there is simply nothing here for this account.</p>
+      <p class="adm-actions">
+        <a class="adm-btn adm-btn-go" href="/explore" data-fbt="-">Back to Explore</a>
+        <button class="adm-btn" type="button" id="adm-signout-no" data-fbt="-">Sign out</button>
+      </p>
+    </section>
+
+  </div>
+
+  <div class="adm-main" id="adm-main" hidden>
+
+    <div class="adm-who">
+      <p class="adm-who-t" id="adm-who-t">Signed in.</p>
+      <a class="adm-btn adm-mini" href="/admin" data-fbt="-">Admin home</a>
+      <a class="adm-btn adm-mini" href="/admin/dashboard" data-fbt="-">Dashboard</a>
+      <a class="adm-btn adm-mini" href="/admin/tasks" data-fbt="-">Tasks</a>
+      <button class="adm-btn adm-mini" type="button" id="adm-signout" data-fbt="-">Sign out</button>
+    </div>
+
+    <!-- ---- THE ANSWER ---------------------------------------------------
+         This block is the page. Everything under it is the material the
+         answer is made of.
+
+         It is deliberately not a wall of charts. The goal of this whole
+         surface is ONE reel that breaks out, and the way that happens is that
+         somebody reads a finding and changes what they post next week. A
+         dashboard that shows everything we have makes the reader do the
+         assembling, and a reader who has to assemble the finding stops
+         opening the page.
+
+         So: a verdict in one sentence, the reasons under it, what is
+         outstanding today, and exactly one chart. The verdict is allowed to
+         say "nothing is decided yet", and most weeks it will.
+         ------------------------------------------------------------------ -->
+    <section class="adm-ans" id="adm-ans" aria-labelledby="adm-ans-h">
+      <h2 class="adm-ans-h" id="adm-ans-h">What is working</h2>
+      <p class="adm-ans-v" id="adm-ans-v">Reading the board…</p>
+      <div id="adm-ans-why"></div>
+      <div class="adm-ans-strip" id="adm-ans-strip" hidden></div>
+      <span class="adm-chart-h" id="adm-ans-ch" hidden>Formats that have won a decided experiment</span>
+      <div class="adm-chart" id="adm-ans-chart" hidden></div>
+      <div id="adm-ans-note"></div>
+    </section>
+
+    <section class="adm-sec" id="adm-sec-exps">
+      <div class="adm-sechead">
+        <h2>Experiments</h2>
+        <span id="adm-exps-count">—</span>
+        <span class="adm-spacer"></span>
+        <button class="adm-btn adm-mini" type="button" id="adm-exp-open" data-fbt="-">Add an experiment</button>
+      </div>
+      <p class="adm-q">An experiment is a thing we think is true, a thing we
+      are going to try, and the result that would change what we do. Ideas are
+      free; a running one has a planned end date and says so when it goes
+      past.</p>
+      <div class="adm-form" id="adm-exp-form" hidden></div>
+      <div class="adm-state" id="adm-board-state" role="status">Loading the experiments…</div>
+      <div class="adm-exps" id="adm-exps" hidden></div>
+    </section>
+
+    <p class="adm-foot">
+      <a href="/admin" data-fbt="-">Admin</a> ·
+      <a href="/admin/dashboard" data-fbt="-">Dashboard</a> ·
+      <a href="/admin/tasks" data-fbt="-">Tasks</a> ·
+      <a href="/explore" data-fbt="-">Explore</a>
+    </p>
+
+  </div>
+
+  <!-- ====================================================================
+       THE DETAIL VIEW — the same pane as /admin/tasks, same classes, same
+       behaviour: docked right on a desk, full screen below 900px, Escape
+       closes it and puts focus back on the card that opened it, no Tab trap
+       and no aria-modal because there is no scrim and the list behind stays
+       usable. Read the long note in admin/tasks.html; it is the argument for
+       all of this and it has not changed because the content did.
+       ==================================================================== -->
+  <aside class="adm-pane" id="adm-pane" hidden aria-labelledby="adm-pane-t" tabindex="-1">
+    <div class="adm-pane-head">
+      <h2 class="adm-pane-t" id="adm-pane-t">Experiment</h2>
+      <button class="adm-pane-x" type="button" id="adm-pane-x"
+              aria-label="Close the detail pane" data-fbt="-">&#10005;</button>
+    </div>
+    <div class="adm-pane-body" id="adm-pane-body"></div>
+    <div class="adm-pane-foot" id="adm-pane-foot"></div>
+  </aside>
+
+  <p class="adm-sr" id="adm-live" role="status" aria-live="polite"></p>
+
+</main>
+
+<noscript>
+  <p class="adm-say" style="max-width:560px;margin:22px auto;padding:0 18px">
+  This board is built in the browser from live Firestore listeners, so it needs
+  JavaScript switched on. There is no version of it that works without.</p>
+</noscript>
+
+<script type="module" src="/js/auth.js?v=35b20584"></script>
+<script src="/js/admin-experiments.js?v=af3b7ccc"></script>
+<script>
+/* ==========================================================================
+   /admin/experiments — the board
+
+   ES5 only: no arrow functions, no let/const, no template literals, no
+   spread, no classes, no optional chaining. This site is opened inside the
+   Instagram and TikTok in-app browsers, which is not a hypothetical here —
+   it is literally where the reels this page is about send people. js/auth.js
+   is the one module in the project and this is not it.
+
+   ESCAPING: this file NEVER assigns innerHTML, not once, and every string
+   that came out of the database reaches the page through textContent on a
+   node made by createElement or createElementNS. A reel called
+   `<img src=x onerror=alert(1)>` renders as those twenty-six characters,
+   including inside an SVG chart label — which is the reason the charts here
+   build nodes rather than concatenating an SVG string the way
+   js/dashboard.js does. Same idiom, same class vocabulary, same axis rules;
+   nodes instead of markup, because every label on this page is a title two
+   people typed.
+
+   URLS: a pasted URL is untrusted and reaches an href through one gate,
+   FBE.safeUrl(), which accepts https:// and nothing else. `javascript:` and
+   `data:` are not locations. No markup is ever built from a URL.
+
+   THE ONE RULE EVERYTHING DERIVES FROM: A REEL IS READ AT 72 HOURS OLD.
+   The page never compares two numbers measured at different ages without
+   saying so, and a reading taken early is shown AS early rather than being
+   averaged in. See ageOf().
+
+   AND THE DEADLINE UNDER IT: THERE IS NO BACKFILL. TikTok stops serving
+   reach, watch time and retention for a video with no activity for seven
+   days. Instagram has never exposed a retention curve through any API and
+   never will. So an unmeasured reel is not an empty cell waiting patiently —
+   it is a countdown, then a permanent loss, and this page is required to
+   show it as one.
+   ========================================================================== */
+(function () {
+  "use strict";
+
+  /* ==========================================================================
+     Constants and vocabulary. Taken from the data layer when it publishes
+     them, so the page and the writes cannot disagree about what "running"
+     means; these are the fallbacks for the moment before FBE is there.
+     ========================================================================== */
+
+  var MEASURE_HOURS = 72;
+  var AT_RISK_DAYS  = 7;
+
+  var STATUSES  = ["idea", "running", "ended"];
+  var PLATFORMS = ["instagram", "tiktok", "other"];
+  var VARIANTS  = ["a", "b", "none"];
+
+  var METRICS = [
+    { k: "views",       label: "Views",              unit: "n" },
+    { k: "reach",       label: "Reach",              unit: "n" },
+    { k: "likes",       label: "Likes",              unit: "n" },
+    { k: "comments",    label: "Comments",           unit: "n" },
+    { k: "shares",      label: "Shares",             unit: "n" },
+    { k: "saves",       label: "Saves",              unit: "n" },
+    { k: "profileTaps", label: "Profile taps",       unit: "n" },
+    { k: "avgWatch",    label: "Avg watch time",     unit: "s" },
+    { k: "completion",  label: "Completion",         unit: "%" },
+    { k: "threeSec",    label: "3-second view rate", unit: "%" }
+  ];
+
+  var STATUS_LABEL   = { idea: "Idea", running: "Running", ended: "Ended", expired: "Expired" };
+  var PLATFORM_LABEL = { instagram: "Instagram", tiktok: "TikTok", other: "Other" };
+  var VARIANT_LABEL  = { a: "A", b: "B", none: "Not paired" };
+
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var DAYS   = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  var CMT_MAX = 1000;
+  var HOUR = 3600000;
+
+  /* ==========================================================================
+     Tiny DOM helpers. Everything below builds NODES; nothing builds markup.
+     Same names and same behaviour as admin/tasks.html, on purpose.
+     ========================================================================== */
+
+  function $(id) { return document.getElementById(id); }
+  function show(id) { var n = $(id); if (n) n.hidden = false; }
+  function hide(id) { var n = $(id); if (n) n.hidden = true; }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = String(text);
+    return n;
+  }
+
+  function clear(n) {
+    if (!n) return;
+    while (n.firstChild) { n.removeChild(n.firstChild); }
+  }
+
+  function setText(id, s) {
+    var n = $(id);
+    if (n) n.textContent = String(s);
+  }
+
+  function btn(label, cls, fn) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "adm-btn adm-mini" + (cls ? " " + cls : "");
+    b.setAttribute("data-fbt", "-");
+    b.textContent = label;
+    b.onclick = fn;
+    return b;
+  }
+
+  function say(msg) {
+    var n = $("adm-live");
+    if (n) n.textContent = String(msg);
+  }
+
+  /* ==========================================================================
+     Values out of the database, made safe to READ. Not safe to render —
+     textContent already did that — but safe to reason about: a missing field
+     must never reach the page as "undefined", a Timestamp must never reach it
+     as "[object Object]", and a number that is not a number must never reach
+     it as "NaN".
+     ========================================================================== */
+
+  function str(v) {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "number") { return isFinite(v) ? String(v) : ""; }
+    if (typeof v === "boolean") return v ? "yes" : "no";
+    return "";
+  }
+
+  function key(v, allowed, fallback) {
+    var s = str(v);
+    for (var i = 0; i < allowed.length; i++) { if (allowed[i] === s) return s; }
+    return fallback;
+  }
+
+  function num(v, fallback) {
+    var n = typeof v === "number" ? v : parseFloat(str(v));
+    return (typeof n === "number" && isFinite(n)) ? n : fallback;
+  }
+
+  /* A metric value or null. null and never 0 — see the long note in
+     js/admin-experiments.js. The page prints null as "—". */
+  function metric(v) {
+    if (v === null || v === undefined || v === "") return null;
+    var n = typeof v === "number" ? v : parseFloat(str(v));
+    if (typeof n !== "number" || !isFinite(n) || n < 0) return null;
+    return n;
+  }
+
+  function toMs(v) {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === "number") { return isFinite(v) ? (v > 1e11 ? v : v * 1000) : 0; }
+    if (typeof v === "string") { var p = Date.parse(v); return isFinite(p) ? p : 0; }
+    if (typeof v === "object") {
+      try { if (typeof v.toMillis === "function") { var m = v.toMillis(); if (isFinite(m)) return m; } } catch (e) {}
+      try { if (typeof v.toDate === "function") { var d = v.toDate(); if (d && isFinite(d.getTime())) return d.getTime(); } } catch (e2) {}
+      try { if (typeof v.getTime === "function") { var g = v.getTime(); if (isFinite(g)) return g; } } catch (e3) {}
+      if (typeof v.seconds === "number" && isFinite(v.seconds)) return v.seconds * 1000;
+      if (typeof v._seconds === "number" && isFinite(v._seconds)) return v._seconds * 1000;
+    }
+    return 0;
+  }
+
+  /* ==========================================================================
+     Formatting. All of it total: nothing broken reaches the page.
+     ========================================================================== */
+
+  function fmtDay(ms) {
+    if (!ms) return "not recorded";
+    var d = new Date(ms);
+    if (!isFinite(d.getTime())) return "not recorded";
+    return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
+  }
+
+  function fmtClock(ms) {
+    if (!ms) return "";
+    var d = new Date(ms);
+    if (!isFinite(d.getTime())) return "";
+    var h = d.getHours(), m = d.getMinutes();
+    if (!isFinite(h) || !isFinite(m)) return "";
+    return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+  }
+
+  /* "Thu 10 Sep 2026, 16:12" — 24-hour and local, the same decision and the
+     same reasons as the task board's clock. */
+  function fmtDayAt(ms) {
+    var day = fmtDay(ms);
+    if (day === "not recorded") return day;
+    var t = fmtClock(ms);
+    return t ? day + ", " + t : day;
+  }
+
+  /* A calendar day held as "YYYY-MM-DD" is NEVER handed to new Date(string) —
+     that parses as UTC midnight and prints as the day before west of
+     Greenwich. Split, and format from the table by hand. */
+  function dayOf(v) {
+    var F = window.FBE;
+    if (F && typeof F.isoDay === "function") { try { return F.isoDay(v); } catch (e) {} }
+    var s = str(v).replace(/^\s+|\s+$/g, "");
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+  }
+
+  function fmtDayStr(d) {
+    var s = dayOf(d);
+    if (!s) return "";
+    var y = Number(s.slice(0, 4)), mo = Number(s.slice(5, 7)), da = Number(s.slice(8, 10));
+    if (!isFinite(y) || !isFinite(mo) || !isFinite(da)) return "";
+    return da + " " + (MONTHS[mo - 1] || "") + " " + y;
+  }
+
+  function todayStr() {
+    var d = new Date();
+    var mo = d.getMonth() + 1, da = d.getDate();
+    return d.getFullYear() + "-" + (mo < 10 ? "0" : "") + mo + "-" + (da < 10 ? "0" : "") + da;
+  }
+
+  /* Thousands separated, no locale call — toLocaleString returns different
+     strings on different engines and "NaN" on a bad input on some of them. */
+  function fmtInt(n) {
+    if (typeof n !== "number" || !isFinite(n)) return "—";
+    var neg = n < 0;
+    var v = Math.abs(Math.round(n)), s = String(v), out = "", c = 0, i;
+    for (i = s.length - 1; i >= 0; i--) {
+      out = s.charAt(i) + out;
+      c++;
+      if (c % 3 === 0 && i > 0) out = "," + out;
+    }
+    return (neg ? "-" : "") + out;
+  }
+
+  function fmtMetric(v, unit) {
+    if (v === null || v === undefined) return "—";
+    if (unit === "%") return (Math.round(v * 10) / 10) + "%";
+    if (unit === "s") return (Math.round(v * 10) / 10) + "s";
+    return fmtInt(v);
+  }
+
+  function metricDef(k) {
+    for (var i = 0; i < METRICS.length; i++) { if (METRICS[i].k === k) return METRICS[i]; }
+    return METRICS[0];
+  }
+
+  /* "0:19" — a second on a retention curve, where the whole point is that it
+     is a position in a video and not a duration in seconds. */
+  function mmss(s) {
+    var v = Math.max(0, Math.round(num(s, 0)));
+    var m = Math.floor(v / 60), r = v % 60;
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+
+  function plural(n, one, many) {
+    return String(n) + " " + (n === 1 ? one : many);
+  }
+
+  function pct(x) { return (Math.round(x * 10) / 10) + "%"; }
+
+  /* An age in hours, printed the way a person says it. */
+  function fmtAge(hours) {
+    var h = Math.max(0, Math.round(num(hours, 0)));
+    if (h < 48) return h + "h";
+    var d = Math.floor(h / 24), r = h % 24;
+    return r ? d + "d " + r + "h" : d + "d";
+  }
+
+  /* ==========================================================================
+     <input type="datetime-local"> — the two instants the whole board turns on
+
+     A reel's postedAt and measuredAt are INSTANTS somebody types, not
+     calendar days, because the thing computed from them is an age in hours.
+     The value of a datetime-local input is "YYYY-MM-DDTHH:MM" with no zone,
+     and the spec says a date-TIME form without an offset is parsed as LOCAL —
+     which is what somebody typing "I posted this at 7pm" means. (A date-ONLY
+     string is parsed as UTC, which is exactly the bug the task board's `due`
+     is a string to avoid. Different field, different rule, both deliberate.)
+     ========================================================================== */
+
+  function dtValue(ms) {
+    if (!ms) return "";
+    var d = new Date(ms);
+    if (!isFinite(d.getTime())) return "";
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+           "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  function dtParse(s) {
+    var v = str(s).replace(/^\s+|\s+$/g, "");
+    if (!v) return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v);
+    if (!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), 0, 0);
+    if (!isFinite(d.getTime())) return null;
+    return d;
+  }
+
+  /* ==========================================================================
+     THE 72-HOUR RULE, and the deadline that sits behind it
+
+     Six bands, and every one of them is a different thing to say to the
+     person reading:
+
+       none   nothing is recorded about when this went up. Not a warning —
+              there is nothing to warn about — but it cannot be compared.
+       wait   posted, not measured, less than 72h old. The numbers are still
+              moving; measuring now would measure age.
+       due    posted, not measured, past 72h and inside 7 days. THIS IS AN
+              INSTRUCTION: go and write the numbers down.
+       risk   posted, not measured, 7 days or older. THE DEADLINE HAS GONE.
+              TikTok stops serving reach, watch time and retention for a video
+              with no activity for seven days, so this is not "still to do",
+              it is "probably lost". Said in those words.
+       early  measured, but less than 72h after posting. The number is real
+              and it is NOT comparable with one taken at 72h, so it is marked
+              and every chart leaves it out.
+       ok     measured at or after 72h. The ordinary case, and the only band
+              that feeds a chart.
+
+     `late` is deliberately not a seventh band. A reading taken at five days
+     overstates against one taken at three, but it is on the right side of the
+     bar and excluding it would throw away most of what gets typed. The age is
+     printed beside every reading so the difference is visible rather than
+     hidden.
+     ========================================================================== */
+
+  function ageOf(reel, now) {
+    var posted = reel.postedAt || 0, measured = reel.measuredAt || 0;
+    var out = { band: "none", hours: 0, label: "Age not recorded", comparable: false };
+    if (!posted) {
+      if (measured) { out.label = "Measured, but we do not know when it went up"; }
+      return out;
+    }
+    if (measured) {
+      var gap = (measured - posted) / HOUR;
+      out.hours = gap;
+      if (gap < MEASURE_HOURS) {
+        out.band = "early";
+        out.label = "Measured at " + fmtAge(gap) + " — too early";
+        return out;
+      }
+      out.band = "ok";
+      out.comparable = true;
+      out.label = "Measured at " + fmtAge(gap);
+      return out;
+    }
+    var age = (now - posted) / HOUR;
+    out.hours = age;
+    if (age < MEASURE_HOURS) {
+      out.band = "wait";
+      out.label = "Measure in " + fmtAge(MEASURE_HOURS - age);
+      return out;
+    }
+    if (age < AT_RISK_DAYS * 24) {
+      out.band = "due";
+      out.label = "Measure now — " + fmtAge(age) + " old";
+      return out;
+    }
+    out.band = "risk";
+    out.label = "Overdue " + fmtAge(age - AT_RISK_DAYS * 24) + " — data may be gone";
+    return out;
+  }
+
+  var AGE_CLASS = {
+    none: "adm-age adm-age-none",
+    wait: "adm-age adm-age-wait",
+    due: "adm-age adm-age-due",
+    risk: "adm-age adm-age-risk",
+    early: "adm-age adm-age-early",
+    ok: "adm-age adm-age-ok"
+  };
+
+  function ageChip(a) {
+    return el("span", AGE_CLASS[a.band] || AGE_CLASS.none, a.label);
+  }
+
+  /* EXPIRED IS DERIVED AND NEVER STORED. A running experiment whose planned
+     end date has gone reads as expired; a stored fourth status would be right
+     when it was written and wrong at midnight, with nothing running to fix
+     it. The clock changes it, so the clock computes it. */
+  function statusOf(e) {
+    var s = key(e.status, STATUSES, "idea");
+    if (s !== "running") return s;
+    var by = dayOf(e.endBy);
+    if (by && by < todayStr()) return "expired";
+    return "running";
+  }
+
+  /* ==========================================================================
+     ARITHMETIC — LAYER 1
+
+     Everything below is computed from the reels on every paint and is stored
+     nowhere. It has no author because it needs none: run it again tomorrow
+     with the same numbers and it says the same thing. That is the whole
+     difference between it and the written read, and the page is required to
+     keep the two apart on screen.
+     ========================================================================== */
+
+  function mean(a) {
+    if (!a.length) return null;
+    var s = 0, i;
+    for (i = 0; i < a.length; i++) s += a[i];
+    return s / a.length;
+  }
+
+  /* SAMPLE standard deviation, n-1. Undefined for one value, and that is the
+     honest answer rather than 0 — one reel tells you nothing about spread,
+     and returning 0 would make every single-reel arm look infinitely
+     precise, which is exactly the false certainty this whole section exists
+     to refuse. */
+  function sd(a) {
+    if (a.length < 2) return null;
+    var m = mean(a), s = 0, i;
+    for (i = 0; i < a.length; i++) s += (a[i] - m) * (a[i] - m);
+    return Math.sqrt(s / (a.length - 1));
+  }
+
+  function quantile(sorted, q) {
+    if (!sorted.length) return null;
+    if (sorted.length === 1) return sorted[0];
+    var pos = (sorted.length - 1) * q;
+    var lo = Math.floor(pos), hi = Math.ceil(pos);
+    if (lo === hi) return sorted[lo];
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+  }
+
+  /* Every comparable value of one metric across a list of reels. Comparable
+     means measured at 72 hours or later — see ageOf(). A reel measured early
+     has a real number and an incomparable one, and it is left out of every
+     calculation here rather than being quietly averaged in. */
+  function valuesOf(reels, k, now) {
+    var out = [], i, v;
+    for (i = 0; i < reels.length; i++) {
+      if (!ageOf(reels[i], now).comparable) continue;
+      v = metric(reels[i][k]);
+      if (v === null) continue;
+      out.push(v);
+    }
+    return out;
+  }
+
+  function armOf(reels, variant, now) {
+    var out = [], i;
+    for (i = 0; i < reels.length; i++) {
+      if (key(reels[i].variant, VARIANTS, "none") !== variant) continue;
+      if (!ageOf(reels[i], now).comparable) continue;
+      out.push(reels[i]);
+    }
+    return out;
+  }
+
+  /* ----------------------------------------------------------------------
+     THE NOISE TEST, and it is the most important function on this page.
+
+     A bar chart of A against B will always show one bar longer than the
+     other. That is not a result — it is arithmetic, and it is true of two
+     coins. The question is whether the gap between the arms is bigger than
+     the spread WITHIN each arm, because if it is not, the difference you are
+     looking at is the same difference you would get by posting the same video
+     twice.
+
+     So: pooled sample standard deviation across both arms, compared against
+     the gap between the means. Bigger than the spread, and there is something
+     to talk about; smaller, and the honest sentence is "this is inside the
+     noise — not a result yet", which the UI says in those words.
+
+     ONE REEL PER ARM CANNOT BE TESTED AT ALL. A single value has no spread —
+     sd() returns null rather than 0 for exactly this reason — and two reels
+     per arm can almost never support a conclusion either, which the verdict
+     says out loud rather than leaving to be inferred from a small number.
+
+     `need` is a ROUGH sample size: the textbook two-sample figure,
+     16 x (spread / gap)^2 per arm, which is 80% power at the conventional
+     95% threshold. It is called roughly, it is capped for display, and it is
+     never dressed up as a p-value. Nothing here claims significance; it
+     compares a difference to a spread and says which is bigger.
+     ---------------------------------------------------------------------- */
+  function noiseTest(reels, k, now) {
+    var A = armOf(reels, "a", now), B = armOf(reels, "b", now);
+    var va = valuesOf(A, k, now), vb = valuesOf(B, k, now);
+    var out = {
+      nA: va.length, nB: vb.length,
+      meanA: mean(va), meanB: mean(vb),
+      gap: null, spread: null, need: 0,
+      verdict: "insufficient", winner: ""
+    };
+    if (!va.length || !vb.length) return out;
+
+    out.gap = Math.abs(out.meanA - out.meanB);
+    out.winner = out.meanA >= out.meanB ? "a" : "b";
+
+    var sa = sd(va), sb = sd(vb);
+    if (sa === null || sb === null) {
+      /* At least one arm is a single reel. There is no spread to compare
+         against, so there is no test — not a weak result, no result. */
+      out.verdict = "insufficient";
+      return out;
+    }
+    /* Pooled, weighted by degrees of freedom, which is the usual way and
+       matters here because the two arms are rarely the same size. */
+    var dfA = va.length - 1, dfB = vb.length - 1;
+    out.spread = Math.sqrt((dfA * sa * sa + dfB * sb * sb) / (dfA + dfB));
+
+    if (out.gap > out.spread && va.length >= 2 && vb.length >= 2) {
+      out.verdict = "decided";
+    } else {
+      out.verdict = "noise";
+    }
+    if (out.gap > 0 && out.spread !== null && out.spread > 0) {
+      out.need = Math.ceil(16 * (out.spread / out.gap) * (out.spread / out.gap));
+    }
+    return out;
+  }
+
+  /* The format that won a DECIDED experiment: the tag on the reels of the
+     winning arm, when they agree. When they do not agree — one arm's two
+     reels are labelled differently — there is no single format that won, and
+     "" is returned rather than picking one. */
+  function winningFormat(e, reels, now) {
+    var t = noiseTest(reels, e.metric, now);
+    if (t.verdict !== "decided") return "";
+    var arm = armOf(reels, t.winner, now), i, f = "", one;
+    for (i = 0; i < arm.length; i++) {
+      one = str(arm[i].format);
+      if (!one) continue;
+      if (!f) { f = one; continue; }
+      if (f !== one) return "";
+    }
+    return f;
+  }
+
+  /* The steepest fall in a retention series, and where it happens.
+
+     Relative, not absolute: losing 20 points from 90 is a fifth of the
+     audience and losing 20 from 25 is four fifths, and the second is the one
+     that killed the video. Reported as the share of the REMAINING viewers who
+     left, because that is the sentence somebody can act on. */
+  function steepest(pts) {
+    if (!pts || pts.length < 2) return null;
+    var best = null, i, a, b, rel;
+    for (i = 0; i < pts.length - 1; i++) {
+      a = pts[i]; b = pts[i + 1];
+      if (!(a.percentage > 0)) continue;
+      rel = (a.percentage - b.percentage) / a.percentage;
+      if (rel <= 0) continue;
+      if (!best || rel > best.rel) {
+        best = { rel: rel, from: a, to: b, at: (a.second + b.second) / 2 };
+      }
+    }
+    return best;
+  }
+
+  /* Share still watching at a given second, linearly interpolated between the
+     two typed points either side. Interpolated and not invented: outside the
+     range of the series it returns null rather than extrapolating, because a
+     curve that keeps going after the last point somebody typed is a curve
+     with a made-up end on it. */
+  function atSecond(pts, s) {
+    if (!pts || !pts.length) return null;
+    var i;
+    if (s < pts[0].second || s > pts[pts.length - 1].second) return null;
+    for (i = 0; i < pts.length; i++) {
+      if (pts[i].second === s) return pts[i].percentage;
+      if (pts[i].second > s) {
+        var a = pts[i - 1], b = pts[i];
+        if (!a) return b.percentage;
+        var span = b.second - a.second;
+        if (!span) return b.percentage;
+        return a.percentage + (b.percentage - a.percentage) * ((s - a.second) / span);
+      }
+    }
+    return pts[pts.length - 1].percentage;
+  }
+
+  /* ==========================================================================
+     SVG — built node by node, the same idiom as js/dashboard.js
+
+     Same class vocabulary (a fill, a track, a rule, two text weights), the
+     same rule that every axis is labelled with real numbers, and the same
+     re-measure on the next turn of the event loop because a chart drawn
+     inside a hidden box measures 0 wide.
+
+     The one deviation, and it is deliberate: dashboard.js concatenates an SVG
+     string and escapes what it interpolates. Every label on THIS page is a
+     title or a story name two people typed, so nothing here builds markup at
+     all. createElementNS and textContent, all the way down.
+
+     NEVER A CHART FROM ONE POINT. Every builder below returns null when it
+     has fewer than two things to show, and the caller renders the sentence
+     "not enough data yet" with what is missing. A two-point drop-off curve
+     gets its dots and NO LINE, because a line through two points is a claim
+     about a shape that two points cannot make.
+     ========================================================================== */
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  function sv(tag, cls) {
+    var n = document.createElementNS(SVGNS, tag);
+    if (cls) n.setAttribute("class", cls);
+    return n;
+  }
+
+  function svRect(cls, x, y, w, h, r) {
+    var n = sv("rect", cls);
+    n.setAttribute("x", x); n.setAttribute("y", y);
+    n.setAttribute("width", Math.max(0, w)); n.setAttribute("height", Math.max(0, h));
+    if (r) n.setAttribute("rx", r);
+    return n;
+  }
+
+  function svLine(cls, x1, y1, x2, y2) {
+    var n = sv("line", cls);
+    n.setAttribute("x1", x1); n.setAttribute("y1", y1);
+    n.setAttribute("x2", x2); n.setAttribute("y2", y2);
+    return n;
+  }
+
+  function svText(cls, x, y, text, anchor) {
+    var n = sv("text", cls);
+    n.setAttribute("x", x); n.setAttribute("y", y);
+    if (anchor) n.setAttribute("text-anchor", anchor);
+    n.textContent = String(text);      /* textContent, never markup */
+    return n;
+  }
+
+  function svgRoot(w, h, title) {
+    var s = sv("svg");
+    s.setAttribute("width", w);
+    s.setAttribute("height", h);
+    s.setAttribute("viewBox", "0 0 " + w + " " + h);
+    s.setAttribute("role", "img");
+    var t = sv("title");
+    t.textContent = String(title);
+    s.appendChild(t);
+    return s;
+  }
+
+  /* An estimate, and it is only ever used to decide where to put an ellipsis.
+     DM Sans at --fs-meta is about 6.7px a character; the full value is always
+     in the row below the chart. */
+  function clipTo(s, px) {
+    s = String(s);
+    var max = Math.max(4, Math.floor(px / 6.7));
+    return s.length <= max ? s : s.slice(0, max - 1) + "…";
+  }
+
+  /* ---- Bars --------------------------------------------------------------
+     items: [{ label, value, right, cls }]. `right` is the string written at
+     the end of the row and it is what a reader actually reads; the bar is
+     only the comparison. `cls` lets a bar be drawn hollow when it must not be
+     mistaken for a result.
+
+     The X AXIS IS LABELLED under the bars — zero and the maximum, with the
+     metric named — because a bar chart with no scale says "this one is
+     longer" and nothing else, and "longer" was never the question. */
+  function barsSVG(w, items, title, axisLabel) {
+    if (!items || items.length < 2) return null;
+    var rowH = 30, gap = 4, top = 8, bot = 34, i;
+    var longest = 0;
+    for (i = 0; i < items.length; i++) longest = Math.max(longest, String(items[i].label).length);
+    var labW = Math.max(64, Math.min(Math.round(w * 0.32), Math.round(longest * 6.9) + 8));
+    var valW = 0;
+    for (i = 0; i < items.length; i++) valW = Math.max(valW, String(items[i].right).length * 7.4);
+    valW = Math.max(52, Math.min(200, Math.round(valW) + 12));
+    var x0 = labW + 12;
+    var barW = w - x0 - valW - 8;
+    if (barW < 60) barW = 60;
+
+    var max = 0;
+    for (i = 0; i < items.length; i++) if (items[i].value > max) max = items[i].value;
+    if (max <= 0) max = 1;
+
+    var h = top + items.length * (rowH + gap) - gap + bot;
+    var s = svgRoot(w, h, title);
+
+    for (i = 0; i < items.length; i++) {
+      var y = top + i * (rowH + gap);
+      var bh = 18, by = y + Math.round((rowH - bh) / 2);
+      var fw = Math.max(2, Math.round(barW * (items[i].value / max)));
+      s.appendChild(svRect("fbx-track", x0, by, barW, bh, 4));
+      s.appendChild(svRect(items[i].cls || "fbx-fill", x0 + 0.5, by + 0.5, fw, bh - 1, 3.5));
+      s.appendChild(svText("fbx-t", 0, y + 20, clipTo(items[i].label, labW)));
+      s.appendChild(svText("fbx-t", x0 + barW + 8, y + 20, items[i].right));
+    }
+
+    /* The scale. Two ticks and the name of what is being measured. */
+    var ay = h - bot + 16;
+    s.appendChild(svLine("fbx-rule", x0, ay - 8, x0 + barW, ay - 8));
+    s.appendChild(svText("fbx-t-dim", x0, ay + 4, "0"));
+    s.appendChild(svText("fbx-t-dim", x0 + barW, ay + 4, String(fmtInt(max)), "end"));
+    if (axisLabel) {
+      s.appendChild(svText("fbx-t-dim", x0 + barW / 2, ay + 18, axisLabel, "middle"));
+    }
+    return s;
+  }
+
+  /* ---- The drop-off curve -----------------------------------------------
+     series: [{ name, pts, line, dot }] — one per variant that has a series.
+     X is the second in the video, Y is the share still watching, and BOTH
+     axes are labelled with real numbers because "it went down" is not a
+     finding.
+
+     TWO POINTS GET NO LINE. A path through two points draws a slope, and a
+     slope is a claim about what happened between them that two points cannot
+     support. Dots, and a sentence underneath saying so. */
+  function dropSVG(w, series, title) {
+    var live = [], i, j, total = 0;
+    for (i = 0; i < series.length; i++) {
+      if (series[i].pts && series[i].pts.length) { live.push(series[i]); total += series[i].pts.length; }
+    }
+    if (!live.length || total < 2) return null;
+
+    /* padT has room ABOVE the 100% gridline for the steepest-fall label, which
+       would otherwise be struck through by that line. */
+    var padL = 46, padR = 16, padT = 26, padB = 42;
+    var h = 240;
+    var iw = w - padL - padR, ih = h - padT - padB;
+    if (iw < 80) iw = 80;
+
+    var maxS = 0;
+    for (i = 0; i < live.length; i++) {
+      for (j = 0; j < live[i].pts.length; j++) {
+        if (live[i].pts[j].second > maxS) maxS = live[i].pts[j].second;
+      }
+    }
+    if (maxS <= 0) maxS = 1;
+
+    function px(sec) { return padL + iw * (sec / maxS); }
+    function py(p) { return padT + ih - ih * (Math.max(0, Math.min(100, p)) / 100); }
+
+    var s = svgRoot(w, h, title);
+
+    /* Y gridlines at 0, 25, 50, 75, 100 per cent — a retention axis has a
+       fixed meaning and pinning it to the data's own maximum would make two
+       reels' curves look identical when one held 90% and the other 30%. */
+    var ticks = [0, 25, 50, 75, 100];
+    for (i = 0; i < ticks.length; i++) {
+      var gy = py(ticks[i]);
+      s.appendChild(svLine("fbx-rule", padL, gy, padL + iw, gy));
+      s.appendChild(svText("fbx-t-dim", padL - 7, gy + 4, ticks[i] + "%", "end"));
+    }
+
+    for (i = 0; i < live.length; i++) {
+      var pts = live[i].pts;
+      if (pts.length > 2) {
+        var d = "", n = 0;
+        for (j = 0; j < pts.length; j++) {
+          d += (n === 0 ? "M" : "L") + (Math.round(px(pts[j].second) * 10) / 10) + " " +
+               (Math.round(py(pts[j].percentage) * 10) / 10) + " ";
+          n++;
+        }
+        var path = sv("path", live[i].line || "fbx-line");
+        path.setAttribute("d", d);
+        s.appendChild(path);
+      }
+      for (j = 0; j < pts.length; j++) {
+        var c = sv("circle", live[i].dot || "fbx-dot");
+        c.setAttribute("cx", Math.round(px(pts[j].second)));
+        c.setAttribute("cy", Math.round(py(pts[j].percentage)));
+        c.setAttribute("r", "2.8");
+        s.appendChild(c);
+      }
+    }
+
+    /* The steepest fall of the FIRST series, marked. One mark and not one per
+       series: two dashed verticals a few pixels apart say nothing. */
+    var st = steepest(live[0].pts);
+    if (st && live[0].pts.length > 2) {
+      var mx = Math.round(px(st.at));
+      s.appendChild(svLine("fbx-mark", mx, padT, mx, padT + ih));
+      /* Clamped into the drawing area, so a fall in the last second of the
+         reel does not put its own label half outside the chart. */
+      var lx = Math.max(padL + 14, Math.min(padL + iw - 14, mx));
+      s.appendChild(svText("fbx-t-bad", lx, padT - 8, mmss(st.at), "middle"));
+    }
+
+    /* X labels, thinned so they never collide. */
+    var steps = Math.max(2, Math.min(6, Math.floor(iw / 60)));
+    for (i = 0; i <= steps; i++) {
+      var sec = maxS * i / steps;
+      s.appendChild(svText("fbx-t-dim", Math.round(px(sec)), padT + ih + 18, mmss(sec), "middle"));
+    }
+    s.appendChild(svText("fbx-t-dim", Math.round(padL + iw / 2), h - 6,
+                         "Seconds into the reel", "middle"));
+    return s;
+  }
+
+  /* ---- Painting a chart into its box -------------------------------------
+     A chart drawn while its container is display:none measures 0 wide and
+     lands in a full-width box a third empty. So every draw is repeated on the
+     next turn of the event loop, when the box is visible and the real width
+     is known, and again on a debounced resize. Same fix, same reason, as
+     js/dashboard.js. */
+  var CHARTS = {};
+
+  function widthOf(node) {
+    var w = 0;
+    try { w = node.clientWidth || 0; } catch (e) { w = 0; }
+    if (!w) w = 560;
+    w = w - 2;
+    if (w < 260) w = 260;
+    if (w > 900) w = 900;
+    return Math.round(w);
+  }
+
+  function paintChart(id) {
+    var host = $(id);
+    if (!host || !CHARTS[id]) return;
+    var node = null;
+    try { node = CHARTS[id](widthOf(host)); } catch (e) { node = null; }
+    clear(host);
+    if (node) { host.appendChild(node); host.hidden = false; }
+    else { host.hidden = true; }
+  }
+
+  function chart(id, draw) {
+    CHARTS[id] = draw;
+    paintChart(id);
+    try { setTimeout(function () { paintChart(id); }, 0); } catch (e) {}
+  }
+
+  function dropChart(id) {
+    try { delete CHARTS[id]; } catch (e) { CHARTS[id] = null; }
+    var host = $(id);
+    if (host) { clear(host); host.hidden = true; }
+  }
+
+  var resizeAt = null;
+  try {
+    window.addEventListener("resize", function () {
+      if (resizeAt) clearTimeout(resizeAt);
+      resizeAt = setTimeout(function () {
+        for (var id in CHARTS) {
+          if (Object.prototype.hasOwnProperty.call(CHARTS, id) && CHARTS[id]) paintChart(id);
+        }
+      }, 140);
+    }, false);
+  } catch (e) {}
+
+  /* The sentence a chart is replaced BY, never drawn under. A box that says
+     "not enough data yet" and what is missing is worth more than a chart of
+     one bar, which reads as a finding and is not one. */
+  function noData(host, why) {
+    var n = $(host);
+    if (!n) return;
+    dropChart(host);
+    n.hidden = false;
+    clear(n);
+    n.appendChild(el("p", "adm-mini-note adm-nodata", "Not enough data yet. " + why));
+  }
+
+  /* ==========================================================================
+     State
+     ========================================================================== */
+
+  var FBE = null;
+  var EXPS = [];
+  var REELS = {};              /* experiment id -> array of reels */
+  var REEL_UNSUB = {};         /* experiment id -> unsubscribe */
+  var expsSeen = false;
+  var reelsSeen = {};
+  var CMTS = [], cmtsSeen = false;
+
+  var openId = "", openerNode = null, openUnsub = null, openForm = null;
+  var openEditReel = "";       /* the reel whose per-field editor is open */
+  var openEditNode = null;     /* and its DOM, kept across repaints */
+  var addOpen = false;
+
+  function now() { return Date.now(); }
+
+  function expOf(id) {
+    for (var i = 0; i < EXPS.length; i++) { if (EXPS[i].id === id) return EXPS[i]; }
+    return null;
+  }
+
+  function reelsOf(id) { return REELS[id] || []; }
+
+  /* Normalising HERE as well as in the data layer, and not as belt and
+     braces: the render check drives this page with a stub FBE that hands over
+     plain objects, and everything below is entitled to assume a shape. */
+  function normExp(e) {
+    e = e || {};
+    return {
+      id: str(e.id),
+      title: str(e.title),
+      detail: str(e.detail),
+      status: key(e.status, STATUSES, "idea"),
+      hypothesis: str(e.hypothesis),
+      trying: str(e.trying),
+      metric: key(e.metric, metricKeys(), "views"),
+      decision: str(e.decision),
+      inspiration: str(e.inspiration),
+      links: linksOf(e.links),
+      endBy: dayOf(e.endBy),
+      startedAt: toMs(e.startedAt),
+      endedAt: toMs(e.endedAt),
+      outcome: str(e.outcome),
+      analysis: str(e.analysis),
+      analysisBy: str(e.analysisBy),
+      analysisByName: str(e.analysisByName),
+      analysisAt: toMs(e.analysisAt),
+      analysisRequestedAt: toMs(e.analysisRequestedAt),
+      order: num(e.order, 0),
+      createdAt: toMs(e.createdAt),
+      updatedAt: toMs(e.updatedAt),
+      updatedBy: str(e.updatedBy),
+      createdBy: str(e.createdBy),
+      createdByName: str(e.createdByName)
+    };
+  }
+
+  function metricKeys() {
+    var out = [], i;
+    for (i = 0; i < METRICS.length; i++) out.push(METRICS[i].k);
+    return out;
+  }
+
+  function safeUrl(v) {
+    if (FBE && typeof FBE.safeUrl === "function") {
+      try { return FBE.safeUrl(v); } catch (e) {}
+    }
+    var s = str(v).replace(/[\u0000-\u001F\u007F]+/g, "").replace(/^\s+/, "");
+    return s.toLowerCase().indexOf("https://") === 0 ? s : "";
+  }
+
+  function linksOf(v) {
+    var out = [], i, one;
+    if (Object.prototype.toString.call(v) !== "[object Array]") return out;
+    for (i = 0; i < v.length; i++) {
+      one = safeUrl(v[i]);
+      if (one) out.push(one);
+    }
+    return out;
+  }
+
+  function normReel(r) {
+    r = r || {};
+    var out = {
+      id: str(r.id),
+      story: str(r.story),
+      url: safeUrl(r.url),
+      platform: key(r.platform, PLATFORMS, "instagram"),
+      variant: key(r.variant, VARIANTS, "none"),
+      format: str(r.format),
+      postedAt: toMs(r.postedAt),
+      measuredAt: toMs(r.measuredAt),
+      cover: safeUrl(r.cover),
+      coverPath: str(r.coverPath),
+      retention: retOf(r.retention),
+      source: str(r.source) || "manual",
+      analysis: str(r.analysis),
+      analysisBy: str(r.analysisBy),
+      analysisByName: str(r.analysisByName),
+      analysisAt: toMs(r.analysisAt),
+      order: num(r.order, 0),
+      createdAt: toMs(r.createdAt),
+      updatedAt: toMs(r.updatedAt)
+    };
+    for (var i = 0; i < METRICS.length; i++) { out[METRICS[i].k] = metric(r[METRICS[i].k]); }
+    return out;
+  }
+
+  /* {second, percentage} — the same two key names TikTok's video_view_retention
+     uses, so an automated writer would need no migration. The short s/p form
+     is accepted because a paste tool might emit it. */
+  function retOf(v) {
+    var out = [], i, one, s, p;
+    if (Object.prototype.toString.call(v) !== "[object Array]") return out;
+    for (i = 0; i < v.length; i++) {
+      one = v[i];
+      if (!one || typeof one !== "object") continue;
+      s = metric(one.second === undefined ? one.s : one.second);
+      p = metric(one.percentage === undefined ? one.p : one.percentage);
+      if (s === null || p === null) continue;
+      out.push({ second: s, percentage: p });
+    }
+    out.sort(function (a, b) { return a.second - b.second; });
+    return out;
+  }
+
+  /* ==========================================================================
+     Writes. Every one goes through here so that a refusal — the rules saying
+     no, a dropped connection — lands as a sentence where the eye already is,
+     instead of in a console nobody has open. Firestore's own listener is what
+     repaints on success; nothing here mutates EXPS or REELS, so the screen
+     can never disagree with the server.
+     ========================================================================== */
+
+  function errHost() {
+    if (openId) {
+      var sn = $("adm-pane-note");
+      if (sn) return sn;
+    }
+    return $("adm-board-state");
+  }
+
+  function fail(what, e) {
+    var n = errHost();
+    if (!n) return;
+    n.className = "adm-state adm-bad";
+    clear(n);
+    n.appendChild(document.createTextNode("Could not " + what + ". "));
+    var m = "";
+    try { m = str(e && (e.message || e.code)); } catch (e2) {}
+    n.appendChild(document.createTextNode(
+      m ? "The database said: " + m + ". Nothing was changed."
+        : "Nothing was changed. Check your connection and try again."));
+    n.hidden = false;
+    say("Could not " + what + ".");
+  }
+
+  function warn(msg) {
+    var n = errHost();
+    if (n) {
+      n.className = "adm-state adm-bad";
+      clear(n);
+      n.appendChild(document.createTextNode(String(msg)));
+      n.hidden = false;
+    }
+    say(String(msg));
+  }
+
+  function callN(name, args, what, then, onFail) {
+    if (!FBE || typeof FBE[name] !== "function") {
+      fail(what, { message: "the data layer is not loaded" });
+      if (onFail) onFail();
+      return;
+    }
+    var p;
+    try { p = FBE[name].apply(FBE, args || []); }
+    catch (e) { fail(what, e); if (onFail) onFail(); return; }
+    if (p && typeof p.then === "function") {
+      p.then(function (r) { if (then) then(r); },
+             function (e) { fail(what, e); if (onFail) onFail(e); });
+    } else if (then) { then(p); }
+  }
+
+  /* ==========================================================================
+     Form controls — the same shapes the task board uses
+     ========================================================================== */
+
+  function field(labelText, control, wide, forId) {
+    var f = el("div", "adm-field" + (wide ? " adm-form-wide" : ""));
+    var id = forId || control.id;
+    var lab = el("label", null, labelText);
+    if (id) lab.setAttribute("for", id);
+    f.appendChild(lab);
+    f.appendChild(control);
+    return f;
+  }
+
+  function input(id, value, placeholder) {
+    var n = document.createElement("input");
+    n.type = "text";
+    n.className = "adm-input";
+    n.id = id;
+    n.value = str(value);
+    if (placeholder) n.placeholder = placeholder;
+    n.setAttribute("data-fbt", "-");
+    return n;
+  }
+
+  function numInput(id, value, placeholder) {
+    var n = document.createElement("input");
+    /* inputmode as well as type, because an in-app browser on iOS shows the
+       numeric keypad off inputmode and the ordinary keyboard off type alone —
+       and this form is ten numbers typed on a phone. */
+    try { n.type = "number"; } catch (e) { n.type = "text"; }
+    try { n.setAttribute("inputmode", "decimal"); } catch (e2) {}
+    try { n.setAttribute("min", "0"); n.setAttribute("step", "any"); } catch (e3) {}
+    n.className = "adm-input";
+    n.id = id;
+    n.value = (value === null || value === undefined) ? "" : String(value);
+    if (placeholder) n.placeholder = placeholder;
+    n.setAttribute("data-fbt", "-");
+    return n;
+  }
+
+  function dtInput(id, ms) {
+    var n = document.createElement("input");
+    try { n.type = "datetime-local"; } catch (e) { n.type = "text"; }
+    n.className = "adm-input";
+    n.id = id;
+    n.value = dtValue(ms);
+    n.placeholder = "YYYY-MM-DDTHH:MM";
+    n.setAttribute("autocomplete", "off");
+    n.setAttribute("data-fbt", "-");
+    return n;
+  }
+
+  function dateInput(id, value) {
+    var n = document.createElement("input");
+    try { n.type = "date"; } catch (e) { n.type = "text"; }
+    n.className = "adm-input";
+    n.id = id;
+    n.value = dayOf(value);
+    n.placeholder = "YYYY-MM-DD";
+    n.setAttribute("autocomplete", "off");
+    n.setAttribute("data-fbt", "-");
+    return n;
+  }
+
+  function textarea(id, value, placeholder) {
+    var n = document.createElement("textarea");
+    n.className = "adm-area";
+    n.id = id;
+    n.value = str(value);
+    if (placeholder) n.placeholder = placeholder;
+    n.setAttribute("data-fbt", "-");
+    return n;
+  }
+
+  function select(id, values, labels, current) {
+    var n = document.createElement("select");
+    n.className = "adm-input";
+    n.id = id;
+    n.setAttribute("data-fbt", "-");
+    for (var i = 0; i < values.length; i++) {
+      var o = document.createElement("option");
+      o.value = values[i];
+      o.textContent = (labels && labels[values[i]]) || values[i];
+      if (values[i] === current) o.selected = true;
+      n.appendChild(o);
+    }
+    return n;
+  }
+
+  function acts() { return el("div", "adm-form-acts"); }
+
+  /* ==========================================================================
+     The add-an-experiment form.
+
+     FOUR BOXES AND ONLY THE FIRST IS REQUIRED. This is the door onto the
+     whole board and a door with eleven questions behind it is a door nobody
+     opens. The hypothesis, the decision rule and the rest are in the detail
+     view, where somebody is already thinking about one experiment rather than
+     being interrogated on the way in.
+     ========================================================================== */
+
+  function expForm(pre, e) {
+    var box = el("div", "adm-form-grid");
+    var fTitle  = input(pre + "-title", e.title, "What are we testing");
+    var fDetail = input(pre + "-detail", e.detail, "One line — what it is, in plain words");
+    var fStat   = select(pre + "-status", STATUSES, STATUS_LABEL, e.status);
+    var fMetric = select(pre + "-metric", metricKeys(), metricLabels(), e.metric);
+    var fEnd    = dateInput(pre + "-endby", e.endBy);
+    var fHyp    = textarea(pre + "-hyp", e.hypothesis, "What we think is true, and why");
+    var fTry    = textarea(pre + "-try", e.trying, "What we are actually doing differently");
+    var fDec    = textarea(pre + "-dec", e.decision, "What result would change what we do?");
+
+    box.appendChild(field("Experiment", fTitle, true));
+    box.appendChild(field("In one line", fDetail, true));
+    box.appendChild(field("Status", fStat));
+    box.appendChild(field("Primary metric", fMetric));
+    box.appendChild(field("Planned end", fEnd));
+    box.appendChild(field("Hypothesis", fHyp, true));
+    box.appendChild(field("What we are trying", fTry, true));
+    box.appendChild(field("Decision rule", fDec, true));
+
+    var wrap = el("div");
+    wrap.appendChild(box);
+    wrap.appendChild(el("p", "adm-mini-note",
+      "Only the first box is needed. A planned end date is what makes a " +
+      "running experiment say “expired” when the day has gone — nothing " +
+      "stores that word, it is worked out from the date every time the page paints."));
+
+    return {
+      node: wrap,
+      focus: function () { try { fTitle.focus(); } catch (er) {} },
+      badEnd: function () {
+        var raw = str(fEnd.value).replace(/^\s+|\s+$/g, "");
+        return !!raw && !dayOf(raw);
+      },
+      focusEnd: function () { try { fEnd.focus(); } catch (er) {} },
+      read: function () {
+        return {
+          title: str(fTitle.value).replace(/^\s+|\s+$/g, ""),
+          detail: str(fDetail.value).replace(/^\s+|\s+$/g, ""),
+          status: key(fStat.value, STATUSES, "idea"),
+          metric: key(fMetric.value, metricKeys(), "views"),
+          endBy: dayOf(fEnd.value),
+          hypothesis: str(fHyp.value).replace(/\s+$/g, ""),
+          trying: str(fTry.value).replace(/\s+$/g, ""),
+          decision: str(fDec.value).replace(/\s+$/g, "")
+        };
+      }
+    };
+  }
+
+  function metricLabels() {
+    var out = {}, i;
+    for (i = 0; i < METRICS.length; i++) out[METRICS[i].k] = METRICS[i].label;
+    return out;
+  }
+
+  function openAdd() {
+    var host = $("adm-exp-form");
+    if (!host) return;
+    addOpen = true;
+    clear(host);
+    host.hidden = false;
+    var f = expForm("adm-new", normExp({ status: "idea", metric: "views" }));
+    host.appendChild(f.node);
+    var a = acts();
+    a.appendChild(btn("Add it", "adm-btn-go", function () {
+      var v = f.read();
+      if (!v.title) { f.focus(); warn("An experiment needs a title."); return; }
+      if (f.badEnd()) { f.focusEnd(); warn("That end date is not a day I can read. Use YYYY-MM-DD."); return; }
+      callN("addExperiment", [v], "add that experiment", function () {
+        closeAdd();
+        say("Experiment added.");
+      });
+    }));
+    a.appendChild(btn("Cancel", null, closeAdd));
+    host.appendChild(a);
+    f.focus();
+  }
+
+  function closeAdd() {
+    addOpen = false;
+    var host = $("adm-exp-form");
+    if (host) { host.hidden = true; clear(host); }
+    var b = $("adm-exp-open");
+    if (b) { try { b.focus(); } catch (e) {} }
+  }
+
+  /* ==========================================================================
+     THE CARDS
+
+     A title, one line, a status, and what is outstanding under it. Nothing
+     else — the numbers are one tap away and a card carrying them would be a
+     table with rounded corners.
+
+     THE OUTSTANDING LINE IS NOT DECORATION. A reel logged with a posted time
+     and no measurement is a countdown, and past seven days it is data TikTok
+     has probably already dropped. That has to be visible from the list, not
+     only from inside the experiment, or it gets found a fortnight late.
+     ========================================================================== */
+
+  function openTitle(cls, text, id) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "adm-open " + cls;
+    b.setAttribute("data-fbt", "-");
+    b.setAttribute("data-row", id);
+    b.setAttribute("aria-haspopup", "dialog");
+    b.textContent = text;
+    b.onclick = function () { openSheet(id, b); };
+    return b;
+  }
+
+  function outstanding(reels, n) {
+    var o = { wait: 0, due: 0, risk: 0, early: 0, ok: 0, none: 0 }, i, a;
+    for (i = 0; i < reels.length; i++) {
+      a = ageOf(reels[i], n);
+      o[a.band] = (o[a.band] || 0) + 1;
+    }
+    return o;
+  }
+
+  function expCard(e) {
+    var card = el("div", "adm-exp" + (openId === e.id ? " adm-exp-on" : ""));
+    var st = statusOf(e);
+    var n = now();
+    var reels = reelsOf(e.id);
+    var o = outstanding(reels, n);
+
+    var rail = el("div", "adm-exp-rail");
+    rail.appendChild(el("span", "adm-exp-s adm-exp-s-" + st, STATUS_LABEL[st] || st));
+    if (st === "expired") {
+      rail.appendChild(el("span", "adm-pill", "Planned end was " + fmtDayStr(e.endBy)));
+    }
+    card.appendChild(rail);
+
+    card.appendChild(openTitle("adm-exp-t", e.title || "Untitled experiment", e.id));
+    if (e.detail) card.appendChild(el("span", "adm-exp-d", e.detail));
+
+    /* WHAT IS OUTSTANDING, in the stop colour when it is a missed deadline.
+       Never an empty cell: a reel with nothing typed under it is the thing
+       this whole board is trying to stop happening. */
+    if (o.risk || o.due || o.wait) {
+      var strip = el("div", "adm-ans-strip");
+      if (o.risk) strip.appendChild(el("span", "adm-pill adm-pill-bad",
+        plural(o.risk, "reel", "reels") + " past " + AT_RISK_DAYS + " days — data may be gone"));
+      if (o.due) strip.appendChild(el("span", "adm-pill adm-pill-go",
+        plural(o.due, "reel", "reels") + " ready to measure"));
+      if (o.wait) strip.appendChild(el("span", "adm-pill",
+        plural(o.wait, "reel", "reels") + " not " + MEASURE_HOURS + "h old yet"));
+      card.appendChild(strip);
+    }
+
+    var bits = [];
+    bits.push(plural(reels.length, "reel", "reels"));
+    bits.push(o.ok + " measured on the clock");
+    if (o.early) bits.push(o.early + " measured too early");
+    bits.push("ranked on " + metricDef(e.metric).label.toLowerCase());
+    card.appendChild(el("span", "adm-exp-m", bits.join(" · ")));
+
+    var a2 = el("div", "adm-rowacts");
+    var open = btn("Open", null, function () { openSheet(e.id, open); });
+    open.setAttribute("aria-haspopup", "dialog");
+    open.setAttribute("data-row", e.id);
+    open.className += " adm-open-btn";
+    a2.appendChild(open);
+    if (e.status === "idea") {
+      a2.appendChild(btn("Start", null, function () {
+        callN("startExperiment", [e.id], "start that experiment", function () { say("Started."); });
+      }));
+    }
+    card.appendChild(a2);
+    return card;
+  }
+
+  function renderCards() {
+    var box = $("adm-exps"), state = $("adm-board-state");
+    if (!box || !state) return;
+    if (state.className.indexOf("adm-bad") < 0) state.className = "adm-state";
+
+    setText("adm-exps-count", expsSeen ? plural(EXPS.length, "experiment", "experiments") : "—");
+
+    if (!expsSeen) {
+      box.hidden = true; clear(box);
+      state.hidden = false;
+      state.textContent = "Loading the experiments…";
+      return;
+    }
+    if (!EXPS.length) {
+      box.hidden = true; clear(box);
+      if (state.className.indexOf("adm-bad") < 0) {
+        state.hidden = false;
+        clear(state);
+        state.appendChild(el("b", null, "No experiments yet."));
+        state.appendChild(document.createTextNode(
+          " Press “Add an experiment”. An idea costs nothing to write down " +
+          "and the point of writing it down is that the next one can be compared " +
+          "to it."));
+      }
+      return;
+    }
+
+    if (state.className.indexOf("adm-bad") < 0) state.hidden = true;
+    box.hidden = false;
+    clear(box);
+
+    /* Running first, then expired, then ideas, then ended — which is the
+       order of "what needs me". Inside a band, newest first. */
+    var rank = { running: 0, expired: 1, idea: 2, ended: 3 };
+    var sorted = EXPS.slice(0);
+    sorted.sort(function (a, b) {
+      var ra = rank[statusOf(a)], rb = rank[statusOf(b)];
+      if (ra !== rb) return ra - rb;
+      if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt;
+      return a.title < b.title ? -1 : (a.title > b.title ? 1 : 0);
+    });
+    for (var i = 0; i < sorted.length; i++) { box.appendChild(expCard(sorted[i])); }
+  }
+
+  /* ==========================================================================
+     THE ANSWER — "what is working", across the whole board
+
+     The page's one job. It reads every ENDED experiment, runs the same noise
+     test the detail view runs, and says which formats have actually been
+     DECIDED and which are still inside the margin.
+
+     Saying "nothing yet, and here is why" is a better answer than a chart. It
+     is also, for a board with two people posting a few reels a week, the true
+     answer most weeks — and a surface that manufactured a winner out of two
+     posts would be worse than the memory it replaced.
+     ========================================================================== */
+
+  function renderAnswer() {
+    var v = $("adm-ans-v"), why = $("adm-ans-why"), strip = $("adm-ans-strip"),
+        note = $("adm-ans-note");
+    if (!v || !why || !strip || !note) return;
+    clear(why); clear(note); clear(strip);
+    var n = now();
+
+    if (!expsSeen) { v.textContent = "Reading the board…"; strip.hidden = true; return; }
+
+    /* ---- what is outstanding, everywhere ---- */
+    var all = [], i, j, rs;
+    for (i = 0; i < EXPS.length; i++) {
+      rs = reelsOf(EXPS[i].id);
+      for (j = 0; j < rs.length; j++) all.push(rs[j]);
+    }
+    var o = outstanding(all, n);
+    if (o.risk || o.due || o.wait || o.early) {
+      strip.hidden = false;
+      if (o.risk) strip.appendChild(el("span", "adm-pill adm-pill-bad",
+        plural(o.risk, "reel", "reels") + " past the " + AT_RISK_DAYS + "-day deadline"));
+      if (o.due) strip.appendChild(el("span", "adm-pill adm-pill-go",
+        plural(o.due, "reel", "reels") + " ready to measure now"));
+      if (o.wait) strip.appendChild(el("span", "adm-pill",
+        plural(o.wait, "reel", "reels") + " still under " + MEASURE_HOURS + "h"));
+      if (o.early) strip.appendChild(el("span", "adm-pill",
+        plural(o.early, "reel", "reels") + " measured too early"));
+    } else { strip.hidden = true; }
+
+    /* ---- the verdict ---- */
+    var ended = [], running = 0, ideas = 0;
+    for (i = 0; i < EXPS.length; i++) {
+      var st = statusOf(EXPS[i]);
+      if (st === "ended") ended.push(EXPS[i]);
+      else if (st === "idea") ideas++;
+      else running++;
+    }
+
+    if (!ended.length) {
+      v.textContent = "Nothing has finished yet, so nothing is decided.";
+      why.appendChild(el("p", "adm-ans-say",
+        plural(running, "experiment is", "experiments are") + " running and " +
+        plural(ideas, "idea is", "ideas are") + " written down. A result " +
+        "arrives when an experiment is ended with its reels measured at " +
+        MEASURE_HOURS + " hours — not before, because until then the numbers " +
+        "are still moving."));
+      noData("adm-ans-chart", "No experiment has ended.");
+      hide("adm-ans-ch");
+      return;
+    }
+
+    var wins = {}, decided = 0, undecided = [], f;
+    for (i = 0; i < ended.length; i++) {
+      var t = noiseTest(reelsOf(ended[i].id), ended[i].metric, n);
+      if (t.verdict === "decided") {
+        decided++;
+        f = winningFormat(ended[i], reelsOf(ended[i].id), n) || "not labelled";
+        wins[f] = (wins[f] || 0) + 1;
+      } else {
+        undecided.push({ e: ended[i], t: t });
+      }
+    }
+
+    if (!decided) {
+      v.textContent = "Nothing is decided yet — and that is the honest answer, not a gap.";
+      why.appendChild(el("p", "adm-ans-say",
+        plural(ended.length, "experiment has", "experiments have") + " ended, and in " +
+        (ended.length === 1 ? "it" : "every one of them") + " the difference between " +
+        "the two sides is smaller than the spread between reels on the same side. " +
+        "That is what a coin looks like. What changes it is more posts per side, " +
+        "not a longer look at these ones."));
+      var ul = el("ul", "adm-diag");
+      for (i = 0; i < undecided.length && i < 5; i++) {
+        ul.appendChild(undecidedLine(undecided[i].e, undecided[i].t));
+      }
+      why.appendChild(ul);
+      noData("adm-ans-chart", "No ended experiment has separated its two sides from the noise yet.");
+      hide("adm-ans-ch");
+      return;
+    }
+
+    /* Something has actually been decided. Name it plainly. */
+    var best = "", bestN = 0, k;
+    for (k in wins) {
+      if (!Object.prototype.hasOwnProperty.call(wins, k)) continue;
+      if (wins[k] > bestN) { bestN = wins[k]; best = k; }
+    }
+    v.textContent = best === "not labelled"
+      ? plural(decided, "experiment has", "experiments have") +
+        " produced a result, but the winning reels carry no format tag — so the board " +
+        "cannot say what won, only that something did."
+      : "“" + best + "” has won " + plural(bestN, "decided experiment", "decided experiments") +
+        " of " + decided + ".";
+    why.appendChild(el("p", "adm-ans-say",
+      "Decided means the gap between the two sides was bigger than the spread " +
+      "between reels on the same side, with at least two measured reels each. " +
+      (undecided.length
+        ? plural(undecided.length, "other ended experiment is", "other ended experiments are") +
+          " still inside the margin and " + (undecided.length === 1 ? "is" : "are") +
+          " not counted below."
+        : "Every ended experiment cleared it.")));
+
+    var items = [], list = [];
+    for (k in wins) {
+      if (!Object.prototype.hasOwnProperty.call(wins, k)) continue;
+      list.push({ k: k, n: wins[k] });
+    }
+    list.sort(function (a, b) { return b.n - a.n; });
+    for (i = 0; i < list.length; i++) {
+      items.push({
+        label: list[i].k,
+        value: list[i].n,
+        right: plural(list[i].n, "win", "wins"),
+        cls: list[i].k === "not labelled" ? "fbx-fill-q" : "fbx-fill"
+      });
+    }
+
+    if (items.length < 2) {
+      noData("adm-ans-chart",
+        "Only one format has won a decided experiment. One bar is not a comparison — " +
+        "tag the reels of another experiment with a format and end it, and this becomes a chart.");
+      hide("adm-ans-ch");
+    } else {
+      show("adm-ans-ch");
+      chart("adm-ans-chart", function (w) {
+        return barsSVG(w, items, "Formats that have won a decided experiment",
+                       "Decided experiments won");
+      });
+    }
+
+    if (undecided.length) {
+      var ul2 = el("ul", "adm-diag");
+      for (i = 0; i < undecided.length && i < 5; i++) {
+        ul2.appendChild(undecidedLine(undecided[i].e, undecided[i].t));
+      }
+      note.appendChild(el("span", "adm-chart-h", "Ended, but still inside the margin"));
+      note.appendChild(ul2);
+    }
+  }
+
+  function undecidedLine(e, t) {
+    var li = el("li", "adm-diag-warn");
+    li.appendChild(el("b", "adm-diag-k", (e.title || "Untitled experiment") + ": "));
+    var def = metricDef(e.metric);
+    if (t.verdict === "insufficient") {
+      li.appendChild(document.createTextNode(
+        t.nA + " measured on A and " + t.nB + " on B. " +
+        (t.nA < 1 || t.nB < 1
+          ? "One side has nothing measured at " + MEASURE_HOURS + " hours, so there is nothing to compare."
+          : "A side with one reel has no spread to measure the gap against, so this cannot be a result yet.")));
+    } else {
+      li.appendChild(document.createTextNode(
+        "the two sides differ by " + fmtMetric(t.gap, def.unit) + " on " +
+        def.label.toLowerCase() + ", and reels on the same side differ by " +
+        fmtMetric(t.spread, def.unit) + ". The gap is inside the noise." +
+        (t.need ? " Roughly " + (t.need > 30 ? "more than 30" : t.need) +
+                  " posts a side would be needed to tell them apart." : "")));
+    }
+    return li;
+  }
+
+  /* ==========================================================================
+     LAYER 1 IN THE DETAIL VIEW — the diagnostics
+
+     Short factual sentences with the numbers in them. Each one is arithmetic
+     over the reels of this experiment (and, for the hook, over every measured
+     reel on the board), computed on every paint and stored nowhere.
+
+     The rule every line obeys: NEVER ROUND A NUMBER INTO A CLAIM IT DOES NOT
+     SUPPORT. "Bottom quarter of the board" is only said when there are enough
+     measured reels for a quartile to mean anything; "biggest drop" is only
+     said over a series with enough points to have one; and the variant
+     comparison says "not a result yet" far more often than it says anything
+     else.
+     ========================================================================== */
+
+  function diagLine(k, text, warn) {
+    var li = el("li", warn ? "adm-diag-warn" : null);
+    li.appendChild(el("b", "adm-diag-k", k + ": "));
+    li.appendChild(document.createTextNode(text));
+    return li;
+  }
+
+  function allBoardReels() {
+    var out = [], i, j, rs;
+    for (i = 0; i < EXPS.length; i++) {
+      rs = reelsOf(EXPS[i].id);
+      for (j = 0; j < rs.length; j++) out.push(rs[j]);
+    }
+    return out;
+  }
+
+  function diagnose(e, reels) {
+    var out = [], n = now(), i;
+    var def = metricDef(e.metric);
+
+    /* ---- COMPLETENESS. First, because every other line below is computed
+       only over the reels this one counts. ---- */
+    var o = outstanding(reels, n);
+    if (!reels.length) {
+      out.push(diagLine("Completeness", "No reels have been logged under this experiment yet.", false));
+      return out;
+    }
+    var comp = "";
+    comp += o.ok + " of " + reels.length + " reels are measured at " + MEASURE_HOURS +
+            " hours or later, which is what every number below is computed from.";
+    if (o.early) {
+      comp += " " + plural(o.early, "reel was", "reels were") + " measured earlier than that; " +
+              (o.early === 1 ? "its numbers are" : "their numbers are") +
+              " shown but left out of every comparison, because a reading taken early " +
+              "measures age and not quality.";
+    }
+    if (o.risk) {
+      comp += " " + plural(o.risk, "reel is", "reels are") + " past " + AT_RISK_DAYS +
+              " days with nothing typed — TikTok stops serving reach, watch time and " +
+              "retention after that, so those numbers are probably gone for good.";
+    } else if (o.due) {
+      comp += " " + plural(o.due, "reel is", "reels are") + " ready to measure now.";
+    }
+    out.push(diagLine("Completeness", comp, !!(o.early || o.risk)));
+
+    /* ---- VARIANT DIFFERENCE vs NOISE. The one that matters most, so it
+       comes before anything that could be mistaken for a finding. ---- */
+    var t = noiseTest(reels, e.metric, n);
+    if (t.verdict === "insufficient") {
+      out.push(diagLine("A vs B",
+        t.nA + " measured on A and " + t.nB + " on B. " +
+        (t.nA < 1 || t.nB < 1
+          ? "Until both sides have a reel measured at " + MEASURE_HOURS +
+            " hours there is nothing to compare."
+          : "One reel on a side has no spread, so there is no way to tell a real " +
+            "difference from the difference you would get by posting the same reel twice. " +
+            "Two a side is rarely enough either."), true));
+    } else if (t.verdict === "noise") {
+      out.push(diagLine("A vs B",
+        "A averages " + fmtMetric(t.meanA, def.unit) + " and B averages " +
+        fmtMetric(t.meanB, def.unit) + " on " + def.label.toLowerCase() +
+        " — a gap of " + fmtMetric(t.gap, def.unit) + ". Reels on the SAME side differ " +
+        "by " + fmtMetric(t.spread, def.unit) + ". The difference is inside the noise: " +
+        "not a result yet." +
+        (t.need ? " Roughly " + (t.need > 30 ? "more than 30" : t.need) +
+                  " posts a side would be needed to separate them, on this spread." : ""), true));
+    } else {
+      out.push(diagLine("A vs B",
+        VARIANT_LABEL[t.winner] + " is ahead: " + fmtMetric(t.meanA, def.unit) + " against " +
+        fmtMetric(t.meanB, def.unit) + " on " + def.label.toLowerCase() +
+        " (" + t.nA + " and " + t.nB + " measured reels). The gap of " +
+        fmtMetric(t.gap, def.unit) + " is larger than the " + fmtMetric(t.spread, def.unit) +
+        " that reels on the same side differ by, so it is worth acting on — " +
+        "which is not the same as proved.", false));
+    }
+
+    /* ---- HOOK. Against this experiment and against the board. ---- */
+    var board = valuesOf(allBoardReels(), "threeSec", n).slice(0);
+    board.sort(function (a, b) { return a - b; });
+    var mine = [], names = [];
+    for (i = 0; i < reels.length; i++) {
+      if (!ageOf(reels[i], n).comparable) continue;
+      var v3 = metric(reels[i].threeSec);
+      if (v3 === null) continue;
+      mine.push(v3);
+      names.push({ v: v3, story: reels[i].story || "an untitled reel" });
+    }
+    if (!mine.length) {
+      out.push(diagLine("Hook",
+        "No 3-second view rate has been typed for a reel measured on the clock, so " +
+        "there is nothing to say about the opening yet. It is the single most " +
+        "useful number on the Insights screen for this.", false));
+    } else if (board.length < 4) {
+      out.push(diagLine("Hook",
+        "3-second view rate here averages " + pct(mean(mine)) + ". The board only has " +
+        plural(board.length, "measured reel", "measured reels") + " with that number, " +
+        "which is too few to say whether that is good — a quarter of four is one reel. " +
+        "It needs at least four.", false));
+    } else {
+      var q1 = quantile(board, 0.25);
+      var low = [];
+      for (i = 0; i < names.length; i++) { if (names[i].v <= q1) low.push(names[i]); }
+      if (low.length) {
+        var who = [];
+        for (i = 0; i < low.length && i < 3; i++) { who.push(low[i].story + " at " + pct(low[i].v)); }
+        out.push(diagLine("Hook",
+          plural(low.length, "reel is", "reels are") + " in the bottom quarter of the board " +
+          "for 3-second view rate — " + who.join(", ") + ", against a board-wide bottom " +
+          "quarter of " + pct(q1) + " and below. Nobody is staying for the opening; " +
+          "what happens after it barely matters until that changes.", true));
+      } else {
+        out.push(diagLine("Hook",
+          "3-second view rate here averages " + pct(mean(mine)) + ", against a board-wide " +
+          "bottom quarter of " + pct(q1) + " and a median of " + pct(quantile(board, 0.5)) +
+          ". The opening is holding.", false));
+      }
+    }
+
+    /* ---- DROP-OFF, per reel that has a series. ---- */
+    var anyRet = false;
+    for (i = 0; i < reels.length; i++) {
+      var pts = reels[i].retention;
+      if (!pts || pts.length < 2) continue;
+      anyRet = true;
+      var story = reels[i].story || "an untitled reel";
+      if (pts.length === 2) {
+        out.push(diagLine("Drop-off",
+          story + " has two points typed (" + pct(pts[0].percentage) + " at " +
+          mmss(pts[0].second) + ", " + pct(pts[1].percentage) + " at " + mmss(pts[1].second) +
+          "). Two points is not a curve — nothing can be said about where people left.", false));
+        continue;
+      }
+      var st = steepest(pts);
+      var last = pts[pts.length - 1];
+      var line = "";
+      if (st) {
+        line += "biggest drop at " + mmss(st.at) + " — " +
+                pct(st.rel * 100) + " of the remaining viewers left between " +
+                mmss(st.from.second) + " and " + mmss(st.to.second) + ". ";
+      }
+      var a3 = atSecond(pts, 3), q25 = atSecond(pts, last.second * 0.25),
+          q50 = atSecond(pts, last.second * 0.5);
+      var marks = [];
+      if (a3 !== null) marks.push(pct(a3) + " still watching at 0:03");
+      if (q25 !== null) marks.push(pct(q25) + " at a quarter in");
+      if (q50 !== null) marks.push(pct(q50) + " at halfway");
+      marks.push(pct(last.percentage) + " at " + mmss(last.second));
+      line += marks.join(", ") + ".";
+      out.push(diagLine("Drop-off — " + story, line, !!(st && st.rel >= 0.3)));
+    }
+    if (!anyRet) {
+      out.push(diagLine("Drop-off",
+        "No retention series has been typed. Instagram will never hand this over " +
+        "through any API, so it is the Insights graph and a keyboard or it does not " +
+        "exist — and it is the only number that says WHERE a reel lost people rather " +
+        "than that it did.", false));
+    }
+
+    return out;
+  }
+
+  /* ==========================================================================
+     THE DETAIL PANE
+     ========================================================================== */
+
+  function paneKeys(e) {
+    if (!openId) return;
+    var k = e && (e.keyCode || e.which);
+    if (k !== 27) return;
+    if (e.preventDefault) e.preventDefault();
+    closeSheet();
+  }
+
+  function sheetNote(msg, bad) {
+    var n = $("adm-pane-note");
+    if (!n) return;
+    if (!msg) { n.hidden = true; n.textContent = ""; return; }
+    n.className = "adm-state" + (bad ? " adm-bad" : "");
+    n.textContent = String(msg);
+    n.hidden = false;
+  }
+
+  function factRow(k, v, note) {
+    var d = el("div", "adm-fact");
+    d.appendChild(el("span", "adm-fact-k", k));
+    d.appendChild(el("span", "adm-fact-v", v));
+    if (note) d.appendChild(el("span", "adm-fact-n", note));
+    return d;
+  }
+
+  function sect(host, title) {
+    host.appendChild(el("h3", "adm-sheet-h", title));
+    var box = el("div");
+    host.appendChild(box);
+    return box;
+  }
+
+  function openSheet(id, opener) {
+    var e = expOf(id);
+    if (!e) { say("That has already been deleted."); return; }
+    if (openId) teardown();
+
+    openId = id;
+    openerNode = opener || null;
+    CMTS = [];
+    cmtsSeen = false;
+    openEditReel = "";
+    openEditNode = null;
+
+    var pane = $("adm-pane"), body = $("adm-pane-body"), foot = $("adm-pane-foot");
+    if (!pane || !body || !foot) return;
+    clear(body); clear(foot);
+    setText("adm-pane-t", e.title || "Untitled experiment");
+
+    var note = el("div", "adm-state", "");
+    note.id = "adm-pane-note";
+    note.hidden = true;
+    body.appendChild(note);
+
+    var head = el("div", "adm-pane-chips");
+    head.id = "adm-exp-head";
+    body.appendChild(head);
+
+    /* The End box lives OUTSIDE the chip row. The chips are a flex line and a
+       textarea dropped into one comes out 40px wide beside the buttons. */
+    var endBox = el("div");
+    endBox.id = "adm-end-box";
+    endBox.hidden = true;
+    body.appendChild(endBox);
+
+    var rec = el("div");
+    rec.id = "adm-exp-rec";
+    body.appendChild(rec);
+
+    /* Layer 1 and layer 2, in that order and visibly apart. Measured first,
+       because an opinion read before the numbers is an opinion that colours
+       them. */
+    body.appendChild(el("h3", "adm-sheet-h", "What the numbers say"));
+    body.appendChild(el("p", "adm-mini-note",
+      "Measured, not interpreted. Every line is arithmetic over the reels below, " +
+      "worked out fresh each time this opens and stored nowhere. Only reels " +
+      "measured at " + MEASURE_HOURS + " hours or later are counted."));
+    var diag = el("ul", "adm-diag");
+    diag.id = "adm-diag";
+    body.appendChild(diag);
+
+    body.appendChild(el("h3", "adm-sheet-h", "The read"));
+    body.appendChild(el("p", "adm-mini-note",
+      "An opinion, with a name and a date on it — what this looks like and what " +
+      "to try next. Written by a person. Nothing on this page asks a model anything."));
+    var read = el("div");
+    read.id = "adm-exp-read";
+    body.appendChild(read);
+
+    body.appendChild(el("h3", "adm-sheet-h", "Charts"));
+    var charts = el("div");
+    charts.id = "adm-exp-charts";
+    body.appendChild(charts);
+
+    body.appendChild(el("h3", "adm-sheet-h", "Reels"));
+    var reelAdd = el("div");
+    reelAdd.id = "adm-reel-add";
+    body.appendChild(reelAdd);
+    var reelBox = el("div", "adm-reels");
+    reelBox.id = "adm-reels";
+    body.appendChild(reelBox);
+
+    body.appendChild(el("h3", "adm-sheet-h", "Inspiration"));
+    var insp = el("div");
+    insp.id = "adm-exp-insp";
+    body.appendChild(insp);
+
+    /* ---- the editor ---- */
+    var edit = el("div", "adm-sheet-edit");
+    edit.appendChild(el("h3", "adm-sheet-h", "Change this experiment"));
+    var f = expForm("adm-s", e);
+    openForm = f;
+    edit.appendChild(f.node);
+    var eacts = acts();
+    eacts.appendChild(btn("Save changes", "adm-btn-go", saveSheet));
+    var armed = false, timer = null;
+    var del = btn("Delete", "adm-btn-bad", function () {
+      if (!armed) {
+        armed = true;
+        del.textContent = "Press again to delete";
+        say("Press delete again to remove this experiment and everything under it.");
+        timer = setTimeout(function () { armed = false; del.textContent = "Delete"; }, 5000);
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      var id2 = openId;
+      closeSheet();
+      callN("deleteExperiment", [id2], "delete that experiment", function () {
+        say("Deleted. Its reels and comments went with it.");
+      });
+    });
+    eacts.appendChild(del);
+    edit.appendChild(eacts);
+    body.appendChild(edit);
+
+    /* ---- the thread ---- */
+    var talk = el("div", "adm-sheet-talk");
+    talk.appendChild(el("h3", "adm-sheet-h", "Comments"));
+    var cs = el("div", "adm-state", "Reading the thread…");
+    cs.id = "adm-cmt-state";
+    talk.appendChild(cs);
+    var ul = el("ul", "adm-cmt-list");
+    ul.id = "adm-cmt-list";
+    ul.hidden = true;
+    talk.appendChild(ul);
+    body.appendChild(talk);
+
+    var comp = el("div", "adm-cmt-foot");
+    var ta = textarea("adm-cmt-box", "", "Leave a comment…");
+    ta.className = "adm-area adm-cmt-box";
+    try { ta.maxLength = CMT_MAX; } catch (er) {}
+    var lab = el("label", "adm-sr", "Write a comment");
+    lab.setAttribute("for", "adm-cmt-box");
+    comp.appendChild(lab);
+    comp.appendChild(ta);
+    comp.appendChild(btn("Post", "adm-btn-go", function () {
+      var t = str(ta.value).replace(/^\s+|\s+$/g, "");
+      if (!t) { try { ta.focus(); } catch (e2) {} say("A comment needs something in it."); return; }
+      if (t.length > CMT_MAX) t = t.slice(0, CMT_MAX);
+      callN("addComment", [openId, t], "post that comment", function () {
+        ta.value = "";
+        say("Comment posted.");
+      });
+    }));
+    foot.appendChild(comp);
+
+    paintSheet();
+    paintThread();
+
+    pane.hidden = false;
+    try { document.body.className += " adm-pane-on"; } catch (e3) {}
+    try { document.addEventListener("keydown", paneKeys, true); } catch (e4) {}
+    try { pane.scrollTop = 0; body.scrollTop = 0; } catch (e5) {}
+    try { pane.focus(); } catch (e6) {}
+    say("Opened " + (e.title || "experiment") + ".");
+    renderCards();
+
+    if (FBE && typeof FBE.watchComments === "function") {
+      try {
+        openUnsub = FBE.watchComments(openId, function (list) {
+          CMTS = [];
+          list = list || [];
+          for (var i = 0; i < list.length; i++) {
+            CMTS.push({
+              id: str(list[i].id), text: str(list[i].text),
+              by: str(list[i].by), byName: str(list[i].byName), at: toMs(list[i].at)
+            });
+          }
+          cmtsSeen = true;
+          if (openId) paintThread();
+        });
+      } catch (e7) { cmtsSeen = true; paintThread(); }
+    } else { cmtsSeen = true; paintThread(); }
+  }
+
+  function teardown() {
+    try { if (openUnsub) openUnsub(); } catch (e) {}
+    openUnsub = null;
+    openForm = null;
+    openId = "";
+    openEditReel = "";
+    openEditNode = null;
+    CMTS = [];
+    cmtsSeen = false;
+    dropChart("adm-chart-ab");
+    dropChart("adm-chart-rank");
+    dropChart("adm-chart-drop");
+  }
+
+  function closeSheet() {
+    if (!openId) return;
+    var wasId = openId;
+    teardown();
+    var pane = $("adm-pane");
+    if (pane) pane.hidden = true;
+    var body = $("adm-pane-body"), foot = $("adm-pane-foot");
+    if (body) clear(body);
+    if (foot) clear(foot);
+    try { document.body.className = document.body.className.replace(/\s*adm-pane-on/g, ""); } catch (e2) {}
+    try { document.removeEventListener("keydown", paneKeys, true); } catch (e3) {}
+    render();
+    /* FOCUS GOES BACK TO THE CARD THAT OPENED THIS, not to the top of the
+       document. The original node is usually gone (the render above rebuilt
+       its card), so the fallback finds the button for the same row by the
+       data-row it carries. */
+    try {
+      if (openerNode && openerNode.focus && document.body.contains(openerNode)) {
+        openerNode.focus();
+      } else {
+        focusRow(wasId);
+      }
+    } catch (e4) {}
+    openerNode = null;
+  }
+
+  function focusRow(id) {
+    if (!id) return false;
+    var ns = document.querySelectorAll("button.adm-open[data-row]");
+    for (var i = 0; i < ns.length; i++) {
+      if (ns[i].getAttribute("data-row") === id) {
+        try { ns[i].focus(); } catch (e) {}
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function saveSheet() {
+    if (!openId || !openForm) return;
+    var e = expOf(openId);
+    if (!e) { sheetNote("This has been deleted — there is nothing to save it to.", true); return; }
+    var v = openForm.read();
+    if (!v.title) { openForm.focus(); say("It needs a title."); return; }
+    if (openForm.badEnd()) { openForm.focusEnd(); sheetNote("That end date is not a day I can read. Use YYYY-MM-DD.", true); return; }
+    sheetNote("", false);
+    var id2 = openId;
+    callN("updateExperiment", [id2, v], "save that experiment", function () {
+      say("Saved.");
+      setText("adm-pane-t", v.title);
+    });
+  }
+
+  /* ---- Everything inside the pane that is derived from the data ---------- */
+
+  function paintSheet() {
+    if (!openId) return;
+    var e = expOf(openId);
+    if (!e) {
+      sheetNote("This experiment has been deleted. Close this and it will be gone from the board.", true);
+      return;
+    }
+    setText("adm-pane-t", e.title || "Untitled experiment");
+    paintHead(e);
+    paintRecord(e);
+    paintDiag(e);
+    paintRead(e);
+    paintCharts(e);
+    paintReels(e);
+    paintInsp(e);
+  }
+
+  function paintHead(e) {
+    var host = $("adm-exp-head");
+    if (!host) return;
+    clear(host);
+    var st = statusOf(e);
+    host.appendChild(el("span", "adm-exp-s adm-exp-s-" + st, STATUS_LABEL[st] || st));
+
+    if (e.status !== "running") {
+      host.appendChild(btn(e.status === "ended" ? "Start again" : "Start", "adm-btn-go", function () {
+        callN("startExperiment", [e.id], "start that experiment", function () { say("Started."); });
+      }));
+    }
+    if (e.status !== "ended") {
+      host.appendChild(btn("End", null, function () { openEnd(e); }));
+    }
+  }
+
+  /* ENDING ASKS FOR THE OUTCOME, in a box and not in window.prompt — a modal
+     the browser draws cannot be styled, blocks the thread, and on iOS in an
+     in-app browser is a coin toss whether it appears at all. The note is
+     optional (refusing the write would only teach people not to press End)
+     and the box says why it is worth writing anyway. */
+  function openEnd(e) {
+    var box = $("adm-end-box");
+    if (!box) return;
+    clear(box);
+    box.hidden = false;
+    box.appendChild(el("p", "adm-mini-note",
+      "What did we decide? An experiment that stops without a sentence gets " +
+      "re-run from memory in six weeks."));
+    var ta = textarea("adm-end-note", e.outcome, "What we decided, and why");
+    box.appendChild(ta);
+    var a = acts();
+    a.appendChild(btn("End it", "adm-btn-go", function () {
+      callN("endExperiment", [e.id, str(ta.value).replace(/\s+$/g, "")], "end that experiment", function () {
+        say("Ended.");
+        box.hidden = true;
+      });
+    }));
+    a.appendChild(btn("Cancel", null, function () { box.hidden = true; clear(box); }));
+    box.appendChild(a);
+    try { ta.focus(); } catch (er) {}
+  }
+
+  function paintRecord(e) {
+    var host = $("adm-exp-rec");
+    if (!host) return;
+    clear(host);
+
+    if (e.detail) host.appendChild(el("p", "adm-sheet-detail", e.detail));
+
+    var facts = el("div", "adm-facts");
+    facts.appendChild(factRow("Hypothesis", e.hypothesis || "Not written down",
+      e.hypothesis ? "" : "What do we think is true? An experiment without one is a post."));
+    facts.appendChild(factRow("What we are trying", e.trying || "Not written down", ""));
+    facts.appendChild(factRow("Primary metric", metricDef(e.metric).label,
+      "Every chart in this pane ranks on this, and only reels measured at " +
+      MEASURE_HOURS + " hours count."));
+    facts.appendChild(factRow("Decision rule", e.decision || "Not written down",
+      e.decision ? "" : "What result would change what we do? Deciding that afterwards " +
+                        "is how a result gets read to suit the answer."));
+
+    var st = statusOf(e);
+    var planned = e.endBy ? fmtDayStr(e.endBy) : "no planned end";
+    facts.appendChild(factRow("Planned end", planned,
+      st === "expired"
+        ? "That day has gone and this is still marked running. Expired is worked " +
+          "out from the date and the clock; nothing stores it."
+        : ""));
+    facts.appendChild(factRow("Started", e.startedAt ? fmtDayAt(e.startedAt) : "Not started", ""));
+    if (e.status === "ended") {
+      facts.appendChild(factRow("Ended", e.endedAt ? fmtDayAt(e.endedAt) : "not recorded", ""));
+      facts.appendChild(factRow("Outcome", e.outcome || "No outcome was written",
+        e.outcome ? "" : "Nobody wrote down what we decided."));
+    }
+    host.appendChild(facts);
+  }
+
+  function paintDiag(e) {
+    var host = $("adm-diag");
+    if (!host) return;
+    clear(host);
+    var lines = diagnose(e, reelsOf(e.id)), i;
+    for (i = 0; i < lines.length; i++) host.appendChild(lines[i]);
+  }
+
+  function paintRead(e) {
+    var host = $("adm-exp-read");
+    if (!host) return;
+    clear(host);
+
+    if (e.analysis) {
+      var box = el("div", "adm-read");
+      box.appendChild(el("p", "adm-read-t", e.analysis));
+      var who = e.analysisByName || (e.analysisBy ? "the other admin" : "");
+      box.appendChild(el("span", "adm-read-by",
+        (who ? who + " · " : "") + (e.analysisAt ? fmtDayAt(e.analysisAt) : "time not recorded") +
+        " · an interpretation, not a measurement"));
+      host.appendChild(box);
+    } else {
+      host.appendChild(el("p", "adm-mini-note",
+        "Nobody has written a read yet. The lines above are the measurements; " +
+        "this is where somebody says what they think it means and what to try next."));
+    }
+
+    var open = false;
+    var editBox = el("div");
+    editBox.hidden = true;
+    var a = acts();
+    a.appendChild(btn(e.analysis ? "Rewrite the read" : "Write the read", null, function () {
+      open = !open;
+      editBox.hidden = !open;
+      if (open) {
+        clear(editBox);
+        var ta = textarea("adm-read-box", e.analysis, "What this looks like, and what to try next");
+        try { ta.maxLength = 1200; } catch (er) {}
+        editBox.appendChild(ta);
+        var a2 = acts();
+        a2.appendChild(btn("Save the read", "adm-btn-go", function () {
+          callN("writeAnalysis", [e.id, str(ta.value).replace(/\s+$/g, "")], "save that read", function () {
+            say("Read saved.");
+            open = false;
+            editBox.hidden = true;
+          });
+        }));
+        a2.appendChild(btn("Cancel", null, function () { open = false; editBox.hidden = true; }));
+        editBox.appendChild(a2);
+        try { ta.focus(); } catch (er2) {}
+      }
+    }));
+    host.appendChild(a);
+    host.appendChild(editBox);
+
+    if (e.analysisRequestedAt) {
+      host.appendChild(el("p", "adm-mini-note",
+        "A read was asked for on " + fmtDayAt(e.analysisRequestedAt) + ". Nothing is " +
+        "watching that flag — there is no job, and this page will not pretend one " +
+        "is coming. It is a place for one to arrive."));
+    }
+  }
+
+  /* ---- The three charts of one experiment -------------------------------- */
+
+  function paintCharts(e) {
+    var host = $("adm-exp-charts");
+    if (!host) return;
+    /* Rebuilt only when the boxes are not there yet: a chart host that is
+       replaced on every snapshot loses its SVG mid-scroll on a phone. */
+    if (!$("adm-chart-ab")) {
+      clear(host);
+      host.appendChild(el("span", "adm-chart-h", "A against B, on the primary metric"));
+      var ab = el("div", "adm-chart"); ab.id = "adm-chart-ab"; host.appendChild(ab);
+      var abn = el("div"); abn.id = "adm-chart-ab-note"; host.appendChild(abn);
+
+      host.appendChild(el("span", "adm-chart-h", "Every reel, ranked"));
+      var rk = el("div", "adm-chart"); rk.id = "adm-chart-rank"; host.appendChild(rk);
+
+      host.appendChild(el("span", "adm-chart-h", "Where people left"));
+      var dp = el("div", "adm-chart"); dp.id = "adm-chart-drop"; host.appendChild(dp);
+      var dpn = el("div"); dpn.id = "adm-chart-drop-note"; host.appendChild(dpn);
+    }
+
+    var n = now(), reels = reelsOf(e.id), def = metricDef(e.metric), i;
+
+    /* --- 1. A vs B --- */
+    var t = noiseTest(reels, e.metric, n);
+    var abNote = $("adm-chart-ab-note");
+    if (abNote) clear(abNote);
+    if (t.meanA === null || t.meanB === null) {
+      noData("adm-chart-ab",
+        "Both sides need at least one reel measured at " + MEASURE_HOURS + " hours. " +
+        "There " + (t.nA === 1 ? "is" : "are") + " " + t.nA + " on A and " + t.nB + " on B.");
+    } else {
+      /* HOLLOW BARS WHEN THE DIFFERENCE IS INSIDE THE NOISE. A solid pair of
+         bars is a picture of a result, and drawing one over a gap smaller
+         than the spread within each arm is the exact mistake this page is
+         built to stop. */
+      var solid = t.verdict === "decided";
+      chart("adm-chart-ab", function (w) {
+        return barsSVG(w, [
+          { label: "A (" + t.nA + " measured)", value: t.meanA,
+            right: fmtMetric(t.meanA, def.unit), cls: solid ? "fbx-fill" : "fbx-fill-q" },
+          { label: "B (" + t.nB + " measured)", value: t.meanB,
+            right: fmtMetric(t.meanB, def.unit), cls: solid ? "fbx-fill-2" : "fbx-fill-q" }
+        ], "A against B on " + def.label, "Mean " + def.label.toLowerCase() + " at " + MEASURE_HOURS + "h");
+      });
+      if (abNote) {
+        abNote.appendChild(el("p", solid ? "adm-mini-note" : "adm-mini-note adm-nodata",
+          solid
+            ? "Drawn solid: the gap of " + fmtMetric(t.gap, def.unit) + " is larger than the " +
+              fmtMetric(t.spread, def.unit) + " that reels on the same side differ by."
+            : (t.verdict === "noise"
+                ? "Drawn hollow on purpose. The gap of " + fmtMetric(t.gap, def.unit) +
+                  " is smaller than the " + fmtMetric(t.spread, def.unit) +
+                  " that reels on the SAME side differ by, so these two bars are not a result."
+                : "Drawn hollow on purpose. With " + t.nA + " and " + t.nB +
+                  " measured reels there is no spread to compare the gap against, so the " +
+                  "difference between these bars means nothing yet.")));
+      }
+    }
+
+    /* --- 2. Every reel, ranked --- */
+    var items = [];
+    for (i = 0; i < reels.length; i++) {
+      if (!ageOf(reels[i], n).comparable) continue;
+      var v = metric(reels[i][e.metric]);
+      if (v === null) continue;
+      items.push({
+        label: (reels[i].story || "Untitled") +
+               (reels[i].variant !== "none" ? " (" + VARIANT_LABEL[reels[i].variant] + ")" : ""),
+        value: v,
+        right: fmtMetric(v, def.unit),
+        cls: reels[i].variant === "b" ? "fbx-fill-2" : (reels[i].variant === "a" ? "fbx-fill" : "fbx-fill-q")
+      });
+    }
+    items.sort(function (a, b) { return b.value - a.value; });
+    if (items.length < 2) {
+      noData("adm-chart-rank",
+        items.length
+          ? "One reel has a " + def.label.toLowerCase() + " measured on the clock. " +
+            "One bar is not a ranking."
+          : "No reel has a " + def.label.toLowerCase() + " measured at " + MEASURE_HOURS +
+            " hours yet.");
+    } else {
+      chart("adm-chart-rank", function (w) {
+        return barsSVG(w, items, "Every measured reel ranked on " + def.label,
+                       def.label + " at " + MEASURE_HOURS + "h");
+      });
+    }
+
+    /* --- 3. Where people left --- */
+    var series = [], seen = { a: null, b: null, none: [] }, two = 0, withRet = 0;
+    for (i = 0; i < reels.length; i++) {
+      if (!reels[i].retention || !reels[i].retention.length) continue;
+      withRet++;
+      if (reels[i].retention.length === 2) two++;
+      var vr = reels[i].variant;
+      if (vr === "a" && !seen.a) seen.a = reels[i];
+      else if (vr === "b" && !seen.b) seen.b = reels[i];
+      else seen.none.push(reels[i]);
+    }
+    if (seen.a) series.push({ name: "A", pts: seen.a.retention, line: "fbx-line", dot: "fbx-dot" });
+    if (seen.b) series.push({ name: "B", pts: seen.b.retention, line: "fbx-line-2", dot: "fbx-dot-2" });
+    if (!series.length && seen.none.length) {
+      series.push({ name: seen.none[0].story, pts: seen.none[0].retention, line: "fbx-line", dot: "fbx-dot" });
+    }
+    var dNote = $("adm-chart-drop-note");
+    if (dNote) clear(dNote);
+    if (!series.length) {
+      noData("adm-chart-drop",
+        "No retention series has been typed. Instagram never exposes this through an " +
+        "API, so it comes off the Insights graph by hand — second, percent, one line each.");
+    } else {
+      chart("adm-chart-drop", function (w) {
+        return dropSVG(w, series, "Share still watching, by second");
+      });
+      if (dNote) {
+        var bits = [];
+        if (seen.a && seen.b) bits.push("A is the solid line, B is dashed.");
+        if (two) bits.push(plural(two, "series has", "series have") +
+          " only two points typed, which is drawn as dots and no line — a line through " +
+          "two points draws a slope that two points cannot support.");
+        bits.push("The dashed red mark is the steepest fall.");
+        dNote.appendChild(el("p", "adm-mini-note", bits.join(" ")));
+      }
+    }
+  }
+
+  /* ==========================================================================
+     THE REELS, and the entry that cannot be lost
+
+     THERE IS NO BACKFILL. A reel not written down within days of posting has
+     its reach, watch time and retention gone for good — TikTok stops serving
+     them after seven days of no activity, and Instagram never served the
+     retention curve at all. So the entry path is built so that nothing typed
+     can be lost:
+
+       * ADDING A REEL TAKES ONE BOX. A story name, and the row exists. There
+         is no long form to abandon half-way, because there is no long form.
+       * EVERY FIELD AFTER THAT SAVES ITSELF when it is left. No submit
+         button, nothing to forget to press, and closing the pane or the tab
+         mid-way loses exactly the field still under the cursor.
+       * THE ROW SAYS WHAT LANDED. A line under the form names the last field
+         written and when, so "did that save" is answered on screen and not by
+         reloading.
+
+     The cost of per-field saves is one write per field instead of one per
+     form, which on a board two people use a few times a week is nothing, and
+     the conflict rule makes it strictly SAFER: a field-level merge means
+     Kathryn typing reel B's saves while Hassan types reel A's title cannot
+     lose either.
+     ========================================================================== */
+
+  function paintReels(e) {
+    var add = $("adm-reel-add"), host = $("adm-reels");
+    if (!add || !host) return;
+
+    if (!$("adm-reel-new")) {
+      clear(add);
+      var row = el("div", "adm-form-grid");
+      var nameIn = input("adm-reel-new", "", "Story name — that is all it takes");
+      row.appendChild(field("Add a reel", nameIn, true));
+      add.appendChild(row);
+      var a = acts();
+      a.appendChild(btn("Add the reel", "adm-btn-go", function () {
+        var v = str(nameIn.value).replace(/^\s+|\s+$/g, "");
+        if (!v) { try { nameIn.focus(); } catch (er) {} warn("A reel needs a story name."); return; }
+        callN("addReel", [openId, { story: v, source: "manual" }], "add that reel", function (id) {
+          nameIn.value = "";
+          say("Reel added. Everything else saves itself as you type it.");
+          if (id) { openEditReel = str(id); openEditNode = null; }
+        });
+      }));
+      add.appendChild(a);
+      add.appendChild(el("p", "adm-mini-note",
+        "One box, on purpose. Every number after this saves the moment you leave " +
+        "the field — there is no Save button to forget and nothing to lose by " +
+        "closing this. Which matters, because there is no getting these numbers " +
+        "back: TikTok stops serving reach, watch time and retention for a video " +
+        "with no activity for " + AT_RISK_DAYS + " days, and Instagram never hands " +
+        "over a retention curve at all."));
+    }
+
+    var reels = reelsOf(e.id), n = now(), i;
+    clear(host);
+    if (!reelsSeen[e.id]) {
+      host.appendChild(el("p", "adm-state", "Reading the reels…"));
+      return;
+    }
+    if (!reels.length) {
+      host.appendChild(el("p", "adm-mini-note",
+        "No reels under this experiment yet. Add one when you post it — the row " +
+        "will then count down to " + MEASURE_HOURS + " hours and tell you when to " +
+        "write the numbers in."));
+      return;
+    }
+    var sorted = reels.slice(0);
+    sorted.sort(function (a, b) {
+      var va = a.variant === "a" ? 0 : (a.variant === "b" ? 1 : 2);
+      var vb = b.variant === "a" ? 0 : (b.variant === "b" ? 1 : 2);
+      if (va !== vb) return va - vb;
+      return (a.postedAt || a.createdAt) - (b.postedAt || b.createdAt);
+    });
+    for (i = 0; i < sorted.length; i++) {
+      /* THE OPEN EDITOR IS NEVER REBUILT. Somebody is typing into it, and a
+         snapshot landing mid-sentence must not take the DOM out from under
+         them — which is the same rule the task board's detail form obeys. */
+      if (openEditReel && sorted[i].id === openEditReel && openEditNode) {
+        host.appendChild(openEditNode);
+        continue;
+      }
+      host.appendChild(reelRow(e, sorted[i], n));
+    }
+  }
+
+  function reelRow(e, r, n) {
+    var box = el("div", "adm-reel");
+    var head = el("div", "adm-reel-head");
+
+    if (r.cover) {
+      var img = document.createElement("img");
+      img.className = "adm-reel-cover";
+      /* The URL has been through safeUrl(): https:// or it is not here. It is
+         set as an attribute on a node, never built into markup. */
+      img.src = r.cover;
+      img.alt = "";
+      img.setAttribute("loading", "lazy");
+      img.setAttribute("decoding", "async");
+      head.appendChild(img);
+    }
+
+    var main = el("div", "adm-reel-main");
+    main.appendChild(el("p", "adm-reel-t", r.story || "Untitled reel"));
+
+    var rail = el("div", "adm-reel-rail");
+    rail.appendChild(el("span", "adm-pill", PLATFORM_LABEL[r.platform] || r.platform));
+    if (r.variant !== "none") rail.appendChild(el("span", "adm-pill", "Variant " + VARIANT_LABEL[r.variant]));
+    if (r.format) rail.appendChild(el("span", "adm-pill", r.format));
+    var a = ageOf(r, n);
+    rail.appendChild(ageChip(a));
+    if (r.postedAt) rail.appendChild(el("span", "adm-pill", "Posted " + fmtDayAt(r.postedAt)));
+    main.appendChild(rail);
+
+    if (r.url) {
+      var link = document.createElement("a");
+      link.className = "adm-reel-link";
+      link.href = r.url;                 /* safeUrl()'d above; https:// only */
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.setAttribute("data-fbt", "-");
+      /* The link text IS the destination. No user-authored label can be put
+         in front of a URL here, which is the one thing that makes a link on a
+         shared board trustworthy at a glance. */
+      link.textContent = r.url;
+      main.appendChild(link);
+    }
+
+    /* THE NUMBERS, shown whatever state the reel is in. A reading taken early
+       is still a reading and hiding it would be its own kind of lie; it is
+       marked by the age chip above and left out of every chart. */
+    var nums = el("div", "adm-nums");
+    for (var i = 0; i < METRICS.length; i++) {
+      var mk = METRICS[i].k, v = r[mk];
+      var cell = el("div", "adm-num" + (mk === e.metric ? " adm-num-p" : ""));
+      cell.appendChild(el("span", "adm-num-k", METRICS[i].label));
+      cell.appendChild(el("span", "adm-num-v" + (v === null ? " adm-num-v-none" : ""),
+                          fmtMetric(v, METRICS[i].unit)));
+      nums.appendChild(cell);
+    }
+    main.appendChild(nums);
+
+    if (r.retention && r.retention.length) {
+      main.appendChild(el("p", "adm-mini-note",
+        plural(r.retention.length, "retention point", "retention points") + " typed, " +
+        mmss(r.retention[0].second) + " to " + mmss(r.retention[r.retention.length - 1].second) + "."));
+    }
+
+    if (r.analysis) {
+      var rb = el("div", "adm-read");
+      rb.appendChild(el("p", "adm-read-t", r.analysis));
+      rb.appendChild(el("span", "adm-read-by",
+        (r.analysisByName || "somebody") + " · " +
+        (r.analysisAt ? fmtDayAt(r.analysisAt) : "time not recorded") +
+        " · an interpretation, not a measurement"));
+      main.appendChild(rb);
+    }
+
+    var acts2 = el("div", "adm-rowacts");
+    var typeBtn = btn("Type the numbers", null, function () {
+      openEditReel = r.id;
+      openEditNode = null;
+      /* render(), not paintReels() — render is the one place that builds the
+         editor node, so that a snapshot landing mid-typing re-appends the
+         SAME node rather than a fresh one with the sentence gone. */
+      render();
+      var box = document.querySelector("#adm-reels [data-edit=\"" + r.id + "\"]");
+      if (box) { try { box.focus(); } catch (er) {} }
+    });
+    typeBtn.setAttribute("data-row", r.id);
+    acts2.appendChild(typeBtn);
+    var armed = false, timer = null;
+    var del = btn("Delete", "adm-btn-bad", function () {
+      if (!armed) {
+        armed = true;
+        del.textContent = "Press again to delete";
+        timer = setTimeout(function () { armed = false; del.textContent = "Delete"; }, 5000);
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      callN("deleteReel", [e.id, r.id], "delete that reel", function () { say("Reel deleted."); });
+    });
+    acts2.appendChild(del);
+    main.appendChild(acts2);
+
+    head.appendChild(main);
+    box.appendChild(head);
+    return box;
+  }
+
+  /* ---- The per-field editor --------------------------------------------- */
+
+  function reelEditor(e, r) {
+    var box = el("div", "adm-reel");
+    box.setAttribute("data-edit", r.id);
+    box.setAttribute("tabindex", "-1");
+    var dot = el("p", "adm-savedot", "Every field saves when you leave it.");
+
+    function saved(what, ok, err) {
+      if (ok) {
+        dot.className = "adm-savedot adm-savedot-ok";
+        dot.textContent = "Saved " + what + " · " + fmtClock(now());
+      } else {
+        dot.className = "adm-savedot adm-savedot-bad";
+        dot.textContent = "Could NOT save " + what + (err ? " — " + err : "") +
+                          ". It is still in the box; try again.";
+      }
+    }
+
+    /* One field, one write. `read` turns the control's value into what the
+       data layer wants; nothing is sent unless it actually changed, so
+       tabbing through a form of ten untouched numbers is zero writes. */
+    function wire(control, fieldName, label, read) {
+      var last = read();
+      control.onchange = function () {
+        var v = read();
+        var same = (v === last) ||
+                   (v instanceof Date && last instanceof Date && v.getTime() === last.getTime());
+        if (same) return;
+        last = v;
+        var patch = {};
+        patch[fieldName] = v;
+        dot.className = "adm-savedot";
+        dot.textContent = "Saving " + label + "…";
+        callN("updateReel", [e.id, r.id, patch], "save " + label,
+          function () { saved(label, true); },
+          function (err) { saved(label, false, err && err.message ? err.message : ""); });
+      };
+      return control;
+    }
+
+    var grid = el("div", "adm-form-grid");
+    var pre = "adm-r-" + r.id;
+
+    var fStory = input(pre + "-story", r.story, "Story name");
+    grid.appendChild(field("Story", wire(fStory, "story", "the story name", function () {
+      return str(fStory.value).replace(/^\s+|\s+$/g, "");
+    }), true));
+
+    var fUrl = input(pre + "-url", r.url, "https://…");
+    grid.appendChild(field("Post URL", wire(fUrl, "url", "the post URL", function () {
+      return safeUrl(fUrl.value);
+    }), true));
+
+    var fPlat = select(pre + "-plat", PLATFORMS, PLATFORM_LABEL, r.platform);
+    grid.appendChild(field("Platform", wire(fPlat, "platform", "the platform", function () {
+      return key(fPlat.value, PLATFORMS, "instagram");
+    })));
+
+    var fVar = select(pre + "-var", VARIANTS, VARIANT_LABEL, r.variant);
+    grid.appendChild(field("Variant", wire(fVar, "variant", "the variant", function () {
+      return key(fVar.value, VARIANTS, "none");
+    })));
+
+    var fFmt = input(pre + "-fmt", r.format, "e.g. talking-head");
+    grid.appendChild(field("Format", wire(fFmt, "format", "the format", function () {
+      return str(fFmt.value).replace(/^\s+|\s+$/g, "");
+    })));
+
+    var fPosted = dtInput(pre + "-posted", r.postedAt);
+    grid.appendChild(field("Posted at", wire(fPosted, "postedAt", "when it went up", function () {
+      return dtParse(fPosted.value);
+    })));
+
+    var fMeas = dtInput(pre + "-meas", r.measuredAt);
+    grid.appendChild(field("Measured at", wire(fMeas, "measuredAt", "when you read the numbers", function () {
+      return dtParse(fMeas.value);
+    })));
+
+    var i, def;
+    for (i = 0; i < METRICS.length; i++) {
+      def = METRICS[i];
+      (function (d) {
+        var inp = numInput(pre + "-" + d.k, r[d.k], d.unit === "%" ? "0–100" : "");
+        grid.appendChild(field(d.label + (d.unit === "s" ? " (seconds)" : (d.unit === "%" ? " (%)" : "")),
+          wire(inp, d.k, d.label.toLowerCase(), function () {
+            var raw = str(inp.value).replace(/^\s+|\s+$/g, "");
+            if (!raw) return null;
+            return metric(raw);
+          })));
+      })(def);
+    }
+
+    var retText = "";
+    for (i = 0; i < r.retention.length; i++) {
+      retText += r.retention[i].second + " " + r.retention[i].percentage + "\n";
+    }
+    var fRet = textarea(pre + "-ret", retText.replace(/\n$/, ""),
+      "One line per point: the second, a space, the percent still watching.\n0 100\n3 78\n10 52");
+    grid.appendChild(field("Retention, from the Insights graph",
+      wire(fRet, "retention", "the retention series", function () {
+        return str(fRet.value);
+      }), true));
+
+    var fCover = input(pre + "-cover", r.cover, "https://… an image URL");
+    grid.appendChild(field("Cover image URL", wire(fCover, "cover", "the cover URL", function () {
+      return safeUrl(fCover.value);
+    }), true));
+
+    var fRead = textarea(pre + "-read", r.analysis, "What you think happened with this one");
+    try { fRead.maxLength = 1200; } catch (er) {}
+    var readField = field("The read on this reel (an opinion)", fRead, true);
+    /* The read is NOT wired to the generic per-field save: it goes through
+       writeReelAnalysis(), which stamps who wrote it and when. An opinion
+       without a name on it is the one thing this pane must not produce. */
+    fRead.onchange = function () {
+      var v = str(fRead.value).replace(/\s+$/g, "");
+      if (v === r.analysis) return;
+      dot.className = "adm-savedot";
+      dot.textContent = "Saving the read…";
+      callN("writeReelAnalysis", [e.id, r.id, v], "save that read",
+        function () { saved("the read (signed and dated)", true); },
+        function (err) { saved("the read", false, err && err.message ? err.message : ""); });
+    };
+    grid.appendChild(readField);
+
+    box.appendChild(el("p", "adm-reel-t", r.story || "Untitled reel"));
+    box.appendChild(el("p", "adm-mini-note",
+      "Nothing here is required. Type what you have; a half-filled row is worth " +
+      "far more than a row nobody typed. Each box writes itself when you leave it."));
+    box.appendChild(grid);
+
+    /* ---- the cover upload, and the honest fallback beside it ---- */
+    var up = el("div", "adm-field adm-form-wide");
+    var upLab = el("label", null, "Or upload a cover");
+    upLab.setAttribute("for", pre + "-file");
+    var file = document.createElement("input");
+    file.type = "file";
+    file.id = pre + "-file";
+    file.className = "adm-input";
+    file.accept = "image/jpeg,image/png,image/webp,image/gif";
+    file.setAttribute("data-fbt", "-");
+    file.onchange = function () {
+      var f = null;
+      try { f = file.files && file.files[0]; } catch (er2) { f = null; }
+      if (!f) return;
+      dot.className = "adm-savedot";
+      dot.textContent = "Uploading the cover…";
+      callN("uploadCover", [e.id, r.id, f], "upload that cover", function (res) {
+        if (!res || !res.url) { saved("the cover", false, "no URL came back"); return; }
+        callN("updateReel", [e.id, r.id, { cover: res.url, coverPath: res.path }], "save that cover",
+          function () { saved("the cover", true); },
+          function (err) { saved("the cover", false, err && err.message ? err.message : ""); });
+      }, function (err) {
+        saved("the cover", false, (err && err.message ? err.message : "") +
+              " — paste an image URL in the box above instead");
+      });
+    };
+    up.appendChild(upLab);
+    up.appendChild(file);
+    up.appendChild(el("span", "adm-mini-note",
+      "Goes to Cloud Storage under this experiment. The Storage rule for it is " +
+      "written but NOT DEPLOYED, so until somebody deploys it this will be " +
+      "refused — and the URL box above works either way. The image itself never " +
+      "goes into the database."));
+    box.appendChild(up);
+
+    box.appendChild(dot);
+
+    var a = acts();
+    a.appendChild(btn("Done", "adm-btn-go", function () {
+      openEditReel = "";
+      openEditNode = null;
+      render();
+      focusReel(r.id);
+    }));
+    box.appendChild(a);
+    return box;
+  }
+
+  /* Closing the editor puts focus back on the button that opened it, found by
+     the reel id it carries — the same contract Escape has with the pane. */
+  function focusReel(id) {
+    var ns = document.querySelectorAll("#adm-reels button[data-row]");
+    for (var i = 0; i < ns.length; i++) {
+      if (ns[i].getAttribute("data-row") === id) { try { ns[i].focus(); } catch (e) {} return; }
+    }
+  }
+
+  function paintInsp(e) {
+    var host = $("adm-exp-insp");
+    if (!host) return;
+    clear(host);
+
+    if (e.inspiration) host.appendChild(el("p", "adm-sheet-detail", e.inspiration));
+    else host.appendChild(el("p", "adm-mini-note",
+      "Nothing written. This is where “we are doing this because of that reel " +
+      "we saw” goes, so that in three months it is still possible to tell what " +
+      "we were copying."));
+
+    if (e.links.length) {
+      var ul = el("ul", "adm-links");
+      for (var i = 0; i < e.links.length; i++) {
+        var li = el("li");
+        var a = document.createElement("a");
+        a.href = e.links[i];                 /* https:// only — safeUrl'd */
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.setAttribute("data-fbt", "-");
+        a.textContent = e.links[i];          /* the text IS the destination */
+        li.appendChild(a);
+        ul.appendChild(li);
+      }
+      host.appendChild(ul);
+    }
+
+    var open = false;
+    var editBox = el("div");
+    editBox.hidden = true;
+    var acts3 = acts();
+    acts3.appendChild(btn("Edit the inspiration", null, function () {
+      open = !open;
+      editBox.hidden = !open;
+      if (!open) return;
+      clear(editBox);
+      var ta = textarea("adm-insp-box", e.inspiration, "What gave us this idea");
+      var la = textarea("adm-insp-links", e.links.join("\n"),
+        "One https:// link a line — the reels that made us want to try this");
+      editBox.appendChild(field("Why we are trying this", ta, true));
+      editBox.appendChild(field("Reference links", la, true));
+      var a2 = acts();
+      a2.appendChild(btn("Save", "adm-btn-go", function () {
+        callN("updateExperiment", [e.id, {
+          inspiration: str(ta.value).replace(/\s+$/g, ""),
+          links: str(la.value)
+        }], "save the inspiration", function () {
+          say("Saved.");
+          open = false;
+          editBox.hidden = true;
+        });
+      }));
+      a2.appendChild(btn("Cancel", null, function () { open = false; editBox.hidden = true; }));
+      editBox.appendChild(a2);
+      try { ta.focus(); } catch (er) {}
+    }));
+    host.appendChild(acts3);
+    host.appendChild(editBox);
+  }
+
+  /* ---- The thread -------------------------------------------------------- */
+
+  function myUid() {
+    try {
+      var m = (FBE && typeof FBE.me === "function") ? FBE.me() : null;
+      return m ? str(m.uid) : "";
+    } catch (e) { return ""; }
+  }
+
+  function whoWord(uid, name) {
+    if (!uid) return "";
+    var mine = myUid();
+    if (mine && uid === mine) return name ? name + " (you)" : "you";
+    return name || "the other admin";
+  }
+
+  function commentRow(c) {
+    var li = el("li", "adm-cmt");
+    var head = el("div", "adm-cmt-head");
+    head.appendChild(el("span", "adm-cmt-who", whoWord(c.by, c.byName) || "somebody"));
+    head.appendChild(el("span", "adm-cmt-at", c.at ? fmtDayAt(c.at) : "sending…"));
+    li.appendChild(head);
+    /* textContent, like every other string on this page. */
+    li.appendChild(el("p", "adm-cmt-t", c.text));
+    if (c.by && c.by === myUid()) {
+      var a = el("div", "adm-cmt-acts");
+      var armed = false, timer = null;
+      var del = btn("Delete", "adm-btn-bad", function () {
+        if (!armed) {
+          armed = true;
+          del.textContent = "Press again to delete";
+          timer = setTimeout(function () { armed = false; del.textContent = "Delete"; }, 5000);
+          return;
+        }
+        if (timer) clearTimeout(timer);
+        callN("deleteComment", [openId, c.id], "delete that comment", function () {
+          say("Comment deleted.");
+        });
+      });
+      a.appendChild(del);
+      li.appendChild(a);
+    }
+    return li;
+  }
+
+  function paintThread() {
+    var list = $("adm-cmt-list"), state = $("adm-cmt-state");
+    if (!list || !state) return;
+    clear(list);
+    if (!cmtsSeen) {
+      state.hidden = false;
+      state.textContent = "Reading the thread…";
+      list.hidden = true;
+      return;
+    }
+    if (!CMTS.length) {
+      state.hidden = false;
+      state.textContent = "No comments yet. Whatever you write here is on the other " +
+        "screen straight away, and it stays with this experiment.";
+      list.hidden = true;
+      return;
+    }
+    state.hidden = true;
+    list.hidden = false;
+    for (var i = 0; i < CMTS.length; i++) { list.appendChild(commentRow(CMTS[i])); }
+  }
+
+  /* ==========================================================================
+     Render
+     ========================================================================== */
+
+  function render() {
+    renderAnswer();
+    renderCards();
+    if (openId) {
+      /* The open editor is built here rather than in paintReels so that it
+         survives a snapshot: paintReels re-appends the cached node, and this
+         is the one place that ever creates it. */
+      if (openEditReel && !openEditNode) {
+        var e = expOf(openId), rs = reelsOf(openId), i;
+        for (i = 0; i < rs.length; i++) {
+          if (rs[i].id === openEditReel) { openEditNode = reelEditor(e, rs[i]); break; }
+        }
+      }
+      paintSheet();
+    }
+  }
+
+  /* ==========================================================================
+     Watching. One listener for the experiments, and one per experiment for
+     its reels.
+
+     WHY ALL OF THEM AND NOT JUST THE OPEN ONE. Three of the four things this
+     page is for need reels the reader has not opened: the answer at the top
+     reads every ended experiment, the outstanding counts on every card read
+     every reel, and the hook diagnostic compares one reel's 3-second rate
+     against every measured reel on the board. A listener per experiment is
+     the honest cost of that, and it is a board two people keep — a few dozen
+     documents, not a corpus. The ceiling is stated rather than assumed: past
+     WATCH_MAX experiments the newest are watched and the rest are not, and
+     the page says so instead of quietly going slow.
+     ========================================================================== */
+
+  var WATCH_MAX = 60;
+
+  function syncReelWatchers() {
+    var want = {}, i, id;
+    var list = EXPS.slice(0);
+    list.sort(function (a, b) { return b.createdAt - a.createdAt; });
+    for (i = 0; i < list.length && i < WATCH_MAX; i++) { want[list[i].id] = true; }
+
+    for (id in REEL_UNSUB) {
+      if (!Object.prototype.hasOwnProperty.call(REEL_UNSUB, id)) continue;
+      if (want[id]) continue;
+      try { REEL_UNSUB[id](); } catch (e) {}
+      delete REEL_UNSUB[id];
+      delete REELS[id];
+      delete reelsSeen[id];
+    }
+    for (id in want) {
+      if (!Object.prototype.hasOwnProperty.call(want, id)) continue;
+      if (REEL_UNSUB[id]) continue;
+      watchReelsOf(id);
+    }
+  }
+
+  function watchReelsOf(id) {
+    if (!FBE || typeof FBE.watchReels !== "function") { reelsSeen[id] = true; return; }
+    try {
+      REEL_UNSUB[id] = FBE.watchReels(id, function (list) {
+        var out = [], i;
+        list = list || [];
+        for (i = 0; i < list.length; i++) out.push(normReel(list[i]));
+        REELS[id] = out;
+        reelsSeen[id] = true;
+        render();
+      });
+    } catch (e) { reelsSeen[id] = true; }
+  }
+
+  /* ==========================================================================
+     The gate — identical in shape to /admin and /admin/tasks
+     ========================================================================== */
+
+  var PANELS = ["adm-p-wait", "adm-p-noauth", "adm-p-out", "adm-p-no"];
+
+  function panel(id) {
+    for (var i = 0; i < PANELS.length; i++) {
+      if (PANELS[i] === id) show(PANELS[i]); else hide(PANELS[i]);
+    }
+    show("adm-gate");
+    hide("adm-main");
+  }
+
+  function opened() {
+    for (var i = 0; i < PANELS.length; i++) { hide(PANELS[i]); }
+    hide("adm-gate");
+    show("adm-main");
+  }
+
+  function whenFBE(cb) {
+    if (window.FBE) { cb(window.FBE); return; }
+    var waited = 0;
+    var t = setInterval(function () {
+      waited += 80;
+      if (window.FBE) { clearInterval(t); cb(window.FBE); return; }
+      if (waited >= 6000) { clearInterval(t); cb(null); }
+    }, 80);
+  }
+
+  function wireSignOut(id) {
+    var b = $(id);
+    if (!b) return;
+    b.onclick = function () {
+      try { if (window.FBU && typeof window.FBU.signOut === "function") window.FBU.signOut(); }
+      catch (e) {}
+      panel("adm-p-out");
+    };
+  }
+
+  function greet(me) {
+    var n = $("adm-who-t");
+    if (!n) return;
+    clear(n);
+    var who = "";
+    if (me) { who = me.name || me.email || me.uid || ""; }
+    who = String(who || "").replace(/^\s+|\s+$/g, "");
+    n.appendChild(document.createTextNode("Signed in as "));
+    n.appendChild(el("b", null, who || "this account"));   /* textContent, never innerHTML */
+    n.appendChild(document.createTextNode(
+      ". Every change lands on the other screen straight away."));
+  }
+
+  function start() {
+    opened();
+
+    var x = $("adm-pane-x");
+    if (x) x.onclick = function () { closeSheet(); };
+
+    var add = $("adm-exp-open");
+    if (add) add.onclick = function () { if (addOpen) return; openAdd(); };
+
+    render();
+
+    try {
+      if (typeof FBE.watchExperiments === "function") {
+        FBE.watchExperiments(function (list) {
+          var out = [], i;
+          list = list || [];
+          for (i = 0; i < list.length; i++) out.push(normExp(list[i]));
+          EXPS = out;
+          expsSeen = true;
+          syncReelWatchers();
+          render();
+        });
+      } else { expsSeen = true; render(); }
+    } catch (e) { expsSeen = true; fail("read the experiments", e); }
+  }
+
+  function boot(fbe) {
+    FBE = fbe;
+    wireSignOut("adm-signout");
+    wireSignOut("adm-signout-no");
+
+    if (!FBE || typeof FBE.ready !== "function") { panel("adm-p-noauth"); return; }
+
+    /* The vocabulary, if the data layer publishes its own — so the page and
+       the writes cannot disagree about what a status is called. */
+    try {
+      if (FBE.STATUSES && FBE.STATUSES.length) STATUSES = FBE.STATUSES;
+      if (FBE.PLATFORMS && FBE.PLATFORMS.length) PLATFORMS = FBE.PLATFORMS;
+      if (FBE.VARIANTS && FBE.VARIANTS.length) VARIANTS = FBE.VARIANTS;
+      if (FBE.METRICS && FBE.METRICS.length) METRICS = FBE.METRICS;
+      if (typeof FBE.MEASURE_HOURS === "number") MEASURE_HOURS = FBE.MEASURE_HOURS;
+      if (typeof FBE.AT_RISK_DAYS === "number") AT_RISK_DAYS = FBE.AT_RISK_DAYS;
+    } catch (e) {}
+
+    try {
+      if (window.FBU && typeof window.FBU.onChange === "function") {
+        window.FBU.onChange(function (u) {
+          if (!u) { closeSheet(); EXPS = []; REELS = {}; panel("adm-p-out"); }
+        });
+      }
+    } catch (e3) {}
+
+    var settled = false;
+    function decide(r) {
+      if (settled) return;
+      settled = true;
+      if (r && r.ok) {
+        var me = null;
+        try { me = typeof FBE.me === "function" ? FBE.me() : null; } catch (e4) {}
+        greet(me);
+        start();
+        return;
+      }
+      /* Both spellings accepted, for the reason admin/tasks.html gives: the
+         data layer says "signed-out" and two pages were written against
+         "signed_out", and the two must not start disagreeing about a string
+         on the one screen where being unhelpful costs the session. */
+      var why = (r && r.why ? String(r.why) : "sdk_failed").replace(/-/g, "_");
+      if (why === "signed_out") { panel("adm-p-out"); return; }
+      if (why === "not_admin")  { panel("adm-p-no");  return; }
+      panel("adm-p-noauth");
+    }
+
+    try {
+      var p = FBE.ready();
+      if (p && typeof p.then === "function") {
+        p.then(decide, function () { decide({ ok: false, why: "sdk_failed" }); });
+      } else { decide({ ok: false, why: "sdk_failed" }); }
+    } catch (e5) { decide({ ok: false, why: "sdk_failed" }); }
+
+    setTimeout(function () { decide({ ok: false, why: "sdk_failed" }); }, 12000);
+  }
+
+  whenFBE(boot);
+})();
+</script>
+
+</body>
+</html>

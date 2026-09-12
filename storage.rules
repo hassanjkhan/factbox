@@ -3,8 +3,14 @@ rules_version = '2';
 // ==========================================================================
 // Factbox — Cloud Storage security rules.
 //
-// This file says no to everything, and that is the whole design. Read it
-// alongside BACKEND.md §4, which explains the part these rules cannot do.
+// This file says no to everything except one narrow write, and that is the
+// whole design. Read it alongside BACKEND.md §4, which explains the part
+// these rules cannot do.
+//
+// The one exception is reel cover images for the experiments board, added
+// later and documented in full at the match block itself — including the
+// part where the admin gate it can express is weaker than the one
+// firestore.rules expresses, and what to do about that.
 //
 // The bucket holds the 31 ambience beds the reader plays under a story. An
 // <audio> element cannot send an Authorization header — it is a browser
@@ -34,6 +40,71 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // --- Reel cover images (admin/experiments.html) -----------------------
+    //
+    //     admin/experiments/{expId}/{file}
+    //
+    // The one place in this bucket a browser is allowed to write, and it is a
+    // narrow one: a cover thumbnail for a reel on the experiments board, put
+    // there by one of the two admins who own that board.
+    //
+    // WHY STORAGE AND NOT FIRESTORE. A Firestore document is capped at 1MB and
+    // is pushed to every open listener on every change. A base64 cover would
+    // be about 1.4x the file, would blow that cap on the second reel, and
+    // would re-send the picture to both browsers every time somebody typed a
+    // number into a different field. Bytes go in a bucket; the document holds
+    // a URL and a path. firestore.rules says the same thing above reelShape().
+    //
+    // THE ADMIN GATE, AND THE HONEST PROBLEM WITH IT. Firestore rules decide
+    // who is an admin by reading customers/{uid} — `admin == true` or
+    // `role == "admin"` — because that is the flag js/auth.js and
+    // functions/insights.js already agree on. THESE RULES CANNOT READ THAT.
+    // Storage rules have no get() into Firestore unless the project has the
+    // cross-service rules extension enabled, and this project has never used
+    // it. There is no custom claim on these accounts either; nothing has ever
+    // called setCustomUserClaims.
+    //
+    // So the strongest gate available here is "signed in, writing into the
+    // experiments prefix, with a small image". That is WEAKER than the
+    // Firestore gate next door and it is written down rather than glossed:
+    // any reader with an account could, with the SDK and this path, put a 5MB
+    // image in this folder. What they could not do is read it back (read stays
+    // closed below), enumerate anything, touch the audio beds, or make it
+    // appear on the board — the board renders `cover` off the reel document,
+    // and writing that document needs the real admin check in firestore.rules.
+    // The exposure is bucket storage cost by a signed-in stranger, not data.
+    //
+    // IF THAT IS NOT GOOD ENOUGH — and it is a fair call to say it is not —
+    // there are two ways to close it and both are a separate change: enable
+    // cross-service rules and swap the condition for a firestore.get() on
+    // customers/{uid}, or set a custom claim on the two admin accounts and
+    // check request.auth.token.admin. Until one of those happens, the page
+    // also accepts a PASTED image URL, which needs no bucket write at all and
+    // is the path that works whatever these rules end up saying.
+    //
+    // READ STAYS CLOSED, and the cover still displays. That is not a
+    // contradiction: getDownloadURL() mints a tokenised URL that bypasses
+    // these rules by design, which is the only way an <img> can ever fetch
+    // from here — an <img> is a browser fetching a URL, not a caller with a
+    // credential. The long note below says the same thing about the audio
+    // beds. A cover is a thumbnail of a reel we posted in public; the token
+    // leaking is not a meaningful loss.
+    //
+    // CONTENT TYPE AND SIZE ARE CHECKED HERE, not only in the client, because
+    // the client is public JavaScript and this is the boundary. 5MB, and an
+    // image of one of four kinds — enough for a phone screenshot, far short of
+    // a video somebody dragged into the wrong box.
+    match /admin/experiments/{expId}/{file} {
+      allow read: if false;
+      allow write: if request.auth != null
+        && request.resource != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches("image/(jpeg|png|webp|gif)");
+      allow delete: if request.auth != null;
+    }
+
+    // --- Everything else: no --------------------------------------------
     match /{allPaths=**} {
       allow read, write: if false;
     }

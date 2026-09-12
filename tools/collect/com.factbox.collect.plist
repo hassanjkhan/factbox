@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.factbox.collect — one reading a night.
+
+  NOT INSTALLED. Copying this into ~/Library/LaunchAgents is the owner's call,
+  and the README next to this file says how. A LaunchAgent and not a
+  LaunchDaemon on purpose: the Instagram collector opens a real Chrome window
+  on a real desktop and needs the owner to be logged in.
+
+  02:30 local, because TikTok's insight fields are documented as T + 24-48h
+  and there is nothing to gain from asking earlier in the evening.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.factbox.collect</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/hassankhan/factbox/tools/collect/nightly.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>2</integer>
+        <key>Minute</key><integer>30</integer>
+    </dict>
+
+    <!-- If the Mac was asleep at 02:30, run once on wake rather than skipping
+         the night. A missed night is a night of numbers that may not be
+         re-fetchable. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/hassankhan/factbox/tools/collect/state/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/hassankhan/factbox/tools/collect/state/launchd.err.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/hassankhan/factbox/tools/collect</string>
+
+    <!-- node and swiftc must be findable; launchd's default PATH is minimal. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Admin · Factbox</title>
-<meta name="description" content="The two admin surfaces for factbox.app. Admin accounts only.">
+<meta name="description" content="The three admin surfaces for factbox.app. Admin accounts only.">
 <!-- The paper ground, matching what body actually paints: --ground is
      #E7E0D3 and this must not drift from it, or a bar of the wrong cream
      appears above the page on iOS. -->
@@ -20,14 +20,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Newsreader is here because --display names it and a token cannot fetch a
-     font: the headline and the two door titles are set in it. DM Sans is
+     font: the headline and the three door titles are set in it. DM Sans is
      everything else. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
 <!-- Root-absolute, every one of them. GitHub Pages serves this file at BOTH
      /admin and /admin/index.html, and a relative href resolves differently
      under the two. Only the absolute form is the same URL at both addresses. -->
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/admin.css?v=6a5d9760">
+<link rel="stylesheet" href="/css/admin.css?v=12c79b19">
 </head>
 <body>
 
@@ -37,9 +37,10 @@
     <p class="mark"><a href="/explore" aria-label="Factbox" data-fbt="-"><img src="/img/logo-96.png"
        alt="" width="24" height="24" decoding="async">FACTBOX</a></p>
     <h1>Admin</h1>
-    <p class="adm-sub">Two surfaces, both for admin accounts only. The numbers
-    are read live from the <code>insights</code> function; the tasks are read
-    live from Firestore. Neither is cached and neither is shared.</p>
+    <p class="adm-sub">Three surfaces, all for admin accounts only. The numbers
+    are read live from the <code>insights</code> function; the tasks and the
+    reel experiments are read live from Firestore. None of it is cached and
+    none of it is shared.</p>
   </header>
 
   <!-- ====================================================================
@@ -108,7 +109,7 @@
   </div>
 
   <!-- ====================================================================
-       The portal itself: who you are, and two doors.
+       The portal itself: who you are, and three doors.
        ==================================================================== -->
   <div class="adm-main" id="adm-main" hidden>
 
@@ -131,6 +132,14 @@
         <span class="adm-door-p">The shared board — what is open, who has it,
         what got finished and on which day, and the goals we are aiming at.
         Both of you edit it and it updates live for the other.</span>
+      </a>
+      <a class="adm-door" href="/admin/experiments" data-fbt="-">
+        <span class="adm-door-k">Reels</span>
+        <span class="adm-door-h">Experiments</span>
+        <span class="adm-door-p">What we tried, what it did, and what we decided
+        because of it. Every reel is read at 72 hours old — never on a calendar
+        date — and the page says what is working, or says plainly that nothing
+        is decided yet.</span>
       </a>
     </nav>
 

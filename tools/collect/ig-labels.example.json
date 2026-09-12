@@ -1,0 +1,27 @@
+{
+  "_README": [
+    "COPY THIS TO ig-labels.json AND REPLACE EVERY PATTERN WITH TEXT YOU HAVE",
+    "ACTUALLY SEEN in tools/collect/discovered/*.candidates.json.",
+    "",
+    "The patterns below are EXAMPLES OF THE FORMAT AND NOTHING ELSE. Nobody has",
+    "looked at the dashboard they are meant to match. They are not a starting",
+    "guess to be trusted — a pattern that matches the wrong number on the page",
+    "puts a wrong figure into a row somebody makes a decision from, and it does",
+    "it silently. Delete the ones you cannot confirm.",
+    "",
+    "Each value is a regular expression (case-insensitive) matched against the",
+    "text nearest a number on the page. If two different numbers match the same",
+    "metric, NEITHER is used and the run says so — ambiguity is refused, not",
+    "resolved.",
+    "",
+    "The ten metric keys the board has, and no others:",
+    "  views reach likes comments shares saves profileTaps avgWatch completion threeSec"
+  ],
+  "labels": {
+    "views": ["^\\s*views\\b"],
+    "likes": ["^\\s*likes\\b"],
+    "comments": ["^\\s*comments\\b"],
+    "shares": ["^\\s*shares\\b"],
+    "saves": ["^\\s*saves\\b"]
+  }
+}

@@ -77,6 +77,7 @@ PAGES = [
     "admin/dashboard.html",
     "admin/index.html",
     "admin/tasks.html",
+    "admin/experiments.html",
 ]
 
 # src="/js/x.js" or href="/css/x.css", with or without a stamp already on it.

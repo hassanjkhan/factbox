@@ -31,3 +31,15 @@ content/
 tools/shots/
 tools/reel/.venv/
 tools/reel/runs/
+
+# tools/collect — the collectors' working files. None of this is source.
+#
+# discovered/ holds dumps and SCREENSHOTS of the owner's own signed-in
+# Instagram dashboard; unmatched/ holds posts that had no row yet; state/
+# holds the ledger, which is the local copy of numbers TikTok will stop
+# serving after seven days. ig-labels.json is written from a real dashboard
+# on a real machine and is not the same on anyone else's.
+tools/collect/discovered/
+tools/collect/unmatched/
+tools/collect/state/
+tools/collect/ig-labels.json

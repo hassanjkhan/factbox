@@ -1161,3 +1161,307 @@ input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
 /* A live region that must be announced but not seen. Not display:none —
    a screen reader skips that. */
 .adm-sr{position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
+
+/* ==========================================================================
+   THE EXPERIMENTS BOARD — /admin/experiments
+
+   One question, asked at the top of the page and answered before anything
+   else is drawn: WHAT IS WORKING. Everything below that is the material the
+   answer is made of — the experiments, the reels under them, the numbers
+   somebody typed at 72 hours — and it is laid out in that order on purpose.
+   A page that opens on six charts and makes the reader assemble the finding
+   is a page two people stop opening in a fortnight.
+
+   It borrows the pane, the form grid, the chips, the thread and the buttons
+   from the task board wholesale. That is the point: it is the same product
+   one door along, not a second tool with its own manners.
+   ========================================================================== */
+
+/* ---- The answer, above everything ---------------------------------------
+   Not a hero and not a stat wall. A short stack of sentences with numbers in
+   them, and the chart that backs the last one. It is raised off the page so
+   the eye lands here first and nowhere else.
+   ------------------------------------------------------------------------ */
+.adm-ans{
+  display:block; margin:18px 0 0; padding:16px 17px 17px;
+  border-radius:14px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--accent-edge);
+}
+.adm-ans[hidden]{display:none}
+.adm-ans-h{
+  margin:0 0 2px; font-family:var(--display);
+  font-size:var(--fs-lead); font-weight:var(--w-head); color:var(--ink);
+  letter-spacing:var(--ls-title); line-height:var(--lh-tight);
+}
+/* The verdict line. Deliberately the largest type in the block, because on
+   most days it reads "nothing is decided yet" and that IS the answer — a
+   board that buried it under a chart would be inviting the reader to find a
+   result in the noise. */
+.adm-ans-v{
+  display:block; margin:8px 0 0; max-width:70ch;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); color:var(--ink);
+  line-height:var(--lh-body); overflow-wrap:anywhere;
+}
+.adm-ans-say{
+  display:block; margin:7px 0 0; max-width:72ch;
+  font-size:var(--fs-meta); color:var(--dim); line-height:var(--lh-body);
+}
+/* The outstanding-work strip: how many reels are waiting to be measured and
+   how many are past the point where the platform still has the numbers. It is
+   a row of pills rather than prose because it changes every day and is read
+   at a glance, not read. */
+.adm-ans-strip{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 0}
+.adm-ans-strip[hidden]{display:none}
+
+/* ---- A chart -------------------------------------------------------------
+   Every chart on this page is inline SVG built node by node, the same idiom
+   js/dashboard.js uses, and it scrolls INSIDE its own box rather than pushing
+   the page sideways at 390px. That rule is why the board has no horizontal
+   body scroll at any width.
+   ------------------------------------------------------------------------ */
+.adm-chart{
+  display:block; margin:10px 0 0; overflow-x:auto; -webkit-overflow-scrolling:touch;
+}
+.adm-chart[hidden]{display:none}
+.adm-chart svg{display:block}
+.adm-chart-h{
+  display:block; margin:16px 0 0;
+  font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
+}
+
+/* The SVG vocabulary, lifted from css/dashboard.css so the two admin surfaces
+   draw in one language. Renamed rather than shared because this page does not
+   load dashboard.css, and a stylesheet imported for six selectors is 27KB of
+   someone else's page. */
+.fbx-fill{fill:var(--coral); stroke:var(--coral-deep); stroke-width:1}
+.fbx-fill-2{fill:var(--teal); stroke:var(--teal-ink); stroke-width:1}
+/* The bar for a reel that is not in the A/B pair, or a format that has not
+   been decided: hollow, so it can never be mistaken for a result. */
+.fbx-fill-q{fill:var(--tint-2); stroke:var(--dimmer); stroke-width:1; stroke-dasharray:4 3}
+.fbx-track{fill:var(--tint)}
+.fbx-line{fill:none; stroke:var(--accent-ink); stroke-width:2;
+  stroke-linejoin:round; stroke-linecap:round}
+.fbx-line-2{fill:none; stroke:var(--teal-ink); stroke-width:2; stroke-dasharray:5 4;
+  stroke-linejoin:round; stroke-linecap:round}
+.fbx-dot{fill:var(--accent-ink)}
+.fbx-dot-2{fill:var(--teal-ink)}
+.fbx-rule{stroke:var(--hair); stroke-width:1}
+/* The marked moment on a drop-off curve — where the steepest fall happens. */
+.fbx-mark{stroke:var(--crimson); stroke-width:1.5; stroke-dasharray:3 3}
+.fbx-t{font-family:var(--ui); font-size:var(--fs-meta); font-weight:var(--w-label);
+  fill:var(--ink)}
+.fbx-t-dim{font-family:var(--ui); font-size:var(--fs-fine); font-weight:var(--w-label);
+  fill:var(--dimmer)}
+.fbx-t-bad{font-family:var(--ui); font-size:var(--fs-fine); font-weight:var(--w-strong);
+  fill:var(--crimson)}
+
+/* ---- The cards -----------------------------------------------------------
+   A card is a title, one line, a status and whatever is outstanding under it.
+   Nothing else: the numbers live one tap away, and a card that tried to carry
+   them would be a table with rounded corners.
+   ------------------------------------------------------------------------ */
+.adm-exps{
+  display:grid; gap:12px; margin:14px 0 0;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));
+}
+.adm-exps[hidden]{display:none}
+
+.adm-exp{
+  display:block; padding:15px 16px;
+  border-radius:14px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.adm-exp[hidden]{display:none}
+/* The card that is open in the pane stays marked in the list, the same way
+   the task board marks its open row — so "which one am I reading" is answered
+   by the list and not by memory. */
+.adm-exp-on{box-shadow:inset 0 0 0 2px var(--accent-ink)}
+.adm-exp-t{
+  display:block; width:100%; margin:0 0 4px;
+  font-size:var(--fs-sub); font-weight:var(--w-strong); color:var(--ink);
+  letter-spacing:var(--ls-title); line-height:var(--lh-tight);
+  overflow-wrap:anywhere;
+}
+.adm-exp-d{
+  display:block; margin:6px 0 0; font-size:var(--fs-meta); color:var(--dim);
+  line-height:var(--lh-body); overflow-wrap:anywhere;
+}
+.adm-exp-d[hidden]{display:none}
+.adm-exp-m{
+  display:block; margin:8px 0 0;
+  font-size:var(--fs-fine); color:var(--dimmer); line-height:var(--lh-body);
+  font-variant-numeric:tabular-nums;
+}
+.adm-exp-rail{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 8px}
+
+/* THE FOUR STATES, and never the hue alone — each has its own shape, so the
+   card reads the same in greyscale and to anyone who does not see the colour.
+   EXPIRED is derived from endBy and the clock, never stored. */
+.adm-exp-s{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:3px 10px;
+  font-size:var(--fs-micro); font-weight:var(--w-head);
+  letter-spacing:var(--ls-badge); text-transform:uppercase;
+}
+.adm-exp-s-idea{border-radius:var(--pill); color:var(--dim); box-shadow:inset 0 0 0 1px var(--tint-3)}
+.adm-exp-s-running{border-radius:4px; background:var(--ink); color:var(--ground)}
+.adm-exp-s-ended{border-radius:4px; color:var(--dim); box-shadow:inset 0 0 0 1px var(--tint-3)}
+.adm-exp-s-expired{border-radius:4px; color:var(--crimson); box-shadow:inset 0 0 0 1px var(--crimson)}
+
+/* ---- Age, and the deadline that comes with it ---------------------------
+   THERE IS NO BACKFILL. TikTok stops serving reach, watch time and retention
+   for a video with no activity for seven days; Instagram never exposed a
+   retention curve at all. So an unmeasured reel is not an empty cell waiting
+   patiently — it is a countdown, and then it is a loss. The three bands each
+   get a shape as well as a colour, and the at-risk one is the only thing on
+   this page drawn in the stop colour with a solid rule around it.
+   ------------------------------------------------------------------------ */
+.adm-age{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:2px 9px; border-radius:var(--pill);
+  font-size:var(--fs-micro); font-weight:var(--w-head);
+  letter-spacing:var(--ls-badge); text-transform:uppercase;
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+/* Measured, and measured on the clock: quiet, because this is the ordinary
+   case and the board should not congratulate anybody for it. */
+.adm-age-ok{color:var(--dim); box-shadow:inset 0 0 0 1px var(--tint-3)}
+/* Measured before 72 hours. The number is real and it is not comparable, so
+   it is marked rather than hidden and every chart leaves it out. */
+.adm-age-early{border-radius:4px; color:var(--crimson); box-shadow:inset 0 0 0 1px var(--crimson)}
+/* Waiting for 72 hours to pass. */
+.adm-age-wait{color:var(--dim); box-shadow:inset 0 0 0 1px var(--tint-3)}
+/* Ready to measure NOW. The one state on this page that is an instruction. */
+.adm-age-due{background:var(--coral); color:var(--on-accent)}
+/* Past seven days, unmeasured. A deadline that has gone, not a suggestion. */
+.adm-age-risk{border-radius:4px; background:var(--crimson); color:var(--ground)}
+.adm-age-none{color:var(--dimmer); box-shadow:inset 0 0 0 1px var(--tint-3)}
+
+/* ---- The reels under an experiment -------------------------------------- */
+.adm-reels{display:block; margin:10px 0 0}
+.adm-reel{
+  display:block; margin:0 0 10px; padding:11px 12px;
+  border-radius:12px; background:var(--raise);
+  box-shadow:inset 0 0 0 1px var(--hair);
+}
+.adm-reel-head{display:flex; align-items:flex-start; gap:10px}
+.adm-reel-main{flex:1 1 auto; min-width:0}
+.adm-reel-t{
+  display:block; margin:0; font-size:var(--fs-note); font-weight:var(--w-strong);
+  color:var(--ink); line-height:var(--lh-tight); overflow-wrap:anywhere;
+}
+.adm-reel-rail{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:6px 0 0}
+/* A fixed box so a missing cover does not change the row's height, and
+   object-fit so a portrait 9:16 thumbnail is not squashed into a square. */
+.adm-reel-cover{
+  flex:none; width:52px; height:68px; border-radius:8px;
+  object-fit:cover; background:var(--tint); display:block;
+}
+.adm-reel-cover[hidden]{display:none}
+.adm-reel-link{
+  display:inline-block; margin:6px 0 0; max-width:100%;
+  font-size:var(--fs-fine); color:var(--accent-ink);
+  overflow-wrap:anywhere;
+}
+/* The numbers. A wrapping grid rather than a table: ten figures in a 620px
+   pane is three columns on a desk and two on a phone, and a table of ten
+   columns is the thing that would put a horizontal scrollbar on the body. */
+.adm-nums{
+  display:grid; gap:8px 12px; margin:9px 0 0;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,92px),1fr));
+}
+.adm-num{display:block; min-width:0}
+.adm-num-k{
+  display:block; font-size:var(--fs-micro); font-weight:var(--w-label);
+  letter-spacing:var(--ls-caps); text-transform:uppercase; color:var(--dimmer);
+  overflow-wrap:anywhere;
+}
+.adm-num-v{
+  display:block; font-size:var(--fs-note); font-weight:var(--w-strong); color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+/* A figure nobody typed. "—" and not "0": zero is a measurement and this is
+   an absence, and the whole board depends on never confusing the two. */
+.adm-num-v-none{color:var(--dimmer); font-weight:var(--w-label)}
+/* The primary metric of this experiment, marked in the row so the eye finds
+   the number the charts are ranking on. */
+.adm-num-p .adm-num-k{color:var(--accent-ink)}
+.adm-num-p .adm-num-v{color:var(--accent-ink)}
+
+/* ---- Entry that cannot be lost ------------------------------------------
+   Numbers are copied off a phone screen one at a time, and there is no
+   backfill if the session is interrupted — so every field here SAVES ITSELF
+   when it is left, and the row says which field last landed. There is no
+   submit button to forget to press and nothing to lose by navigating away.
+   ------------------------------------------------------------------------ */
+.adm-savedot{
+  display:block; margin:7px 0 0; min-height:1em;
+  font-size:var(--fs-fine); color:var(--dimmer); line-height:var(--lh-body);
+}
+.adm-savedot-ok{color:var(--teal-ink); font-weight:var(--w-strong)}
+.adm-savedot-bad{color:var(--crimson); font-weight:var(--w-strong)}
+
+/* ---- Layer 1: the diagnostics ------------------------------------------
+   Arithmetic over the reels, computed on every paint, stored nowhere, true
+   whenever it is run. It has no author because it needs none, and it is
+   styled as plain measured statement — no card, no accent, nothing that could
+   read as an opinion.
+   ------------------------------------------------------------------------ */
+.adm-diag{display:block; margin:10px 0 0; padding:0; list-style:none}
+.adm-diag li{
+  display:block; margin:0 0 7px; padding:0 0 0 14px; position:relative;
+  font-size:var(--fs-meta); color:var(--ink); line-height:var(--lh-body);
+  overflow-wrap:anywhere; font-variant-numeric:tabular-nums;
+}
+.adm-diag li:before{
+  content:""; position:absolute; left:0; top:.62em;
+  width:5px; height:5px; border-radius:50%; background:var(--dimmer);
+}
+/* A finding that says "this is not a result". Marked, because it is the one
+   the reader most wants to skip past. */
+.adm-diag-warn{color:var(--crimson)}
+.adm-diag-warn:before{background:var(--crimson)}
+.adm-diag-k{
+  display:inline; font-weight:var(--w-strong); color:var(--ink);
+}
+.adm-diag-warn .adm-diag-k{color:var(--crimson)}
+
+/* ---- Layer 2: the written read -----------------------------------------
+   An opinion, with a name and a date on it, and it must never be mistaken for
+   the block above. So it gets a card, a rule down its left edge and a byline —
+   the visual language of a quote, not of a measurement.
+   ------------------------------------------------------------------------ */
+.adm-read{
+  display:block; margin:10px 0 0; padding:11px 13px;
+  border-left:3px solid var(--accent-ink); border-radius:0 12px 12px 0;
+  background:var(--accent-wash);
+}
+.adm-read[hidden]{display:none}
+.adm-read-t{
+  display:block; margin:0; font-size:var(--fs-note); color:var(--ink);
+  line-height:var(--lh-body); overflow-wrap:anywhere; white-space:pre-wrap;
+}
+.adm-read-by{
+  display:block; margin:7px 0 0;
+  font-size:var(--fs-fine); color:var(--dim); font-weight:var(--w-label);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ---- Inspiration links -------------------------------------------------- */
+.adm-links{display:block; margin:6px 0 0; padding:0; list-style:none}
+.adm-links li{display:block; margin:0 0 5px}
+.adm-links a{
+  font-size:var(--fs-meta); color:var(--accent-ink); overflow-wrap:anywhere;
+}
+
+/* A quiet pill for a count that is read at a glance. */
+.adm-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 11px; border-radius:var(--pill);
+  font-size:var(--fs-fine); font-weight:var(--w-strong); color:var(--dim);
+  box-shadow:inset 0 0 0 1px var(--tint-3);
+  font-variant-numeric:tabular-nums;
+}
+.adm-pill-go{background:var(--coral); color:var(--on-accent); box-shadow:none}
+.adm-pill-bad{background:var(--crimson); color:var(--ground); box-shadow:none}
