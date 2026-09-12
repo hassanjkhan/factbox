@@ -168,7 +168,7 @@
 </noscript>
 
 <script type="module" src="/js/auth.js?v=35b20584"></script>
-<script src="/js/admin-experiments.js?v=af3b7ccc"></script>
+<script src="/js/admin-experiments.js?v=d37b53bf"></script>
 <script>
 /* ==========================================================================
    /admin/experiments — the board
@@ -1502,11 +1502,32 @@
       if (state.className.indexOf("adm-bad") < 0) {
         state.hidden = false;
         clear(state);
-        state.appendChild(el("b", null, "No experiments yet."));
-        state.appendChild(document.createTextNode(
-          " Press “Add an experiment”. An idea costs nothing to write down " +
-          "and the point of writing it down is that the next one can be compared " +
-          "to it."));
+        /* A REFUSED READ IS NOT AN EMPTY BOARD. Both arrive here as no rows,
+           and calling a refusal "nothing yet" sends somebody reloading a page
+           that was never going to change — which is exactly what happened the
+           first time this shipped, because the rules for this collection had
+           not been deployed. Say which one it is. */
+        var rerr = null;
+        try {
+          if (FBE && typeof FBE.readError === "function") rerr = FBE.readError();
+        } catch (e) { rerr = null; }
+        if (rerr && rerr.denied) {
+          state.appendChild(el("b", null, "Firestore refused to read the experiments."));
+          state.appendChild(document.createTextNode(
+            " You are signed in, so this is the rules rather than your account. " +
+            "If this collection was added recently the rules may not be deployed " +
+            "yet — run: firebase deploy --only firestore:rules,storage. " +
+            "Reloading will not help until that runs."));
+        } else if (rerr) {
+          state.appendChild(el("b", null, "The experiments could not be read."));
+          state.appendChild(document.createTextNode(" " + rerr.message));
+        } else {
+          state.appendChild(el("b", null, "No experiments yet."));
+          state.appendChild(document.createTextNode(
+            " Press “Add an experiment”. An idea costs nothing to write down " +
+            "and the point of writing it down is that the next one can be compared " +
+            "to it."));
+        }
       }
       return;
     }

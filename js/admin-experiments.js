@@ -793,7 +793,24 @@
     return sdk.collection(db, EXPS, w.id, w.kind);
   }
 
-  function call(fn, rows) { try { fn(rows); } catch (e) {} }
+  function call(fn, rows, err) { try { fn(rows, err || null); } catch (e) {} }
+
+  /* THE LAST READ ERROR, kept so the page can tell "nothing here" apart from
+     "you were refused". They look identical from a snapshot callback — both
+     arrive as no rows — and reporting a refusal as an empty board sends
+     somebody reloading a page that was never going to change. It cost exactly
+     that once: rules for this collection had not been deployed, and the board
+     cheerfully said 0 experiments. */
+  var lastErr = null;
+  function noteErr(e) {
+    var code = (e && (e.code || e.name)) ? String(e.code || e.name) : "";
+    lastErr = {
+      code: code,
+      denied: code.indexOf("permission-denied") >= 0 || code.indexOf("PERMISSION") >= 0,
+      message: (e && e.message) ? String(e.message) : "the read was refused"
+    };
+    return lastErr;
+  }
 
   function attach(w) {
     if (w.unsub || !db || !sdk) return;
@@ -1341,6 +1358,7 @@
     state: function () { return { ok: state.ok, why: state.why || "" }; },
     me: me,
 
+    readError: function () { return lastErr; },
     watchExperiments: watchExperiments,
     watchReels: watchReels,
     watchComments: watchComments,
