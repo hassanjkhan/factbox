@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:wght@500&display=swap">
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/admin.css?v=12c79b19">
+<link rel="stylesheet" href="/css/admin.css?v=21c3744d">
 </head>
 <body>
 
@@ -109,6 +109,13 @@
       <p class="adm-ans-v" id="adm-ans-v">Reading the board…</p>
       <div id="adm-ans-why"></div>
       <div class="adm-ans-strip" id="adm-ans-strip" hidden></div>
+      <!-- THE CONTROL, BOARD-WIDE. One place that answers "what does a normal
+           reel do for us", in the metric most experiments are judged on. It is
+           the median and not the mean, and it says so; inside an experiment the
+           same number is recomputed with that experiment's own reels left out.
+           It renders the refusal sentence when there are too few reels, never
+           nothing. -->
+      <div id="adm-ans-base"></div>
       <span class="adm-chart-h" id="adm-ans-ch" hidden>Formats that have won a decided experiment</span>
       <div class="adm-chart" id="adm-ans-chart" hidden></div>
       <div id="adm-ans-note"></div>
@@ -197,6 +204,13 @@
    The page never compares two numbers measured at different ages without
    saying so, and a reading taken early is shown AS early rather than being
    averaged in. See ageOf().
+
+   AND THE CONTROL, WHICH IS THE SECOND QUESTION EVERY CHART HERE ANSWERS:
+   "A beat B" is not the same claim as "A beat what we normally post", and
+   only the second one is worth changing next week's posts over. So every
+   comparison is drawn against a baseline — the MEDIAN of the primary metric
+   across every measured reel that is NOT in the experiment being looked at,
+   with its own interquartile range travelling beside it. See baselineFor().
 
    AND THE DEADLINE UNDER IT: THERE IS NO BACKFILL. TikTok stops serving
    reach, watch time and retention for a video with no activity for seven
@@ -623,6 +637,93 @@
   }
 
   /* ----------------------------------------------------------------------
+     THE CONTROL BASELINE — what a normal reel does for us.
+
+     A vs B answers "did this beat that". It cannot answer the question that
+     decides whether the idea was worth having: DID EITHER OF THEM BEAT WHAT
+     WE NORMALLY DO. So there is a control, and it is the rest of the board:
+     every reel measured on the clock that is NOT in the experiment being
+     looked at.
+
+     THE MEDIAN, NOT THE MEAN, AND THIS IS NOT A BUG TO BE TIDIED UP LATER.
+     Reel performance is lottery-shaped — most land in a band, and one in
+     twenty gets picked up and does twenty times the rest. A mean over that
+     lands somewhere no reel has ever been, and then every ordinary reel reads
+     as "below average" forever and the baseline is useless for deciding
+     anything. The median is the reel in the middle, which is what a person
+     means when they say "what we normally get". Do not swap this for mean().
+
+     AND THE INTERQUARTILE RANGE TRAVELS WITH IT, because one number cannot
+     say whether a reel beat the baseline. The middle half is the spread the
+     baseline ITSELF has; a reel inside it is an ordinary reel however far
+     from the median it looks, and the page is required to say so rather than
+     call it a win. That is the same honesty the noise test enforces between
+     the two arms, applied to the comparison against normal.
+
+     THE EXPERIMENT'S OWN REELS ARE LEFT OUT. Including them measures the
+     thing being tested against a baseline it is part of — circular, and worst
+     exactly when the experiment is big enough to move the number.
+
+     A REEL WITH NO FIGURE FOR THIS METRIC IS SKIPPED, NEVER COUNTED AS ZERO.
+     A missing number and a zero are different facts; see metricVal() in the
+     data layer. One invented zero moves a median of eleven by a whole place.
+
+     PER METRIC. The baseline is computed for whatever the experiment names as
+     primary, so an experiment judged on saves is held against the board's
+     saves and not against its views.
+
+     Under BASE_MIN measured reels there is NO baseline, no rule is drawn and
+     the page says so in words. Three is already thin. One is a number
+     pretending to be a normal.
+     ---------------------------------------------------------------------- */
+
+  var BASE_MIN = 3;
+
+  function asc(a, b) { return a - b; }
+
+  /* The middle value, interpolated between the two middle ones when the count
+     is even — quantile() already does exactly that at q=0.5, and an even
+     count is where a hand-rolled median usually goes wrong. */
+  function median(sorted) { return quantile(sorted, 0.5); }
+
+  function baselineFor(excludeId, k, n) {
+    var out = { k: k, n: 0, median: null, q1: null, q3: null, ok: false };
+    var vals = [], i, j, rs, v;
+    for (i = 0; i < EXPS.length; i++) {
+      if (excludeId && EXPS[i].id === excludeId) continue;
+      rs = reelsOf(EXPS[i].id);
+      for (j = 0; j < rs.length; j++) {
+        if (!ageOf(rs[j], n).comparable) continue;   /* measured at 72h or later, or not normal */
+        v = metric(rs[j][k]);
+        if (v === null) continue;                    /* missing is missing, not zero */
+        vals.push(v);
+      }
+    }
+    vals.sort(asc);
+    out.n = vals.length;
+    if (vals.length < BASE_MIN) return out;
+    out.median = median(vals);
+    out.q1 = quantile(vals, 0.25);
+    out.q3 = quantile(vals, 0.75);
+    out.ok = true;
+    return out;
+  }
+
+  /* "our usual — 4,100 views (n=11)". The value AND the count, always: a
+     reference line without its n is a line somebody will trust more than it
+     deserves. */
+  function baseLabel(b, def) {
+    return "our usual — " + fmtMetric(b.median, def.unit) + " " +
+           def.label.toLowerCase() + " (n=" + b.n + ")";
+  }
+
+  /* The sentence said when there is no baseline. One wording, used by the
+     chart note and the diagnostics, so the two can never drift. */
+  function baseShort(b) {
+    return "not enough other reels yet to say what normal looks like — n of " + b.n;
+  }
+
+  /* ----------------------------------------------------------------------
      THE NOISE TEST, and it is the most important function on this page.
 
      A bar chart of A against B will always show one bar longer than the
@@ -825,8 +926,18 @@
 
      The X AXIS IS LABELLED under the bars — zero and the maximum, with the
      metric named — because a bar chart with no scale says "this one is
-     longer" and nothing else, and "longer" was never the question. */
-  function barsSVG(w, items, title, axisLabel) {
+     longer" and nothing else, and "longer" was never the question.
+
+     `ref` is the CONTROL BASELINE: { value, label }, drawn as a dashed rule
+     across the bars in a muted token colour and NEVER as another bar. It is
+     not a competitor, it is the line the bars are read against, and a third
+     bar would invite it to be ranked alongside the other two. The bars run
+     left to right, so "a horizontal rule at the baseline" is a VERTICAL rule
+     here: every bar that crosses it is above normal and every bar that stops
+     short of it is below. The label sits on its own row at the bottom left
+     with a matching dashed swatch — inside the box at any width, which a
+     label hung off the rule itself is not on a phone. */
+  function barsSVG(w, items, title, axisLabel, ref) {
     if (!items || items.length < 2) return null;
     var rowH = 30, gap = 4, top = 8, bot = 34, i;
     var longest = 0;
@@ -841,9 +952,15 @@
 
     var max = 0;
     for (i = 0; i < items.length; i++) if (items[i].value > max) max = items[i].value;
+    /* The baseline is part of the scale. A control above every bar would
+       otherwise be drawn off the end of the track, which is the one place a
+       reader cannot see it. */
+    if (ref && typeof ref.value === "number" && isFinite(ref.value) && ref.value > max) max = ref.value;
     if (max <= 0) max = 1;
 
-    var h = top + items.length * (rowH + gap) - gap + bot;
+    var keyH = ref ? 22 : 0;
+    var barsB = top + items.length * (rowH + gap) - gap;
+    var h = barsB + bot + keyH;
     var s = svgRoot(w, h, title);
 
     for (i = 0; i < items.length; i++) {
@@ -856,13 +973,28 @@
       s.appendChild(svText("fbx-t", x0 + barW + 8, y + 20, items[i].right));
     }
 
+    /* The control, drawn LAST over the bars so nothing sits on top of it. */
+    if (ref && typeof ref.value === "number" && isFinite(ref.value)) {
+      var rx = x0 + Math.round(barW * (Math.max(0, ref.value) / max)) + 0.5;
+      s.appendChild(svLine("fbx-base", rx, top - 2, rx, barsB + 2));
+    }
+
     /* The scale. Two ticks and the name of what is being measured. */
-    var ay = h - bot + 16;
+    var ay = barsB + 16;
     s.appendChild(svLine("fbx-rule", x0, ay - 8, x0 + barW, ay - 8));
     s.appendChild(svText("fbx-t-dim", x0, ay + 4, "0"));
     s.appendChild(svText("fbx-t-dim", x0 + barW, ay + 4, String(fmtInt(max)), "end"));
     if (axisLabel) {
       s.appendChild(svText("fbx-t-dim", x0 + barW / 2, ay + 18, axisLabel, "middle"));
+    }
+
+    /* And what that rule is, in words, on its own row. Clipped to the box
+       rather than allowed to run past the right edge on a phone — the full
+       sentence is in the note under the chart either way. */
+    if (ref && ref.label) {
+      var ky = h - 6;
+      s.appendChild(svLine("fbx-base-key", 0, ky - 4, 18, ky - 4));
+      s.appendChild(svText("fbx-t-base", 24, ky, clipTo(ref.label, Math.max(40, w - 26))));
     }
     return s;
   }
@@ -1590,6 +1722,13 @@
         plural(o.early, "reel", "reels") + " measured too early"));
     } else { strip.hidden = true; }
 
+    /* ---- what a normal reel does, board-wide ----
+       One place that answers "what is normal for us", in the metric the most
+       experiments are judged on. Written BEFORE the verdict branches below
+       because every one of them returns, and this line is true in all of
+       them — including the week when nothing has been decided. */
+    renderBoardBaseline(n);
+
     /* ---- the verdict ---- */
     var ended = [], running = 0, ideas = 0;
     for (i = 0; i < EXPS.length; i++) {
@@ -1701,6 +1840,50 @@
     }
   }
 
+  /* The primary metric the most experiments are judged on. Walked in METRICS
+     order so a tie resolves the same way every paint rather than on whatever
+     order the keys happen to come back in. */
+  function commonMetric() {
+    var counts = {}, i, k, best = "views", bestN = -1;
+    for (i = 0; i < EXPS.length; i++) {
+      k = key(EXPS[i].metric, metricKeys(), "views");
+      counts[k] = (counts[k] || 0) + 1;
+    }
+    for (i = 0; i < METRICS.length; i++) {
+      k = METRICS[i].k;
+      if ((counts[k] || 0) > bestN) { bestN = counts[k] || 0; best = k; }
+    }
+    return best;
+  }
+
+  function renderBoardBaseline(n) {
+    var host = $("adm-ans-base");
+    if (!host) return;
+    clear(host);
+    var k = commonMetric(), def = metricDef(k);
+    /* No exclusion here: this IS the board. Inside an experiment the same
+       number is recomputed with that experiment's own reels removed, and the
+       two will differ — deliberately. */
+    var b = baselineFor("", k, n);
+    host.appendChild(el("span", "adm-chart-h", "What a normal reel does"));
+    if (!b.ok) {
+      host.appendChild(el("p", "adm-ans-say adm-nodata",
+        "Not enough measured reels yet to say what normal looks like — n of " + b.n +
+        " on " + def.label.toLowerCase() + ". It takes " + BASE_MIN + " reels measured at " +
+        MEASURE_HOURS + " hours before a middle value means anything, and until then no " +
+        "reference line is drawn anywhere on this board."));
+      return;
+    }
+    host.appendChild(el("p", "adm-ans-say",
+      "Our usual is " + fmtMetric(b.median, def.unit) + " " + def.label.toLowerCase() +
+      " — the median of " + plural(b.n, "reel", "reels") + " measured at " + MEASURE_HOURS +
+      " hours, across every experiment. The middle half of them run " +
+      fmtMetric(b.q1, def.unit) + " to " + fmtMetric(b.q3, def.unit) + ". The median and " +
+      "not the average, because one reel that gets picked up drags an average somewhere " +
+      "no reel has ever been. Open an experiment and the same line is drawn on its charts, " +
+      "recomputed without its own reels."));
+  }
+
   function undecidedLine(e, t) {
     var li = el("li", "adm-diag-warn");
     li.appendChild(el("b", "adm-diag-k", (e.title || "Untitled experiment") + ": "));
@@ -1742,6 +1925,77 @@
     li.appendChild(el("b", "adm-diag-k", k + ": "));
     li.appendChild(document.createTextNode(text));
     return li;
+  }
+
+  /* ---- AGAINST OUR USUAL -------------------------------------------------
+     The control, said in words, with the same refusal to overclaim the noise
+     test has between the arms. The rule it obeys:
+
+       A REEL OR AN ARM INSIDE THE BASELINE'S MIDDLE HALF HAS NOT BEATEN THE
+       BASELINE and is never written as if it had. Half the board sits in that
+       band by definition; landing in it is what ordinary looks like, not a
+       win with a smaller number attached.
+
+     Percentages are against the median, which is what "28% above our usual"
+     means to somebody reading it. When the median is 0 — possible on saves or
+     profile taps early on — the percentage is dropped rather than dividing by
+     zero and printing Infinity%. */
+  function baselineDiag(e, reels, n, def) {
+    var b = baselineFor(e.id, e.metric, n), i;
+    if (!b.ok) {
+      return diagLine("Against our usual",
+        baseShort(b) + ". No line is drawn on the charts: a normal worked out from " +
+        (b.n === 1 ? "one reel" : b.n + " reels") + " is a number pretending to be a " +
+        "baseline, and it would be read as one. " + BASE_MIN + " measured reels outside " +
+        "this experiment is the floor.", true);
+    }
+
+    var usual = fmtMetric(b.median, def.unit) + " " + def.label.toLowerCase() +
+                ", n=" + b.n;
+    var mid = "The baseline's own middle half runs " + fmtMetric(b.q1, def.unit) +
+              " to " + fmtMetric(b.q3, def.unit) + ", so ";
+
+    /* The two arms when both are measured; otherwise this experiment's own
+       reels as one group, because "did we beat normal" is still answerable
+       when the A/B comparison is not. */
+    var t = noiseTest(reels, e.metric, n), arms = [];
+    if (t.meanA !== null) arms.push({ name: "A", v: t.meanA });
+    if (t.meanB !== null) arms.push({ name: "B", v: t.meanB });
+    if (!arms.length) {
+      var mine = valuesOf(reels, e.metric, n);
+      if (!mine.length) {
+        return diagLine("Against our usual",
+          "our usual is " + usual + " (median of the measured reels elsewhere on the " +
+          "board; the middle half runs " + fmtMetric(b.q1, def.unit) + " to " +
+          fmtMetric(b.q3, def.unit) + "). Nothing here is measured at " + MEASURE_HOURS +
+          " hours yet, so there is nothing to hold against it.", false);
+      }
+      mine = mine.slice(0).sort(asc);
+      arms.push({ name: "This experiment", v: median(mine) });
+    }
+
+    var txt = "", out = [];
+    for (i = 0; i < arms.length; i++) {
+      arms[i].out = (arms[i].v < b.q1 || arms[i].v > b.q3);
+      if (arms[i].out) out.push(arms[i].name);
+      var word = arms[i].v >= b.median ? "above" : "below";
+      var howMuch = "";
+      if (b.median > 0) howMuch = Math.round(Math.abs(arms[i].v - b.median) / b.median * 100) + "% ";
+      txt += arms[i].name + " is " + howMuch + word +
+             (i === 0 ? " our usual (" + usual + ")" : "") + ". ";
+    }
+
+    txt += mid;
+    if (!out.length) {
+      txt += (arms.length === 1 ? "it sits" : "both sit") + " inside it. Inside the middle " +
+             "half is what an ordinary reel looks like, so nothing here has beaten what we " +
+             "normally do.";
+    } else if (out.length === arms.length) {
+      txt += (arms.length === 1 ? out[0] + " is" : "both are") + " outside it.";
+    } else {
+      txt += "only " + out.join(" and ") + " is clearly outside it.";
+    }
+    return diagLine("Against our usual", txt, !out.length);
   }
 
   function allBoardReels() {
@@ -1812,6 +2066,11 @@
         " that reels on the same side differ by, so it is worth acting on — " +
         "which is not the same as proved.", false));
     }
+
+    /* ---- AGAINST OUR USUAL. Immediately after A vs B, because "A beat B"
+       and "A beat what we normally post" are different claims and the second
+       is the one that decides whether to keep doing this. ---- */
+    out.push(baselineDiag(e, reels, n, def));
 
     /* ---- HOOK. Against this experiment and against the board. ---- */
     var board = valuesOf(allBoardReels(), "threeSec", n).slice(0);
@@ -2347,6 +2606,13 @@
 
     var n = now(), reels = reelsOf(e.id), def = metricDef(e.metric), i;
 
+    /* THE CONTROL, once, for both charts below. Computed on this
+       experiment's own primary metric, over every measured reel that is NOT
+       in this experiment. Null when the board cannot support one, and then
+       neither chart draws a rule. */
+    var base = baselineFor(e.id, e.metric, n);
+    var ref = base.ok ? { value: base.median, label: baseLabel(base, def) } : null;
+
     /* --- 1. A vs B --- */
     var t = noiseTest(reels, e.metric, n);
     var abNote = $("adm-chart-ab-note");
@@ -2367,7 +2633,8 @@
             right: fmtMetric(t.meanA, def.unit), cls: solid ? "fbx-fill" : "fbx-fill-q" },
           { label: "B (" + t.nB + " measured)", value: t.meanB,
             right: fmtMetric(t.meanB, def.unit), cls: solid ? "fbx-fill-2" : "fbx-fill-q" }
-        ], "A against B on " + def.label, "Mean " + def.label.toLowerCase() + " at " + MEASURE_HOURS + "h");
+        ], "A against B on " + def.label, "Mean " + def.label.toLowerCase() + " at " + MEASURE_HOURS + "h",
+        ref);
       });
       if (abNote) {
         abNote.appendChild(el("p", solid ? "adm-mini-note" : "adm-mini-note adm-nodata",
@@ -2382,6 +2649,22 @@
                   " measured reels there is no spread to compare the gap against, so the " +
                   "difference between these bars means nothing yet.")));
       }
+    }
+
+    /* The control, said under the chart as well as drawn on it. A dashed rule
+       nobody has explained is decoration. */
+    if (abNote) {
+      abNote.appendChild(el("p", base.ok ? "adm-mini-note" : "adm-mini-note adm-nodata",
+        base.ok
+          ? "Our usual is " + fmtMetric(base.median, def.unit) + " " +
+            def.label.toLowerCase() + " — the MEDIAN of " + plural(base.n, "reel", "reels") +
+            " measured at " + MEASURE_HOURS + " hours everywhere else on the board. This " +
+            "experiment's own reels are left out of it, because a thing cannot be part of " +
+            "what it is measured against. Every chart here that draws puts a dashed rule " +
+            "there. The middle half of those reels run " + fmtMetric(base.q1, def.unit) +
+            " to " + fmtMetric(base.q3, def.unit) + "; a bar inside that band has not " +
+            "beaten normal."
+          : "No baseline rule is drawn: " + baseShort(base) + "."));
     }
 
     /* --- 2. Every reel, ranked --- */
@@ -2409,7 +2692,7 @@
     } else {
       chart("adm-chart-rank", function (w) {
         return barsSVG(w, items, "Every measured reel ranked on " + def.label,
-                       def.label + " at " + MEASURE_HOURS + "h");
+                       def.label + " at " + MEASURE_HOURS + "h", ref);
       });
     }
 

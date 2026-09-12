@@ -1,3 +1,4 @@
+
 /* ==========================================================================
    Does /admin/experiments actually render, and is what it renders true?
 
@@ -40,33 +41,13 @@ function check(name, got, want, ok) {
 }
 
 /* --------------------------------------------------------------------------
-   The stub. Runs in the page, before any of its own scripts.
+   FIXTURE ONE — the six-experiment board.
 
-   Six experiments:
-     e1  running, endBy in the PAST      -> must display as EXPIRED
-     e2  running, endBy in the future    -> Running
-     e3  idea
-     e4  ended, two reels a side, clearly separated  -> a DECIDED result
-     e5  ended, two reels a side, overlapping        -> inside the noise
-     e6  ended, one reel a side                      -> cannot be tested
-   Ten reels in total across e1/e4/e5/e6, two of them with retention series,
-   one measured EARLY (36h) and one with a title that is an XSS payload.
+   A fixture is a block of source that defines EXPS, REELS and CMTS and
+   nothing else; stubSource() wraps it in the one FBE the page talks to, so
+   two fixtures can never drift into two different data layers.
    -------------------------------------------------------------------------- */
-function stubSource() {
-  const H = 3600000;
-  return `(function () {
-    var H = ${H};
-    var NOW = Date.now();
-    function ago(h) { return NOW - h * H; }
-    function day(d) {
-      var t = new Date(NOW + d * 86400000);
-      function p(n){return (n<10?"0":"")+n;}
-      return t.getFullYear()+"-"+p(t.getMonth()+1)+"-"+p(t.getDate());
-    }
-
-    window.__calls = [];
-    function rec(name, args) { window.__calls.push({ name: name, args: args }); }
-
+const BOARD_FIXTURE = `
     var EXPS = [
       { id:"e1", title:"Hook in the first second", detail:"Open on the number, not the setup.",
         status:"running", metric:"views", endBy: day(-3), startedAt: ago(24*20),
@@ -175,6 +156,163 @@ function stubSource() {
       ]
     };
 
+    var CMTS = {
+      e1: [{ id:"c1", text:"<img src=x onerror=alert(1)> in a comment",
+             by:"uid-hassan", byName:"Hassan", at: NOW - H }]
+    };
+`;
+
+/* --------------------------------------------------------------------------
+   FIXTURE TWO — the CONTROL BASELINE board.
+
+   Five experiments, built so that every way the baseline can be got wrong is
+   a different visible number. Each experiment is judged on a DIFFERENT metric
+   so the sets do not bleed into each other: a reel with no figure for the
+   metric in question is not in that metric's baseline at all.
+
+     x1  reach   4 own reels around a million, against 4 ordinary ones
+                 elsewhere. Its own baseline is 5,000 (the median of the four
+                 outside). Counting its own reels in would drag that to
+                 454,000 — the exact circularity this excludes.
+     x2  views   eleven ordinary reels, 1,000 to 11,000. These ARE the
+                 control for x5.
+     x3  saves   only two reels anywhere else carry saves -> NO line, and the
+                 refusal said in words.
+     x4  shares  only three reels anywhere else carry shares -> n=3 and a
+                 median of 20. If a missing number were read as a zero there
+                 would be 21 of them and the median would be 0.
+     x5  views   four own reels, all sitting INSIDE the control's middle half.
+                 A beats B by more than the noise and NEITHER has beaten
+                 normal — which is the whole reason this control exists.
+
+   Every reel is posted 200-odd hours ago and read exactly 72 hours later, so
+   the age band is never what is under test here.
+   -------------------------------------------------------------------------- */
+function bReel(id, story, o) {
+  const base = { id: id, story: story, platform: "instagram", variant: "none",
+                 source: "manual", retention: [] };
+  for (const k in o) base[k] = o[k];
+  return base;
+}
+
+/* Values, held in Node as well, so the expected medians below are worked out
+   from the fixture rather than typed twice. */
+const B_VIEWS_X2   = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000];
+const B_SHARES_X2  = [10, 20, 300];          /* on the first three of them */
+const B_SAVES_X2   = [100, 200];             /* on the fourth and fifth */
+const B_REACH_X2   = [2000, 4000, 6000, 8000];
+const B_REACH_X1   = [900000, 950000, 1000000, 1050000];
+const B_SAVES_X3   = [500, 600];
+const B_SHARES_X4  = [1000, 1200];
+const B_VIEWS_X5   = [5500, 6000, 6200, 6400];
+
+/* An independent median and quartile, written plainly here so the page's
+   arithmetic is checked against something and not against itself. */
+function nMedian(a) {
+  const s = a.slice(0).sort((x, y) => x - y);
+  const m = (s.length - 1) / 2;
+  return s.length % 2 ? s[m] : (s[m - 0.5] + s[m + 0.5]) / 2;
+}
+function nQuantile(a, q) {
+  const s = a.slice(0).sort((x, y) => x - y);
+  const pos = (s.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
+  return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (pos - lo);
+}
+function nInt(v) { return Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+const BASELINE_FIXTURE = `
+    function reel(o) {
+      var base = { platform:"instagram", variant:"none", source:"manual", retention:[],
+                   views:null, reach:null, likes:null, comments:null, shares:null,
+                   saves:null, profileTaps:null, avgWatch:null, completion:null, threeSec:null };
+      for (var k in o) { base[k] = o[k]; }
+      /* Posted, then read exactly MEASURE_HOURS later. */
+      base.postedAt = ago(200);
+      base.measuredAt = ago(200 - 72);
+      base.createdAt = ago(210);
+      return base;
+    }
+
+    var EXPS = [
+      { id:"x1", title:"Own reels excluded", detail:"Four of ours got picked up.",
+        status:"ended", metric:"reach", outcome:"", order:1, createdAt: ago(24*9) },
+      { id:"x2", title:"Eleven ordinary reels", detail:"The rest of the board.",
+        status:"ended", metric:"views", outcome:"", order:2, createdAt: ago(24*8) },
+      { id:"x3", title:"Too few others", detail:"Nobody else logs saves.",
+        status:"ended", metric:"saves", outcome:"", order:3, createdAt: ago(24*7) },
+      { id:"x4", title:"Missing is not zero", detail:"Three reels anywhere carry shares.",
+        status:"ended", metric:"shares", outcome:"", order:4, createdAt: ago(24*6) },
+      { id:"x5", title:"Inside the middle half", detail:"A beats B, and neither beats normal.",
+        status:"ended", metric:"views", outcome:"", order:5, createdAt: ago(24*5) }
+    ];
+
+    var REELS = {
+      x1: [
+        reel({ id:"x1a", story:"Picked up one",   variant:"a", reach:${B_REACH_X1[0]}, order:1 }),
+        reel({ id:"x1b", story:"Picked up two",   variant:"a", reach:${B_REACH_X1[1]}, order:2 }),
+        reel({ id:"x1c", story:"Picked up three", variant:"b", reach:${B_REACH_X1[2]}, order:3 }),
+        reel({ id:"x1d", story:"Picked up four",  variant:"b", reach:${B_REACH_X1[3]}, order:4 })
+      ],
+      x2: [
+${B_VIEWS_X2.map((v, i) => {
+  const extra = [];
+  if (i < 3) extra.push("shares:" + B_SHARES_X2[i]);
+  if (i === 3) extra.push("saves:" + B_SAVES_X2[0]);
+  if (i === 4) extra.push("saves:" + B_SAVES_X2[1]);
+  if (i < 4) extra.push("reach:" + B_REACH_X2[i]);
+  return '        reel({ id:"x2r' + i + '", story:"Ordinary ' + (i + 1) + '", views:' + v +
+         (extra.length ? ", " + extra.join(", ") : "") + ", order:" + (i + 1) + " })";
+}).join(",\n")}
+      ],
+      x3: [
+        reel({ id:"x3a", story:"Saves A", variant:"a", saves:${B_SAVES_X3[0]}, order:1 }),
+        reel({ id:"x3b", story:"Saves B", variant:"b", saves:${B_SAVES_X3[1]}, order:2 })
+      ],
+      x4: [
+        reel({ id:"x4a", story:"Shares A", variant:"a", shares:${B_SHARES_X4[0]}, order:1 }),
+        reel({ id:"x4b", story:"Shares B", variant:"b", shares:${B_SHARES_X4[1]}, order:2 })
+      ],
+      x5: [
+        reel({ id:"x5a", story:"Middle one",   variant:"a", views:${B_VIEWS_X5[0]}, order:1 }),
+        reel({ id:"x5b", story:"Middle two",   variant:"a", views:${B_VIEWS_X5[1]}, order:2 }),
+        reel({ id:"x5c", story:"Middle three", variant:"b", views:${B_VIEWS_X5[2]}, order:3 }),
+        reel({ id:"x5d", story:"Middle four",  variant:"b", views:${B_VIEWS_X5[3]}, order:4 })
+      ]
+    };
+
+    var CMTS = {};
+`;
+
+/* --------------------------------------------------------------------------
+   The stub. Runs in the page, before any of its own scripts.
+
+   Six experiments:
+     e1  running, endBy in the PAST      -> must display as EXPIRED
+     e2  running, endBy in the future    -> Running
+     e3  idea
+     e4  ended, two reels a side, clearly separated  -> a DECIDED result
+     e5  ended, two reels a side, overlapping        -> inside the noise
+     e6  ended, one reel a side                      -> cannot be tested
+   Ten reels in total across e1/e4/e5/e6, two of them with retention series,
+   one measured EARLY (36h) and one with a title that is an XSS payload.
+   -------------------------------------------------------------------------- */
+function stubSource(defs) {
+  const H = 3600000;
+  return `(function () {
+    var H = ${H};
+    var NOW = Date.now();
+    function ago(h) { return NOW - h * H; }
+    function day(d) {
+      var t = new Date(NOW + d * 86400000);
+      function p(n){return (n<10?"0":"")+n;}
+      return t.getFullYear()+"-"+p(t.getMonth()+1)+"-"+p(t.getDate());
+    }
+
+    window.__calls = [];
+    function rec(name, args) { window.__calls.push({ name: name, args: args }); }
+
+    ${defs}
+
     function later(fn, v) { setTimeout(function () { fn(v); }, 0); }
 
     window.FBE = {
@@ -186,8 +324,7 @@ function stubSource() {
       watchExperiments: function (fn) { later(fn, EXPS.slice(0)); return function () {}; },
       watchReels: function (id, fn) { later(fn, (REELS[id] || []).slice(0)); return function () {}; },
       watchComments: function (id, fn) {
-        later(fn, id === "e1" ? [{ id:"c1", text:"<img src=x onerror=alert(1)> in a comment",
-                                   by:"uid-hassan", byName:"Hassan", at: NOW - H }] : []);
+        later(fn, (CMTS[id] || []).slice(0));
         return function () {};
       },
 
@@ -254,7 +391,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   page.on("pageerror", e => pageErrors.push(String(e && e.message ? e.message : e)));
   page.on("dialog", async d => { dialogs.push(d.message()); await d.dismiss().catch(() => {}); });
 
-  await page.evaluateOnNewDocument(stubSource());
+  await page.evaluateOnNewDocument(stubSource(BOARD_FIXTURE));
   await page.setViewport({ width: 1440, height: 960, deviceScaleFactor: 1 });
 
   console.log("\n--- loading " + URL + " -------------------------------------");
@@ -661,6 +798,196 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("zero dialogs fired (no alert from any payload)", dialogs.length, 0);
   check("zero pageerror events", pageErrors.length, 0);
   if (pageErrors.length) pageErrors.forEach(e => console.log("      pageerror: " + e));
+
+  /* ======================================================================
+     PHASE 1b — THE CONTROL BASELINE, on a board built for it.
+
+     A separate page with its own fixture, so none of the assertions above
+     have to be loosened to make room for it. Everything here is checked
+     against a median worked out in Node from the same numbers, not against
+     the page's own arithmetic.
+     ====================================================================== */
+  console.log("\n--- phase 1b: the control baseline -------------------------");
+  const bp = await browser.newPage();
+  const bErrors = [];
+  const bDialogs = [];
+  bp.on("pageerror", e => bErrors.push(String(e && e.message ? e.message : e)));
+  bp.on("dialog", async d => { bDialogs.push(d.message()); await d.dismiss().catch(() => {}); });
+  await bp.evaluateOnNewDocument(stubSource(BASELINE_FIXTURE));
+  await bp.setViewport({ width: 1440, height: 1200, deviceScaleFactor: 1 });
+  await bp.goto(URL, { waitUntil: "domcontentloaded", timeout: 45000 });
+  await sleep(1500);
+
+  /* How the page is expected to word it, built here from the fixture. */
+  const label = (vals, unit) =>
+    "our usual — " + (unit === "n" ? nInt(nMedian(vals)) : nMedian(vals)) + " ";
+
+  const openPane = async (title) => {
+    await bp.evaluate((t) => {
+      const ns = document.querySelectorAll("button.adm-exp-t");
+      for (const n of ns) if (n.textContent === t) { n.click(); return; }
+    }, title);
+    await sleep(450);
+    return bp.evaluate(() => {
+      function box(id) {
+        const h = document.getElementById(id);
+        if (!h) return null;
+        const svg = h.querySelector("svg");
+        const rule = h.querySelector("line.fbx-base");
+        const bars = Array.prototype.map.call(
+          h.querySelectorAll("rect.fbx-fill, rect.fbx-fill-2, rect.fbx-fill-q"),
+          r => ({ x: parseFloat(r.getAttribute("x")), w: parseFloat(r.getAttribute("width")) }));
+        return {
+          rules: h.querySelectorAll("line.fbx-base").length,
+          keys: h.querySelectorAll("line.fbx-base-key").length,
+          label: (h.querySelector("text.fbx-t-base") || {}).textContent || "",
+          ruleX: rule ? parseFloat(rule.getAttribute("x1")) : null,
+          svgW: svg ? parseFloat(svg.getAttribute("width")) : 0,
+          bars: bars,
+          nodata: !!h.querySelector(".adm-nodata")
+        };
+      }
+      const diag = Array.prototype.map.call(document.querySelectorAll("#adm-diag li"),
+                                            n => n.textContent);
+      return {
+        ab: box("adm-chart-ab"), rank: box("adm-chart-rank"),
+        usual: diag.filter(d => /^Against our usual/.test(d))[0] || "",
+        diag: diag,
+        paneText: document.getElementById("adm-pane-body").textContent
+      };
+    });
+  };
+
+  /* ---- the board-wide answer: one place that says what normal is ------ */
+  const boardBase = await bp.$eval("#adm-ans-base", n => n.textContent);
+  console.log("  note  board baseline: " + JSON.stringify(boardBase.replace(/\s+/g, " ").slice(0, 200)));
+  const allViews = B_VIEWS_X2.concat(B_VIEWS_X5);
+  check("the board-wide panel states our usual on the commonest metric",
+        boardBase.indexOf(nInt(nMedian(allViews)) + " views") >= 0, true);
+  check("…off every measured reel that has that metric (15 of them)",
+        boardBase.indexOf(allViews.length + " reels") >= 0, true);
+  check("…and says out loud that it is the median, not the average",
+        /median/.test(boardBase) && /not the average/.test(boardBase), true);
+  console.log("  note  expected board median = " + nMedian(allViews) + " over n=" + allViews.length);
+
+  /* ---- ELEVEN reels outside, an ODD count -------------------------------- */
+  const x5 = await openPane("Inside the middle half");
+  const x5med = nMedian(B_VIEWS_X2), x5q1 = nQuantile(B_VIEWS_X2, 0.25),
+        x5q3 = nQuantile(B_VIEWS_X2, 0.75);
+  const x5label = "our usual — " + nInt(x5med) + " views (n=" + B_VIEWS_X2.length + ")";
+  console.log("  note  x5 expects median " + x5med + " (n=11), IQR " + x5q1 + "–" + x5q3);
+  console.log("  note  x5 usual line: " + JSON.stringify(x5.usual));
+  check("A-vs-B draws the baseline rule exactly once", x5.ab.rules, 1);
+  check("the ranked chart draws the baseline rule exactly once", x5.rank.rules, 1);
+  check("…each with one dashed swatch in its key, not a second rule",
+        x5.ab.keys + "/" + x5.rank.keys, "1/1");
+  check("the rule is labelled with the value and the n on the A/B chart",
+        x5.ab.label, x5label);
+  check("…and identically on the ranked chart", x5.rank.label, x5label);
+  check("the median of eleven is the sixth value, not the mean",
+        x5.ab.label.indexOf(nInt(x5med)) >= 0 && x5.ab.label.indexOf("6,272") < 0, true);
+  check("the rule sits inside the chart box, not off the end",
+        x5.rank.ruleX > 0 && x5.rank.ruleX < x5.rank.svgW, true,
+        x5.rank.ruleX > 0 && x5.rank.ruleX < x5.rank.svgW);
+  const above = x5.rank.bars.filter(b => b.x + b.w > x5.rank.ruleX).length;
+  const below = x5.rank.bars.filter(b => b.x + b.w < x5.rank.ruleX).length;
+  check("bars visibly fall either side of it", above >= 1 && below >= 1, true,
+        above >= 1 && below >= 1);
+  console.log("  note  bars past the rule: " + above + " above, " + below + " below");
+
+  /* ---- and NOTHING inside the middle half is called a win -------------- */
+  check("the diagnostics say how far each arm is from our usual",
+        /A is 4% below our usual \(6,000 views, n=11\)/.test(x5.usual), true);
+  check("…and B on the other side of it", /B is 5% above\./.test(x5.usual), true);
+  check("…quoting the baseline's own middle half",
+        x5.usual.indexOf("middle half runs " + nInt(x5q1) + " to " + nInt(x5q3)) >= 0, true);
+  check("a reel inside that middle half is NOT described as having beaten it",
+        /nothing here has beaten what we normally do/.test(x5.usual), true);
+  check("…and is never called outside the band", /outside it/.test(x5.usual), false);
+  check("…even though A beat B by more than the noise",
+        x5.diag.some(d => /^A vs B/.test(d) && /is ahead/.test(d)), true);
+
+  const showCharts = async () => {
+    await bp.evaluate(() => {
+      const h = document.getElementById("adm-exp-charts");
+      if (h) h.scrollIntoView({ block: "start" });
+    });
+    await sleep(250);
+  };
+  await showCharts();
+  await bp.screenshot({ path: path.join(SHOTS, "exp-09-baseline-1440.png"), fullPage: false });
+
+  /* ---- the experiment's own reels are out of its own baseline ---------- */
+  const x1 = await openPane("Own reels excluded");
+  const x1out = nMedian(B_REACH_X2), x1in = nMedian(B_REACH_X2.concat(B_REACH_X1));
+  console.log("  note  x1 expects " + x1out + " excluding its own reels, " +
+              x1in + " if they were counted");
+  check("an EVEN count takes the midpoint of the two middle values",
+        x1.ab.label, "our usual — " + nInt(x1out) + " reach (n=" + B_REACH_X2.length + ")");
+  check("…and the experiment's own million-view reels are not in it",
+        x1.ab.label.indexOf(nInt(x1in)) < 0, true);
+  check("…which the chart note says in words",
+        /own reels are left out of it/.test(x1.paneText), true);
+  check("both arms are reported as outside the baseline's middle half",
+        /both are outside it\./.test(x1.usual), true);
+  console.log("  note  x1 usual line: " + JSON.stringify(x1.usual));
+
+  /* ---- two other reels is not a baseline ------------------------------- */
+  const x3 = await openPane("Too few others");
+  console.log("  note  x3 usual line: " + JSON.stringify(x3.usual));
+  check("with only two reels outside, NO rule is drawn on A-vs-B", x3.ab.rules, 0);
+  check("…nor on the ranked chart", x3.rank.rules, 0);
+  check("…and the refusal is said in words, with the n",
+        x3.paneText.indexOf("not enough other reels yet to say what normal looks like — n of 2") >= 0,
+        true);
+  check("…and no median is quoted anywhere in that line",
+        /our usual \(/.test(x3.usual), false);
+
+  /* ---- a missing number is not a zero ---------------------------------- */
+  const x4 = await openPane("Missing is not zero");
+  console.log("  note  x4 usual line: " + JSON.stringify(x4.usual));
+  check("reels with no figure for the primary metric are skipped, not zeroed",
+        x4.ab.label, "our usual — " + nInt(nMedian(B_SHARES_X2)) + " shares (n=" +
+                     B_SHARES_X2.length + ")");
+  check("…so the n is 3 and not every measured reel on the board",
+        /\(n=21\)|\(n=19\)|our usual — 0 shares/.test(x4.paneText), false);
+
+  /* ---- the per-metric promise ------------------------------------------ */
+  const x2 = await openPane("Eleven ordinary reels");
+  check("the baseline is computed on THIS experiment's primary metric",
+        x2.rank.label, "our usual — " + nInt(nMedian(B_VIEWS_X5)) + " views (n=" +
+                       B_VIEWS_X5.length + ")");
+  console.log("  note  x2 rank label: " + JSON.stringify(x2.rank.label));
+
+  /* ---- both widths, and no errors -------------------------------------- */
+  const bsw1440 = await bp.evaluate(() => ({
+    sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+  check("no horizontal body scroll at 1440px with the baseline drawn",
+        bsw1440.sw <= bsw1440.iw, true, bsw1440.sw <= bsw1440.iw);
+  console.log("  note  baseline 1440: scrollWidth=" + bsw1440.sw + " innerWidth=" + bsw1440.iw);
+  await showCharts();
+  await bp.screenshot({ path: path.join(SHOTS, "exp-10-baseline-charts-1440.png"), fullPage: false });
+
+  await bp.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await sleep(800);
+  const phone = await openPane("Inside the middle half");
+  const bsw390 = await bp.evaluate(() => ({
+    sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+  check("no horizontal body scroll at 390px with the baseline drawn",
+        bsw390.sw <= bsw390.iw, true, bsw390.sw <= bsw390.iw);
+  console.log("  note  baseline 390: scrollWidth=" + bsw390.sw + " innerWidth=" + bsw390.iw);
+  check("the rule and its label stay inside the chart box on a phone",
+        phone.rank.ruleX <= phone.rank.svgW && phone.rank.svgW <= 390, true,
+        phone.rank.ruleX <= phone.rank.svgW && phone.rank.svgW <= 390);
+  check("…still labelled there", /^our usual — /.test(phone.rank.label), true);
+  console.log("  note  phone chart width=" + phone.rank.svgW + " ruleX=" + phone.rank.ruleX +
+              " label=" + JSON.stringify(phone.rank.label));
+  await showCharts();
+  await bp.screenshot({ path: path.join(SHOTS, "exp-11-baseline-phone-390.png"), fullPage: false });
+
+  check("zero dialogs on the baseline board", bDialogs.length, 0);
+  check("zero pageerror events on the baseline board", bErrors.length, 0);
+  if (bErrors.length) bErrors.forEach(e => console.log("      pageerror: " + e));
 
   /* ======================================================================
      PHASE 2 — the REAL data layer, with no stub in front of it.

@@ -1249,6 +1249,14 @@ input[type="date"].adm-input{-webkit-appearance:none; appearance:none}
 .fbx-rule{stroke:var(--hair); stroke-width:1}
 /* The marked moment on a drop-off curve — where the steepest fall happens. */
 .fbx-mark{stroke:var(--crimson); stroke-width:1.5; stroke-dasharray:3 3}
+/* THE CONTROL BASELINE — what a normal reel does, drawn across the bars.
+   Dashed and in the muted ink both themes define, so it reads as a reference
+   and never as a series: it is what the bars are measured against, not
+   another thing being measured. --dimmer is a token, so this follows the
+   light and dark palettes without a second rule. */
+.fbx-base,.fbx-base-key{stroke:var(--dimmer); stroke-width:1.5; stroke-dasharray:6 4}
+.fbx-t-base{font-family:var(--ui); font-size:var(--fs-fine); font-weight:var(--w-label);
+  fill:var(--dimmer)}
 .fbx-t{font-family:var(--ui); font-size:var(--fs-meta); font-weight:var(--w-label);
   fill:var(--ink)}
 .fbx-t-dim{font-family:var(--ui); font-size:var(--fs-fine); font-weight:var(--w-label);
