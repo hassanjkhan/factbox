@@ -4,89 +4,232 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Factbox · Start</title>
-<meta name="description" content="History you'll actually remember. The world's most fascinating stories, explained in 5 minutes a day.">
+<meta name="description" content="Five quick questions and we build your feed. History you'll actually remember, in 5 minutes a day.">
 <meta name="theme-color" content="#E7E0D3">
 <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/icon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<!-- /start is not a page of its own any more: the onboarding is /join, and
-     this URL is a door to it. The canonical points there so the two do not
-     compete for the same search result. -->
-<link rel="canonical" href="https://factbox.app/join">
+<!-- SELF-CANONICAL, AND THAT IS A CHANGE. This URL used to point its canonical
+     at /join, because it was a door to the onboarding and the two would
+     otherwise have competed for one search result. It is not a door any more:
+     the questions are HERE and /join is the checkout they hand off to. A page
+     whose canonical names a different page is a page Google is being asked not
+     to index, and /start is the URL that goes in the videos. -->
+<link rel="canonical" href="https://factbox.app/start">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Factbox">
 <meta property="og:title" content="Factbox · Start">
-<meta property="og:description" content="History you'll actually remember. Five minutes a day.">
+<meta property="og:description" content="Five quick questions and we build your feed. History you'll actually remember.">
 <meta property="og:image" content="https://factbox.app/img/share-home.jpg">
-<meta property="og:url" content="https://factbox.app/join">
+<meta property="og:url" content="https://factbox.app/start">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/app.css?v=aa41ea3d">
-<link rel="stylesheet" href="/css/join.css?v=497eef97">
+<!-- css/start.css styles the flat first question below — the one a reader with
+     no working JavaScript gets. It was written for this page's retired
+     six-question flow and no other page links it, so nothing else can be
+     disturbed by it being here. css/recommend.css is the .fbg host the engine
+     was measured against, and css/onboard.css is the engine's own look; the
+     two are loaded in that order on /firststory and the order matters. -->
+<link rel="stylesheet" href="/css/start.css?v=d7b763e8">
+<link rel="stylesheet" href="/css/recommend.css?v=b0d82e4f">
+<link rel="stylesheet" href="/css/onboard.css?v=bc6ec82b">
 </head>
 <body>
 
 <!--
-  /start — A DOOR, NOT A FLOW.
+  /start — THE QUESTIONS, FROM THE FIRST ONE, EVERY TIME.
 
-  WHAT HAPPENED HERE. This page used to be a six-question onboarding that
-  stored its answers through window.FBA and then handed the reader to /join,
-  which asked four more questions into the same record. Two flows, one store.
-  A reader who came in through /firststory — which calls to action at
-  /join?from=story, and always has — never saw this page at all; a reader who
-  came in here answered "how much time have you got" twice.
+  WHAT THIS PAGE WAS. A door. One screen — the wordmark, "History you'll
+  actually remember." and a "Build my feed" button — whose only job was to send
+  the reader to /join, where the onboarding used to live. The onboarding does
+  not live there any more: /join is checkout now, and it opens on "Almost
+  there. What's your email?". So the door led from a page that asked nothing to
+  a page that asked for money, and the funnel in between had gone missing.
 
-  So there is one onboarding now and it is /join. The long version of why that
-  URL rather than this one is at the top of js/start.js, which is still the
-  engine and still where tools/check-analytics.js reads the instrumentation.
+  WHAT IT IS NOW. The whole funnel, in order, in one place:
 
-  WHY THIS FILE STILL EXISTS AND IS NOT A REDIRECT. Two reasons:
+      the eleven screens of js/onboard.js   ->   /join?from=start   ->   Stripe
 
-    * /privacy links to /start.html twice, describing what the opening
-      questions collect. A URL named in the privacy policy has to resolve to
-      something a reader can read.
-    * A stub that bounces is the bug this site has already shipped once —
-      "Sign in" led to a white screen reading "Moved to /login", because
-      GitHub Pages resolves /foo to foo.html before foo/index.html and the
-      stub redirected to its own clean URL. Nothing here redirects.
+  THE ENGINE IS NOT REBUILT HERE AND NOTHING BELOW KNOWS A SCREEN'S NAME.
+  js/onboard.js owns the screens, their copy, their four ob_* events and every
+  answer they record; js/profile-sync.js mirrors those answers to
+  customers/{uid}/profile/onboarding. This page hands FBOB.mount() an element
+  and takes back onDone and onExit, which is the seam that file's header says
+  it exists to leave open. It is the same handover js/recommend.js makes from
+  inside a story — same host classes, same engine, different destination.
 
-  So it is one real screen with one real door: the opening promise, and a
-  button that goes to the questions. It works with JavaScript switched off,
-  because the button is the submit control of a GET form and needs no script
-  to navigate. `from=start` rides along so the funnel can tell this door apart
-  from /firststory's.
+  FROM THE FIRST QUESTION, EVERY TIME, AND WHAT THAT COSTS.
 
-  There is NO QUESTION on this page and nothing is stored by it.
+  mount() would normally ask FBOB.resumeAt() where to start, and resumeAt()
+  puts a returning reader back where they stopped — or, with no run record but
+  answers already in the store, on the first question they have not answered.
+  That is right inside a story, where the sheet is an interruption being picked
+  back up. It is wrong here: this URL is handed out to people who are being
+  asked to start, and landing them four screens in on a question they
+  half-remember answering is how the door read as broken.
+
+  So two things happen, and only these two:
+
+    * FBOB.reset() drops fb_ob_run_v1 — the run id, the furthest screen, the
+      timestamp and the story pick. That is the onboarding's POSITION and
+      nothing else. It is deliberately NOT a clear of the answers: FBA still
+      holds draw, relates, interests, goal and streak, so the account, the
+      subscription, the reading progress and the mirrored profile record are
+      all untouched, and a returning reader sees their old answers already
+      selected as they walk back past them.
+    * startAt is the index of the first screen the engine declares as a
+      QUESTION, read out of FBOB.FLOW and FBOB.SCREENS rather than typed. The
+      welcome screen precedes it and is skipped. A number here would be a
+      second copy of a list that has already moved once.
+
+  THE WELCOME SCREEN CARRIED THE TERMS LINE. Skipping it means "By continuing
+  you agree to our Terms and Privacy Policy" is no longer the first thing on
+  screen, so it is on the flat screen below instead. If the engine's welcome
+  ever comes back into this flow, that duplication is the thing to remove.
+
+  WHAT BACK DOES, SO NOBODY IS SURPRISED BY IT. Starting at screen two does not
+  delete screen one: the engine's own Back arrow on the first question goes to
+  the welcome, and Back again from there is what calls onExit. That is
+  prevIndex() and it belongs to js/onboard.js, not to this page — forking the
+  engine to hide one screen from one entrance would be a second copy of the
+  flow to keep in step. A reader who never presses Back never sees it.
+
+  IT RENDERS WITH THE SCRIPT DEAD. The flat screen below is the first question
+  with its real copy and its four real answers, and one real link onward — not
+  a hero, not a stub, not an empty div. /privacy names this URL twice when it
+  describes what the opening questions collect, so it has to be readable by
+  somebody whose in-app browser dropped a script. The engine, when it does
+  mount, is what hides it; nothing hides it on the way in.
+
+  The four answers on that screen are not controls, and that is on purpose:
+  the only thing on this site that can record an answer is FBA, reached
+  through the engine, and a button here would take a tap and drop what it
+  collected on the floor.
 -->
 
-<main class="ob" id="st-main">
+<!-- ===== the flat first question — no script required ==================== -->
+<main class="st" id="st-flat">
 
-  <div class="ob-top">
-    <p class="ob-mark">FACTBOX</p>
-  </div>
+  <p class="st-mark">FACTBOX</p>
 
-  <div class="ob-stage">
-    <section class="st-screen" id="sc-open" data-sc="open" aria-labelledby="sc-open-h">
-      <div class="ob-centre">
-        <h1 id="sc-open-h">History you&rsquo;ll actually remember.</h1>
-        <p class="ob-sub">The world&rsquo;s most fascinating stories, explained
-        in 5 minutes a day. Start with one and see.</p>
-      </div>
+  <section class="st-screen" aria-labelledby="st-flat-h">
+    <h1 id="st-flat-h">What pulls you into a history story?</h1>
+    <p class="st-sub">Five quick questions, about a minute, and we build your
+    feed around the answers.</p>
 
-      <form class="ob-act" action="/join" method="get">
-        <input type="hidden" name="from" value="start">
-        <button class="go" id="st-open-go" type="submit">Build my feed</button>
-      </form>
-    </section>
-  </div>
+    <div class="st-opts">
+      <div class="st-opt"><b>The people in it</b></div>
+      <div class="st-opt"><b>The moment it all turned</b></div>
+      <div class="st-opt"><b>How we got from there to here</b></div>
+      <div class="st-opt"><b>A clip I couldn&rsquo;t stop thinking about</b></div>
+    </div>
+
+    <a class="st-go" href="/join?from=start">Continue</a>
+    <p class="st-note">By continuing you agree to our <a href="/terms">Terms</a>
+    and <a href="/privacy">Privacy Policy</a>.</p>
+  </section>
 
 </main>
 
+<!-- ===== the engine's host =============================================
+     The same three elements js/recommend.js builds around the quiz, because
+     css/onboard.css's frame is measured against them: .fbob is absolute
+     against .fbg-sheet.fbg-quiz, and the wide-screen rule that stops a 2000px
+     monitor stretching a 390x844 mockup is written `.fbg.is-quiz
+     .fbg-sheet.fbg-quiz`. NO WRAPPER between the sheet and the engine — one
+     more box is one more thing that arithmetic is wrong about.
+
+     It ships `hidden` and the script removes the attribute once mount() has
+     said yes. That order is the no-JS rule working in the only direction it
+     can: the flat screen is what is on the page until something better is
+     actually running. .fbg sets no display of its own, so the user agent's
+     [hidden] rule is enough here and needs no line in a stylesheet.
+     ================================================================== -->
+<div class="fbg is-quiz" id="st-wall" hidden>
+  <div class="fbg-veil" aria-hidden="true"></div>
+  <section class="fbg-sheet fbg-quiz" id="st-quiz" role="dialog" aria-modal="true"
+           aria-label="A few questions" tabindex="-1"></section>
+</div>
+
+<script src="/js/progress.js?v=b5d6c73a"></script>
+<script src="/js/access.js?v=253a4e0f"></script>
+<script src="/js/gate.js?v=bfce3033"></script>
+<script src="/js/account.js?v=d3ddea35"></script>
+<script src="/js/personalize.js?v=41896023"></script>
+<script src="/js/onboard.js?v=2e07dde8"></script>
+<script src="/js/profile-sync.js?v=32cb826a"></script>
+<script type="module" src="/js/auth.js?v=35b20584"></script>
 <script src="/js/analytics.js?v=62eb8b43"></script>
-<script src="/js/acct.js?v=9427c787"></script>
+<script>
+/* The handover, and nothing else. ES5, like every other script on this site
+   that is not js/auth.js: the audience is the Instagram and TikTok in-app
+   browsers. */
+(function () {
+  "use strict";
+
+  var flat = document.getElementById("st-flat");
+  var wall = document.getElementById("st-wall");
+  var quiz = document.getElementById("st-quiz");
+  if (!flat || !wall || !quiz) return;
+  if (!window.FBOB || typeof FBOB.mount !== "function") return;
+
+  /* The first screen the engine calls a question, found in its own two
+     exported lists. FLOW is what mount() walks; SCREENS is what each entry in
+     it is. js/onboard.js's header records that one row was already inserted
+     into that list once and everything after it moved down, so the index is
+     asked for rather than remembered. */
+  function firstQuestion() {
+    var flow = FBOB.FLOW || [], screens = FBOB.SCREENS || [], i, j;
+    for (i = 0; i < flow.length; i++) {
+      for (j = 0; j < screens.length; j++) {
+        if (screens[j].id === flow[i] && screens[j].kind === "question") return i;
+      }
+    }
+    return 0;
+  }
+
+  /* Position only. See the note at the top of this page for what this drops
+     and, more importantly, what it does not. */
+  try { if (typeof FBOB.reset === "function") FBOB.reset(); } catch (e) {}
+
+  /* Revealed before mount, not after: the engine measures elements as it
+     builds them and a host inside display:none measures zero. Both happen in
+     one task, so there is no frame in which an empty sheet is painted. */
+  wall.removeAttribute("hidden");
+
+  var up = false;
+  try {
+    up = !!FBOB.mount(quiz, {
+      /* "start" is one of the four values js/onboard.js accepts and the true
+         one. `page` is left to default, which reads the pathname. */
+      from: "start",
+      startAt: firstQuestion(),
+
+      /* The terminus. The reader has answered everything; /join asks for the
+         email and shows the real prices. `from=start` rides along so the
+         funnel can tell this entrance from /firststory's. */
+      onDone: function () { location.href = "/join?from=start"; },
+
+      /* Backed out of the engine's own first screen, or stepped out of the
+         flow with the browser's own Back. /explore is where the wordmark goes
+         from every other page on this site. */
+      onExit: function () { location.href = "/explore"; }
+    });
+  } catch (e2) { up = false; }
+
+  /* An engine that would not mount must not leave an empty screen where the
+     questions were: put the wall back and let the flat screen stand, which is
+     the funnel working with the animation missing rather than the funnel
+     stopped. */
+  if (!up) { wall.setAttribute("hidden", ""); return; }
+
+  flat.style.display = "none";
+})();
+</script>
 </body>
 </html>
