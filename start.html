@@ -37,9 +37,29 @@
      two are loaded in that order on /firststory and the order matters. -->
 <link rel="stylesheet" href="/css/start.css?v=d7b763e8">
 <link rel="stylesheet" href="/css/recommend.css?v=b0d82e4f">
-<link rel="stylesheet" href="/css/onboard.css?v=bc6ec82b">
+<link rel="stylesheet" href="/css/onboard.css?v=d4129f7f">
+<style>
+/* /start IS A PAGE, NOT A MODAL.
+
+   css/onboard.css deliberately keeps the funnel inside a phone-width column on
+   wide screens and paints the surround --night, so that on the reader — where
+   the quiz is a sheet over a story — the column reads as a device. That is
+   right there and is not being changed.
+
+   Standalone at this URL there is nothing behind it, so the same rule fills a
+   desktop window with black either side of a 440px strip and the page looks
+   broken rather than deliberate. Scoped to .st-page only: the surround becomes
+   the cream ground the funnel is already painted in, and the device shadow
+   drops to something a page can carry. The column stays a column, because
+   every offset in the mockup is anchored to a 390x844 frame and letting it
+   become the window is what the stylesheet's own comment warns against. */
+@media (min-width:520px){
+  .st-page .fbg.is-quiz .fbg-sheet.fbg-quiz{ background:var(--ground, #E7E0D3); }
+  .st-page .fbob{ box-shadow:0 10px 44px rgba(23,46,91,.10); }
+}
+</style>
 </head>
-<body>
+<body class="st-page">
 
 <!--
   /start — THE QUESTIONS, FROM THE FIRST ONE, EVERY TIME.

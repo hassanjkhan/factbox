@@ -10,9 +10,9 @@
 2026-09-10  264e1edbe124  /explore
 2026-09-10  76f1d6c99ee7  /stories
 2026-09-10  ba14b5ec72e6  /library
-2026-09-10  76c95adad059  /story
-2026-09-10  fd7c329627a0  /cleopatra
-2026-09-10  bbf5ace94050  /firststory
+2026-09-14  772a925adae3  /story
+2026-09-14  dfa2f9822910  /cleopatra
+2026-09-14  bacc796f983f  /firststory
 2026-09-10  df89a9ab1d10  /history/
 2026-09-10  0aeb1d7979ef  /history/how-did-cleopatra-die-the-snake
 2026-09-10  1f7d69871d49  /history/cleopatra-the-seductress

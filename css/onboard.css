@@ -404,10 +404,34 @@
   font-size:14px; font-weight:500;
   color:var(--dimmer);
 }
+/* THE OPTIONS GROW INTO SPARE ROOM AND NEVER OUT OF IT.
+
+   `flex:1 0 auto` — grow, DO NOT SHRINK — and the difference from the
+   `1 1 auto; min-height:0` this used to be is the whole of the collision the
+   owner photographed on /start. Shrinking is what let this box be measured
+   smaller than the rows inside it: the head, the hint and the disclosure line
+   are all flex:0 0 auto and refuse to give anything up, so on a short window
+   every missing pixel came out of this one box, and `justify-content:center`
+   then split the overflow evenly ABOVE and below — the first card climbing
+   over "Pick two or three. The first three set your feed." and the last one
+   landing on the disclosure. Six genre rows on a 700px-tall window is 89px
+   of that, 45 of them upwards.
+
+   Refusing to shrink moves the overflow to where something can handle it:
+   .ob-qscroll carries .ob-scroll and is already a scroller, so the column
+   simply becomes taller than its window and scrolls. Continue is pinned in
+   .ob-ctawrap OUTSIDE the scroller and is unaffected either way.
+
+   Nothing changes when there IS room, which is every screen at 390x844 and
+   every screen but the genre grid anywhere: with free space to hand out this
+   box still grows to fill it and still centres the rows in what it got. That
+   is why this is not behind a height query — it is not the viewport that is
+   too short, it is the content that is too tall, and a media query cannot
+   see how many lines the disclosure sentence wrapped to. */
 .fbob .ob-optwrap{
-  flex:1 1 auto;
+  flex:1 0 auto;
   display:flex; flex-direction:column; justify-content:center;
-  min-height:0; padding:8px 0 20px;
+  padding:8px 0 20px;
 }
 .fbob .ob-opts{display:flex; flex-direction:column; gap:8px}
 
@@ -491,7 +515,14 @@
    scroller so it can never be cut off mid-word. */
 .fbob .ob-fine{
   flex:0 0 auto;
-  margin:0 0 20px;
+  /* 16, not the 20 it was, and the four pixels are not an aesthetic judgement.
+     This is the LAST thing in the scroller, so its bottom margin is trailing
+     dead space above a floor that already holds 98px clear for the button —
+     and at 390x844, the size the mockup was drawn at, those four pixels were
+     the entire difference between the genre column fitting its window (640 in
+     642) and running two pixels past it. Two pixels past it is this sentence's
+     descenders sliced off, which is the one thing the note above forbids. */
+  margin:0 0 16px;
   font-size:12px; font-weight:400; line-height:1.5;
   color:var(--dimmer);
 }
@@ -808,6 +839,14 @@
   .fbob .ob-l-cover{top:436px}
   .fbob .ob-covercard{height:200px}
   .fbob .ob-resin{padding-top:56px}
+  /* And the paintings on the GENRE ROWS come down with them, which is the one
+     screen the two blocks below had been missing. `min-height:54px` never
+     touched a genre row: the row is a border box around a 46px cover chip
+     plus 11px of padding, so the chip — not the min-height — is what makes it
+     70 tall, and six of those is 460px of a window that may only have 498.
+     The chip is an identifier, not an illustration, and it is still one at 38. */
+  .fbob .ob-opt{padding:9px 14px}
+  .fbob .ob-tile{width:38px; height:38px; border-radius:9px}
 }
 @media (max-height:700px){
   .fbob .ob-w-art{height:460px}
@@ -827,11 +866,15 @@
   .fbob .ob-covercard{height:168px}
   .fbob .ob-covertitle{font-size:18px}
   .fbob .ob-opt{min-height:54px}
-  /* The loader's interruption borrows this layout but has no chrome over it,
-   so it starts where the loader's own headline does. */
-.fbob .ob-qscroll.is-bare{top:88px}
-.fbob .ob-qhead{font-size:21px}
+  .fbob .ob-qhead{font-size:21px}
+  .fbob .ob-tile{width:34px; height:34px}
 }
+
+/* The question column is NOT ridden up by a height query the way the painting
+   screens above are, and that is deliberate: see .ob-optwrap. Its blocks are
+   text whose height depends on where it wrapped, not art on a known offset,
+   so it is given a scroller and allowed to use it rather than a table of
+   guesses about how tall six rows and a disclosure sentence came out. */
 
 /* ==========================================================================
    REDUCED MOTION. Not "the same thing, faster" — OFF.
